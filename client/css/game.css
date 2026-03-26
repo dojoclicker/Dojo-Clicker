@@ -416,7 +416,6 @@ body {
     cursor: pointer;
     position: relative;
     transition: all var(--transition-normal);
-    overflow: hidden;
 }
 
 .mission-card:hover {

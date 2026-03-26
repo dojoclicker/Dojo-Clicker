@@ -252,28 +252,28 @@
             const missionIcons = ['🌲', '🦅', '🐢', '⚔️', '👴'];
             const icon = isUnlocked ? missionIcons[index] || '📋' : '🔒';
             
-            // Konwersja JSONB na czytelny tekst
-            let requirementsText = 'Brak wymagań';
-            let dropsText = 'Brak dodatkowych dropów';
-            
-            try {
-                if (mission.req_stats) {
-                    requirementsText = typeof mission.req_stats === 'string' 
-                        ? mission.req_stats 
-                        : JSON.stringify(mission.req_stats);
-                }
-            } catch (e) {
-                requirementsText = 'Błąd parsowania wymagań';
+            // Formatowanie czytelnych danych dla tooltipa
+            let reqStatsText = 'Brak wymagań';
+            if (mission.req_stats && typeof mission.req_stats === 'object') {
+                const stats = [];
+                if (mission.req_stats.strength) stats.push(`Siła: ${mission.req_stats.strength}`);
+                if (mission.req_stats.speed) stats.push(`Szybkość: ${mission.req_stats.speed}`);
+                if (mission.req_stats.endurance) stats.push(`Wytrzymałość: ${mission.req_stats.endurance}`);
+                reqStatsText = stats.join(', ') || 'Brak wymagań';
             }
             
-            try {
-                if (mission.drop_table) {
-                    dropsText = typeof mission.drop_table === 'string' 
-                        ? mission.drop_table 
-                        : JSON.stringify(mission.drop_table);
-                }
-            } catch (e) {
-                dropsText = 'Błąd parsowania dropów';
+            let rewardStatsText = 'Brak';
+            if (mission.reward_stats && mission.reward_stats.min !== undefined && mission.reward_stats.max !== undefined) {
+                rewardStatsText = `Losowo od ${mission.reward_stats.min} do ${mission.reward_stats.max} punktów`;
+            }
+            
+            let dropsText = 'Brak';
+            if (mission.drop_table && Array.isArray(mission.drop_table)) {
+                const drops = mission.drop_table.map(drop => {
+                    const itemName = drop.item_id ? drop.item_id.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) : 'Nieznany przedmiot';
+                    return `${itemName} (${drop.chance_pct}%)`;
+                });
+                dropsText = drops.join(', ') || 'Brak';
             }
 
             card.innerHTML = `
@@ -284,26 +284,12 @@
                 <!-- Tooltip z informacjami o misji -->
                 <div class="mission-tooltip">
                     <div class="tooltip-title">${mission.name}</div>
-                    <div class="tooltip-section">
-                        <div class="tooltip-label">Opis:</div>
-                        <div class="tooltip-value">${mission.description || 'Brak opisu'}</div>
-                    </div>
-                    <div class="tooltip-section">
-                        <div class="tooltip-label">Wymagania:</div>
-                        <div class="tooltip-value">${requirementsText}</div>
-                    </div>
-                    <div class="tooltip-section">
-                        <div class="tooltip-label">Szansa sukcesu:</div>
-                        <div class="tooltip-value">${mission.success_chance || '???'}%</div>
-                    </div>
-                    <div class="tooltip-section">
-                        <div class="tooltip-label">Nagroda monet:</div>
-                        <div class="tooltip-value">${mission.reward_coins_min || '0'} - ${mission.reward_coins_max || '0'} 💰</div>
-                    </div>
-                    <div class="tooltip-section">
-                        <div class="tooltip-label">Dodatkowe dropy:</div>
-                        <div class="tooltip-value">${dropsText}</div>
-                    </div>
+                    <div style="font-size: 0.85rem; margin-bottom: 0.5rem; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 0.5rem;"><i>${mission.description || ''}</i></div>
+                    <div style="font-size: 0.85rem; color: var(--goku-accent); font-weight: bold;">Koszt Staminy: ${mission.stamina_cost}</div>
+                    <div style="font-size: 0.85rem; margin-top: 4px;"><b>Wymagania:</b> ${reqStatsText}</div>
+                    <div style="font-size: 0.85rem; margin-top: 4px;"><b>Nagroda Monety:</b> ${mission.reward_coins_min || '0'} - ${mission.reward_coins_max || '0'}</div>
+                    <div style="font-size: 0.85rem; margin-top: 4px;"><b>Statystyki:</b> ${rewardStatsText}</div>
+                    <div style="font-size: 0.85rem; margin-top: 4px;"><b>Dodatkowe Drop:</b> ${dropsText}</div>
                 </div>
             `;
 
