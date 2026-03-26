@@ -1,0 +1,16 @@
+# Dependency directories
+node_modules/
+
+# Environment variables
+.env
+.env.local
+
+# Build outputs and logs
+npm-debug.log
+yarn-error.log
+dist/
+build/
+
+# OS generated files
+.DS_Store
+Thumbs.db
