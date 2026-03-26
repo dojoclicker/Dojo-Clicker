@@ -207,7 +207,10 @@ app.get('/api/character', authenticateToken, async (req, res) => {
 
     // Konwersja stringów na BigInt dla obliczeń
     const strength = BigInt(character.strength || '100');
+    const speed = BigInt(character.speed || '100');
+    const endurance = BigInt(character.endurance || '100');
     const intelligence = BigInt(character.intelligence || '100');
+    const mental_power = BigInt(character.mental_power || '100');
     const bonus_hp = BigInt(character.bonus_hp || '0');
     const bonus_mp = BigInt(character.bonus_mp || '0');
     const bonus_stamina = BigInt(character.bonus_stamina || '0');
@@ -217,17 +220,15 @@ app.get('/api/character', authenticateToken, async (req, res) => {
     const max_mp = 100n + (intelligence / 100n) * 50n + bonus_mp;
     const max_stamina = 100n + bonus_stamina;
 
-    // Obliczenie całkowitego Poziomu Mocy (uproszczony wzór)
-    const total_power_level = strength + 
-                              BigInt(character.speed || '100') + 
-                              BigInt(character.endurance || '100') + 
-                              intelligence + 
-                              BigInt(character.mental_power || '100');
+    // Obliczenie całkowitego Poziomu Mocy zgodnie ze wzorem GDD
+    // (Suma 5 Głównych Statystyk * 10) + ((Max HP + Max MP) / 5) + (Max Stamina * 10)
+    const stats_sum = strength + speed + endurance + intelligence + mental_power;
+    const powerLevel = (stats_sum * 10n) + ((max_hp + max_mp) / 5n) + (max_stamina * 10n);
 
     // Przygotowanie obiektu odpowiedzi z konwersją BigInt na String
     const characterData = {
       username: profile.username,
-      power_level: total_power_level.toString(),
+      power_level: powerLevel.toString(),
       coins: character.gold_coins || '0',
       current_form: character.current_form || 'Podstawowa',
       
@@ -257,6 +258,28 @@ app.get('/api/character', authenticateToken, async (req, res) => {
   } catch (err) {
     console.error('[Character] Błąd pobierania danych postaci:', err.message);
     res.status(500).json({ error: 'Błąd serwera podczas pobierania danych postaci' });
+  }
+});
+
+// Endpoint pobierający misje
+app.get('/api/missions', authenticateToken, async (req, res) => {
+  try {
+    // Pobierz wszystkie misje posortowane po koszcie staminy
+    const { data: missions, error } = await supabase
+      .from('missions')
+      .select('*')
+      .order('stamina_cost', { ascending: true });
+
+    if (error) {
+      console.error('[Missions] Błąd pobierania misji:', error.message);
+      return res.status(500).json({ error: 'Błąd serwera podczas pobierania misji' });
+    }
+
+    res.json(missions || []);
+
+  } catch (err) {
+    console.error('[Missions] Błąd endpointu:', err.message);
+    res.status(500).json({ error: 'Błąd serwera podczas pobierania misji' });
   }
 });
 

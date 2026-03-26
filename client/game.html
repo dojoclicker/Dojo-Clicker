@@ -102,33 +102,7 @@
         <!-- Widok Misji -->
         <div id="missions-view">
             <div class="missions-grid">
-                <!-- Przykładowa misja -->
-                <div class="mission-card">
-                    <div class="mission-icon">🌲</div>
-                    <div class="mission-title">Trening w lesie</div>
-                    <div class="mission-cost">⚡ 5 Stamina</div>
-                    
-                    <!-- Tooltip z informacjami o misji -->
-                    <div class="mission-tooltip">
-                        <div class="tooltip-title">Trening w lesie</div>
-                        <div class="tooltip-section">
-                            <div class="tooltip-label">Wymagania:</div>
-                            <div class="tooltip-value">Siła 1, Szybkość 1</div>
-                        </div>
-                        <div class="tooltip-section">
-                            <div class="tooltip-label">Szansa sukcesu:</div>
-                            <div class="tooltip-value">100%</div>
-                        </div>
-                        <div class="tooltip-section">
-                            <div class="tooltip-label">Nagroda gwarantowana:</div>
-                            <div class="tooltip-value">1-2 punkty statystyk</div>
-                        </div>
-                        <div class="tooltip-section">
-                            <div class="tooltip-label">Dodatkowe dropy:</div>
-                            <div class="tooltip-value">Jagody (20%)</div>
-                        </div>
-                    </div>
-                </div>
+                <!-- Misje będą renderowane dynamicznie przez JavaScript -->
             </div>
         </div>
 
@@ -172,6 +146,171 @@
                 return false;
             }
             return sessionToken;
+        }
+
+        // Pobieranie danych misji z API
+        async function fetchMissions() {
+            const sessionToken = localStorage.getItem('session_token');
+            
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/missions`, {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${sessionToken}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                if (!response.ok) {
+                    if (response.status === 401 || response.status === 403) {
+                        // Token wygasł lub nieprawidłowy - przekieruj do logowania
+                        localStorage.removeItem('session_token');
+                        window.location.href = 'index.html';
+                        return;
+                    }
+                    throw new Error(`Błąd HTTP: ${response.status}`);
+                }
+
+                const missions = await response.json();
+                renderMissions(missions);
+                
+            } catch (error) {
+                console.error('[Missions] Błąd pobierania misji:', error);
+                showMissionsError('Nie udało się pobrać misji. Spróbuj odświeżyć stronę.');
+            }
+        }
+
+        // Renderowanie misji w interfejsie
+        function renderMissions(missions) {
+            const missionsGrid = document.querySelector('.missions-grid');
+            
+            if (!missionsGrid) {
+                console.error('[Missions] Nie znaleziono kontenera .missions-grid');
+                return;
+            }
+
+            // Wyczyść starą zawartość
+            missionsGrid.innerHTML = '';
+
+            // Obsługa pustej tablicy misji
+            if (!missions || missions.length === 0) {
+                missionsGrid.innerHTML = `
+                    <div style="grid-column: 1 / -1; text-align: center; padding: 2rem;">
+                        <h3 style="color: var(--text-secondary); margin-bottom: 1rem;">Brak misji w bazie danych</h3>
+                        <p style="color: var(--text-muted);">Oczekuję na wgranie danych przez Administratora.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            // Renderuj każdą misję
+            missions.forEach(mission => {
+                const missionCard = createMissionCard(mission);
+                missionsGrid.appendChild(missionCard);
+            });
+
+            console.log(`[Missions] Wyrenderowano ${missions.length} misji`);
+        }
+
+        // Tworzenie pojedynczej karty misji
+        function createMissionCard(mission) {
+            const card = document.createElement('div');
+            card.className = 'mission-card';
+            
+            // Ikona misji (placeholder - można rozwinąć w przyszłości)
+            const icon = getMissionIcon(mission.name);
+            
+            // Konwersja JSONB na czytelny tekst
+            let requirementsText = 'Brak wymagań';
+            let dropsText = 'Brak dodatkowych dropów';
+            
+            try {
+                if (mission.requirements) {
+                    requirementsText = typeof mission.requirements === 'string' 
+                        ? mission.requirements 
+                        : JSON.stringify(mission.requirements);
+                }
+            } catch (e) {
+                requirementsText = 'Błąd parsowania wymagań';
+            }
+            
+            try {
+                if (mission.additional_drops) {
+                    dropsText = typeof mission.additional_drops === 'string' 
+                        ? mission.additional_drops 
+                        : JSON.stringify(mission.additional_drops);
+                }
+            } catch (e) {
+                dropsText = 'Błąd parsowania dropów';
+            }
+
+            card.innerHTML = `
+                <div class="mission-icon">${icon}</div>
+                <div class="mission-title">${mission.name}</div>
+                <div class="mission-cost">⚡ ${mission.stamina_cost} Stamina</div>
+                
+                <!-- Tooltip z informacjami o misji -->
+                <div class="mission-tooltip">
+                    <div class="tooltip-title">${mission.name}</div>
+                    <div class="tooltip-section">
+                        <div class="tooltip-label">Opis:</div>
+                        <div class="tooltip-value">${mission.description || 'Brak opisu'}</div>
+                    </div>
+                    <div class="tooltip-section">
+                        <div class="tooltip-label">Wymagania:</div>
+                        <div class="tooltip-value">${requirementsText}</div>
+                    </div>
+                    <div class="tooltip-section">
+                        <div class="tooltip-label">Szansa sukcesu:</div>
+                        <div class="tooltip-value">${mission.success_chance || '???'}%</div>
+                    </div>
+                    <div class="tooltip-section">
+                        <div class="tooltip-label">Nagroda monet:</div>
+                        <div class="tooltip-value">${mission.reward_coins_min || '0'} - ${mission.reward_coins_max || '0'} 💰</div>
+                    </div>
+                    <div class="tooltip-section">
+                        <div class="tooltip-label">Dodatkowe dropy:</div>
+                        <div class="tooltip-value">${dropsText}</div>
+                    </div>
+                </div>
+            `;
+
+            // Dodaj obsługę kliknięcia (placeholder)
+            card.addEventListener('click', () => {
+                console.log(`[Missions] Kliknięto misję: ${mission.name}`);
+                // Tutaj będzie logika rozpoczynania misji
+            });
+
+            return card;
+        }
+
+        // Pobieranie ikony dla misji (prosta heurystyka)
+        function getMissionIcon(missionName) {
+            const name = missionName.toLowerCase();
+            if (name.includes('las') || name.includes('trening')) return '🌲';
+            if (name.includes('miasto') || name.includes('ulica')) return '🏙️';
+            if (name.includes('góra') || name.includes('skała')) return '⛰️';
+            if (name.includes('woda') || name.includes('jezioro')) return '💧';
+            if (name.includes('walka') || name.includes('trening')) return '⚔️';
+            if (name.includes('medytacja') || name.includes('świątynia')) return '🧘';
+            if (name.includes('szpital') || name.includes('leczenie')) return '🏥';
+            if (name.includes('sklep') || name.includes('zakupy')) return '🛒';
+            if (name.includes('praca') || name.includes('zadanie')) return '💼';
+            return '📋'; // Domyślna ikona
+        }
+
+        // Wyświetlanie błędu misji
+        function showMissionsError(message) {
+            const missionsGrid = document.querySelector('.missions-grid');
+            if (missionsGrid) {
+                missionsGrid.innerHTML = `
+                    <div style="grid-column: 1 / -1; text-align: center; padding: 2rem;">
+                        <h3 style="color: var(--error); margin-bottom: 1rem;">⚠️ Błąd</h3>
+                        <p style="color: var(--text-muted); margin-bottom: 1rem;">${message}</p>
+                        <button onclick="fetchMissions()" class="btn-header">Spróbuj ponownie</button>
+                    </div>
+                `;
+            }
         }
 
         // Pobieranie danych postaci z API
@@ -271,6 +410,9 @@
 
             // 2. Pobierz dane postaci
             fetchCharacterData();
+
+            // 3. Pobierz misje
+            fetchMissions();
 
             // 3. Obsługa przycisków nawigacji
             const navButtons = document.querySelectorAll('.nav-btn');
