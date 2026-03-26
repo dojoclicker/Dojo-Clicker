@@ -84,6 +84,73 @@ app.get('/api/status', (req, res) => {
   });
 });
 
+
+// ==========================================
+// SYSTEM AUTORYZACJI I KONT
+// ==========================================
+
+// Rejestracja nowego gracza
+app.post('/api/auth/register', async (req, res) => {
+  const { email, password, username, gender } = req.body;
+
+  try {
+    // 1. Rejestracja w systemie Supabase Auth
+    const { data: authData, error: authError } = await supabase.auth.signUp({
+      email,
+      password,
+    });
+
+    if (authError) throw authError;
+    const userId = authData.user.id;
+
+    // 2. Utworzenie trwałego profilu gracza
+    const { error: profileError } = await supabase
+      .from('profiles')
+      .insert([{ id: userId, username, gender }]);
+
+    if (profileError) {
+      // Jeśli nick jest zajęty, Supabase wyrzuci błąd (dzięki regule UNIQUE)
+      throw new Error('Nie udało się utworzyć profilu. Nick może być już zajęty.');
+    }
+
+    // 3. Utworzenie sezonowej postaci gracza (Wartości 100 HP/MP dodadzą się same przez DEFAULT z bazy)
+    const { error: charError } = await supabase
+      .from('characters')
+      .insert([{ profile_id: userId }]);
+
+    if (charError) throw charError;
+
+    res.json({ status: 'success', message: 'Konto utworzone pomyślnie!' });
+  } catch (err) {
+    console.error('[Auth] Błąd rejestracji:', err.message);
+    res.status(400).json({ status: 'error', message: err.message });
+  }
+});
+
+// Logowanie gracza
+app.post('/api/auth/login', async (req, res) => {
+  const { email, password } = req.body;
+
+  try {
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+
+    if (error) throw error;
+
+    // Odsyłamy token sesji do klienta
+    res.json({ 
+      status: 'success', 
+      token: data.session.access_token,
+      user: data.user
+    });
+  } catch (err) {
+    res.status(401).json({ status: 'error', message: 'Nieprawidłowy email lub hasło.' });
+  }
+});
+
+
 // ==========================================
 // START SERWERA
 // ==========================================
