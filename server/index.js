@@ -371,25 +371,44 @@ app.post('/api/missions/start', authenticateToken, async (req, res) => {
     const rolledS = maxBigInt(1n, minS + BigInt(Math.floor(Math.random() * Number(maxS - minS + 1n))));
     const finalStats = maxBigInt(1n, (rolledS * rewardMultiplier) / 100n);
 
-    // Wylosuj 3 wagi (Zawężony zakres 50-100 dla zbalansowanego podziału)
-    const w1 = Math.floor(Math.random() * 51) + 50;
-    const w2 = Math.floor(Math.random() * 51) + 50;
-    const w3 = Math.floor(Math.random() * 51) + 50;
-    const sumW = BigInt(w1 + w2 + w3);
+    let gainStr = 0n;
+    let gainSpd = 0n;
+    let gainEnd = 0n;
 
-    // Podział BigInt
-    let gainStr = (finalStats * BigInt(w1)) / sumW;
-    let gainSpd = (finalStats * BigInt(w2)) / sumW;
-    let gainEnd = (finalStats * BigInt(w3)) / sumW;
-    
-    // Prawidłowe wyliczenie fizycznej reszty (bez użycia modulo)
-    const remainder = finalStats - (gainStr + gainSpd + gainEnd);
-    
-    // Losowanie celu dla reszty (naprawa modulo bias)
-    const remainderTarget = Math.floor(Math.random() * 3);
-    if (remainderTarget === 0) gainStr += remainder;
-    else if (remainderTarget === 1) gainSpd += remainder;
-    else gainEnd += remainder;
+    if (finalStats < 10n) {
+        // EARLY GAME FALLBACK: Równy podział małych liczb, by uniknąć zer z ucinania BigInt
+        const baseGain = finalStats / 3n;
+        gainStr = baseGain;
+        gainSpd = baseGain;
+        gainEnd = baseGain;
+        
+        const localRem = Number(finalStats % 3n);
+        if (localRem > 0) {
+            // Losujemy unikalne cele dla reszty
+            const targets = [0, 1, 2].sort(() => 0.5 - Math.random());
+            for (let i = 0; i < localRem; i++) {
+                if (targets[i] === 0) gainStr += 1n;
+                else if (targets[i] === 1) gainSpd += 1n;
+                else if (targets[i] === 2) gainEnd += 1n;
+            }
+        }
+    } else {
+        // LATE GAME: Wylosuj 3 wagi (Zawężony zakres 50-100 dla zbalansowanego podziału potężnych liczb)
+        const w1 = Math.floor(Math.random() * 51) + 50;
+        const w2 = Math.floor(Math.random() * 51) + 50;
+        const w3 = Math.floor(Math.random() * 51) + 50;
+        const sumW = BigInt(w1 + w2 + w3);
+
+        gainStr = (finalStats * BigInt(w1)) / sumW;
+        gainSpd = (finalStats * BigInt(w2)) / sumW;
+        gainEnd = (finalStats * BigInt(w3)) / sumW;
+        
+        const remainder = finalStats - (gainStr + gainSpd + gainEnd);
+        const remainderTarget = Math.floor(Math.random() * 3);
+        if (remainderTarget === 0) gainStr += remainder;
+        else if (remainderTarget === 1) gainSpd += remainder;
+        else gainEnd += remainder;
+    }
 
     // Aktualizacja statystyk
     const newStr = BigInt(character.strength || '1') + gainStr;
