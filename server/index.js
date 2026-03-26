@@ -224,9 +224,12 @@ app.get('/api/character', authenticateToken, async (req, res) => {
     const max_mp = 100n + (intelligence / 100n) * 50n + bonus_mp;
     const max_stamina = 100n + bonus_stamina;
 
-    // Obliczenie całkowitego Poziomu Mocy
+    // Obliczenie całkowitego Poziomu Mocy (Eliminacja podwójnego liczenia statystyk)
     const stats_sum = strength + speed + endurance + intelligence + mental_strength;
-    const powerLevel = (stats_sum * 10n) + ((max_hp + max_mp) / 5n) + (max_stamina / 10n);
+    
+    // Zliczamy WYŁĄCZNIE trwałe bonusy zdobyte z przedmiotów, ignorując bazowe HP i to wyliczone z Siły
+    // Zmienne bonus_hp, bonus_mp i bonus_stamina są już wyciągnięte z bazy na początku tej funkcji!
+    const powerLevel = stats_sum + ((bonus_hp + bonus_mp) / 50n) + (bonus_stamina / 10n);
 
     // Przygotowanie obiektu odpowiedzi z poprawnymi kluczami!
     const characterData = {
