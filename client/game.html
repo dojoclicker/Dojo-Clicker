@@ -253,28 +253,32 @@
             const icon = isUnlocked ? missionIcons[index] || '📋' : '🔒';
             
             // Formatowanie czytelnych danych dla tooltipa
-            let reqStatsText = 'Brak wymagań';
-            if (mission.req_stats && typeof mission.req_stats === 'object') {
-                const stats = [];
-                if (mission.req_stats.strength) stats.push(`Siła: ${mission.req_stats.strength}`);
-                if (mission.req_stats.speed) stats.push(`Szybkość: ${mission.req_stats.speed}`);
-                if (mission.req_stats.endurance) stats.push(`Wytrzymałość: ${mission.req_stats.endurance}`);
-                reqStatsText = stats.join(', ') || 'Brak wymagań';
-            }
+            const reqs = mission.req_stats || {};
+            const reqStatsText = Object.entries(reqs).map(([k, v]) => `${k}: ${v}`).join(', ') || 'Brak wymagań';
             
-            let rewardStatsText = 'Brak';
-            if (mission.reward_stats && mission.reward_stats.min !== undefined && mission.reward_stats.max !== undefined) {
-                rewardStatsText = `Losowo od ${mission.reward_stats.min} do ${mission.reward_stats.max} punktów`;
-            }
+            const rewardStatsText = mission.reward_stats ? 'Losowo od ' + mission.reward_stats.min + ' do ' + mission.reward_stats.max + ' pkt.' : 'Brak';
             
-            let dropsText = 'Brak';
-            if (mission.drop_table && Array.isArray(mission.drop_table)) {
-                const drops = mission.drop_table.map(drop => {
-                    const itemName = drop.item_id ? drop.item_id.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) : 'Nieznany przedmiot';
-                    return `${itemName} (${drop.chance_pct}%)`;
+            const dropsText = (mission.drop_table && Array.isArray(mission.drop_table)) ? mission.drop_table.map(d => d.item_id + ' (' + d.chance_pct + '%)').join(', ') : 'Brak';
+
+            // Wylicz Szansę na Sukces (Logika BigInt)
+            let lowestRatio = 500n;
+            if (window.playerCurrentStats) {
+                ['strength', 'speed', 'endurance'].forEach(key => {
+                    if (reqs[key] && Number(reqs[key]) > 0) {
+                        const pStat = BigInt(window.playerCurrentStats[key] || '1');
+                        const rStat = BigInt(reqs[key]);
+                        const ratio = (pStat * 100n) / rStat;
+                        if (ratio < lowestRatio) lowestRatio = ratio;
+                    }
                 });
-                dropsText = drops.join(', ') || 'Brak';
             }
+            const chanceNum = Math.min(100, Number(lowestRatio));
+
+            // Ustal kolor procentów
+            let chanceColor = '#ef4444'; // Czerwony (0-60)
+            if (chanceNum > 60 && chanceNum <= 90) chanceColor = '#f59e0b'; // Żółty
+            else if (chanceNum > 90 && chanceNum <= 97) chanceColor = '#84cc16'; // Jasnozielony
+            else if (chanceNum > 97) chanceColor = '#10b981'; // Ciemnozielony (Sukces)
 
             card.innerHTML = `
                 <div class="mission-icon">${icon}</div>
@@ -284,7 +288,8 @@
                 <!-- Tooltip z informacjami o misji -->
                 <div class="mission-tooltip">
                     <div class="tooltip-title">${mission.name}</div>
-                    <div style="font-size: 0.85rem; margin-bottom: 0.5rem; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 0.5rem;"><i>${mission.description || ''}</i></div>
+                    <div style="font-size: 0.85rem; margin-bottom: 0.5rem; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 0.5rem; text-align: center;"><i>${mission.description || ''}</i></div>
+                    <div style="font-size: 0.95rem; margin-bottom: 0.75rem; text-align: center; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 0.5rem;">Szansa na sukces: <span style="color: ${chanceColor}; font-weight: bold;">${chanceNum}%</span></div>
                     <div style="font-size: 0.85rem; color: var(--goku-accent); font-weight: bold;">Koszt Staminy: ${mission.stamina_cost}</div>
                     <div style="font-size: 0.85rem; margin-top: 4px;"><b>Wymagania:</b> ${reqStatsText}</div>
                     <div style="font-size: 0.85rem; margin-top: 4px;"><b>Nagroda Monety:</b> ${mission.reward_coins_min || '0'} - ${mission.reward_coins_max || '0'}</div>
@@ -505,6 +510,7 @@
 
                 // Zapisz progres misji i odśwież interfejs misji
                 window.playerCompletedMissions = data.completed_missions;
+                window.playerCurrentStats = data.stats;
                 if (window.allMissions) renderMissions(window.allMissions);
 
                 console.log('[UI] Dane postaci załadowane pomyślnie:', data);

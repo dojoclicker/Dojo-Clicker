@@ -466,7 +466,7 @@ body {
     opacity: 0;
     pointer-events: none;
     transition: opacity var(--transition-fast), visibility var(--transition-fast);
-    transition-delay: 0.4s;
+    transition-delay: 0.3s;
     background: linear-gradient(135deg, var(--goku-panel-bg) 0%, rgba(22, 30, 49, 0.95) 100%);
     border: 2px solid var(--goku-accent);
     border-radius: 8px;
