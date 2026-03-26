@@ -462,7 +462,8 @@ body {
     z-index: 1000;
     opacity: 0;
     pointer-events: none;
-    transition: opacity var(--transition-fast);
+    transition: opacity var(--transition-fast), visibility var(--transition-fast);
+    transition-delay: 0.4s;
     background: linear-gradient(135deg, var(--goku-panel-bg) 0%, rgba(22, 30, 49, 0.95) 100%);
     border: 2px solid var(--goku-accent);
     border-radius: 8px;
@@ -473,6 +474,21 @@ body {
 
 .mission-card:hover .mission-tooltip {
     opacity: 1;
+    transition-delay: 0s;
+}
+
+/* Style dla zablokowanych misji */
+.mission-card.locked {
+    filter: grayscale(100%);
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none !important;
+    box-shadow: none !important;
+    border-color: var(--goku-panel-border) !important;
+}
+
+.mission-card.locked .mission-tooltip {
+    display: none;
 }
 
 .tooltip-title {

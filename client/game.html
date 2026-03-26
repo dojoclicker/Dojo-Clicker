@@ -198,6 +198,7 @@
                 }
 
                 const missions = await response.json();
+                window.allMissions = missions;
                 renderMissions(missions);
                 
             } catch (error) {
@@ -230,21 +231,26 @@
             }
 
             // Renderuj każdą misję
-            missions.forEach(mission => {
-                const missionCard = createMissionCard(mission);
-                missionsGrid.appendChild(missionCard);
+            missions.forEach((mission, index) => {
+                const card = createMissionCard(mission, index);
+                missionsGrid.appendChild(card);
             });
 
             console.log(`[Missions] Wyrenderowano ${missions.length} misji`);
         }
 
         // Tworzenie pojedynczej karty misji
-        function createMissionCard(mission) {
+        function createMissionCard(mission, index) {
             const card = document.createElement('div');
             card.className = 'mission-card';
             
-            // Ikona misji (placeholder - można rozwinąć w przyszłości)
-            const icon = getMissionIcon(mission.name);
+            // Sprawdzenie odblokowania
+            const completed = window.playerCompletedMissions || [];
+            const isUnlocked = index === 0 || completed.includes(window.allMissions[index - 1].id) || completed.includes(mission.id);
+            
+            // Ikona misji na podstawie indeksu
+            const missionIcons = ['🌲', '🦅', '🐢', '⚔️', '👴'];
+            const icon = isUnlocked ? missionIcons[index] || '📋' : '🔒';
             
             // Konwersja JSONB na czytelny tekst
             let requirementsText = 'Brak wymagań';
@@ -301,10 +307,15 @@
                 </div>
             `;
 
-            // Dodaj obsługę kliknięcia
-            card.addEventListener('click', () => {
-                startMission(mission.id);
-            });
+            // Dodaj klasę locked jeśli nieodblokowane
+            if (!isUnlocked) {
+                card.classList.add('locked');
+            } else {
+                // Dodaj obsługę kliknięcia tylko dla odblokowanych misji
+                card.addEventListener('click', () => {
+                    startMission(mission.id);
+                });
+            }
 
             return card;
         }
@@ -385,7 +396,7 @@
                     popup.innerHTML = `
                         <h3 style="margin: 0 0 1rem 0; font-size: 1.5rem;">✅ ${data.message}</h3>
                         <div style="font-size: 1.1rem; margin-bottom: 0.5rem;">💰 Monety: +${data.rewards.coins}</div>
-                        <div style="font-size: 1.1rem;">📊 Statystyki: +${data.rewards.stats_gained}</div>
+                        <div style="font-size: 1.1rem;">📊 +${data.rewards.gains.strength} Siła, +${data.rewards.gains.speed} Szybkość, +${data.rewards.gains.endurance} Wytrzymałość</div>
                     `;
                 } else if (data.result === 'failure') {
                     popup.style.backgroundColor = 'var(--error, #ef4444)';
@@ -505,6 +516,10 @@
                 document.getElementById('stat-endurance').textContent = data.stats.endurance;
                 document.getElementById('stat-intelligence').textContent = data.stats.intelligence;
                 document.getElementById('stat-mental_strength').textContent = data.stats.mental_strength;
+
+                // Zapisz progres misji i odśwież interfejs misji
+                window.playerCompletedMissions = data.completed_missions;
+                if (window.allMissions) renderMissions(window.allMissions);
 
                 console.log('[UI] Dane postaci załadowane pomyślnie:', data);
                 

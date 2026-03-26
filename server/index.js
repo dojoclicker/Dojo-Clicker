@@ -249,7 +249,9 @@ app.get('/api/character', authenticateToken, async (req, res) => {
         endurance: character.endurance || '1',
         intelligence: character.intelligence || '1',
         mental_strength: character.mental_strength || '1'
-      }
+      },
+      
+      completed_missions: character.completed_missions || []
     };
 
     // Wysłanie odpowiedzi z konwersją BigInt na String
@@ -380,12 +382,23 @@ app.post('/api/missions/start', authenticateToken, async (req, res) => {
     let gainSpd = (finalStats * BigInt(w2)) / sumW;
     let gainEnd = (finalStats * BigInt(w3)) / sumW;
     const remainder = finalStats % sumW;
-    gainStr += remainder; // Reszta idzie do Siły
+    
+    // Losowanie celu dla reszty (naprawa modulo bias)
+    const remainderTarget = Math.floor(Math.random() * 3);
+    if (remainderTarget === 0) gainStr += remainder;
+    else if (remainderTarget === 1) gainSpd += remainder;
+    else gainEnd += remainder;
 
     // Aktualizacja statystyk
     const newStr = BigInt(character.strength || '1') + gainStr;
     const newSpd = BigInt(character.speed || '1') + gainSpd;
     const newEnd = BigInt(character.endurance || '1') + gainEnd;
+
+    // 4.5. ZAPIS PROGRESU MISJI
+    let completedMissions = character.completed_missions || [];
+    if (!completedMissions.includes(missionId)) {
+      completedMissions.push(missionId);
+    }
 
     // 5. ZAPIS DO BAZY
     await supabase
@@ -395,7 +408,8 @@ app.post('/api/missions/start', authenticateToken, async (req, res) => {
         strength: newStr.toString(),
         speed: newSpd.toString(),
         endurance: newEnd.toString(),
-        stamina: newStamina.toString()
+        stamina: newStamina.toString(),
+        completed_missions: completedMissions
       })
       .eq('profile_id', userId);
 
