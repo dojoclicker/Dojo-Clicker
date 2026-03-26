@@ -400,6 +400,7 @@ body {
     gap: 1.5rem;
     padding: 1rem;
     width: 100%;
+    padding-bottom: 300px;
 }
 
 .mission-card {
@@ -416,12 +417,14 @@ body {
     cursor: pointer;
     position: relative;
     transition: all var(--transition-normal);
+    z-index: 1;
 }
 
 .mission-card:hover {
     transform: scale(1.05);
     border-color: var(--goku-accent);
     box-shadow: var(--shadow-xl);
+    z-index: 10;
 }
 
 .mission-icon {
@@ -455,7 +458,8 @@ body {
 
 .mission-tooltip {
     position: absolute;
-    bottom: calc(100% + 10px);
+    top: 100%;
+    margin-top: 15px;
     left: 50%;
     transform: translateX(-50%);
     z-index: 1000;
@@ -467,7 +471,7 @@ body {
     border: 2px solid var(--goku-accent);
     border-radius: 8px;
     padding: 1rem;
-    min-width: 250px;
+    min-width: 280px;
     box-shadow: var(--shadow-xl);
 }
 
