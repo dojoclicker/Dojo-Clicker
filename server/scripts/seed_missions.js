@@ -36,9 +36,9 @@ const missionsData = [
         description: "Z nieba niespodziewanie pikuje na ciebie gigantyczna, wygłodniała bestia. Odeprzyj atak!",
         stamina_cost: 3,
         req_stats: { 
-            "strength": "30", 
-            "speed": "30", 
-            "endurance": "30" 
+            "strength": "15", 
+            "speed": "15", 
+            "endurance": "15" 
         },
         reward_coins_min: 0,
         reward_coins_max: 2,
@@ -59,9 +59,9 @@ const missionsData = [
         description: "Znajdujesz ogromnego, morskiego żółwia, który zgubił drogę. Eskortuj go do oceanu.",
         stamina_cost: 4,
         req_stats: { 
-            "strength": "100", 
-            "speed": "100", 
-            "endurance": "100" 
+            "strength": "40", 
+            "speed": "40", 
+            "endurance": "40" 
         },
         reward_coins_min: 0,
         reward_coins_max: 2,
@@ -77,15 +77,15 @@ const missionsData = [
         description: "Tuż przed celem drogę zachodzi wam potężny rabuś dzierżący wielki miecz. Pokaż mu siłę swoich pięści.",
         stamina_cost: 5,
         req_stats: { 
-            "strength": "200", 
-            "speed": "200", 
-            "endurance": "200" 
+            "strength": "150", 
+            "speed": "150", 
+            "endurance": "150" 
         },
         reward_coins_min: 1,
         reward_coins_max: 4,
         reward_stats: { 
-            "min": "5", 
-            "max": "10" 
+            "min": "10", 
+            "max": "15" 
         },
         drop_table: [
             { 
@@ -100,9 +100,9 @@ const missionsData = [
         description: "W nagrodę za pomoc z wody wyłania się starzec. Wyzywa cię na sparing, by sprawdzić twój potencjał.",
         stamina_cost: 10,
         req_stats: { 
-            "strength": "400", 
-            "speed": "400", 
-            "endurance": "400" 
+            "strength": "300", 
+            "speed": "300", 
+            "endurance": "300" 
         },
         reward_coins_min: 2,
         reward_coins_max: 6,

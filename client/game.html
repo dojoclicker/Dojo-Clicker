@@ -283,6 +283,9 @@
             else if (chanceNum > 90 && chanceNum <= 97) chanceColor = '#84cc16'; // Jasnozielony
             else if (chanceNum > 97) chanceColor = '#10b981'; // Ciemnozielony (Sukces)
 
+            // Informacja o typie misji
+            const unlockInfoText = mission.is_repeatable ? 'Misja powtarzalna. Sukces odblokowuje kolejne wyzwania.' : 'Misja Fabularna (Jednorazowa). Po sukcesie zostaje zablokowana.';
+
             card.innerHTML = `
                 <div class="mission-icon">${icon}</div>
                 <div class="mission-title">${mission.name}</div>
@@ -298,6 +301,7 @@
                     <div style="font-size: 0.85rem; margin-top: 4px;"><b>Nagroda Monety:</b> ${mission.reward_coins_min || '0'} - ${mission.reward_coins_max || '0'}</div>
                     <div style="font-size: 0.85rem; margin-top: 4px;"><b>Statystyki:</b> ${rewardStatsText}</div>
                     <div style="font-size: 0.85rem; margin-top: 4px;"><b>Dodatkowe Drop:</b> ${dropsText}</div>
+                    <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 8px; border-top: 1px dashed rgba(255,255,255,0.1); padding-top: 6px; text-align: center;">${unlockInfoText}</div>
                 </div>
             `;
 
