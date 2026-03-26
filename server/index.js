@@ -89,6 +89,35 @@ app.get('/api/status', (req, res) => {
 // SYSTEM AUTORYZACJI I KONT
 // ==========================================
 
+// Middleware do weryfikacji tokenu JWT
+async function authenticateToken(req, res, next) {
+  try {
+    const authHeader = req.headers['authorization'];
+    const token = authHeader && authHeader.split(' ')[1]; // Bearer <token>
+
+    if (!token) {
+      return res.status(401).json({ error: 'Brak tokenu autoryzacyjnego' });
+    }
+
+    const { data: { user }, error } = await supabase.auth.getUser(token);
+    
+    if (error || !user) {
+      return res.status(403).json({ error: 'Nieprawidłowy lub wygasły token' });
+    }
+
+    req.user = user;
+    next();
+  } catch (err) {
+    console.error('[Auth] Błąd weryfikacji tokenu:', err.message);
+    return res.status(403).json({ error: 'Błąd weryfikacji tokenu' });
+  }
+}
+
+// Funkcja pomocnicza do konwersji BigInt na String dla JSON
+function bigIntReplacer(key, value) {
+  return typeof value === 'bigint' ? value.toString() : value;
+}
+
 // Rejestracja nowego gracza
 app.post('/api/auth/register', async (req, res) => {
   const { email, password, username, gender } = req.body;
@@ -150,6 +179,86 @@ app.post('/api/auth/login', async (req, res) => {
   }
 });
 
+// Endpoint pobierający dane postaci gracza
+app.get('/api/character', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    // Pobranie danych profilu i postaci
+    const { data: profile, error: profileError } = await supabase
+      .from('profiles')
+      .select('username')
+      .eq('id', userId)
+      .single();
+
+    if (profileError || !profile) {
+      return res.status(404).json({ error: 'Nie znaleziono profilu gracza' });
+    }
+
+    const { data: character, error: characterError } = await supabase
+      .from('characters')
+      .select('*')
+      .eq('profile_id', userId)
+      .single();
+
+    if (characterError || !character) {
+      return res.status(404).json({ error: 'Nie znaleziono postaci gracza' });
+    }
+
+    // Konwersja stringów na BigInt dla obliczeń
+    const strength = BigInt(character.strength || '100');
+    const intelligence = BigInt(character.intelligence || '100');
+    const bonus_hp = BigInt(character.bonus_hp || '0');
+    const bonus_mp = BigInt(character.bonus_mp || '0');
+    const bonus_stamina = BigInt(character.bonus_stamina || '0');
+
+    // Obliczenia Max HP/MP/Stamina zgodnie z GDD
+    const max_hp = 100n + (strength / 100n) * 50n + bonus_hp;
+    const max_mp = 100n + (intelligence / 100n) * 50n + bonus_mp;
+    const max_stamina = 100n + bonus_stamina;
+
+    // Obliczenie całkowitego Poziomu Mocy (uproszczony wzór)
+    const total_power_level = strength + 
+                              BigInt(character.speed || '100') + 
+                              BigInt(character.endurance || '100') + 
+                              intelligence + 
+                              BigInt(character.mental_power || '100');
+
+    // Przygotowanie obiektu odpowiedzi z konwersją BigInt na String
+    const characterData = {
+      username: profile.username,
+      power_level: total_power_level.toString(),
+      coins: character.gold_coins || '0',
+      current_form: character.current_form || 'Podstawowa',
+      
+      // Aktualne zasoby
+      current_hp: character.current_hp || '100',
+      current_mp: character.current_mp || '50',
+      current_stamina: character.current_stamina || '100',
+      
+      // Maksymalne zasoby (obliczone)
+      max_hp: max_hp.toString(),
+      max_mp: max_mp.toString(),
+      max_stamina: max_stamina.toString(),
+      
+      // Statystyki
+      stats: {
+        strength: character.strength || '100',
+        speed: character.speed || '100',
+        endurance: character.endurance || '100',
+        intelligence: character.intelligence || '100',
+        mental_power: character.mental_power || '100'
+      }
+    };
+
+    // Wysłanie odpowiedzi z konwersją BigInt na String
+    res.json(JSON.parse(JSON.stringify(characterData, bigIntReplacer)));
+
+  } catch (err) {
+    console.error('[Character] Błąd pobierania danych postaci:', err.message);
+    res.status(500).json({ error: 'Błąd serwera podczas pobierania danych postaci' });
+  }
+});
 
 // ==========================================
 // START SERWERA

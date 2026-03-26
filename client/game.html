@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dojo-Clicker - Gra Przeglądarkowa</title>
+    <link rel="stylesheet" href="css/game.css">
+</head>
+<body>
+    <!-- Górny Panel 1 - Header -->
+    <header id="top-panel-1">
+        <div class="logo-section">
+            <div class="game-logo">⚡ Dojo-Clicker</div>
+        </div>
+        <div class="header-buttons">
+            <button class="btn-header" id="home-btn">Strona Główna</button>
+            <button class="btn-header" id="logout-btn">Wyloguj</button>
+        </div>
+    </header>
+
+    <!-- Górny Panel 2 - Nawigacja i Czas -->
+    <nav id="top-panel-2">
+        <div class="nav-section">
+            <button class="nav-btn active" data-tab="missions">
+                <div class="nav-icon">⚔️</div>
+                <div class="nav-text">Misje</div>
+            </button>
+            <button class="nav-btn" data-tab="equipment">
+                <div class="nav-icon">🛡️</div>
+                <div class="nav-text">Ekwipunek</div>
+            </button>
+            <button class="nav-btn" data-tab="hospital">
+                <div class="nav-icon">🏥</div>
+                <div class="nav-text">Szpital</div>
+            </button>
+            <button class="nav-btn" data-tab="shop">
+                <div class="nav-icon">🛒</div>
+                <div class="nav-text">Sklep</div>
+            </button>
+        </div>
+        <div class="time-section">
+            <div id="game-time">DC: Dzień 1 | 12:00</div>
+        </div>
+    </nav>
+
+    <!-- Lewy Panel Boczny - Stan Postaci -->
+    <aside id="left-sidebar">
+        <div class="player-info">
+            <div class="player-name">Gracz</div>
+            <div class="power-level">Poziom Mocy: 100</div>
+            <div class="current-form">Forma: Podstawowa</div>
+            <div class="coins">💰 Monety: 0</div>
+        </div>
+
+        <div class="avatar-placeholder">
+            <div>Avatar 2D<br>(200x400px)</div>
+        </div>
+
+        <div class="resource-bars">
+            <div class="resource-bar hp-bar">
+                <div class="resource-header">
+                    <span class="resource-name">HP</span>
+                    <span class="resource-value">100 / 100</span>
+                </div>
+                <div class="bar-container">
+                    <div class="bar-fill" style="width: 100%;"></div>
+                </div>
+            </div>
+
+            <div class="resource-bar mp-bar">
+                <div class="resource-header">
+                    <span class="resource-name">MP</span>
+                    <span class="resource-value">50 / 50</span>
+                </div>
+                <div class="bar-container">
+                    <div class="bar-fill" style="width: 100%;"></div>
+                </div>
+            </div>
+
+            <div class="resource-bar stamina-bar">
+                <div class="resource-header">
+                    <span class="resource-name">Stamina</span>
+                    <span class="resource-value">100 / 100</span>
+                </div>
+                <div class="bar-container">
+                    <div class="bar-fill" style="width: 100%;"></div>
+                </div>
+            </div>
+        </div>
+    </aside>
+
+    <!-- Panel Główny - Obszar Roboczy -->
+    <main id="main-workspace">
+        <div class="welcome-placeholder">
+            <h1 class="welcome-title">Witaj w Dojo-Clicker!</h1>
+            <p class="welcome-subtitle">Wybierz zakładkę z górnego menu, aby rozpocząć przygodę</p>
+        </div>
+    </main>
+
+    <script>
+        // Konfiguracja API - detekcja środowiska
+        const API_BASE_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
+            ? 'http://localhost:3000' 
+            : 'https://dojo-clicker.onrender.com';
+
+        // Sprawdzenie tokenu sesji przy starcie
+        function checkAuthentication() {
+            const sessionToken = localStorage.getItem('session_token');
+            if (!sessionToken) {
+                // Przekieruj do strony logowania jeśli brak tokenu
+                window.location.href = 'index.html';
+                return false;
+            }
+            return sessionToken;
+        }
+
+        // Pobieranie danych postaci z API
+        async function fetchCharacterData() {
+            const sessionToken = localStorage.getItem('session_token');
+            
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/character`, {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${sessionToken}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                if (!response.ok) {
+                    if (response.status === 401 || response.status === 403) {
+                        // Token wygasł lub nieprawidłowy - przekieruj do logowania
+                        localStorage.removeItem('session_token');
+                        window.location.href = 'index.html';
+                        return;
+                    }
+                    throw new Error(`Błąd HTTP: ${response.status}`);
+                }
+
+                const data = await response.json();
+                updateUIWithCharacterData(data);
+                
+            } catch (error) {
+                console.error('[Character] Błąd pobierania danych:', error);
+                // Wyświetl błąd użytkownikowi
+                showErrorMessage('Nie udało się pobrać danych postaci. Spróbuj odświeżyć stronę.');
+            }
+        }
+
+        // Aktualizacja interfejsu danymi postaci
+        function updateUIWithCharacterData(data) {
+            try {
+                // Aktualizacja podstawowych informacji
+                document.querySelector('.player-name').textContent = data.username;
+                document.querySelector('.power-level').textContent = `Poziom Mocy: ${data.power_level}`;
+                document.querySelector('.current-form').textContent = `Forma: ${data.current_form}`;
+                document.querySelector('.coins').textContent = `💰 Monety: ${data.coins}`;
+
+                // Aktualizacja pasków zasobów
+                updateResourceBar('hp', data.current_hp, data.max_hp);
+                updateResourceBar('mp', data.current_mp, data.max_mp);
+                updateResourceBar('stamina', data.current_stamina, data.max_stamina);
+
+                console.log('[UI] Dane postaci załadowane pomyślnie:', data);
+                
+            } catch (error) {
+                console.error('[UI] Błąd aktualizacji interfejsu:', error);
+            }
+        }
+
+        // Aktualizacja pojedynczego paska zasobów
+        function updateResourceBar(resourceType, current, max) {
+            // Konwersja stringów na BigInt dla obliczeń
+            const currentBigInt = BigInt(current);
+            const maxBigInt = BigInt(max);
+            
+            // Obliczenie procentów (zachowując precyzję BigInt)
+            const percentage = Number((currentBigInt * 100n) / maxBigInt);
+            
+            // Znalezienie odpowiednich elementów
+            const barContainer = document.querySelector(`.${resourceType}-bar`);
+            if (!barContainer) return;
+
+            const valueElement = barContainer.querySelector('.resource-value');
+            const fillElement = barContainer.querySelector('.bar-fill');
+
+            // Aktualizacja tekstu
+            valueElement.textContent = `${current} / ${max}`;
+            
+            // Aktualizacja szerokości paska
+            fillElement.style.width = `${Math.max(0, Math.min(100, percentage))}%`;
+        }
+
+        // Wyświetlanie komunikatów o błędach
+        function showErrorMessage(message) {
+            const welcomePlaceholder = document.querySelector('.welcome-placeholder');
+            if (welcomePlaceholder) {
+                welcomePlaceholder.innerHTML = `
+                    <h1 class="welcome-title" style="color: var(--error);">⚠️ Błąd</h1>
+                    <p class="welcome-subtitle">${message}</p>
+                    <button onclick="location.reload()" class="btn-header" style="margin-top: 1rem;">Odśwież stronę</button>
+                `;
+            }
+        }
+
+        // Inicjalizacja aplikacji
+        document.addEventListener('DOMContentLoaded', function() {
+            // 1. Sprawdź autoryzację
+            const sessionToken = checkAuthentication();
+            if (!sessionToken) return; // Funkcja sama przekieruje
+
+            // 2. Pobierz dane postaci
+            fetchCharacterData();
+
+            // 3. Obsługa przycisków nawigacji
+            const navButtons = document.querySelectorAll('.nav-btn');
+            navButtons.forEach(button => {
+                button.addEventListener('click', function() {
+                    // Usuń klasę active ze wszystkich przycisków
+                    navButtons.forEach(btn => btn.classList.remove('active'));
+                    // Dodaj klasę active do klikniętego przycisku
+                    this.classList.add('active');
+                    
+                    // Tutaj będzie logika przełączania zakładek
+                    const tab = this.getAttribute('data-tab');
+                    console.log('Przełączam na zakładkę:', tab);
+                });
+            });
+
+            // 4. Obsługa przycisków headera
+            document.getElementById('home-btn').addEventListener('click', function() {
+                console.log('Przechodzę na stronę główną');
+                // Tutaj będzie logika powrotu do dashboardu
+            });
+
+            document.getElementById('logout-btn').addEventListener('click', function() {
+                console.log('Wylogowuję gracza');
+                localStorage.removeItem('session_token');
+                window.location.href = 'index.html';
+            });
+
+            // 5. Symulacja ukrywania headera przy scrollowaniu (placeholder)
+            let lastScrollY = 0;
+            const header = document.getElementById('top-panel-1');
+            
+            window.addEventListener('scroll', function() {
+                const currentScrollY = window.scrollY;
+                
+                if (currentScrollY > lastScrollY && currentScrollY > 100) {
+                    // Scroll w dół - ukryj header
+                    header.classList.add('header-hidden');
+                } else {
+                    // Scroll w górę - pokaż header
+                    header.classList.remove('header-hidden');
+                }
+                
+                lastScrollY = currentScrollY;
+            });
+
+            // 6. Symulacja aktualizacji czasu gry (placeholder)
+            function updateGameTime() {
+                const timeElement = document.getElementById('game-time');
+                // Tutaj będzie logika synchronizacji z serwerem
+                // Na razie symulacja
+                const now = new Date();
+                const dcDay = Math.floor(now.getDate() / 8) + 1; // Placeholder
+                const dcHour = now.getHours();
+                const dcMinute = now.getMinutes();
+                timeElement.textContent = `DC: Dzień ${dcDay} | ${dcHour.toString().padStart(2, '0')}:${dcMinute.toString().padStart(2, '0')}`;
+            }
+
+            // Aktualizuj czas co sekundę
+            setInterval(updateGameTime, 1000);
+            updateGameTime(); // Pierwsza aktualizacja
+
+            // 7. Odświeżanie danych postaci co 30 sekund
+            setInterval(fetchCharacterData, 30000);
+        });
+    </script>
+</body>
+</html>
