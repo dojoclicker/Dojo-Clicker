@@ -45,6 +45,10 @@
 
     <!-- Lewy Panel Boczny - Stan Postaci -->
     <aside id="left-sidebar">
+        <div class="avatar-placeholder">
+            <div>Avatar 2D<br>(200x400px)</div>
+        </div>
+        
         <div class="player-info">
             <div class="player-name">Ładowanie...</div>
             <div class="power-level">Poziom Mocy: ---</div>
@@ -75,10 +79,6 @@
             
             <div class="current-form">Forma: ---</div>
             <div class="coins">💰 Monety: 0</div>
-        </div>
-
-        <div class="avatar-placeholder">
-            <div>Avatar 2D<br>(200x400px)</div>
         </div>
 
         <div class="resource-bars">
@@ -255,20 +255,20 @@
             let dropsText = 'Brak dodatkowych dropów';
             
             try {
-                if (mission.requirements) {
-                    requirementsText = typeof mission.requirements === 'string' 
-                        ? mission.requirements 
-                        : JSON.stringify(mission.requirements);
+                if (mission.req_stats) {
+                    requirementsText = typeof mission.req_stats === 'string' 
+                        ? mission.req_stats 
+                        : JSON.stringify(mission.req_stats);
                 }
             } catch (e) {
                 requirementsText = 'Błąd parsowania wymagań';
             }
             
             try {
-                if (mission.additional_drops) {
-                    dropsText = typeof mission.additional_drops === 'string' 
-                        ? mission.additional_drops 
-                        : JSON.stringify(mission.additional_drops);
+                if (mission.drop_table) {
+                    dropsText = typeof mission.drop_table === 'string' 
+                        ? mission.drop_table 
+                        : JSON.stringify(mission.drop_table);
                 }
             } catch (e) {
                 dropsText = 'Błąd parsowania dropów';
@@ -305,10 +305,9 @@
                 </div>
             `;
 
-            // Dodaj obsługę kliknięcia (placeholder)
+            // Dodaj obsługę kliknięcia
             card.addEventListener('click', () => {
-                console.log(`[Missions] Kliknięto misję: ${mission.name}`);
-                // Tutaj będzie logika rozpoczynania misji
+                startMission(mission.id);
             });
 
             return card;
@@ -340,6 +339,120 @@
                         <button onclick="fetchMissions()" class="btn-header">Spróbuj ponownie</button>
                     </div>
                 `;
+            }
+        }
+
+        // Rozpoczęcie misji
+        async function startMission(missionId) {
+            const sessionToken = localStorage.getItem('session_token');
+            
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/missions/start`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${sessionToken}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ missionId })
+                });
+
+                if (!response.ok) {
+                    if (response.status === 401 || response.status === 403) {
+                        localStorage.removeItem('session_token');
+                        window.location.href = 'index.html';
+                        return;
+                    }
+                    throw new Error(`Błąd HTTP: ${response.status}`);
+                }
+
+                const data = await response.json();
+                
+                // Stwórz popup
+                const popup = document.createElement('div');
+                popup.style.position = 'fixed';
+                popup.style.top = '50%';
+                popup.style.left = '50%';
+                popup.style.transform = 'translate(-50%, -50%)';
+                popup.style.padding = '2rem';
+                popup.style.borderRadius = '12px';
+                popup.style.zIndex = '1000';
+                popup.style.boxShadow = '0 10px 30px rgba(0,0,0,0.5)';
+                popup.style.minWidth = '300px';
+                popup.style.textAlign = 'center';
+                popup.style.fontWeight = 'bold';
+                
+                if (data.result === 'success') {
+                    popup.style.backgroundColor = 'var(--success, #22c55e)';
+                    popup.style.color = 'white';
+                    popup.style.border = '2px solid var(--success)';
+                    
+                    popup.innerHTML = `
+                        <h3 style="margin: 0 0 1rem 0; font-size: 1.5rem;">✅ ${data.message}</h3>
+                        <div style="font-size: 1.1rem; margin-bottom: 0.5rem;">💰 Monety: +${data.rewards.coins}</div>
+                        <div style="font-size: 1.1rem;">📊 Statystyki: +${data.rewards.stats_gained}</div>
+                    `;
+                } else if (data.result === 'failure') {
+                    popup.style.backgroundColor = 'var(--error, #ef4444)';
+                    popup.style.color = 'white';
+                    popup.style.border = '2px solid var(--error)';
+                    
+                    popup.innerHTML = `
+                        <h3 style="margin: 0; font-size: 1.5rem;">❌ ${data.message}</h3>
+                    `;
+                } else {
+                    popup.style.backgroundColor = 'var(--warning, #f59e0b)';
+                    popup.style.color = 'white';
+                    popup.style.border = '2px solid var(--warning)';
+                    
+                    popup.innerHTML = `
+                        <h3 style="margin: 0; font-size: 1.5rem;">⚠️ ${data.message || 'Wystąpił błąd'}</h3>
+                    `;
+                }
+                
+                document.body.appendChild(popup);
+                
+                // Usuń popup po 3.5 sekundy
+                setTimeout(() => {
+                    if (popup.parentNode) {
+                        popup.parentNode.removeChild(popup);
+                    }
+                }, 3500);
+                
+                // Odśwież dane postaci
+                await fetchCharacterData();
+                
+            } catch (error) {
+                console.error('[Missions] Błąd podczas rozpoczynania misji:', error);
+                
+                // Popup błędu
+                const errorPopup = document.createElement('div');
+                errorPopup.style.position = 'fixed';
+                errorPopup.style.top = '50%';
+                errorPopup.style.left = '50%';
+                errorPopup.style.transform = 'translate(-50%, -50%)';
+                errorPopup.style.padding = '2rem';
+                errorPopup.style.borderRadius = '12px';
+                errorPopup.style.zIndex = '1000';
+                errorPopup.style.boxShadow = '0 10px 30px rgba(0,0,0,0.5)';
+                errorPopup.style.minWidth = '300px';
+                errorPopup.style.textAlign = 'center';
+                errorPopup.style.fontWeight = 'bold';
+                errorPopup.style.backgroundColor = 'var(--error, #ef4444)';
+                errorPopup.style.color = 'white';
+                errorPopup.style.border = '2px solid var(--error)';
+                
+                errorPopup.innerHTML = `
+                    <h3 style="margin: 0; font-size: 1.5rem;">❌ Błąd serwera</h3>
+                    <p style="margin: 1rem 0 0 0; font-size: 1rem;">Nie udało się rozpocząć misji. Spróbuj ponownie.</p>
+                `;
+                
+                document.body.appendChild(errorPopup);
+                
+                setTimeout(() => {
+                    if (errorPopup.parentNode) {
+                        errorPopup.parentNode.removeChild(errorPopup);
+                    }
+                }, 3500);
             }
         }
 
