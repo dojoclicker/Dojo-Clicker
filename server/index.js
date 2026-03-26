@@ -206,11 +206,11 @@ app.get('/api/character', authenticateToken, async (req, res) => {
     }
 
     // Konwersja stringów na BigInt dla obliczeń
-    const strength = BigInt(character.strength || '100');
-    const speed = BigInt(character.speed || '100');
-    const endurance = BigInt(character.endurance || '100');
-    const intelligence = BigInt(character.intelligence || '100');
-    const mental_power = BigInt(character.mental_power || '100');
+    const strength = BigInt(character.strength || '1');
+    const speed = BigInt(character.speed || '1');
+    const endurance = BigInt(character.endurance || '1');
+    const intelligence = BigInt(character.intelligence || '1');
+    const mental_strength = BigInt(character.mental_strength || '1');
     const bonus_hp = BigInt(character.bonus_hp || '0');
     const bonus_mp = BigInt(character.bonus_mp || '0');
     const bonus_stamina = BigInt(character.bonus_stamina || '0');
@@ -220,35 +220,31 @@ app.get('/api/character', authenticateToken, async (req, res) => {
     const max_mp = 100n + (intelligence / 100n) * 50n + bonus_mp;
     const max_stamina = 100n + bonus_stamina;
 
-    // Obliczenie całkowitego Poziomu Mocy zgodnie ze wzorem GDD
-    // (Suma 5 Głównych Statystyk * 10) + ((Max HP + Max MP) / 5) + (Max Stamina * 10)
-    const stats_sum = strength + speed + endurance + intelligence + mental_power;
+    // Obliczenie całkowitego Poziomu Mocy
+    const stats_sum = strength + speed + endurance + intelligence + mental_strength;
     const powerLevel = (stats_sum * 10n) + ((max_hp + max_mp) / 5n) + (max_stamina * 10n);
 
-    // Przygotowanie obiektu odpowiedzi z konwersją BigInt na String
+    // Przygotowanie obiektu odpowiedzi z poprawnymi kluczami!
     const characterData = {
       username: profile.username,
       power_level: powerLevel.toString(),
-      coins: character.gold_coins || '0',
-      current_form: character.current_form || 'Podstawowa',
+      coins: character.coins || '0',
+      current_form: character.current_form || 'Stan Podstawowy',
       
-      // Aktualne zasoby
-      current_hp: character.current_hp || '100',
-      current_mp: character.current_mp || '50',
-      current_stamina: character.current_stamina || '100',
+      current_hp: character.hp || '100',
+      current_mp: character.mp || '100',
+      current_stamina: character.stamina || '100',
       
-      // Maksymalne zasoby (obliczone)
       max_hp: max_hp.toString(),
       max_mp: max_mp.toString(),
       max_stamina: max_stamina.toString(),
       
-      // Statystyki
       stats: {
-        strength: character.strength || '100',
-        speed: character.speed || '100',
-        endurance: character.endurance || '100',
-        intelligence: character.intelligence || '100',
-        mental_power: character.mental_power || '100'
+        strength: character.strength || '1',
+        speed: character.speed || '1',
+        endurance: character.endurance || '1',
+        intelligence: character.intelligence || '1',
+        mental_strength: character.mental_strength || '1'
       }
     };
 
