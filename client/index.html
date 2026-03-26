@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dojo-Clicker - Test Infrastruktury</title>
+    <style>
+        body { font-family: sans-serif; background-color: #121212; color: #ffffff; text-align: center; padding: 50px; }
+        .success { color: #4caf50; font-weight: bold; }
+        .error { color: #f44336; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <h1>Dojo-Clicker Frontend (Vercel)</h1>
+    <h2>Stan połączenia z Backendem (Render):</h2>
+    <p id="api-status">Łączenie z serwerem https://dojo-clicker.onrender.com...</p>
+
+    <script>
+        // Próba pobrania danych z Twojego API na Renderze
+        fetch('https://dojo-clicker.onrender.com/api/status')
+            .then(response => response.json())
+            .then(data => {
+                const statusEl = document.getElementById('api-status');
+                statusEl.innerHTML = `<span class="success">POŁĄCZONO!</span><br>
+                                      Status: ${data.status}<br>
+                                      Obecny Dzień DC w RAM: ${data.ram_buffer.current_dc_day}`;
+            })
+            .catch(error => {
+                document.getElementById('api-status').innerHTML = `<span class="error">Błąd połączenia (CORS lub serwer śpi): ${error.message}</span>`;
+            });
+    </script>
+</body>
+</html>

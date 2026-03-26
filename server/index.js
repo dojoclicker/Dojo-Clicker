@@ -1,4 +1,5 @@
 require('dotenv').config();
+const cron = require('node-cron');
 const express = require('express');
 const cors = require('cors');
 const { createClient } = require('@supabase/supabase-js');
@@ -90,4 +91,51 @@ app.listen(port, async () => {
   console.log(`[Dojo-Clicker API] Serwer nasłuchuje na porcie ${port}...`);
   // Ładujemy stan do RAM od razu po włączeniu serwera
   await initGlobalState();
+});
+
+// ==========================================
+// ZEGAR DC - AUTOMATYCZNA ZMIANA DNIA (CRON)
+// ==========================================
+
+// Funkcja symulująca opóźnienie (do Grace Period i Maintenance)
+const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
+// Skrypt uruchamia się równo co 8 godzin RL (o 00:00, 08:00 i 16:00)
+cron.schedule('0 0,8,16 * * *', async () => {
+  console.log('[Zegar DC] Wybiła Północ DC! Inicjacja procedury zmiany dnia...');
+
+  try {
+    // 1. Aktywacja Przerwy Technicznej w bazie (Zablokowanie API dla nowych akcji)
+    await supabase.from('global_server_state').update({ is_maintenance: true }).eq('id', 1);
+    console.log('[Zegar DC] Przerwa techniczna AKTYWNA. Nowe akcje są odrzucane.');
+
+    // 2. Okienko tolerancji - Grace Period (30 sekund)
+    // Pozwala na dokończenie akcji (np. Pracy), które gracze rozpoczęli tuż przed północą
+    console.log('[Zegar DC] Oczekiwanie 30s (Grace Period)...');
+    await delay(30000); 
+
+    // 3. WŁAŚCIWY RESET (Podbicie dnia)
+    const newDay = globalServerState.current_dc_day + 1;
+    
+    // Tutaj w przyszłości dodamy kod losujący Zadania Specjalne i rozdający Kapsułki Energii
+
+    // Zapisujemy nowy dzień w bazie
+    await supabase.from('global_server_state').update({ 
+      current_dc_day: newDay 
+    }).eq('id', 1);
+    
+    console.log(`[Zegar DC] Dzień zaktualizowany na: ${newDay}. Oczekiwanie na koniec okienka maintenance...`);
+
+    // 4. Dopełnienie 60-sekundowego okienka maintenance (pozostało 30 sekund)
+    await delay(30000);
+
+    // 5. Zdjęcie Przerwy Technicznej (Odblokowanie gry)
+    await supabase.from('global_server_state').update({ is_maintenance: false }).eq('id', 1);
+    console.log('[Zegar DC] Przerwa techniczna ZAKOŃCZONA. Gra odblokowana!');
+
+  } catch (error) {
+    console.error('[Zegar DC] KRYTYCZNY BŁĄD podczas zmiany dnia:', error.message);
+    // W razie błędu awaryjnie zdejmujemy blokadę, żeby nie popsuć gry na stałe
+    await supabase.from('global_server_state').update({ is_maintenance: false }).eq('id', 1);
+  }
 });
