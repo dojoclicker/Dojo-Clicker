@@ -46,9 +46,9 @@
     <!-- Lewy Panel Boczny - Stan Postaci -->
     <aside id="left-sidebar">
         <div class="player-info">
-            <div class="player-name">Gracz</div>
-            <div class="power-level">Poziom Mocy: 100</div>
-            <div class="current-form">Forma: Podstawowa</div>
+            <div class="player-name">Ładowanie...</div>
+            <div class="power-level">Poziom Mocy: ---</div>
+            <div class="current-form">Forma: ---</div>
             <div class="coins">💰 Monety: 0</div>
         </div>
 
@@ -60,31 +60,55 @@
             <div class="resource-bar hp-bar">
                 <div class="resource-header">
                     <span class="resource-name">HP</span>
-                    <span class="resource-value">100 / 100</span>
+                    <span class="resource-value">-- / --</span>
                 </div>
                 <div class="bar-container">
-                    <div class="bar-fill" style="width: 100%;"></div>
+                    <div class="bar-fill" style="width: 0%;"></div>
                 </div>
             </div>
 
             <div class="resource-bar mp-bar">
                 <div class="resource-header">
                     <span class="resource-name">MP</span>
-                    <span class="resource-value">50 / 50</span>
+                    <span class="resource-value">-- / --</span>
                 </div>
                 <div class="bar-container">
-                    <div class="bar-fill" style="width: 100%;"></div>
+                    <div class="bar-fill" style="width: 0%;"></div>
                 </div>
             </div>
 
             <div class="resource-bar stamina-bar">
                 <div class="resource-header">
                     <span class="resource-name">Stamina</span>
-                    <span class="resource-value">100 / 100</span>
+                    <span class="resource-value">-- / --</span>
                 </div>
                 <div class="bar-container">
-                    <div class="bar-fill" style="width: 100%;"></div>
+                    <div class="bar-fill" style="width: 0%;"></div>
                 </div>
+            </div>
+        </div>
+
+        <!-- Sekcja 5 Statystyk Postaci -->
+        <div class="character-stats" style="margin-top: 1rem; display: flex; flex-direction: column; gap: 0.5rem; font-size: 0.9rem; color: var(--text-secondary); background: rgba(0,0,0,0.2); padding: 1rem; border-radius: 8px; border: 1px solid var(--goku-panel-border);">
+            <div style="display: flex; justify-content: space-between;">
+                <span>Siła</span>
+                <span id="stat-strength" style="color: var(--text-primary); font-weight: bold;">-</span>
+            </div>
+            <div style="display: flex; justify-content: space-between;">
+                <span>Szybkość</span>
+                <span id="stat-speed" style="color: var(--text-primary); font-weight: bold;">-</span>
+            </div>
+            <div style="display: flex; justify-content: space-between;">
+                <span>Wytrzymałość</span>
+                <span id="stat-endurance" style="color: var(--text-primary); font-weight: bold;">-</span>
+            </div>
+            <div style="display: flex; justify-content: space-between;">
+                <span>Inteligencja</span>
+                <span id="stat-intelligence" style="color: var(--text-primary); font-weight: bold;">-</span>
+            </div>
+            <div style="display: flex; justify-content: space-between;">
+                <span>Siła Mentalna</span>
+                <span id="stat-mental_strength" style="color: var(--text-primary); font-weight: bold;">-</span>
             </div>
         </div>
     </aside>
@@ -359,6 +383,13 @@
                 updateResourceBar('hp', data.current_hp, data.max_hp);
                 updateResourceBar('mp', data.current_mp, data.max_mp);
                 updateResourceBar('stamina', data.current_stamina, data.max_stamina);
+
+                // Aktualizacja statystyk postaci
+                document.getElementById('stat-strength').textContent = data.stats.strength;
+                document.getElementById('stat-speed').textContent = data.stats.speed;
+                document.getElementById('stat-endurance').textContent = data.stats.endurance;
+                document.getElementById('stat-intelligence').textContent = data.stats.intelligence;
+                document.getElementById('stat-mental_strength').textContent = data.stats.mental_strength;
 
                 console.log('[UI] Dane postaci załadowane pomyślnie:', data);
                 

@@ -222,7 +222,7 @@ app.get('/api/character', authenticateToken, async (req, res) => {
 
     // Obliczenie całkowitego Poziomu Mocy
     const stats_sum = strength + speed + endurance + intelligence + mental_strength;
-    const powerLevel = (stats_sum * 10n) + ((max_hp + max_mp) / 5n) + (max_stamina * 10n);
+    const powerLevel = (stats_sum * 10n) + ((max_hp + max_mp) / 5n) + (max_stamina / 10n);
 
     // Przygotowanie obiektu odpowiedzi z poprawnymi kluczami!
     const characterData = {
