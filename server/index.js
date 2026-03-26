@@ -14,6 +14,10 @@ const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_SERVICE_KEY;
 const supabase = createClient(supabaseUrl, supabaseKey);
 
+// Funkcje pomocnicze dla BigInt
+const minBigInt = (a, b) => (a < b ? a : b);
+const maxBigInt = (a, b) => (a > b ? a : b);
+
 // ==========================================
 // BUFOR RAM - GLOBALNY STAN SERWERA
 // ==========================================
@@ -272,10 +276,146 @@ app.get('/api/missions', authenticateToken, async (req, res) => {
     }
 
     res.json(missions || []);
-
   } catch (err) {
     console.error('[Missions] Błąd endpointu:', err.message);
     res.status(500).json({ error: 'Błąd serwera podczas pobierania misji' });
+  }
+});
+
+// Silnik Misji - Rozpoczęcie misji
+app.post('/api/missions/start', authenticateToken, async (req, res) => {
+  try {
+    const { missionId } = req.body;
+    const userId = req.user.id;
+
+    // 1. POBRANIE DANYCH
+    const { data: character, error: characterError } = await supabase
+      .from('characters')
+      .select('*')
+      .eq('profile_id', userId)
+      .single();
+
+    if (characterError || !character) {
+      return res.status(404).json({ error: 'Nie znaleziono postaci gracza' });
+    }
+
+    const { data: mission, error: missionError } = await supabase
+      .from('missions')
+      .select('*')
+      .eq('id', missionId)
+      .single();
+
+    if (missionError || !mission) {
+      return res.status(404).json({ error: 'Nie znaleziono misji' });
+    }
+
+    // Walidacje
+    if (BigInt(character.hp || '0') <= 0n) {
+      return res.status(403).json({ error: 'Jesteś w Szpitalu!' });
+    }
+
+    if (BigInt(character.stamina || '0') < BigInt(mission.stamina_cost)) {
+      return res.status(400).json({ error: 'Brak Staminy' });
+    }
+
+    // 2. WYLICZENIE SZANSY I KARY (DIMINISHING RETURNS)
+    let lowestRatioPercent = 500n;
+    const reqStats = mission.req_stats ? mission.req_stats : {};
+
+    ['strength', 'speed', 'endurance'].forEach(stat => {
+      if (reqStats[stat] && reqStats[stat] > 0) {
+        const playerStat = BigInt(character[stat] || '1');
+        const reqStat = BigInt(reqStats[stat]);
+        const ratio = (playerStat * 100n) / reqStat;
+        lowestRatioPercent = minBigInt(lowestRatioPercent, ratio);
+      }
+    });
+
+    const successChance = minBigInt(100n, lowestRatioPercent);
+
+    // Modyfikator nagród
+    let rewardMultiplier = 100n;
+    if (lowestRatioPercent >= 200n && lowestRatioPercent < 500n) rewardMultiplier = 50n;
+    if (lowestRatioPercent >= 500n) rewardMultiplier = 10n;
+
+    // 3. RZUT KOSTKĄ
+    const newStamina = BigInt(character.stamina || '0') - BigInt(mission.stamina_cost);
+    const roll = Math.random() * 100;
+
+    if (roll > Number(successChance)) {
+      // PORażKA
+      await supabase
+        .from('characters')
+        .update({ stamina: newStamina.toString() })
+        .eq('profile_id', userId);
+
+      return res.json({ 
+        result: 'failure', 
+        message: 'Misja zakończona porażką!' 
+      });
+    }
+
+    // 4. JEŚLI SUKCES - NAGRODY
+    // A) MONETY
+    const minC = BigInt(mission.reward_coins_min || '0');
+    const maxC = BigInt(mission.reward_coins_max || '0');
+    const rolledC = minC + BigInt(Math.floor(Math.random() * Number(maxC - minC + 1n)));
+    const finalCoins = (rolledC * rewardMultiplier) / 100n;
+    const newCoins = BigInt(character.coins || '0') + finalCoins;
+
+    // B) STATYSTYKI (ZASADA MODULO)
+    const minS = BigInt(mission.reward_stats?.min || '0');
+    const maxS = BigInt(mission.reward_stats?.max || '0');
+    const rolledS = maxBigInt(1n, minS + BigInt(Math.floor(Math.random() * Number(maxS - minS + 1n))));
+    const finalStats = maxBigInt(1n, (rolledS * rewardMultiplier) / 100n);
+
+    // Wylosuj 3 wagi
+    const w1 = Math.floor(Math.random() * 100) + 1;
+    const w2 = Math.floor(Math.random() * 100) + 1;
+    const w3 = Math.floor(Math.random() * 100) + 1;
+    const sumW = BigInt(w1 + w2 + w3);
+
+    // Podział BigInt
+    let gainStr = (finalStats * BigInt(w1)) / sumW;
+    let gainSpd = (finalStats * BigInt(w2)) / sumW;
+    let gainEnd = (finalStats * BigInt(w3)) / sumW;
+    const remainder = finalStats % sumW;
+    gainStr += remainder; // Reszta idzie do Siły
+
+    // Aktualizacja statystyk
+    const newStr = BigInt(character.strength || '1') + gainStr;
+    const newSpd = BigInt(character.speed || '1') + gainSpd;
+    const newEnd = BigInt(character.endurance || '1') + gainEnd;
+
+    // 5. ZAPIS DO BAZY
+    await supabase
+      .from('characters')
+      .update({
+        coins: newCoins.toString(),
+        strength: newStr.toString(),
+        speed: newSpd.toString(),
+        endurance: newEnd.toString(),
+        stamina: newStamina.toString()
+      })
+      .eq('profile_id', userId);
+
+    res.json({ 
+      result: 'success', 
+      message: 'Sukces!', 
+      rewards: { 
+        coins: finalCoins.toString(), 
+        stats_gained: finalStats.toString(),
+        gains: {
+          strength: gainStr.toString(),
+          speed: gainSpd.toString(),
+          endurance: gainEnd.toString()
+        }
+      }
+    });
+
+  } catch (err) {
+    console.error('[Mission] Błąd podczas rozpoczynania misji:', err.message);
+    res.status(500).json({ error: 'Błąd serwera podczas rozpoczynania misji' });
   }
 });
 
@@ -286,6 +426,8 @@ app.listen(port, async () => {
   console.log(`[Dojo-Clicker API] Serwer nasłuchuje na porcie ${port}...`);
   // Ładujemy stan do RAM od razu po włączeniu serwera
   await initGlobalState();
+  // Tutaj dodajemy nowy kod
+  console.log('[Dojo-Clicker API] Serwer wystartował pomyślnie!');
 });
 
 // ==========================================

@@ -48,6 +48,31 @@
         <div class="player-info">
             <div class="player-name">Ładowanie...</div>
             <div class="power-level">Poziom Mocy: ---</div>
+            
+            <!-- Sekcja 5 Statystyk Postaci -->
+            <div class="character-stats" style="margin: 1rem 0; display: flex; flex-direction: column; gap: 0.5rem; font-size: 0.9rem; color: var(--text-secondary); background: rgba(0,0,0,0.2); padding: 1rem; border-radius: 8px; border: 1px solid var(--goku-panel-border);">
+                <div style="display: flex; justify-content: space-between;">
+                    <span>Siła</span>
+                    <span id="stat-strength" style="color: var(--text-primary); font-weight: bold;">-</span>
+                </div>
+                <div style="display: flex; justify-content: space-between;">
+                    <span>Szybkość</span>
+                    <span id="stat-speed" style="color: var(--text-primary); font-weight: bold;">-</span>
+                </div>
+                <div style="display: flex; justify-content: space-between;">
+                    <span>Wytrzymałość</span>
+                    <span id="stat-endurance" style="color: var(--text-primary); font-weight: bold;">-</span>
+                </div>
+                <div style="display: flex; justify-content: space-between;">
+                    <span>Inteligencja</span>
+                    <span id="stat-intelligence" style="color: var(--text-primary); font-weight: bold;">-</span>
+                </div>
+                <div style="display: flex; justify-content: space-between;">
+                    <span>Siła Mentalna</span>
+                    <span id="stat-mental_strength" style="color: var(--text-primary); font-weight: bold;">-</span>
+                </div>
+            </div>
+            
             <div class="current-form">Forma: ---</div>
             <div class="coins">💰 Monety: 0</div>
         </div>
@@ -88,29 +113,10 @@
             </div>
         </div>
 
-        <!-- Sekcja 5 Statystyk Postaci -->
-        <div class="character-stats" style="margin-top: 1rem; display: flex; flex-direction: column; gap: 0.5rem; font-size: 0.9rem; color: var(--text-secondary); background: rgba(0,0,0,0.2); padding: 1rem; border-radius: 8px; border: 1px solid var(--goku-panel-border);">
-            <div style="display: flex; justify-content: space-between;">
-                <span>Siła</span>
-                <span id="stat-strength" style="color: var(--text-primary); font-weight: bold;">-</span>
-            </div>
-            <div style="display: flex; justify-content: space-between;">
-                <span>Szybkość</span>
-                <span id="stat-speed" style="color: var(--text-primary); font-weight: bold;">-</span>
-            </div>
-            <div style="display: flex; justify-content: space-between;">
-                <span>Wytrzymałość</span>
-                <span id="stat-endurance" style="color: var(--text-primary); font-weight: bold;">-</span>
-            </div>
-            <div style="display: flex; justify-content: space-between;">
-                <span>Inteligencja</span>
-                <span id="stat-intelligence" style="color: var(--text-primary); font-weight: bold;">-</span>
-            </div>
-            <div style="display: flex; justify-content: space-between;">
-                <span>Siła Mentalna</span>
-                <span id="stat-mental_strength" style="color: var(--text-primary); font-weight: bold;">-</span>
-            </div>
+        <div class="avatar-placeholder">
+            <div>Avatar 2D<br>(200x400px)</div>
         </div>
+
     </aside>
 
     <!-- Panel Główny - Obszar Roboczy -->
