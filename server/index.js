@@ -371,17 +371,19 @@ app.post('/api/missions/start', authenticateToken, async (req, res) => {
     const rolledS = maxBigInt(1n, minS + BigInt(Math.floor(Math.random() * Number(maxS - minS + 1n))));
     const finalStats = maxBigInt(1n, (rolledS * rewardMultiplier) / 100n);
 
-    // Wylosuj 3 wagi
-    const w1 = Math.floor(Math.random() * 100) + 1;
-    const w2 = Math.floor(Math.random() * 100) + 1;
-    const w3 = Math.floor(Math.random() * 100) + 1;
+    // Wylosuj 3 wagi (Zawężony zakres 50-100 dla zbalansowanego podziału)
+    const w1 = Math.floor(Math.random() * 51) + 50;
+    const w2 = Math.floor(Math.random() * 51) + 50;
+    const w3 = Math.floor(Math.random() * 51) + 50;
     const sumW = BigInt(w1 + w2 + w3);
 
     // Podział BigInt
     let gainStr = (finalStats * BigInt(w1)) / sumW;
     let gainSpd = (finalStats * BigInt(w2)) / sumW;
     let gainEnd = (finalStats * BigInt(w3)) / sumW;
-    const remainder = finalStats % sumW;
+    
+    // Prawidłowe wyliczenie fizycznej reszty (bez użycia modulo)
+    const remainder = finalStats - (gainStr + gainSpd + gainEnd);
     
     // Losowanie celu dla reszty (naprawa modulo bias)
     const remainderTarget = Math.floor(Math.random() * 3);
