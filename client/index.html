@@ -187,7 +187,7 @@
                 if (data.status === 'success') {
                     showMessage('Zalogowano! Ładowanie gry...', false);
                     localStorage.setItem('session_token', data.token);
-                    setTimeout(() => alert("TUTAJ ZA CHWILĘ ZROBIMY GŁÓWNY INTERFEJS GRY!"), 1000);
+                    setTimeout(() => window.location.href = 'game.html', 1000);
                 } else {
                     showMessage(data.message, true);
                 }

@@ -91,9 +91,69 @@
 
     <!-- Panel Główny - Obszar Roboczy -->
     <main id="main-workspace">
-        <div class="welcome-placeholder">
-            <h1 class="welcome-title">Witaj w Dojo-Clicker!</h1>
-            <p class="welcome-subtitle">Wybierz zakładkę z górnego menu, aby rozpocząć przygodę</p>
+        <!-- Widok Dashboard (Strona Główna) -->
+        <div id="dashboard-view" style="display: none;">
+            <div class="welcome-placeholder">
+                <h1 class="welcome-title">Strona Główna</h1>
+                <p class="welcome-subtitle">Tutaj pojawi się dashboard z najważniejszymi informacjami ze świata gry</p>
+            </div>
+        </div>
+
+        <!-- Widok Misji -->
+        <div id="missions-view">
+            <div class="missions-grid">
+                <!-- Przykładowa misja -->
+                <div class="mission-card">
+                    <div class="mission-icon">🌲</div>
+                    <div class="mission-title">Trening w lesie</div>
+                    <div class="mission-cost">⚡ 5 Stamina</div>
+                    
+                    <!-- Tooltip z informacjami o misji -->
+                    <div class="mission-tooltip">
+                        <div class="tooltip-title">Trening w lesie</div>
+                        <div class="tooltip-section">
+                            <div class="tooltip-label">Wymagania:</div>
+                            <div class="tooltip-value">Siła 1, Szybkość 1</div>
+                        </div>
+                        <div class="tooltip-section">
+                            <div class="tooltip-label">Szansa sukcesu:</div>
+                            <div class="tooltip-value">100%</div>
+                        </div>
+                        <div class="tooltip-section">
+                            <div class="tooltip-label">Nagroda gwarantowana:</div>
+                            <div class="tooltip-value">1-2 punkty statystyk</div>
+                        </div>
+                        <div class="tooltip-section">
+                            <div class="tooltip-label">Dodatkowe dropy:</div>
+                            <div class="tooltip-value">Jagody (20%)</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Widok Ekwipunku -->
+        <div id="equipment-view" style="display: none;">
+            <div class="welcome-placeholder">
+                <h1 class="welcome-title">Ekwipunek</h1>
+                <p class="welcome-subtitle">Tutaj pojawi się zarządzanie przedmiotami postaci</p>
+            </div>
+        </div>
+
+        <!-- Widok Szpitala -->
+        <div id="hospital-view" style="display: none;">
+            <div class="welcome-placeholder">
+                <h1 class="welcome-title">Szpital</h1>
+                <p class="welcome-subtitle">Tutaj pojawi się leczenie i regeneracja postaci</p>
+            </div>
+        </div>
+
+        <!-- Widok Sklepu -->
+        <div id="shop-view" style="display: none;">
+            <div class="welcome-placeholder">
+                <h1 class="welcome-title">Sklep</h1>
+                <p class="welcome-subtitle">Tutaj pojawi się zakupy przedmiotów i ulepszeń</p>
+            </div>
         </div>
     </main>
 
@@ -221,16 +281,38 @@
                     // Dodaj klasę active do klikniętego przycisku
                     this.classList.add('active');
                     
-                    // Tutaj będzie logika przełączania zakładek
-                    const tab = this.getAttribute('data-tab');
-                    console.log('Przełączam na zakładkę:', tab);
+                    // Przełączanie widoków
+                    const tabName = this.getAttribute('data-tab');
+                    switchView(tabName);
                 });
             });
 
+            // Funkcja przełączająca widoki
+            function switchView(tabName) {
+                // Ukryj wszystkie widoki
+                const allViews = document.querySelectorAll('[id$="-view"]');
+                allViews.forEach(view => {
+                    view.style.display = 'none';
+                });
+
+                // Pokaż wybrany widok
+                const targetView = document.getElementById(`${tabName}-view`);
+                if (targetView) {
+                    targetView.style.display = 'block';
+                }
+
+                console.log(`Przełączono na widok: ${tabName}`);
+            }
+
             // 4. Obsługa przycisków headera
             document.getElementById('home-btn').addEventListener('click', function() {
+                // Ustaw aktywny przycisk nawigacji na "missions" (domyślny)
+                navButtons.forEach(btn => btn.classList.remove('active'));
+                document.querySelector('[data-tab="missions"]').classList.add('active');
+                
+                // Przełącz na dashboard
+                switchView('dashboard');
                 console.log('Przechodzę na stronę główną');
-                // Tutaj będzie logika powrotu do dashboardu
             });
 
             document.getElementById('logout-btn').addEventListener('click', function() {
