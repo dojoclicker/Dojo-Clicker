@@ -371,12 +371,23 @@ app.post('/api/missions/start', authenticateToken, async (req, res) => {
     const rolledS = maxBigInt(1n, minS + BigInt(Math.floor(Math.random() * Number(maxS - minS + 1n))));
     const finalStats = maxBigInt(1n, (rolledS * rewardMultiplier) / 100n);
 
+    // --- NOWY SYSTEM WYRÓWNYWANIA (RUBBERBAND / CATCH-UP) ---
+    // 1. Sprawdzamy obecne statystyki gracza, by znaleźć "Najsłabsze Ogniwo"
+    const currentStr = BigInt(character.strength || '1');
+    const currentSpd = BigInt(character.speed || '1');
+    const currentEnd = BigInt(character.endurance || '1');
+
+    let lowestStat = 'strength';
+    let minVal = currentStr;
+    if (currentSpd < minVal) { lowestStat = 'speed'; minVal = currentSpd; }
+    if (currentEnd < minVal) { lowestStat = 'endurance'; minVal = currentEnd; }
+
     let gainStr = 0n;
     let gainSpd = 0n;
     let gainEnd = 0n;
 
     if (finalStats < 10n) {
-        // EARLY GAME FALLBACK: Równy podział małych liczb, by uniknąć zer z ucinania BigInt
+        // EARLY GAME FALLBACK: Wyrównywanie małych nagród
         const baseGain = finalStats / 3n;
         gainStr = baseGain;
         gainSpd = baseGain;
@@ -384,8 +395,12 @@ app.post('/api/missions/start', authenticateToken, async (req, res) => {
         
         const localRem = Number(finalStats % 3n);
         if (localRem > 0) {
-            // Losujemy unikalne cele dla reszty
-            const targets = [0, 1, 2].sort(() => 0.5 - Math.random());
+            let targets = [0, 1, 2].sort(() => 0.5 - Math.random());
+            // Wymuś, by najsłabsza statystyka była ZAWSZE pierwsza w kolejce do nagrody
+            if (lowestStat === 'strength') targets = [0, ...targets.filter(t => t !== 0)];
+            else if (lowestStat === 'speed') targets = [1, ...targets.filter(t => t !== 1)];
+            else targets = [2, ...targets.filter(t => t !== 2)];
+
             for (let i = 0; i < localRem; i++) {
                 if (targets[i] === 0) gainStr += 1n;
                 else if (targets[i] === 1) gainSpd += 1n;
@@ -393,10 +408,11 @@ app.post('/api/missions/start', authenticateToken, async (req, res) => {
             }
         }
     } else {
-        // LATE GAME: Wylosuj 3 wagi (Zawężony zakres 50-100 dla zbalansowanego podziału potężnych liczb)
-        const w1 = Math.floor(Math.random() * 51) + 50;
-        const w2 = Math.floor(Math.random() * 51) + 50;
-        const w3 = Math.floor(Math.random() * 51) + 50;
+        // LATE GAME: Oszukana waga dla słabeusza
+        // Najsłabsza statystyka dostaje sztywną wagę 100, reszta losuje 50-100
+        const w1 = lowestStat === 'strength' ? 100 : Math.floor(Math.random() * 51) + 50;
+        const w2 = lowestStat === 'speed' ? 100 : Math.floor(Math.random() * 51) + 50;
+        const w3 = lowestStat === 'endurance' ? 100 : Math.floor(Math.random() * 51) + 50;
         const sumW = BigInt(w1 + w2 + w3);
 
         gainStr = (finalStats * BigInt(w1)) / sumW;
@@ -404,9 +420,9 @@ app.post('/api/missions/start', authenticateToken, async (req, res) => {
         gainEnd = (finalStats * BigInt(w3)) / sumW;
         
         const remainder = finalStats - (gainStr + gainSpd + gainEnd);
-        const remainderTarget = Math.floor(Math.random() * 3);
-        if (remainderTarget === 0) gainStr += remainder;
-        else if (remainderTarget === 1) gainSpd += remainder;
+        // Reszta z uciętych ułamków BigInt ZAWSZE leci w najsłabszą statystykę
+        if (lowestStat === 'strength') gainStr += remainder;
+        else if (lowestStat === 'speed') gainSpd += remainder;
         else gainEnd += remainder;
     }
 
