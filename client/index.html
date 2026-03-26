@@ -5,63 +5,96 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dojo-Clicker</title>
     <style>
-        /* KLASYCZNE BARWY SON GOKU: POMARAŃCZ I GRANAT */
+        /* DESIGN SYSTEM (Wytyczne dla Windsurfa) */
+        :root {
+            --goku-orange: #f97316;       /* Główny akcent */
+            --goku-orange-dark: #ea580c;  /* Akcent na Hover */
+            --goku-navy: #0f172a;         /* Głęboki granat tła */
+            --card-bg: #1e293b;           /* Tło paneli/kart */
+            --input-bg: #334155;          /* Tło pól tekstowych */
+            --text-main: #f8fafc;         /* Główny jasny tekst */
+        }
+
         body { 
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
-            background-color: #ff8c00; /* GŁÓWNY POMARAŃCZ - Deep Orange */
-            color: #ffffff; 
-            display: flex; 
-            justify-content: center; 
-            align-items: center; 
-            height: 100vh; 
-            margin: 0; 
+            font-family: 'Segoe UI', Tahoma, sans-serif; 
+            background: radial-gradient(circle at center, #1e3a8a, var(--goku-navy)); 
+            color: var(--text-main); 
+            display: flex; justify-content: center; align-items: center; 
+            height: 100vh; margin: 0; 
         }
+
         .auth-container { 
-            background-color: #000080; /* GŁÓWNY GRANAT - Navy Blue */
+            background: var(--card-bg); 
             padding: 40px; 
-            border-radius: 10px; 
-            box-shadow: 0 4px 15px rgba(0,0,0,0.5); 
-            width: 350px; 
-            text-align: center; 
-            border: 1px solid #ffffff; /* Białe obramowanie dla definicji kontenera */
+            border-radius: 12px; 
+            box-shadow: 0 15px 35px rgba(0,0,0,0.5); 
+            width: 320px; 
+            text-align: center;
+            border-top: 5px solid var(--goku-orange); /* Klasyczny detal */
         }
-        h1 { margin-top: 0; color: #ffffff; }
+
+        h1 { 
+            color: var(--text-main); 
+            margin-top: 0; 
+            text-transform: uppercase; 
+            letter-spacing: 1.5px;
+        }
+        
+        h1 span { color: var(--goku-orange); } /* Dwukolorowy tytuł */
+
         input, select, button { 
-            width: 100%; 
-            margin: 10px 0; 
-            padding: 10px; 
-            border-radius: 5px; 
-            border: none; 
-            box-sizing: border-box; 
+            width: 100%; margin: 8px 0; padding: 12px; 
+            border-radius: 6px; border: none; box-sizing: border-box; 
+            outline: none; font-family: inherit;
         }
+
         input, select { 
-            background-color: #0000cd; /* ŚREDNI BŁĘKIT DLA INPUTÓW - Medium Blue */
+            background: var(--input-bg); 
             color: white; 
-            border: 1px solid #ffffff; /* Białe obramowanie dla kontrastu */
+            transition: 0.3s;
         }
-        /* Przycisk używa Pomarańczowego jako akcentu, aby popować na granatowym tle */
+
+        input:focus, select:focus { 
+            box-shadow: 0 0 0 2px var(--goku-orange); 
+        }
+
         button { 
-            background-color: #ffcc00; /* JASNY POMARAŃCZ/ŻÓŁĆ DLA PRZYCISKU - Dark Orange/Yellow Accent */
-            color: #000000; /* Czarny tekst dla czytelności na jasnym tle */
-            font-weight: bold; 
+            background: var(--goku-orange); 
+            color: white; 
+            font-weight: 700; 
+            text-transform: uppercase;
             cursor: pointer; 
-            transition: 0.3s; 
+            transition: 0.2s; 
         }
-        button:hover { background-color: #ffaa00; /* Lekko ciemniejszy pomarańcz na hover */ }
-        .toggle-link { color: #ffffff; cursor: pointer; font-size: 0.9em; text-decoration: underline; margin-top: 15px; display: inline-block; }
+
+        button:hover { 
+            background: var(--goku-orange-dark); 
+            transform: translateY(-2px); 
+        }
+
+        .toggle-link { 
+            color: #94a3b8; 
+            cursor: pointer; 
+            font-size: 0.85em; 
+            margin-top: 15px; 
+            transition: 0.2s; 
+        }
+
+        .toggle-link:hover { color: var(--goku-orange); }
+
         .message { margin-top: 15px; font-weight: bold; font-size: 0.9em; }
-        .success { color: #66ff66; /* Jasny zielony dla kontrastu na granatowym tle */ }
-        .error { color: #ff6666; /* Jasny czerwony dla kontrastu na granatowym tle */ }
+        .success { color: #4ade80; }
+        .error { color: #f87171; }
+        
         #register-form { display: none; }
     </style>
 </head>
 <body>
 
     <div class="auth-container">
-        <h1>Dojo-Clicker</h1>
+        <h1>Dojo<span>Clicker</span></h1>
 
         <div id="login-form">
-            <h2>Logowanie</h2>
             <input type="email" id="login-email" placeholder="E-mail" required>
             <input type="password" id="login-password" placeholder="Hasło" required>
             <button onclick="login()">Zaloguj się</button>
@@ -69,7 +102,6 @@
         </div>
 
         <div id="register-form">
-            <h2>Rejestracja</h2>
             <input type="email" id="reg-email" placeholder="E-mail" required>
             <input type="password" id="reg-password" placeholder="Hasło" required>
             <input type="text" id="reg-username" placeholder="Twoja nazwa (Nick)" required>
@@ -85,7 +117,6 @@
     </div>
 
     <script>
-        // ADRES TWOJEGO SERWERA NA RENDER.COM
         const API_URL = 'https://dojo-clicker.onrender.com/api/auth';
 
         function toggleForms() {
@@ -156,7 +187,6 @@
                 if (data.status === 'success') {
                     showMessage('Zalogowano! Ładowanie gry...', false);
                     localStorage.setItem('session_token', data.token);
-                    
                     setTimeout(() => alert("TUTAJ ZA CHWILĘ ZROBIMY GŁÓWNY INTERFEJS GRY!"), 1000);
                 } else {
                     showMessage(data.message, true);
