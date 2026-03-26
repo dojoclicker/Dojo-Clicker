@@ -254,7 +254,14 @@
             
             // Formatowanie czytelnych danych dla tooltipa
             const reqs = mission.req_stats || {};
-            const reqStatsText = Object.entries(reqs).map(([k, v]) => `${k}: ${v}`).join(', ') || 'Brak wymagań';
+            const statNamesPL = { 
+                strength: 'Siła', 
+                speed: 'Szybkość', 
+                endurance: 'Wytrzymałość', 
+                intelligence: 'Inteligencja', 
+                mental_strength: 'Siła Mentalna' 
+            };
+            const reqStatsText = Object.entries(reqs).map(([k, v]) => `<b>${statNamesPL[k] || k}</b>: ${v}`).join(', ') || 'Brak wymagań';
             
             const rewardStatsText = mission.reward_stats ? 'Losowo od ' + mission.reward_stats.min + ' do ' + mission.reward_stats.max + ' pkt.' : 'Brak';
             
