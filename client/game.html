@@ -258,7 +258,10 @@
             
             const rewardStatsText = mission.reward_stats ? 'Losowo od ' + mission.reward_stats.min + ' do ' + mission.reward_stats.max + ' pkt.' : 'Brak';
             
-            const dropsText = (mission.drop_table && Array.isArray(mission.drop_table)) ? mission.drop_table.map(d => d.item_id + ' (' + d.chance_pct + '%)').join(', ') : 'Brak';
+            const dropsText = (mission.drop_table && Array.isArray(mission.drop_table)) ? mission.drop_table.map(d => {
+    const formattedName = d.item_id.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+    return `${formattedName} (${d.chance_pct}%)`;
+}).join(', ') : 'Brak';
 
             // Wylicz Szansę na Sukces (Logika BigInt)
             let lowestRatio = 500n;
