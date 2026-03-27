@@ -52,21 +52,8 @@
         <div class="player-info">
             <div class="player-name">Ładowanie...</div>
             <div style="margin: 10px 0; display: flex; justify-content: center; align-items: center; gap: 8px;">
+    <button id="pl-info-btn" class="help-btn">?</button>
     <span>Poziom Mocy</span>
-    
-    <div style="position: relative; display: inline-flex; align-items: center; justify-content: center;">
-        <button id="pl-info-btn" class="help-btn">?</button>
-        
-        <div id="pl-tooltip" class="floating-tooltip">
-            <strong style="color: var(--goku-accent, #f59e0b);">Jak wyliczany jest Poziom Mocy?</strong>
-            <hr style="border-color: #333; margin: 8px 0;">
-            <span style="font-size: 0.8rem; color: #ccc;">
-            To suma 5 głównych statystyk postaci oraz bonusów do maksymalnych zasobów zebranych z rzadkich przedmiotów.<br>
-            <i style="color: #9ca3af; display: block; margin-top: 5px;">(Darmowe 100 HP, 100 MP i 100 Staminy na start nie wliczają się do wyniku).</i>
-            </span>
-        </div>
-    </div>
-
     <span id="power-level" style="font-weight: bold; font-size: 1.1rem; color: var(--goku-accent, #f59e0b);">0</span>
 </div>
             
@@ -173,6 +160,15 @@
             </div>
         </div>
     </main>
+
+<div id="pl-tooltip" class="floating-tooltip" style="display: none;">
+    <strong style="color: var(--goku-accent, #f59e0b);">Jak wyliczany jest Poziom Mocy?</strong>
+    <hr style="border-color: #333; margin: 8px 0;">
+    <span style="font-size: 0.8rem; color: #ccc;">
+    To suma 5 głównych statystyk postaci oraz bonusów do maksymalnych zasobów zebranych z rzadkich przedmiotów.<br>
+    <i style="color: #9ca3af; display: block; margin-top: 5px;">(Darmowe 100 HP, 100 MP i 100 Staminy na start nie wliczają się do wyniku).</i>
+    </span>
+</div>
 
     <script>
         // Konfiguracja API - detekcja środowiska

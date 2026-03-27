@@ -544,29 +544,52 @@ body {
     }
     
     .help-btn {
-    background: linear-gradient(135deg, #4b5563, #1f2937);
+    background: var(--goku-accent, #ff6b00);
     color: #fff;
-    border: 1px solid #9ca3af;
+    border: 2px solid #fff;
     border-radius: 50%;
     width: 20px;
     height: 20px;
-    font-size: 13px;
-    font-weight: bold;
+    font-size: 14px;
+    font-weight: 900;
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.5);
+    box-shadow: 0 0 8px rgba(255, 107, 0, 0.5);
     transition: all 0.2s ease;
     padding: 0;
     line-height: 1;
+    font-family: monospace;
 }
 .help-btn:hover {
-    background: var(--goku-accent, #f59e0b);
-    border-color: #fff;
     transform: scale(1.15);
-    box-shadow: 0 0 10px var(--goku-accent, #f59e0b);
-    color: #000;
+    box-shadow: 0 0 15px var(--goku-accent, #ff6b00);
+    background: #fff;
+    color: var(--goku-accent, #ff6b00);
+    border-color: var(--goku-accent, #ff6b00);
+}
+.floating-tooltip {
+    position: fixed;
+    width: 260px;
+    background-color: #0f172a;
+    border: 1px solid var(--goku-accent, #ff6b00);
+    border-radius: 8px;
+    padding: 12px;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.9);
+    z-index: 999999;
+    text-align: center;
+    cursor: default;
+}
+.floating-tooltip::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: -8px;
+    transform: translateY(-50%);
+    border-width: 8px 8px 8px 0;
+    border-style: solid;
+    border-color: transparent var(--goku-accent, #ff6b00) transparent transparent;
 }
 .mission-card {
         width: 160px;
