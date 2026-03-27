@@ -52,7 +52,7 @@
         <div class="player-info">
             <div class="player-name">Ładowanie...</div>
             <div style="margin: 10px 0; display: flex; justify-content: center; align-items: center; gap: 8px;">
-    <button id="pl-info-btn" class="help-btn">?</button>
+    <button id="pl-info-btn" class="nuke-help-btn">?</button>
     <span>Poziom Mocy</span>
     <span id="power-level" style="font-weight: bold; font-size: 1.1rem; color: var(--goku-accent, #f59e0b);">0</span>
 </div>
@@ -161,14 +161,66 @@
         </div>
     </main>
 
-<div id="pl-tooltip" class="floating-tooltip" style="display: none;">
-    <strong style="color: var(--goku-accent, #f59e0b);">Jak wyliczany jest Poziom Mocy?</strong>
-    <hr style="border-color: #333; margin: 8px 0;">
-    <span style="font-size: 0.8rem; color: #ccc;">
-    To suma 5 głównych statystyk postaci oraz bonusów do maksymalnych zasobów zebranych z rzadkich przedmiotów.<br>
-    <i style="color: #9ca3af; display: block; margin-top: 5px;">(Darmowe 100 HP, 100 MP i 100 Staminy na start nie wliczają się do wyniku).</i>
-    </span>
-</div>
+<style>
+        .nuke-help-btn {
+            background-color: #ff6b00;
+            color: #ffffff;
+            border: 2px solid #ffffff;
+            border-radius: 50%;
+            width: 22px;
+            height: 22px;
+            font-size: 14px;
+            font-weight: 900;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 0 8px rgba(255, 107, 0, 0.8);
+            transition: all 0.2s ease;
+            padding: 0;
+            line-height: 1;
+            font-family: sans-serif;
+            flex-shrink: 0;
+        }
+        .nuke-help-btn:hover {
+            transform: scale(1.15);
+            box-shadow: 0 0 15px #ff6b00;
+            background-color: #ffffff;
+            color: #ff6b00;
+            border-color: #ff6b00;
+        }
+        .nuke-floating-tooltip {
+            position: fixed;
+            width: 260px;
+            background-color: #0f172a;
+            border: 2px solid #ff6b00;
+            border-radius: 8px;
+            padding: 15px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.9);
+            z-index: 999999;
+            text-align: center;
+            display: none; /* Zabezpieczenie przed miganiem */
+        }
+        .nuke-floating-tooltip::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: -10px;
+            transform: translateY(-50%);
+            border-width: 10px 10px 10px 0;
+            border-style: solid;
+            border-color: transparent #ff6b00 transparent transparent;
+        }
+    </style>
+
+    <div id="pl-tooltip" class="nuke-floating-tooltip">
+        <strong style="color: #ff6b00; font-size: 1.1rem;">Jak wyliczany jest Poziom Mocy?</strong>
+        <hr style="border-color: #334155; margin: 10px 0;">
+        <span style="font-size: 0.85rem; color: #cbd5e1; line-height: 1.4; display: block;">
+            To suma 5 głównych statystyk postaci oraz bonusów do maksymalnych zasobów zebranych z rzadkich przedmiotów.<br>
+            <i style="color: #64748b; display: block; margin-top: 8px;">(Darmowe 100 HP, 100 MP i 100 Staminy na start nie wliczają się do wyniku).</i>
+        </span>
+    </div>
 
     <script>
         // Konfiguracja API - detekcja środowiska
@@ -775,30 +827,29 @@
             const plTooltip = document.getElementById('pl-tooltip');
 
             if (plBtn && plTooltip) {
-                // Kliknięcie w przycisk
+                // Wyświetlanie/ukrywanie po kliknięciu
                 plBtn.addEventListener('click', (e) => {
-                    e.stopPropagation();
+                    e.stopPropagation(); // Blokuje propagację kliknięcia
+                    
                     if (plTooltip.style.display === 'block') {
                         plTooltip.style.display = 'none';
                     } else {
-                        // Pobierz pozycję przycisku względem okna przeglądarki
+                        // Dynamiczne pozycjonowanie względem przycisku
                         const rect = plBtn.getBoundingClientRect();
-                        
-                        // Ustaw tooltip po prawej stronie przycisku (wypada idealnie na obszar roboczy)
-                        plTooltip.style.left = (rect.right + 15) + 'px';
+                        plTooltip.style.left = (rect.right + 20) + 'px'; // 20px w prawo od przycisku
                         plTooltip.style.top = (rect.top + (rect.height / 2)) + 'px';
-                        plTooltip.style.transform = 'translateY(-50%)'; // Wyśrodkuj w pionie względem przycisku
+                        plTooltip.style.transform = 'translateY(-50%)'; // Środek tooltipa do środka przycisku
                         
                         plTooltip.style.display = 'block';
                     }
                 });
 
-                // Zamknięcie po zjechaniu myszką z tooltipa
+                // Zamknięcie po zjechaniu kursorem
                 plTooltip.addEventListener('mouseleave', () => {
                     plTooltip.style.display = 'none';
                 });
 
-                // Globalne kliknięcie zamyka tooltip
+                // Zamknięcie przy kliknięciu gdziekolwiek w tło
                 document.addEventListener('click', (e) => {
                     if (e.target !== plBtn && !plTooltip.contains(e.target)) {
                         plTooltip.style.display = 'none';
