@@ -227,9 +227,9 @@ app.get('/api/character', authenticateToken, async (req, res) => {
     // Obliczenie całkowitego Poziomu Mocy (Eliminacja podwójnego liczenia statystyk)
     const stats_sum = strength + speed + endurance + intelligence + mental_strength;
     
-    // Zliczamy WYŁĄCZNIE trwałe bonusy zdobyte z przedmiotów, ignorując bazowe HP i to wyliczone z Siły
-    // Zmienne bonus_hp, bonus_mp i bonus_stamina są już wyciągnięte z bazy na początku tej funkcji!
-    const powerLevel = stats_sum + ((bonus_hp + bonus_mp) / 50n) + (bonus_stamina / 10n);
+    // Zliczamy WYŁĄCZNIE trwałe bonusy z rzadkich eliksirów (ignorując bazowe zasoby i pasywny ekwipunek).
+    // Wagi balansu: 1 HP = 1 PL, 1 MP = 2 PL (elitarne obrażenia), 1 Stamina = 5 PL.
+    const powerLevel = stats_sum + bonus_hp + (bonus_mp * 2n) + (bonus_stamina * 5n);
 
     // Przygotowanie obiektu odpowiedzi z poprawnymi kluczami!
     const characterData = {
