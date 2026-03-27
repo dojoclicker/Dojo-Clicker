@@ -145,27 +145,34 @@
         </div>
 
         <!-- Widok Szpitala -->
-        <div id="view-hospital" class="game-view" style="display: none;">
-          <div class="hospital-panel-left">
-            <div class="hospital-big-graphic">
+        <div id="hospital-view" class="game-view" style="display: none;">
+          <div class="hospital-container">
+              
+            <div class="hospital-panel-left">
+              <div class="hospital-big-graphic">
+                <span style="font-size: 5rem; filter: drop-shadow(0 0 10px rgba(255,0,0,0.5));">🏥</span>
               </div>
-          </div>
-
-          <div class="hospital-panel-right">
-            <div class="hospital-header" style="background-color: #8b0000; color: white; padding: 10px; border-radius: 8px; margin-bottom: 20px;">
-              <h2>SZPITAL MIEJSKI</h2> <p>Straciłeś przytomność w walce. <br/> Twój organizm musi się zregenerować.</p>
             </div>
 
-            <div class="hospital-timer-container" style="font-size: 1.2rem; margin-top: 10px;">
-              Do wypisu pozostało: <br/>
-              <span id="hospital-countdown" class="text-hospital-danger" style="font-size: 2.8rem; font-weight: bold;">--:--:--</span>
-            </div>
+            <div class="hospital-panel-right">
+              <div id="hospital-header" style="background-color: #8b0000; color: white; padding: 15px; border-radius: 8px; margin-bottom: 20px; transition: background-color 0.3s;">
+                <h2 style="margin-bottom: 5px;">SZPITAL MIEJSKI</h2> 
+                <p id="hospital-desc" style="font-size: 0.9rem;">Straciłeś przytomność w walce. Twój organizm musi się zregenerować.</p>
+              </div>
 
-            <div class="hospital-actions" style="margin-top: 20px;">
-              <p style="font-size: 0.8rem; color: #aaa;">Nie chcesz czekać?</p>
-              <button id="btn-use-senzu" class="action-btn" style="background-color: #28a745; color: white; padding: 8px 16px; border: none; border-radius: 5px; cursor: pointer;">
-                Zjedz Magiczną Fasolkę
-              </button> </div>
+              <div class="hospital-timer-container" style="font-size: 1.2rem; margin-top: 10px;">
+                Do wypisu pozostało: <br/>
+                <span id="hospital-countdown" class="text-hospital-danger" style="font-size: 3.5rem; font-weight: bold; font-family: monospace;">--:--:--</span>
+              </div>
+
+              <div class="hospital-actions" style="margin-top: 30px;">
+                <p style="font-size: 0.8rem; color: #aaa; margin-bottom: 5px;">Nie chcesz czekać?</p>
+                <button id="btn-use-senzu" class="btn-header" style="background-color: #28a745; width: 100%; padding: 15px; font-size: 1.1rem;">
+                  Zjedz Magiczną Fasolkę
+                </button> 
+              </div>
+            </div>
+            
           </div>
         </div>
 
@@ -676,9 +683,14 @@
           // Natychmiastowe zablokowanie zakładek
           lockTabsForHospital(true);
           
-          // Upewnij się, że element ma klasę text-hospital-danger na starcie
+          // Ustawienie czerwonych kolorów na starcie odliczania
           countdownEl.classList.remove('text-hospital-success');
           countdownEl.classList.add('text-hospital-danger');
+          
+          const headerEl = document.getElementById('hospital-header');
+          const descEl = document.getElementById('hospital-desc');
+          if (headerEl) headerEl.style.backgroundColor = '#8b0000'; // Krwisty czerwony
+          if (descEl) descEl.innerText = "Straciłeś przytomność w walce. Twój organizm musi się zregenerować.";
           
           hospitalInterval = setInterval(() => {
             const now = Date.now();
@@ -689,9 +701,12 @@
               clearInterval(hospitalInterval);
               countdownEl.innerText = "00:00:00";
               
-              // Zmień kolor na zielony
+              // Zmień kolor licznika i całego nagłówka na ZIELONY
               countdownEl.classList.remove('text-hospital-danger');
               countdownEl.classList.add('text-hospital-success');
+              
+              if (headerEl) headerEl.style.backgroundColor = '#166534'; // Głęboka zieleń
+              if (descEl) descEl.innerText = "Jesteś w pełni zdrowy. Możesz opuścić szpital.";
               
               // Odblokuj zakładki i odśwież postać, aby serwer Leniwą Ewaluacją nadał nam startowe zasoby!
               lockTabsForHospital(false);
@@ -784,7 +799,7 @@
                 if (currentHp <= 0 && data.hospital_until) {
                     // Gracz jest w szpitalu
                     // 1. Zmień aktywny widok na Szpital
-                    showView('hospital');
+                    activateTab('hospital'); // NAPRAWIONY FATAL ERROR!
                     // 2. Odpal licznik i zablokuj inne zakładki
                     startHospitalCountdown(data.hospital_until);
                 } else {
@@ -931,10 +946,10 @@
                     view.style.display = 'none';
                 });
 
-                // Pokaż docelowy widok
+                // Pokaż docelowy widok - specjalny case dla hospital-view
                 const targetView = document.getElementById(`${tabName}-view`);
                 if (targetView) {
-                    targetView.style.display = 'block';
+                    targetView.style.display = 'flex'; // Używamy flex dla hospital-container!
                 }
 
                 // Zaktualizuj klasy przycisków (podświetlenie)

@@ -59,59 +59,57 @@
 }
 
 /* Nowy układ Szpitala */
-#view-hospital {
-    display: none; /* Domyślnie ukryty, włączany przez JS */
-    flex-direction: row; /* Użyjemy flexbox do rozdzielenia paneli */
+.hospital-container {
+    display: flex; 
+    flex-direction: row; 
     gap: 20px;
     padding: 20px;
     align-items: stretch;
+    height: 100%;
 }
 
-/* Panel Lewy - Grafika */
+/* Panel Lewy - Grafika (Powiększony flex: 1.5) */
 .hospital-panel-left {
-    flex: 1; /* Zajmuje 1 część szerokości */
-    background: #1a1a1a;
-    border: 2px solid #444;
+    flex: 1.5; 
+    background: var(--goku-panel-bg);
+    border: 2px solid var(--goku-panel-border);
     border-radius: 12px;
     display: flex;
     justify-content: center;
     align-items: center;
-    position: relative;
+    padding: 20px;
 }
 
-/* Duża, klimatyczna ilustracja (placeholder) */
+/* Duża, klimatyczna ilustracja */
 .hospital-big-graphic {
-    width: 90%;
-    height: 80%;
-    background: url('hospital-interior-placeholder.png') center/cover;
-    border: 2px solid #cc0000; /* Czerwona ramka wokół grafiki */
+    width: 100%;
+    height: 100%;
+    min-height: 300px;
+    background: radial-gradient(circle, #2a1111 0%, #0a0f1d 100%);
+    border: 2px solid #dc2626; 
     border-radius: 8px;
-    filter: grayscale(80%) brightness(0.6); /* Przyciemniona, smutna */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    box-shadow: inset 0 0 50px rgba(0,0,0,0.8);
 }
 
-/* Panel Prawy - Informacje i Akcje */
+/* Panel Prawy - Informacje i Akcje (Zmniejszony flex: 1) */
 .hospital-panel-right {
-    flex: 1; /* Zajmuje drugą część szerokości */
-    background: #1a1a1a;
-    border: 2px solid #444;
+    flex: 1; 
+    background: var(--goku-panel-bg);
+    border: 2px solid var(--goku-panel-border);
     border-radius: 12px;
     padding: 20px;
     text-align: center;
     display: flex;
-    vertical-align: middle;
     flex-direction: column;
     justify-content: center;
 }
 
-/* Klasy dynamiczne kolorów (dla JS) */
-.text-hospital-danger {
-    color: #ff3333 !important; /* Czerwony przy odliczaniu */
-    text-shadow: 1px 1px 5px black;
-}
-.text-hospital-success {
-    color: #28a745 !important; /* Zielony przy 00:00:00 */
-    text-shadow: 1px 1px 5px black;
-}
+/* Kolory licznika */
+.text-hospital-danger { color: #ef4444 !important; text-shadow: 0 0 10px rgba(239, 68, 68, 0.5); }
+.text-hospital-success { color: #22c55e !important; text-shadow: 0 0 10px rgba(34, 197, 94, 0.5); }
 
 /* Reset i base */
 * {
