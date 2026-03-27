@@ -224,6 +224,55 @@ app.get('/api/character', authenticateToken, async (req, res) => {
     const max_mp = 100n + (intelligence / 5n) + bonus_mp;
     const max_stamina = 100n + bonus_stamina;
 
+    // ==========================================
+    // LENIWA EWALUACJA (LAZY EVALUATION) - STAMINA, HP, MP
+    // ==========================================
+    const now = Date.now();
+    const lastCalcTime = character.last_calculation_time ? new Date(character.last_calculation_time).getTime() : now;
+    
+    const elapsedMs = Math.max(0, now - lastCalcTime); 
+    
+    // NWD dla 60s i 30s to 30000ms. Używamy tego do reszty, aby nie zgubić tików MP!
+    const consumedMs = elapsedMs - (elapsedMs % 30000); 
+    const remainderMs = elapsedMs % 30000; 
+    
+    // Ticki dla poszczególnych interwałów
+    const ticks60s = BigInt(Math.floor(consumedMs / 60000));
+    const ticks30s = BigInt(Math.floor(consumedMs / 30000));
+    
+    // Przesuwamy nowy punkt zapisu w przeszłość o niewykorzystane milisekundy
+    const newCalcTime = new Date(now - remainderMs).toISOString(); 
+    
+    let current_stamina = BigInt(character.stamina ?? '100');
+    let current_hp = BigInt(character.hp ?? '100');
+    let current_mp = BigInt(character.mp ?? '100');
+    let dbUpdateNeeded = false;
+
+    // Obliczenia przyrostów (BigInt)
+    if (ticks30s > 0n || ticks60s > 0n || !character.last_calculation_time) {
+      const staminaGain = ticks60s * 1n;
+      const hpGain = ticks60s * (1n + (endurance / 100n));
+      const mpGain = ticks30s * (1n + (mental_strength / 100n));
+
+      current_stamina = minBigInt(max_stamina, current_stamina + staminaGain);
+      current_hp = minBigInt(max_hp, current_hp + hpGain);
+      current_mp = minBigInt(max_mp, current_mp + mpGain);
+      
+      dbUpdateNeeded = true;
+    }
+
+    if (dbUpdateNeeded) {
+      await supabase
+        .from('characters')
+        .update({ 
+          stamina: current_stamina.toString(),
+          hp: current_hp.toString(),
+          mp: current_mp.toString(),
+          last_calculation_time: newCalcTime
+        })
+        .eq('profile_id', userId);
+    }
+
     // Obliczenie całkowitego Poziomu Mocy (Eliminacja podwójnego liczenia statystyk)
     const stats_sum = strength + speed + endurance + intelligence + mental_strength;
     
@@ -240,7 +289,7 @@ app.get('/api/character', authenticateToken, async (req, res) => {
       
       current_hp: character.hp ?? '100',
       current_mp: character.mp ?? '100',
-      current_stamina: character.stamina ?? '100',
+      current_stamina: current_stamina.toString(), // Wstrzyknięcie przeliczonej staminy z bufora RAM!
       
       max_hp: max_hp.toString(),
       max_mp: max_mp.toString(),
