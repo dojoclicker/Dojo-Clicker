@@ -401,21 +401,132 @@ app.post('/api/missions/start', authenticateToken, async (req, res) => {
     if (lowestRatioPercent >= 200n && lowestRatioPercent < 500n) rewardMultiplier = 50n;
     if (lowestRatioPercent >= 500n) rewardMultiplier = 10n;
 
-    // 3. RZUT KOSTKĄ
-    const newStamina = BigInt(character.stamina || '0') - BigInt(mission.stamina_cost);
+    // Pobranie WSZYSTKICH statystyk i bonusów niezbędnych do wyliczenia Max HP/MP/Staminy w razie porażki
+    const currentStr = BigInt(character.strength || '1');
+    const currentSpd = BigInt(character.speed || '1');
+    const currentEnd = BigInt(character.endurance || '1');
+    const currentInt = BigInt(character.intelligence || '1');
+    const currentMen = BigInt(character.mental_strength || '1');
+    
+    const bonusHp = BigInt(character.bonus_hp || '0');
+    const bonusMp = BigInt(character.bonus_mp || '0');
+    const bonusStamina = BigInt(character.bonus_stamina || '0');
+
+    // 3. RZUT KOSTKĘ I KOSZT STAMINY
+    let newStamina = BigInt(character.stamina || '0') - BigInt(mission.stamina_cost);
     const roll = Math.random() * 100;
 
     if (roll > Number(successChance)) {
-      // PORażKA
-      await supabase
-        .from('characters')
-        .update({ stamina: newStamina.toString() })
-        .eq('profile_id', userId);
+      // ==========================================
+      // FAZA 4.2: PORAŻKA, KARA ZA PYCHĘ I SZPITAL
+      // ==========================================
+      const maxHp = 100n + (currentStr / 20n) + bonusHp;
+      const maxMp = 100n + (currentInt / 5n) + bonusMp;
+      const maxStamina = 100n + bonusStamina;
 
-      return res.json({ 
-        result: 'failure', 
-        message: 'Misja zakończona porażką!' 
-      });
+      // Wzór na obrażenia: 5% + (100% - Szansa na Sukces)
+      const damagePercent = 5n + (100n - successChance);
+
+      // Obliczenie obrażeń (BigInt ucina ułamki, co jest tu pożądane)
+      const hpDamage = (maxHp * damagePercent) / 100n;
+      const mpDamage = (maxMp * damagePercent) / 100n;
+      const staminaDamage = (maxStamina * damagePercent) / 100n;
+
+      let newHp = BigInt(character.hp || '100') - hpDamage;
+      let newMp = BigInt(character.mp || '100') - mpDamage;
+      newStamina = newStamina - staminaDamage; // Dodatkowe obrażenia do staminy poza kosztem wejścia
+
+      // Zabezpieczenie przed ujemnymi wartościami
+      newHp = maxBigInt(0n, newHp);
+      newMp = maxBigInt(0n, newMp);
+      newStamina = maxBigInt(0n, newStamina);
+
+      // CZY GRACZ ZGINĄŁ? (HP <= 0)
+      if (newHp <= 0n) {
+        // 1. Utrata 10% monet
+        const currentCoins = BigInt(character.coins || '0');
+        const coinsLost = (currentCoins * 10n) / 100n;
+        const newCoins = currentCoins - coinsLost;
+
+        // 2. Kara 2% do głównych statystyk
+        const calcStatLoss = (stat) => {
+            const loss = (stat * 2n) / 100n;
+            return loss > 0n ? loss : 0n;
+        };
+
+        const strLoss = calcStatLoss(currentStr);
+        const spdLoss = calcStatLoss(currentSpd);
+        const endLoss = calcStatLoss(currentEnd);
+        const intLoss = calcStatLoss(currentInt);
+        const menLoss = calcStatLoss(currentMen);
+
+        const finalStr = maxBigInt(1n, currentStr - strLoss);
+        const finalSpd = maxBigInt(1n, currentSpd - spdLoss);
+        const finalEnd = maxBigInt(1n, currentEnd - endLoss);
+        const finalInt = maxBigInt(1n, currentInt - intLoss);
+        const finalMen = maxBigInt(1n, currentMen - menLoss);
+
+        // Zapis utraconych statystyk jako STRING w JSONB (Ochrona parsera)
+        const deathPenalty = {
+            strength: strLoss.toString(),
+            speed: spdLoss.toString(),
+            endurance: endLoss.toString(),
+            intelligence: intLoss.toString(),
+            mental_strength: menLoss.toString()
+        };
+
+        // 3. Wyliczenie Czasu Kary Szpitalnej z Bazowego Poziomu Mocy
+        const statsSum = finalStr + finalSpd + finalEnd + finalInt + finalMen;
+        const basePowerLevel = statsSum + bonusHp + (bonusMp * 2n) + (bonusStamina * 5n);
+        
+        // Wymagane użycie Number do potęgowania
+        const hospitalMinutes = Math.min(120, 5 + Math.floor(Math.pow(Number(basePowerLevel), 0.25)));
+        const hospitalUntil = new Date(Date.now() + hospitalMinutes * 60000).toISOString();
+
+        // 4. Zapis śmierci do Bazy Danych
+        await supabase.from('characters').update({
+            hp: '0',
+            mp: '0', // Śmierć zeruje MP
+            stamina: newStamina.toString(),
+            coins: newCoins.toString(),
+            strength: finalStr.toString(),
+            speed: finalSpd.toString(),
+            endurance: finalEnd.toString(),
+            intelligence: finalInt.toString(),
+            mental_strength: finalMen.toString(),
+            last_death_penalty: deathPenalty,
+            hospital_until: hospitalUntil,
+            current_form: 'Stan Podstawowy' // Dezaktywacja formy
+        }).eq('profile_id', userId);
+
+        return res.json({
+            result: 'death',
+            message: `KRYTYCZNA PORAŻKA! Straciłeś przytomność! Trafiasz do Szpitala na ${hospitalMinutes} minut. Tracisz 10% Złotych Monet i 2% statystyk!`,
+            penalty: {
+                coins_lost: coinsLost.toString(),
+                hospital_minutes: hospitalMinutes,
+                stats_lost: deathPenalty
+            }
+        });
+
+      } else {
+        // ZWYKŁA PORAŻKA (Rany, ale gracz przeżył)
+        await supabase.from('characters').update({
+            hp: newHp.toString(),
+            mp: newMp.toString(),
+            stamina: newStamina.toString()
+        }).eq('profile_id', userId);
+
+        return res.json({
+            result: 'hurt',
+            message: `PORAŻKA! Misja się nie powiodła. Otrzymałeś ${damagePercent}% obrażeń z Max zasobów (Kara za pychę).`,
+            damage: {
+                hp: hpDamage.toString(),
+                mp: mpDamage.toString(),
+                stamina: staminaDamage.toString()
+            }
+        });
+      }
     }
 
     // 4. JEŚLI SUKCES - NAGRODY
@@ -433,10 +544,7 @@ app.post('/api/missions/start', authenticateToken, async (req, res) => {
     const finalStats = maxBigInt(1n, (rolledS * rewardMultiplier) / 100n);
 
     // --- NOWY SYSTEM WYRÓWNYWANIA (RUBBERBAND / CATCH-UP) ---
-    // 1. Sprawdzamy obecne statystyki gracza, by znaleźć "Najsłabsze Ogniwo"
-    const currentStr = BigInt(character.strength || '1');
-    const currentSpd = BigInt(character.speed || '1');
-    const currentEnd = BigInt(character.endurance || '1');
+    // 1. Zmienne currentStr, currentSpd, currentEnd zostały już zadeklarowane wyżej w sekcji pobierania.
 
     let lowestStat = 'strength';
     let minVal = currentStr;
