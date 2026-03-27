@@ -145,11 +145,27 @@
         </div>
 
         <!-- Widok Szpitala -->
-        <div id="hospital-view" style="display: none;">
-            <div class="welcome-placeholder">
-                <h1 class="welcome-title">Szpital</h1>
-                <p class="welcome-subtitle">Tutaj pojawi się leczenie i regeneracja postaci</p>
-            </div>
+        <div id="hospital-view" style="display: none; text-align: center; padding: 20px;">
+          <div class="hospital-header" style="background-color: #8b0000; color: white; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+            <h2>🏥 SZPITAL MIEJSKI 🏥</h2>
+            <p>Straciłeś przytomność w walce. Twój organizm musi się zregenerować.</p>
+          </div>
+          
+          <div class="hospital-graphic" style="margin: 20px auto; width: 300px; height: 150px; background: linear-gradient(135deg, #8b0000, #cc0000); border: 2px solid #555; border-radius: 8px; display: flex; align-items: center; justify-content: center;">
+            <div style="color: white; font-size: 3rem;">🏥</div>
+          </div>
+
+          <div class="hospital-timer-container" style="font-size: 1.5rem; margin-top: 20px;">
+            Do wypisu pozostało: <br/>
+            <span id="hospital-countdown" style="font-size: 3rem; font-weight: bold; color: #ff3333; text-shadow: 1px 1px 5px black;">00:00:00</span>
+          </div>
+
+          <div class="hospital-actions" style="margin-top: 30px;">
+            <p style="font-size: 0.9rem; color: #aaa;">Nie chcesz czekać?</p>
+            <button id="btn-use-senzu" class="action-btn" style="background-color: #28a745; color: white; padding: 10px 20px; font-size: 1.1rem; border: none; border-radius: 5px; cursor: pointer;">
+              Zjedz Magiczną Fasolkę (Zenkai)
+            </button>
+          </div>
         </div>
 
         <!-- Widok Sklepu -->
@@ -585,6 +601,11 @@
                             <div style="font-size: 0.9rem; margin-top: 8px;">Utrata statystyk zapisana w profilu!</div>
                         </div>
                     `;
+                    
+                    // Natychmiastowe odświeżenie danych postaci po śmierci
+                    setTimeout(() => {
+                        fetchCharacterData();
+                    }, 1000);
                 } else {
                     popup.style.backgroundColor = 'var(--warning, #f59e0b)';
                     popup.style.color = 'white';
@@ -642,6 +663,66 @@
             }
         }
 
+        let hospitalInterval = null;
+
+        function startHospitalCountdown(hospitalUntilStr) {
+          // Czyścimy poprzedni licznik, żeby nie było wycieków pamięci
+          if (hospitalInterval) clearInterval(hospitalInterval);
+          
+          const hospitalUntil = new Date(hospitalUntilStr).getTime();
+          const countdownEl = document.getElementById('hospital-countdown');
+          
+          // Natychmiastowe zablokowanie zakładek
+          lockTabsForHospital(true);
+          
+          hospitalInterval = setInterval(() => {
+            const now = Date.now();
+            const distance = hospitalUntil - now;
+            
+            if (distance <= 0) {
+              // CZAS MINĄŁ - LECZENIE ZAKOŃCZONE!
+              clearInterval(hospitalInterval);
+              countdownEl.innerText = "00:00:00";
+              countdownEl.style.color = "#28a745";
+              
+              // Odblokuj zakładki i odśwież postać, aby serwer Leniwą Ewaluacją nadał nam startowe zasoby!
+              lockTabsForHospital(false);
+              fetchCharacterData(); // Wywołaj Twoją funkcję pobierającą stan postaci
+              return;
+            }
+            
+            // Obliczenia czasu
+            const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+            const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+            const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+            
+            // Formatowanie z zerami wiodącymi
+            countdownEl.innerText = 
+              (hours < 10 ? "0" + hours : hours) + ":" + 
+              (minutes < 10 ? "0" + minutes : minutes) + ":" + 
+              (seconds < 10 ? "0" + seconds : seconds);
+              
+          }, 1000);
+        }
+
+        function lockTabsForHospital(isLocked) {
+          // Znajdź przyciski nawigacji - używamy data-tab attribute
+          const missionTab = document.querySelector('[data-tab="missions"]');
+          const equipmentTab = document.querySelector('[data-tab="equipment"]');
+          const shopTab = document.querySelector('[data-tab="shop"]');
+          
+          const tabsToLock = [missionTab, equipmentTab, shopTab];
+          
+          tabsToLock.forEach(tab => {
+            if (!tab) return;
+            if (isLocked) {
+              tab.classList.add('tab-disabled');
+            } else {
+              tab.classList.remove('tab-disabled');
+            }
+          });
+        }
+
         // Pobieranie danych postaci z API
         async function fetchCharacterData() {
             const sessionToken = localStorage.getItem('session_token');
@@ -689,22 +770,19 @@
                 updateResourceBar('mp', data.current_mp, data.max_mp);
                 updateResourceBar('stamina', data.current_stamina, data.max_stamina);
 
-                // BLOKADA SZPITALNA: Sprawdzenie czy gracz jest w szpitalu
-                const isDead = Number(data.current_hp) <= 0;
-                const missionsBtn = document.querySelector('[onclick="showView(\'missions\')"]');
-                const workBtn = document.querySelector('[onclick="showView(\'work\')"]');
+                // SZPITAL LOGIC: Sprawdzenie czy gracz jest w szpitalu
+                const currentHp = parseInt(data.current_hp);
                 
-                if (isDead) {
-                    // Gracz jest w szpitalu - zablokuj przyciski i pokaż komunikat
-                    if (missionsBtn) missionsBtn.classList.add('disabled');
-                    if (workBtn) workBtn.classList.add('disabled');
-                    
-                    // Wymuś przejście na widok szpitala lub pokaż komunikat
+                if (currentHp <= 0 && data.hospital_until) {
+                    // Gracz jest w szpitalu
+                    // 1. Zmień aktywny widok na Szpital
                     showView('hospital');
+                    // 2. Odpal licznik i zablokuj inne zakładki
+                    startHospitalCountdown(data.hospital_until);
                 } else {
-                    // Gracz żyje - odblokuj przyciski
-                    if (missionsBtn) missionsBtn.classList.remove('disabled');
-                    if (workBtn) workBtn.classList.remove('disabled');
+                    // Gracz jest zdrowy
+                    if (hospitalInterval) clearInterval(hospitalInterval);
+                    lockTabsForHospital(false);
                 }
 
                 // Aktualizacja statystyk postaci
@@ -761,6 +839,36 @@
             }
         }
 
+        function showSuccessMessage(message) {
+            const popup = document.createElement('div');
+            popup.style.position = 'fixed';
+            popup.style.top = '50%';
+            popup.style.left = '50%';
+            popup.style.transform = 'translate(-50%, -50%)';
+            popup.style.padding = '2rem';
+            popup.style.borderRadius = '12px';
+            popup.style.zIndex = '1000';
+            popup.style.boxShadow = '0 10px 30px rgba(0,0,0,0.5)';
+            popup.style.minWidth = '300px';
+            popup.style.textAlign = 'center';
+            popup.style.fontWeight = 'bold';
+            popup.style.backgroundColor = 'var(--success, #22c55e)';
+            popup.style.color = 'white';
+            popup.style.border = '2px solid var(--success)';
+            
+            popup.innerHTML = `
+                <h3 style="margin: 0; font-size: 1.5rem;">✅ ${message}</h3>
+            `;
+            
+            document.body.appendChild(popup);
+            
+            setTimeout(() => {
+                if (popup.parentNode) {
+                    popup.parentNode.removeChild(popup);
+                }
+            }, 3000);
+        }
+
         // Inicjalizacja aplikacji
         document.addEventListener('DOMContentLoaded', function() {
             // 1. Sprawdź autoryzację
@@ -772,6 +880,31 @@
 
             // 3. Pobierz misje
             fetchMissions();
+
+            // 4. Event Listener dla przycisku Magicznej Fasolki
+            document.getElementById('btn-use-senzu')?.addEventListener('click', async function() {
+                try {
+                    const response = await fetch(`${API_BASE_URL}/api/items/use-senzu`, {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': `Bearer ${localStorage.getItem('session_token')}`,
+                            'Content-Type': 'application/json'
+                        }
+                    });
+
+                    const data = await response.json();
+                    
+                    if (data.status === 'success') {
+                        showSuccessMessage('Magiczna Fasolka użyta! Natychmiastowe leczenie!');
+                        fetchCharacterData(); // Odśwież dane postaci
+                    } else {
+                        showErrorMessage(data.message || 'Nie udało się użyć Magicznej Fasolki');
+                    }
+                } catch (error) {
+                    console.error('[Senzu] Błąd:', error);
+                    showErrorMessage('Błąd serwera podczas używania Magicznej Fasolki');
+                }
+            });
 
             // 3. ZARZĄDZANIE WIDOKAMI I PAMIĘĆ ZAKŁADKI (STATE PERSISTENCE)
             const navButtons = document.querySelectorAll('.nav-btn');
