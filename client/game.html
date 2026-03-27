@@ -51,17 +51,23 @@
         
         <div class="player-info">
             <div class="player-name">Ładowanie...</div>
-            <div class="power-level-container" style="position: relative; margin: 10px 0; display: flex; justify-content: center; align-items: center; gap: 8px;">
-    <span>Poziom Mocy <span class="pl-info-icon" id="pl-info-btn">?</span></span>
-    <span id="power-level" style="font-weight: bold; font-size: 1.1rem;">0</span>
+            <div style="margin: 10px 0; display: flex; justify-content: center; align-items: center; gap: 8px;">
+    <span>Poziom Mocy</span>
     
-    <div class="pl-tooltip" id="pl-tooltip">
-        <strong>Jak wyliczany jest Poziom Mocy?</strong><br>
-        <span style="font-size: 0.8rem; color: #ccc;">
-        To suma 5 głównych statystyk postaci oraz bonusów do maksymalnych zasobów zebranych z rzadkich przedmiotów.<br>
-        <i>(Darmowe 100 HP, 100 MP i 100 Staminy na start nie wliczają się do wyniku).</i>
-        </span>
+    <div style="position: relative; display: inline-flex; align-items: center; justify-content: center;">
+        <button id="pl-info-btn" class="help-btn">?</button>
+        
+        <div id="pl-tooltip" class="floating-tooltip">
+            <strong style="color: var(--goku-accent, #f59e0b);">Jak wyliczany jest Poziom Mocy?</strong>
+            <hr style="border-color: #333; margin: 8px 0;">
+            <span style="font-size: 0.8rem; color: #ccc;">
+            To suma 5 głównych statystyk postaci oraz bonusów do maksymalnych zasobów zebranych z rzadkich przedmiotów.<br>
+            <i style="color: #9ca3af; display: block; margin-top: 5px;">(Darmowe 100 HP, 100 MP i 100 Staminy na start nie wliczają się do wyniku).</i>
+            </span>
+        </div>
     </div>
+
+    <span id="power-level" style="font-weight: bold; font-size: 1.1rem; color: var(--goku-accent, #f59e0b);">0</span>
 </div>
             
             <!-- Sekcja 5 Statystyk Postaci -->
@@ -773,7 +779,7 @@
             const plTooltip = document.getElementById('pl-tooltip');
 
             if (plBtn && plTooltip) {
-                // Kliknięcie w ikonkę otwiera/zamyka tooltip
+                // Kliknięcie w przycisk otwiera/zamyka tooltip
                 plBtn.addEventListener('click', (e) => {
                     e.stopPropagation();
                     plTooltip.style.display = plTooltip.style.display === 'block' ? 'none' : 'block';

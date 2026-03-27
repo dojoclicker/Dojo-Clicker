@@ -543,40 +543,58 @@ body {
         padding: 0.5rem;
     }
     
-    .pl-info-icon {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 16px;
-    height: 16px;
-    border-radius: 50%;
-    background-color: var(--goku-accent, #f59e0b);
+    .help-btn {
+    background: linear-gradient(135deg, #4b5563, #1f2937);
     color: #fff;
-    font-size: 11px;
+    border: 1px solid #9ca3af;
+    border-radius: 50%;
+    width: 20px;
+    height: 20px;
+    font-size: 13px;
     font-weight: bold;
     cursor: pointer;
-    vertical-align: middle;
-    transition: transform 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.5);
+    transition: all 0.2s ease;
+    padding: 0;
+    line-height: 1;
 }
-.pl-info-icon:hover {
-    transform: scale(1.1);
+.help-btn:hover {
+    background: var(--goku-accent, #f59e0b);
+    border-color: #fff;
+    transform: scale(1.15);
+    box-shadow: 0 0 10px var(--goku-accent, #f59e0b);
+    color: #000;
 }
-.pl-tooltip {
-    display: none;
+.floating-tooltip {
     position: absolute;
-    top: 100%;
+    top: 30px; /* Całkowicie wyrwane w dół, pod przycisk */
     left: 50%;
     transform: translateX(-50%);
-    width: 220px;
-    background: rgba(15, 23, 42, 0.95);
+    width: 260px;
+    background: #0f172a;
     border: 1px solid var(--goku-accent, #f59e0b);
-    padding: 10px;
-    border-radius: 6px;
-    z-index: 1000;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+    border-radius: 8px;
+    padding: 12px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.9);
+    z-index: 9999; /* Gwarancja bycia na samym wierzchu */
+    display: none;
     text-align: center;
-    line-height: 1.4;
-    margin-top: 5px;
+    cursor: default;
+    pointer-events: none; /* Zapobiega problemom z najechaniem myszką */
+}
+/* Mały trójkąt (strzałka) na górze tooltipa */
+.floating-tooltip::before {
+    content: '';
+    position: absolute;
+    top: -7px;
+    left: 50%;
+    transform: translateX(-50%);
+    border-width: 0 7px 7px 7px;
+    border-style: solid;
+    border-color: transparent transparent var(--goku-accent, #f59e0b) transparent;
 }
 
     .mission-card {
