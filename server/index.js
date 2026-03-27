@@ -515,7 +515,8 @@ app.post('/api/missions/start', authenticateToken, async (req, res) => {
             penalty: {
                 coins_lost: coinsLost.toString(),
                 hospital_minutes: hospitalMinutes,
-                stats_lost: deathPenalty
+                stats_lost: deathPenalty,
+                hospital_until: hospitalUntil // KRYTYCZNE: Wysyłamy timestamp, by licznik ruszył od razu!
             }
         });
 

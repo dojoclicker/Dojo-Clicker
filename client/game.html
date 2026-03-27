@@ -145,26 +145,27 @@
         </div>
 
         <!-- Widok Szpitala -->
-        <div id="hospital-view" style="display: none; text-align: center; padding: 20px;">
-          <div class="hospital-header" style="background-color: #8b0000; color: white; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
-            <h2>🏥 SZPITAL MIEJSKI 🏥</h2>
-            <p>Straciłeś przytomność w walce. Twój organizm musi się zregenerować.</p>
-          </div>
-          
-          <div class="hospital-graphic" style="margin: 20px auto; width: 300px; height: 150px; background: linear-gradient(135deg, #8b0000, #cc0000); border: 2px solid #555; border-radius: 8px; display: flex; align-items: center; justify-content: center;">
-            <div style="color: white; font-size: 3rem;">🏥</div>
+        <div id="view-hospital" class="game-view" style="display: none;">
+          <div class="hospital-panel-left">
+            <div class="hospital-big-graphic">
+              </div>
           </div>
 
-          <div class="hospital-timer-container" style="font-size: 1.5rem; margin-top: 20px;">
-            Do wypisu pozostało: <br/>
-            <span id="hospital-countdown" style="font-size: 3rem; font-weight: bold; color: #ff3333; text-shadow: 1px 1px 5px black;">00:00:00</span>
-          </div>
+          <div class="hospital-panel-right">
+            <div class="hospital-header" style="background-color: #8b0000; color: white; padding: 10px; border-radius: 8px; margin-bottom: 20px;">
+              <h2>SZPITAL MIEJSKI</h2> <p>Straciłeś przytomność w walce. <br/> Twój organizm musi się zregenerować.</p>
+            </div>
 
-          <div class="hospital-actions" style="margin-top: 30px;">
-            <p style="font-size: 0.9rem; color: #aaa;">Nie chcesz czekać?</p>
-            <button id="btn-use-senzu" class="action-btn" style="background-color: #28a745; color: white; padding: 10px 20px; font-size: 1.1rem; border: none; border-radius: 5px; cursor: pointer;">
-              Zjedz Magiczną Fasolkę (Zenkai)
-            </button>
+            <div class="hospital-timer-container" style="font-size: 1.2rem; margin-top: 10px;">
+              Do wypisu pozostało: <br/>
+              <span id="hospital-countdown" class="text-hospital-danger" style="font-size: 2.8rem; font-weight: bold;">--:--:--</span>
+            </div>
+
+            <div class="hospital-actions" style="margin-top: 20px;">
+              <p style="font-size: 0.8rem; color: #aaa;">Nie chcesz czekać?</p>
+              <button id="btn-use-senzu" class="action-btn" style="background-color: #28a745; color: white; padding: 8px 16px; border: none; border-radius: 5px; cursor: pointer;">
+                Zjedz Magiczną Fasolkę
+              </button> </div>
           </div>
         </div>
 
@@ -602,9 +603,9 @@
                         </div>
                     `;
                     
-                    // Natychmiastowe odświeżenie danych postaci po śmierci
+                    // Pokaż popup śmierci, odśwież dane postaci i wymuś przełączenie na szpital
                     setTimeout(() => {
-                        fetchCharacterData();
+                        fetchCharacterData(); // To automatycznie przełączy na widok szpitala
                     }, 1000);
                 } else {
                     popup.style.backgroundColor = 'var(--warning, #f59e0b)';
@@ -675,6 +676,10 @@
           // Natychmiastowe zablokowanie zakładek
           lockTabsForHospital(true);
           
+          // Upewnij się, że element ma klasę text-hospital-danger na starcie
+          countdownEl.classList.remove('text-hospital-success');
+          countdownEl.classList.add('text-hospital-danger');
+          
           hospitalInterval = setInterval(() => {
             const now = Date.now();
             const distance = hospitalUntil - now;
@@ -683,7 +688,10 @@
               // CZAS MINĄŁ - LECZENIE ZAKOŃCZONE!
               clearInterval(hospitalInterval);
               countdownEl.innerText = "00:00:00";
-              countdownEl.style.color = "#28a745";
+              
+              // Zmień kolor na zielony
+              countdownEl.classList.remove('text-hospital-danger');
+              countdownEl.classList.add('text-hospital-success');
               
               // Odblokuj zakładki i odśwież postać, aby serwer Leniwą Ewaluacją nadał nam startowe zasoby!
               lockTabsForHospital(false);

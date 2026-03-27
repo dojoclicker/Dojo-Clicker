@@ -58,6 +58,61 @@
     opacity: 0.7;
 }
 
+/* Nowy układ Szpitala */
+#view-hospital {
+    display: none; /* Domyślnie ukryty, włączany przez JS */
+    flex-direction: row; /* Użyjemy flexbox do rozdzielenia paneli */
+    gap: 20px;
+    padding: 20px;
+    align-items: stretch;
+}
+
+/* Panel Lewy - Grafika */
+.hospital-panel-left {
+    flex: 1; /* Zajmuje 1 część szerokości */
+    background: #1a1a1a;
+    border: 2px solid #444;
+    border-radius: 12px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    position: relative;
+}
+
+/* Duża, klimatyczna ilustracja (placeholder) */
+.hospital-big-graphic {
+    width: 90%;
+    height: 80%;
+    background: url('hospital-interior-placeholder.png') center/cover;
+    border: 2px solid #cc0000; /* Czerwona ramka wokół grafiki */
+    border-radius: 8px;
+    filter: grayscale(80%) brightness(0.6); /* Przyciemniona, smutna */
+}
+
+/* Panel Prawy - Informacje i Akcje */
+.hospital-panel-right {
+    flex: 1; /* Zajmuje drugą część szerokości */
+    background: #1a1a1a;
+    border: 2px solid #444;
+    border-radius: 12px;
+    padding: 20px;
+    text-align: center;
+    display: flex;
+    vertical-align: middle;
+    flex-direction: column;
+    justify-content: center;
+}
+
+/* Klasy dynamiczne kolorów (dla JS) */
+.text-hospital-danger {
+    color: #ff3333 !important; /* Czerwony przy odliczaniu */
+    text-shadow: 1px 1px 5px black;
+}
+.text-hospital-success {
+    color: #28a745 !important; /* Zielony przy 00:00:00 */
+    text-shadow: 1px 1px 5px black;
+}
+
 /* Reset i base */
 * {
     margin: 0;
