@@ -235,12 +235,12 @@ app.get('/api/character', authenticateToken, async (req, res) => {
     const characterData = {
       username: profile.username,
       power_level: powerLevel.toString(),
-      coins: character.coins || '0',
-      current_form: character.current_form || 'Stan Podstawowy',
+      coins: character.coins ?? '0',
+      current_form: character.current_form ?? 'Stan Podstawowy',
       
-      current_hp: character.hp || '100',
-      current_mp: character.mp || '100',
-      current_stamina: character.stamina || '100',
+      current_hp: character.hp ?? '100',
+      current_mp: character.mp ?? '100',
+      current_stamina: character.stamina ?? '100',
       
       max_hp: max_hp.toString(),
       max_mp: max_mp.toString(),
