@@ -219,9 +219,9 @@ app.get('/api/character', authenticateToken, async (req, res) => {
     const bonus_mp = BigInt(character.bonus_mp || '0');
     const bonus_stamina = BigInt(character.bonus_stamina || '0');
 
-    // Obliczenia Max HP/MP/Stamina zgodnie z GDD
-    const max_hp = 100n + (strength / 100n) * 50n + bonus_hp;
-    const max_mp = 100n + (intelligence / 100n) * 50n + bonus_mp;
+    // Obliczenia Max HP/MP/Stamina (Balans: +1 Max HP za każde 20 pkt Siły)
+    const max_hp = 100n + (strength / 20n) + bonus_hp;
+    const max_mp = 100n + (intelligence / 20n) + bonus_mp;
     const max_stamina = 100n + bonus_stamina;
 
     // Obliczenie całkowitego Poziomu Mocy (Eliminacja podwójnego liczenia statystyk)
