@@ -649,48 +649,54 @@
             // 3. Pobierz misje
             fetchMissions();
 
-            // 3. Obsługa przycisków nawigacji
+            // 3. ZARZĄDZANIE WIDOKAMI I PAMIĘĆ ZAKŁADKI (STATE PERSISTENCE)
             const navButtons = document.querySelectorAll('.nav-btn');
-            navButtons.forEach(button => {
-                button.addEventListener('click', function() {
-                    // Usuń klasę active ze wszystkich przycisków
-                    navButtons.forEach(btn => btn.classList.remove('active'));
-                    // Dodaj klasę active do klikniętego przycisku
-                    this.classList.add('active');
-                    
-                    // Przełączanie widoków
-                    const tabName = this.getAttribute('data-tab');
-                    switchView(tabName);
-                });
-            });
+            
+            // Pobierz ostatnio zapisaną zakładkę lub ustaw "dashboard" jako domyślną
+            const savedTab = localStorage.getItem('active_game_tab') || 'dashboard';
 
-            // Funkcja przełączająca widoki
-            function switchView(tabName) {
+            // Główna funkcja aktywująca zakładkę
+            function activateTab(tabName) {
+                // Zapisz wybór w pamięci przeglądarki
+                localStorage.setItem('active_game_tab', tabName);
+
                 // Ukryj wszystkie widoki
                 const allViews = document.querySelectorAll('[id$="-view"]');
                 allViews.forEach(view => {
                     view.style.display = 'none';
                 });
 
-                // Pokaż wybrany widok
+                // Pokaż docelowy widok
                 const targetView = document.getElementById(`${tabName}-view`);
                 if (targetView) {
                     targetView.style.display = 'block';
                 }
 
-                console.log(`Przełączono na widok: ${tabName}`);
+                // Zaktualizuj klasy przycisków (podświetlenie)
+                navButtons.forEach(btn => btn.classList.remove('active'));
+                
+                // Jeśli to nie jest dashboard, podświetl odpowiedni przycisk na dolnym pasku
+                if (tabName !== 'dashboard') {
+                    const activeBtn = document.querySelector(`[data-tab="${tabName}"]`);
+                    if (activeBtn) activeBtn.classList.add('active');
+                }
             }
+
+            // Podepnij nasłuchiwanie pod przyciski nawigacyjne (Misje, Ekwipunek, itd.)
+            navButtons.forEach(button => {
+                button.addEventListener('click', function() {
+                    const tabName = this.getAttribute('data-tab');
+                    activateTab(tabName);
+                });
+            });
 
             // 4. Obsługa przycisków headera
             document.getElementById('home-btn').addEventListener('click', function() {
-                // Ustaw aktywny przycisk nawigacji na "missions" (domyślny)
-                navButtons.forEach(btn => btn.classList.remove('active'));
-                document.querySelector('[data-tab="missions"]').classList.add('active');
-                
-                // Przełącz na dashboard
-                switchView('dashboard');
-                console.log('Przechodzę na stronę główną');
+                activateTab('dashboard'); // Zawsze wraca do czystego widoku dashboardu
             });
+
+            // Uruchomienie domyślnego/z zapisanego widoku przy starcie
+            activateTab(savedTab);
 
             document.getElementById('logout-btn').addEventListener('click', function() {
                 console.log('Wylogowuję gracza');
