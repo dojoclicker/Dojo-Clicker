@@ -779,18 +779,30 @@
             const plTooltip = document.getElementById('pl-tooltip');
 
             if (plBtn && plTooltip) {
-                // Kliknięcie w przycisk otwiera/zamyka tooltip
+                // Kliknięcie w przycisk
                 plBtn.addEventListener('click', (e) => {
                     e.stopPropagation();
-                    plTooltip.style.display = plTooltip.style.display === 'block' ? 'none' : 'block';
+                    if (plTooltip.style.display === 'block') {
+                        plTooltip.style.display = 'none';
+                    } else {
+                        // Pobierz pozycję przycisku względem okna przeglądarki
+                        const rect = plBtn.getBoundingClientRect();
+                        
+                        // Ustaw tooltip po prawej stronie przycisku (wypada idealnie na obszar roboczy)
+                        plTooltip.style.left = (rect.right + 15) + 'px';
+                        plTooltip.style.top = (rect.top + (rect.height / 2)) + 'px';
+                        plTooltip.style.transform = 'translateY(-50%)'; // Wyśrodkuj w pionie względem przycisku
+                        
+                        plTooltip.style.display = 'block';
+                    }
                 });
 
-                // Wyjechanie myszką poza tooltip automatycznie go ukrywa
+                // Zamknięcie po zjechaniu myszką z tooltipa
                 plTooltip.addEventListener('mouseleave', () => {
                     plTooltip.style.display = 'none';
                 });
 
-                // Globalne kliknięcie zamyka tooltip, jeśli gracz kliknie gdzieś w tło
+                // Globalne kliknięcie zamyka tooltip
                 document.addEventListener('click', (e) => {
                     if (e.target !== plBtn && !plTooltip.contains(e.target)) {
                         plTooltip.style.display = 'none';
