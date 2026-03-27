@@ -543,55 +543,7 @@ body {
         padding: 0.5rem;
     }
     
-    .help-btn {
-    background: var(--goku-accent, #ff6b00);
-    color: #fff;
-    border: 2px solid #fff;
-    border-radius: 50%;
-    width: 20px;
-    height: 20px;
-    font-size: 14px;
-    font-weight: 900;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    box-shadow: 0 0 8px rgba(255, 107, 0, 0.5);
-    transition: all 0.2s ease;
-    padding: 0;
-    line-height: 1;
-    font-family: monospace;
-}
-.help-btn:hover {
-    transform: scale(1.15);
-    box-shadow: 0 0 15px var(--goku-accent, #ff6b00);
-    background: #fff;
-    color: var(--goku-accent, #ff6b00);
-    border-color: var(--goku-accent, #ff6b00);
-}
-.floating-tooltip {
-    position: fixed;
-    width: 260px;
-    background-color: #0f172a;
-    border: 1px solid var(--goku-accent, #ff6b00);
-    border-radius: 8px;
-    padding: 12px;
-    box-shadow: 0 10px 40px rgba(0,0,0,0.9);
-    z-index: 999999;
-    text-align: center;
-    cursor: default;
-}
-.floating-tooltip::before {
-    content: '';
-    position: absolute;
-    top: 50%;
-    left: -8px;
-    transform: translateY(-50%);
-    border-width: 8px 8px 8px 0;
-    border-style: solid;
-    border-color: transparent var(--goku-accent, #ff6b00) transparent transparent;
-}
-.mission-card {
+    .mission-card {
         width: 160px;
         height: 200px;
         padding: 1rem;
