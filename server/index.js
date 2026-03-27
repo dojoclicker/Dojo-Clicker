@@ -318,7 +318,8 @@ app.get('/api/character', authenticateToken, async (req, res) => {
         mental_strength: character.mental_strength || '1'
       },
       
-      completed_missions: character.completed_missions || []
+      completed_missions: character.completed_missions || [],
+      hospital_until: character.hospital_until // KRYTYCZNE: Frontend potrzebuje tego do licznika!
     };
 
     // Wysłanie odpowiedzi z konwersją BigInt na String

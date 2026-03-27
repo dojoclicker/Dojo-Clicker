@@ -150,7 +150,7 @@
               
             <div class="hospital-panel-left">
               <div class="hospital-big-graphic">
-                <span style="font-size: 5rem; filter: drop-shadow(0 0 10px rgba(255,0,0,0.5));">🏥</span>
+                <span style="font-size: 10rem; filter: drop-shadow(0 0 15px rgba(0,0,0,0.8));">🏥</span>
               </div>
             </div>
 
@@ -689,8 +689,11 @@
           
           const headerEl = document.getElementById('hospital-header');
           const descEl = document.getElementById('hospital-desc');
+          const graphicEl = document.querySelector('.hospital-big-graphic');
+          
           if (headerEl) headerEl.style.backgroundColor = '#8b0000'; // Krwisty czerwony
           if (descEl) descEl.innerText = "Straciłeś przytomność w walce. Twój organizm musi się zregenerować.";
+          if (graphicEl) graphicEl.style.borderColor = '#dc2626'; // Czerwona ramka
           
           hospitalInterval = setInterval(() => {
             const now = Date.now();
@@ -706,7 +709,8 @@
               countdownEl.classList.add('text-hospital-success');
               
               if (headerEl) headerEl.style.backgroundColor = '#166534'; // Głęboka zieleń
-              if (descEl) descEl.innerText = "Jesteś w pełni zdrowy. Możesz opuścić szpital.";
+              if (descEl) descEl.innerText = "Jesteś zdrowy! Pomożemy ci w razie potrzeby.";
+              if (graphicEl) graphicEl.style.borderColor = '#166534'; // Zielona ramka
               
               // Odblokuj zakładki i odśwież postać, aby serwer Leniwą Ewaluacją nadał nam startowe zasoby!
               lockTabsForHospital(false);
@@ -796,16 +800,28 @@
                 // SZPITAL LOGIC: Sprawdzenie czy gracz jest w szpitalu
                 const currentHp = parseInt(data.current_hp);
                 
+                const headerEl = document.getElementById('hospital-header');
+                const descEl = document.getElementById('hospital-desc');
+                const graphicEl = document.querySelector('.hospital-big-graphic');
+                const countdownEl = document.getElementById('hospital-countdown');
+
                 if (currentHp <= 0 && data.hospital_until) {
-                    // Gracz jest w szpitalu
-                    // 1. Zmień aktywny widok na Szpital
-                    activateTab('hospital'); // NAPRAWIONY FATAL ERROR!
-                    // 2. Odpal licznik i zablokuj inne zakładki
+                    // STAN: MARTWY / W SZPITALU
+                    activateTab('hospital');
                     startHospitalCountdown(data.hospital_until);
                 } else {
-                    // Gracz jest zdrowy
+                    // STAN: ZDROWY
                     if (hospitalInterval) clearInterval(hospitalInterval);
                     lockTabsForHospital(false);
+                    
+                    if (countdownEl) {
+                        countdownEl.innerText = "00:00:00";
+                        countdownEl.classList.remove('text-hospital-danger');
+                        countdownEl.classList.add('text-hospital-success');
+                    }
+                    if (headerEl) headerEl.style.backgroundColor = '#166534'; // Zielony
+                    if (descEl) descEl.innerText = "Jesteś zdrowy! Pomożemy ci w razie potrzeby.";
+                    if (graphicEl) graphicEl.style.borderColor = '#166534'; // Zielona ramka grafiki
                 }
 
                 // Aktualizacja statystyk postaci
