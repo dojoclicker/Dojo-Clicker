@@ -549,12 +549,41 @@
                         ${penaltyText}
                     `;
                 } else if (data.result === 'failure') {
-                    popup.style.backgroundColor = 'var(--error, #ef4444)';
+                    // Zwykła porażka - żółty/pomarańczowy
+                    popup.style.backgroundColor = 'var(--warning, #f59e0b)';
                     popup.style.color = 'white';
-                    popup.style.border = '2px solid var(--error)';
+                    popup.style.border = '2px solid var(--warning)';
                     
                     popup.innerHTML = `
                         <h3 style="margin: 0; font-size: 1.5rem;">❌ ${data.message}</h3>
+                    `;
+                } else if (data.result === 'hurt') {
+                    // Kara za pychę - wyraźnie czerwony
+                    popup.style.backgroundColor = '#cc0000';
+                    popup.style.color = 'white';
+                    popup.style.border = '2px solid #cc0000';
+                    
+                    popup.innerHTML = `
+                        <h3 style="margin: 0 0 1rem 0; font-size: 1.5rem;">🩹 ${data.message}</h3>
+                        <div style="font-size: 1rem; margin-top: 0.5rem;">
+                            <div>❤️ HP: -${data.damage.hp}</div>
+                            <div>💙 MP: -${data.damage.mp}</div>
+                            <div>⚡ Stamina: -${data.damage.stamina}</div>
+                        </div>
+                    `;
+                } else if (data.result === 'death') {
+                    // Śmierć - krwawo czerwony
+                    popup.style.backgroundColor = '#8b0000';
+                    popup.style.color = 'white';
+                    popup.style.border = '2px solid #8b0000';
+                    
+                    popup.innerHTML = `
+                        <h3 style="margin: 0 0 1rem 0; font-size: 1.5rem; font-weight: bold;">🏥 ${data.message}</h3>
+                        <div style="font-size: 1rem; margin-top: 0.5rem; font-weight: bold;">
+                            <div>💰 Utrata monet: -${data.penalty.coins_lost}</div>
+                            <div>⏱️ Czas w szpitalu: ${data.penalty.hospital_minutes} minut</div>
+                            <div style="font-size: 0.9rem; margin-top: 8px;">Utrata statystyk zapisana w profilu!</div>
+                        </div>
                     `;
                 } else {
                     popup.style.backgroundColor = 'var(--warning, #f59e0b)';
@@ -659,6 +688,24 @@
                 updateResourceBar('hp', data.current_hp, data.max_hp);
                 updateResourceBar('mp', data.current_mp, data.max_mp);
                 updateResourceBar('stamina', data.current_stamina, data.max_stamina);
+
+                // BLOKADA SZPITALNA: Sprawdzenie czy gracz jest w szpitalu
+                const isDead = Number(data.current_hp) <= 0;
+                const missionsBtn = document.querySelector('[onclick="showView(\'missions\')"]');
+                const workBtn = document.querySelector('[onclick="showView(\'work\')"]');
+                
+                if (isDead) {
+                    // Gracz jest w szpitalu - zablokuj przyciski i pokaż komunikat
+                    if (missionsBtn) missionsBtn.classList.add('disabled');
+                    if (workBtn) workBtn.classList.add('disabled');
+                    
+                    // Wymuś przejście na widok szpitala lub pokaż komunikat
+                    showView('hospital');
+                } else {
+                    // Gracz żyje - odblokuj przyciski
+                    if (missionsBtn) missionsBtn.classList.remove('disabled');
+                    if (workBtn) workBtn.classList.remove('disabled');
+                }
 
                 // Aktualizacja statystyk postaci
                 document.getElementById('stat-strength').textContent = data.stats.strength;

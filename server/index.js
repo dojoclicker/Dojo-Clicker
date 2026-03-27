@@ -228,9 +228,18 @@ app.get('/api/character', authenticateToken, async (req, res) => {
     // LENIWA EWALUACJA (LAZY EVALUATION) - ZUNIFIKOWANY TICK 60s
     // ==========================================
     const now = Date.now();
-    const lastCalcTime = character.last_calculation_time ? new Date(character.last_calculation_time).getTime() : now;
+    let effectiveLastCalcTime = character.last_calculation_time ? new Date(character.last_calculation_time).getTime() : now;
     
-    const elapsedMs = Math.max(0, now - lastCalcTime); 
+    // BLOKADA SZPITALNA: Jeśli gracz jest w Szpitalu, zatrzymujemy tykanie czasu dla regeneracji
+    if (BigInt(character.hp || '100') <= 0n && character.hospital_until) {
+      const hospitalEndTime = new Date(character.hospital_until).getTime();
+      if (now < hospitalEndTime) {
+        // Wciąż w szpitalu = ZERO regeneracji (czas dla zasobów stoi w miejscu)
+        effectiveLastCalcTime = now; 
+      }
+    }
+
+    const elapsedMs = Math.max(0, now - effectiveLastCalcTime); 
     
     // ZUNIFIKOWANY TICK: 60 sekund (60000 ms). Rozwiązuje problem desynchronizacji i kradzieży czasu!
     const consumedMs = elapsedMs - (elapsedMs % 60000); 
@@ -371,7 +380,8 @@ app.post('/api/missions/start', authenticateToken, async (req, res) => {
 
     // Walidacje
     if (BigInt(character.hp || '0') <= 0n) {
-      return res.status(403).json({ error: 'Jesteś w Szpitalu!' });
+      // Status 400 zapobiega wylogowaniu przez mechanizmy Auth na frontendzie
+      return res.status(400).json({ status: 'error', message: 'KRYTYCZNE: Jesteś w Szpitalu! Nie możesz podjąć misji.' });
     }
 
     if (BigInt(character.stamina ?? '0') < BigInt(mission.stamina_cost)) {

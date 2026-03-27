@@ -18,23 +18,22 @@
     --stamina-bg: #365314;               /* Stamina tło */
     
     /* Teksty */
-    --text-primary: #f8fafc;             /* Główny jasny tekst */
-    --text-secondary: #cbd5e1;           /* Pomocniczy tekst */
-    --text-muted: #64748b;              /* Wytłumiony tekst */
+    --text-primary: #f1f5f9;              /* Główny tekst - biały */
+    --text-secondary: #94a3b8;           /* Tekst drugorzędny - szary */
+    --text-muted: #64748b;               /* Wyciszony tekst - ciemny szary */
     
-    /* Dodatkowe kolory */
-    --success: #10b981;                  /* Sukces */
-    --error: #ef4444;                    /* Błąd */
-    --warning: #f59e0b;                  /* Ostrzeżenie */
-    
-    /* Cienie i efekty */
-    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.5), 0 4px 6px -2px rgba(0, 0, 0, 0.3);
-    --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.6), 0 10px 10px -5px rgba(0, 0, 0, 0.4);
-    
-    /* Przejścia */
-    --transition-fast: 150ms ease;
-    --transition-normal: 300ms ease;
-    --transition-slow: 500ms ease;
+    /* Statusy */
+    --success: #22c55e;                  /* Sukces - zielony */
+    --warning: #f59e0b;                  /* Ostrzeżenie - pomarańczowy */
+    --error: #ef4444;                    /* Błąd - czerwony */
+}
+
+/* Stany przycisków */
+.disabled {
+    pointer-events: none !important;
+    filter: grayscale(100%) !important;
+    opacity: 0.5 !important;
+    cursor: not-allowed !important;
 }
 
 /* Reset i base */
