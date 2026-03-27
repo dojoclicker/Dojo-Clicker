@@ -73,8 +73,12 @@ body {
     padding: 1rem 2rem;
     background: linear-gradient(135deg, var(--goku-panel-bg) 0%, rgba(22, 30, 49, 0.8) 100%);
     border-bottom: 2px solid var(--goku-accent);
-    transition: transform var(--transition-normal) ease, opacity var(--transition-normal) ease;
+    
+    /* NOWE WŁAŚCIWOŚCI: */
+    max-height: 100px;
+    transition: all var(--transition-normal) ease;
     z-index: 50;
+    overflow: hidden;
 }
 
 .logo-section {
@@ -378,6 +382,11 @@ body {
 .header-hidden {
     transform: translateY(-100%);
     opacity: 0;
+    max-height: 0 !important;
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
+    border-bottom: none !important;
+    overflow: hidden;
 }
 
 /* ==========================================

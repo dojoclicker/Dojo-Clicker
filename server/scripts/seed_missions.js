@@ -59,9 +59,9 @@ const missionsData = [
         description: "Znajdujesz ogromnego, morskiego żółwia, który zgubił drogę. Eskortuj go do oceanu.",
         stamina_cost: 4,
         req_stats: { 
-            "strength": "100", 
-            "speed": "100", 
-            "endurance": "100" 
+            "strength": "40", 
+            "speed": "40", 
+            "endurance": "40" 
         },
         reward_coins_min: 0,
         reward_coins_max: 2,
@@ -77,9 +77,9 @@ const missionsData = [
         description: "Tuż przed celem drogę zachodzi wam potężny rabuś dzierżący wielki miecz. Pokaż mu siłę swoich pięści.",
         stamina_cost: 5,
         req_stats: { 
-            "strength": "150", 
-            "speed": "150", 
-            "endurance": "150" 
+            "strength": "100", 
+            "speed": "100", 
+            "endurance": "100" 
         },
         reward_coins_min: 1,
         reward_coins_max: 4,
