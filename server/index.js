@@ -459,6 +459,7 @@ app.post('/api/missions/start', authenticateToken, async (req, res) => {
     res.json({ 
       result: 'success', 
       message: 'Sukces!', 
+      multiplier: Number(rewardMultiplier),
       rewards: { 
         coins: finalCoins.toString(), 
         stats_gained: finalStats.toString(),

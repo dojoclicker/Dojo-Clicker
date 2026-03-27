@@ -291,7 +291,7 @@
             else if (chanceNum > 97) chanceColor = '#10b981'; // Ciemnozielony (Sukces)
 
             // Informacja o typie misji
-            const unlockInfoText = mission.is_repeatable ? 'Misja powtarzalna. Sukces odblokowuje kolejne wyzwania.' : 'Misja Fabularna (Jednorazowa). Po sukcesie zostaje zablokowana.';
+            const unlockInfoText = mission.is_repeatable ? 'Misja powtarzalna. Sukces odblokowuje kolejne wyzwania.' : 'Misja Jednorazowa. Po sukcesie zostaje zablokowana i odblokowuje kolejne wyzwanie.';
 
             card.innerHTML = `
                 <div class="mission-icon">${icon}</div>
@@ -462,14 +462,26 @@
                 popup.style.fontWeight = 'bold';
                 
                 if (data.result === 'success') {
-                    popup.style.backgroundColor = 'var(--success, #22c55e)';
+                    let bgColor = 'var(--success, #22c55e)';
+                    let penaltyText = '';
+
+                    if (data.multiplier === 50) {
+                        bgColor = 'var(--warning, #f59e0b)';
+                        penaltyText = '<div style="font-size: 0.8rem; margin-top: 8px; font-weight: normal;">⚠️ Kara za wysokie statystyki: Zyski obniżone o 50%</div>';
+                    } else if (data.multiplier === 10) {
+                        bgColor = '#f97316';
+                        penaltyText = '<div style="font-size: 0.8rem; margin-top: 8px; font-weight: normal;">⚠️ Kara za potężne statystyki: Zyski obniżone o 90%</div>';
+                    }
+
+                    popup.style.backgroundColor = bgColor;
                     popup.style.color = 'white';
-                    popup.style.border = '2px solid var(--success)';
+                    popup.style.border = `2px solid ${bgColor}`;
                     
                     popup.innerHTML = `
                         <h3 style="margin: 0 0 1rem 0; font-size: 1.5rem;">✅ ${data.message}</h3>
                         <div style="font-size: 1.1rem; margin-bottom: 0.5rem;">💰 Monety: +${data.rewards.coins}</div>
                         <div style="font-size: 1.1rem;">📊 +${data.rewards.gains.strength} Siła, +${data.rewards.gains.speed} Szybkość, +${data.rewards.gains.endurance} Wytrzymałość</div>
+                        ${penaltyText}
                     `;
                 } else if (data.result === 'failure') {
                     popup.style.backgroundColor = 'var(--error, #ef4444)';
@@ -708,8 +720,8 @@
             let lastScrollY = 0;
             const header = document.getElementById('top-panel-1');
             
-            window.addEventListener('scroll', function() {
-                const currentScrollY = window.scrollY;
+            document.getElementById('main-workspace').addEventListener('scroll', function(e) {
+                const currentScrollY = this.scrollTop;
                 
                 if (currentScrollY > lastScrollY && currentScrollY > 100) {
                     // Scroll w dół - ukryj header

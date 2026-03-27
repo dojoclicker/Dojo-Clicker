@@ -59,9 +59,9 @@ const missionsData = [
         description: "Znajdujesz ogromnego, morskiego żółwia, który zgubił drogę. Eskortuj go do oceanu.",
         stamina_cost: 4,
         req_stats: { 
-            "strength": "40", 
-            "speed": "40", 
-            "endurance": "40" 
+            "strength": "100", 
+            "speed": "100", 
+            "endurance": "100" 
         },
         reward_coins_min: 0,
         reward_coins_max: 2,
@@ -97,12 +97,12 @@ const missionsData = [
     },
     {
         name: "Test Starego Mistrza",
-        description: "W nagrodę za pomoc z wody wyłania się starzec. Wyzywa cię na sparing, by sprawdzić twój potencjał.",
+        description: "W podzięce za uratowanie morskiego żółwia, Stary Mistrz zgadza się wziąć cię pod swoje skrzydła. Najpierw jednak musisz udowodnić swój potencjał w sparingu.",
         stamina_cost: 10,
         req_stats: { 
-            "strength": "300", 
-            "speed": "300", 
-            "endurance": "300" 
+            "strength": "250", 
+            "speed": "250", 
+            "endurance": "250" 
         },
         reward_coins_min: 2,
         reward_coins_max: 6,
