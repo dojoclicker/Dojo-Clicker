@@ -319,8 +319,11 @@ app.post('/api/missions/start', authenticateToken, async (req, res) => {
       return res.status(403).json({ error: 'Jesteś w Szpitalu!' });
     }
 
-    if (BigInt(character.stamina || '0') < BigInt(mission.stamina_cost)) {
-      return res.status(400).json({ error: 'Brak Staminy' });
+    if (BigInt(character.stamina ?? '0') < BigInt(mission.stamina_cost)) {
+      return res.status(400).json({ 
+        status: 'error', 
+        message: 'Brak Staminy! Odpocznij lub użyj odpowiedniego przedmiotu.' 
+      });
     }
 
     // 2. WYLICZENIE SZANSY I KARY (DIMINISHING RETURNS)

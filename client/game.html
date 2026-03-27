@@ -374,10 +374,78 @@
                         window.location.href = 'index.html';
                         return;
                     }
-                    throw new Error(`Błąd HTTP: ${response.status}`);
+                    const errorData = await response.json();
+                    const errorMessage = errorData.message || 'Nie udało się rozpocząć misji. Spróbuj ponownie.';
+                    
+                    // Popup błędu
+                    const errorPopup = document.createElement('div');
+                    errorPopup.style.position = 'fixed';
+                    errorPopup.style.top = '50%';
+                    errorPopup.style.left = '50%';
+                    errorPopup.style.transform = 'translate(-50%, -50%)';
+                    errorPopup.style.padding = '2rem';
+                    errorPopup.style.borderRadius = '12px';
+                    errorPopup.style.zIndex = '1000';
+                    errorPopup.style.boxShadow = '0 10px 30px rgba(0,0,0,0.5)';
+                    errorPopup.style.minWidth = '300px';
+                    errorPopup.style.textAlign = 'center';
+                    errorPopup.style.fontWeight = 'bold';
+                    errorPopup.style.backgroundColor = 'var(--error, #ef4444)';
+                    errorPopup.style.color = 'white';
+                    errorPopup.style.border = '2px solid var(--error)';
+                    
+                    errorPopup.innerHTML = `
+                        <h3 style="margin: 0; font-size: 1.5rem;">❌ Błąd</h3>
+                        <p style="margin: 1rem 0 0 0; font-size: 1rem;">${errorMessage}</p>
+                    `;
+                    
+                    document.body.appendChild(errorPopup);
+                    
+                    setTimeout(() => {
+                        if (errorPopup.parentNode) {
+                            errorPopup.parentNode.removeChild(errorPopup);
+                        }
+                    }, 3500);
+                    return;
                 }
 
                 const data = await response.json();
+                
+                // Sprawdź status błędu z serwera
+                if (data.status === 'error') {
+                    const errorMessage = data.message || 'Nie udało się rozpocząć misji. Spróbuj ponownie.';
+                    
+                    // Popup błędu
+                    const errorPopup = document.createElement('div');
+                    errorPopup.style.position = 'fixed';
+                    errorPopup.style.top = '50%';
+                    errorPopup.style.left = '50%';
+                    errorPopup.style.transform = 'translate(-50%, -50%)';
+                    errorPopup.style.padding = '2rem';
+                    errorPopup.style.borderRadius = '12px';
+                    errorPopup.style.zIndex = '1000';
+                    errorPopup.style.boxShadow = '0 10px 30px rgba(0,0,0,0.5)';
+                    errorPopup.style.minWidth = '300px';
+                    errorPopup.style.textAlign = 'center';
+                    errorPopup.style.fontWeight = 'bold';
+                    errorPopup.style.backgroundColor = 'var(--error, #ef4444)';
+                    errorPopup.style.color = 'white';
+                    errorPopup.style.border = '2px solid var(--error)';
+                    
+                    errorPopup.innerHTML = `
+                        <h3 style="margin: 0; font-size: 1.5rem;">❌ Błąd</h3>
+                        <p style="margin: 1rem 0 0 0; font-size: 1rem;">${errorMessage}</p>
+                    `;
+                    
+                    document.body.appendChild(errorPopup);
+                    
+                    setTimeout(() => {
+                        if (errorPopup.parentNode) {
+                            errorPopup.parentNode.removeChild(errorPopup);
+                        }
+                    }, 3500);
+                    return;
+                }
                 
                 // Stwórz popup
                 const popup = document.createElement('div');
