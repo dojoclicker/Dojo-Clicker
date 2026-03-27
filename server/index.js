@@ -249,9 +249,16 @@ app.get('/api/character', authenticateToken, async (req, res) => {
     // Obliczenia przyrostów (BigInt) - Wszystko odpala się równo co 60 sekund
     if (ticks60s > 0n || !character.last_calculation_time) {
       const staminaGain = ticks60s * 1n;
-      const hpGain = ticks60s * (1n + (endurance / 100n));
-      // MP: Bazowo 2 pkt/min. Bonus: +2 pkt/min za każde 100 pkt Siły Mentalnej
-      const mpGain = ticks60s * (2n + ((mental_strength / 100n) * 2n));
+      
+      // HP: Bazowo 1 pkt/min. Bonus to pierwiastek z Wytrzymałości / 10.
+      // (Krzywa pierwiastkowa zapobiega byciu nieśmiertelnym w Late-Game i wymusza używanie Sklepu)
+      const enduranceBonus = BigInt(Math.floor(Math.sqrt(Number(endurance)) / 10));
+      const hpGain = ticks60s * (1n + enduranceBonus);
+      
+      // MP: Bazowo 2 pkt/min. Bonus to pierwiastek z Siły Mentalnej / 5.
+      // Skaluje się dwukrotnie szybciej niż HP.
+      const mentalBonus = BigInt(Math.floor(Math.sqrt(Number(mental_strength)) / 5));
+      const mpGain = ticks60s * (2n + mentalBonus);
 
       current_stamina = minBigInt(max_stamina, current_stamina + staminaGain);
       current_hp = minBigInt(max_hp, current_hp + hpGain);
