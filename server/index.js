@@ -225,20 +225,18 @@ app.get('/api/character', authenticateToken, async (req, res) => {
     const max_stamina = 100n + bonus_stamina;
 
     // ==========================================
-    // LENIWA EWALUACJA (LAZY EVALUATION) - STAMINA, HP, MP
+    // LENIWA EWALUACJA (LAZY EVALUATION) - ZUNIFIKOWANY TICK 60s
     // ==========================================
     const now = Date.now();
     const lastCalcTime = character.last_calculation_time ? new Date(character.last_calculation_time).getTime() : now;
     
     const elapsedMs = Math.max(0, now - lastCalcTime); 
     
-    // NWD dla 60s i 30s to 30000ms. Używamy tego do reszty, aby nie zgubić tików MP!
-    const consumedMs = elapsedMs - (elapsedMs % 30000); 
-    const remainderMs = elapsedMs % 30000; 
+    // ZUNIFIKOWANY TICK: 60 sekund (60000 ms). Rozwiązuje problem desynchronizacji i kradzieży czasu!
+    const consumedMs = elapsedMs - (elapsedMs % 60000); 
+    const remainderMs = elapsedMs % 60000; 
     
-    // Ticki dla poszczególnych interwałów
     const ticks60s = BigInt(Math.floor(consumedMs / 60000));
-    const ticks30s = BigInt(Math.floor(consumedMs / 30000));
     
     // Przesuwamy nowy punkt zapisu w przeszłość o niewykorzystane milisekundy
     const newCalcTime = new Date(now - remainderMs).toISOString(); 
@@ -248,11 +246,12 @@ app.get('/api/character', authenticateToken, async (req, res) => {
     let current_mp = BigInt(character.mp ?? '100');
     let dbUpdateNeeded = false;
 
-    // Obliczenia przyrostów (BigInt)
-    if (ticks30s > 0n || ticks60s > 0n || !character.last_calculation_time) {
+    // Obliczenia przyrostów (BigInt) - Wszystko odpala się równo co 60 sekund
+    if (ticks60s > 0n || !character.last_calculation_time) {
       const staminaGain = ticks60s * 1n;
       const hpGain = ticks60s * (1n + (endurance / 100n));
-      const mpGain = ticks30s * (1n + (mental_strength / 100n));
+      // MP: Bazowo 2 pkt/min. Bonus: +2 pkt/min za każde 100 pkt Siły Mentalnej
+      const mpGain = ticks60s * (2n + ((mental_strength / 100n) * 2n));
 
       current_stamina = minBigInt(max_stamina, current_stamina + staminaGain);
       current_hp = minBigInt(max_hp, current_hp + hpGain);
