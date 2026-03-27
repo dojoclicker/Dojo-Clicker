@@ -543,6 +543,42 @@ body {
         padding: 0.5rem;
     }
     
+    .pl-info-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background-color: var(--goku-accent, #f59e0b);
+    color: #fff;
+    font-size: 11px;
+    font-weight: bold;
+    cursor: pointer;
+    vertical-align: middle;
+    transition: transform 0.2s ease;
+}
+.pl-info-icon:hover {
+    transform: scale(1.1);
+}
+.pl-tooltip {
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 220px;
+    background: rgba(15, 23, 42, 0.95);
+    border: 1px solid var(--goku-accent, #f59e0b);
+    padding: 10px;
+    border-radius: 6px;
+    z-index: 1000;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+    text-align: center;
+    line-height: 1.4;
+    margin-top: 5px;
+}
+
     .mission-card {
         width: 160px;
         height: 200px;
