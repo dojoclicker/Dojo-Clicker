@@ -222,6 +222,27 @@ app.get('/api/character', authenticateToken, async (req, res) => {
     // Obliczenia Max HP/MP/Stamina (Balans: +1 Max HP za każde 20 pkt Siły)
     const max_hp = 100n + (strength / 20n) + bonus_hp;
     const max_mp = 100n + (intelligence / 5n) + bonus_mp;
+
+    // ==========================================
+    // LENIWA EWALUACJA (LAZY EVALUATION) - ZUNIFIKOWANY TICK 60s
+    // ==========================================
+    // KRYTYCZNE: Inteligentny parser stref czasowych.
+    const ensureUTC = (dateVal) => {
+        if (!dateVal || dateVal === 'null' || dateVal === 'undefined') return null;
+        const str = String(dateVal).trim();
+        
+        // Jeśli string z bazy ma już przypisaną strefę (np. Z, +00:00, lub -05:00 po literze T)
+        if (str.endsWith('Z') || str.includes('+') || (str.includes('T') && str.indexOf('-', str.indexOf('T')) !== -1)) {
+            return str; 
+        }
+        
+        // Doklejamy Z tylko do "gołych" dat, które baza ucięła
+        return str + 'Z';
+    };
+
+    const lastCalcStr = ensureUTC(character.last_calculation_time);
+    const hospitalUntilStr = ensureUTC(character.hospital_until);
+
     const now = Date.now();
     let effectiveLastCalcTime = now;
     
