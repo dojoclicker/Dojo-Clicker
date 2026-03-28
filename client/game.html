@@ -695,7 +695,7 @@
           if (descEl) descEl.innerText = "Straciłeś przytomność w walce. Twój organizm musi się zregenerować.";
           if (graphicEl) graphicEl.style.borderColor = '#dc2626'; // Czerwona ramka
           
-          hospitalInterval = setInterval(() => {
+          function updateTimer() {
             const now = Date.now();
             const distance = hospitalUntil - now;
             
@@ -712,9 +712,9 @@
               if (descEl) descEl.innerText = "Jesteś zdrowy! Pomożemy ci w razie potrzeby.";
               if (graphicEl) graphicEl.style.borderColor = '#166534'; // Zielona ramka
               
-              // Odblokuj zakładki i odśwież postać, aby serwer Leniwą Ewaluacją nadał nam startowe zasoby!
+              // Odblokuj zakładki i odśwież postać
               lockTabsForHospital(false);
-              fetchCharacterData(); // Wywołaj Twoją funkcję pobierającą stan postaci
+              fetchCharacterData(); 
               return;
             }
             
@@ -728,8 +728,11 @@
               (hours < 10 ? "0" + hours : hours) + ":" + 
               (minutes < 10 ? "0" + minutes : minutes) + ":" + 
               (seconds < 10 ? "0" + seconds : seconds);
-              
-          }, 1000);
+          }
+          
+          // Wywołaj natychmiast pierwszą klatkę czasu, aby uniknąć opóźnienia
+          updateTimer();
+          hospitalInterval = setInterval(updateTimer, 1000);
         }
 
         function lockTabsForHospital(isLocked) {
@@ -908,6 +911,38 @@
             }, 3000);
         }
 
+        // Główna funkcja aktywująca zakładkę (Wymaga bycia w Global Scope dla Szpitala!)
+        function activateTab(tabName) {
+            // Zapisz wybór w pamięci przeglądarki
+            localStorage.setItem('active_game_tab', tabName);
+
+            // Ukryj wszystkie widoki
+            const allViews = document.querySelectorAll('[id$="-view"]');
+            allViews.forEach(view => {
+                view.style.display = 'none';
+            });
+
+            // Pokaż docelowy widok - specjalny case dla hospital-view
+            const targetView = document.getElementById(`${tabName}-view`);
+            if (targetView) {
+                if (tabName === 'hospital') {
+                    targetView.style.display = 'flex'; // Zostawiamy flex tylko dla szpitala
+                } else {
+                    targetView.style.display = 'block'; // Przywraca poprawne wyśrodkowanie placeholders!
+                }
+            }
+
+            // Zaktualizuj klasy przycisków (podświetlenie)
+            const navButtons = document.querySelectorAll('.nav-btn');
+            navButtons.forEach(btn => btn.classList.remove('active'));
+            
+            // Jeśli to nie jest dashboard, podświetl odpowiedni przycisk na dolnym pasku
+            if (tabName !== 'dashboard') {
+                const activeBtn = document.querySelector(`[data-tab="${tabName}"]`);
+                if (activeBtn) activeBtn.classList.add('active');
+            }
+        }
+
         // Inicjalizacja aplikacji
         document.addEventListener('DOMContentLoaded', function() {
             // 1. Sprawdź autoryzację
@@ -950,33 +985,6 @@
             
             // Pobierz ostatnio zapisaną zakładkę lub ustaw "dashboard" jako domyślną
             const savedTab = localStorage.getItem('active_game_tab') || 'dashboard';
-
-            // Główna funkcja aktywująca zakładkę
-            function activateTab(tabName) {
-                // Zapisz wybór w pamięci przeglądarki
-                localStorage.setItem('active_game_tab', tabName);
-
-                // Ukryj wszystkie widoki
-                const allViews = document.querySelectorAll('[id$="-view"]');
-                allViews.forEach(view => {
-                    view.style.display = 'none';
-                });
-
-                // Pokaż docelowy widok - specjalny case dla hospital-view
-                const targetView = document.getElementById(`${tabName}-view`);
-                if (targetView) {
-                    targetView.style.display = 'flex'; // Używamy flex dla hospital-container!
-                }
-
-                // Zaktualizuj klasy przycisków (podświetlenie)
-                navButtons.forEach(btn => btn.classList.remove('active'));
-                
-                // Jeśli to nie jest dashboard, podświetl odpowiedni przycisk na dolnym pasku
-                if (tabName !== 'dashboard') {
-                    const activeBtn = document.querySelector(`[data-tab="${tabName}"]`);
-                    if (activeBtn) activeBtn.classList.add('active');
-                }
-            }
 
             // Podepnij nasłuchiwanie pod przyciski nawigacyjne (Misje, Ekwipunek, itd.)
             navButtons.forEach(button => {
