@@ -263,25 +263,27 @@ app.get('/api/character', authenticateToken, async (req, res) => {
         }
     }
     
-    // PANCERNA BLOKADA SZPITALNA: Chroni przed wyciekiem regeneracji przy uszkodzonych datach
-    // KRYTYCZNY FIX: Używamy ?? (Nullish Coalescing) zamiast ||, aby szanować wartość 0!
+    // ==========================================
+    // POPRAWIONA LOGIKA WYJŚCIA ZE SZPITALA
+    // ==========================================
     let isHospitalized = false;
     let hospitalExitTime = null;
     
+    // Sprawdzamy, czy postać ma 0 HP (jest nieprzytomna)
     if (BigInt(character.hp ?? '100') <= 0n) {
-        // Gracz ma 0 HP - sprawdzamy status szpitala
         if (exactHospitalEndTime && !isNaN(exactHospitalEndTime)) {
             if (now < exactHospitalEndTime) {
                 // NADAL W SZPITALU - Całkowita blokada regeneracji
                 isHospitalized = true;
-                effectiveLastCalcTime = now; // Zamrażamy czas
+                effectiveLastCalcTime = now; 
             } else {
-                // KARA MINĘŁA - Gracz wychodzi ze szpitala
+                // MOMENT WYJŚCIA - Czas kary minął!
+                isHospitalized = false; // KLUCZOWE: Odblokowujemy flagę, by naliczyć 10% HP poniżej
                 hospitalExitTime = exactHospitalEndTime;
-                effectiveLastCalcTime = exactHospitalEndTime; // Start regeneracji od wyjścia
+                effectiveLastCalcTime = exactHospitalEndTime; 
             }
         } else {
-            // Brak danych o czasie szpitala - domyślnie zamrażamy regenerację
+            // Brak danych o czasie - dla bezpieczeństwa uznajemy za szpital
             isHospitalized = true;
             effectiveLastCalcTime = now;
         }
