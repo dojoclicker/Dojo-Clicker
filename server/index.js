@@ -242,12 +242,20 @@ app.get('/api/character', authenticateToken, async (req, res) => {
     };
 
     const lastCalcStr = ensureUTC(character.last_calculation_time);
-    const hospitalUntilStr = ensureUTC(character.hospital_until);
+    
+    // PANCERNY ODCZYT CZASU SZPITALNEGO (Bezpośrednio z bezpiecznego formatu JSONB)
+    let exactHospitalEndTime = null;
+    if (character.last_death_penalty && character.last_death_penalty.hospital_end_ms) {
+        exactHospitalEndTime = Number(character.last_death_penalty.hospital_end_ms);
+    } else if (character.hospital_until) {
+        // Fallback dla bardzo starych zapisów
+        exactHospitalEndTime = new Date(ensureUTC(character.hospital_until)).getTime();
+    }
 
     const now = Date.now();
     let effectiveLastCalcTime = now;
     
-    // Walidacja timestampu z bazy (chroni przed RangeError: Invalid time value)
+    // Walidacja timestampu z bazy
     if (lastCalcStr) {
         const parsedTime = new Date(lastCalcStr).getTime();
         if (!isNaN(parsedTime)) {
@@ -256,9 +264,8 @@ app.get('/api/character', authenticateToken, async (req, res) => {
     }
     
     // BLOKADA SZPITALNA: Jeśli gracz jest w Szpitalu, zatrzymujemy tykanie czasu dla regeneracji
-    if (BigInt(character.hp || '100') <= 0n && hospitalUntilStr) {
-      const hospitalEndTime = new Date(hospitalUntilStr).getTime();
-      if (!isNaN(hospitalEndTime) && now < hospitalEndTime) {
+    if (BigInt(character.hp || '100') <= 0n && exactHospitalEndTime) {
+      if (!isNaN(exactHospitalEndTime) && now < exactHospitalEndTime) {
         effectiveLastCalcTime = now; 
       }
     }
@@ -345,7 +352,8 @@ app.get('/api/character', authenticateToken, async (req, res) => {
       },
       
       completed_missions: character.completed_missions || [],
-      hospital_until: hospitalUntilStr // Wysłanie zabezpieczonego stringa UTC z doklejoną literą 'Z'
+      // Zawsze wysyłamy na frontend twardy i poprawny czas wygenerowany z absolutnych milisekund:
+      hospital_until: exactHospitalEndTime ? new Date(exactHospitalEndTime).toISOString() : ensureUTC(character.hospital_until)
     };
 
     // Wysłanie odpowiedzi z konwersją BigInt na String
@@ -503,22 +511,25 @@ app.post('/api/missions/start', authenticateToken, async (req, res) => {
         const finalInt = maxBigInt(1n, currentInt - intLoss);
         const finalMen = maxBigInt(1n, currentMen - menLoss);
 
-        // Zapis utraconych statystyk jako STRING w JSONB (Ochrona parsera)
+        // 3. Wyliczenie Czasu Kary Szpitalnej z Bazowego Poziomu Mocy
+        const statsSum = finalStr + finalSpd + finalEnd + finalInt + finalMen;
+        const basePowerLevel = statsSum + bonusHp + (bonusMp * 2n) + (bonusStamina * 5n);
+        
+        const hospitalMinutes = Math.min(120, 5 + Math.floor(Math.pow(Number(basePowerLevel), 0.25)));
+        
+        // PANCERNY ZAPIS CZASU (Bypass dla bazy danych): Zapisujemy absolutne milisekundy
+        const exactEndMs = Date.now() + hospitalMinutes * 60000;
+        const hospitalUntilUTC = new Date(exactEndMs).toISOString();
+
+        // Zapis utraconych statystyk jako STRING w JSONB, z dodaniem twardego czasu wyjścia
         const deathPenalty = {
             strength: strLoss.toString(),
             speed: spdLoss.toString(),
             endurance: endLoss.toString(),
             intelligence: intLoss.toString(),
-            mental_strength: menLoss.toString()
+            mental_strength: menLoss.toString(),
+            hospital_end_ms: exactEndMs.toString() // Ochrona przez modyfikacją stref czasowych przez Postgres!
         };
-
-        // 3. Wyliczenie Czasu Kary Szpitalnej z Bazowego Poziomu Mocy
-        const statsSum = finalStr + finalSpd + finalEnd + finalInt + finalMen;
-        const basePowerLevel = statsSum + bonusHp + (bonusMp * 2n) + (bonusStamina * 5n);
-        
-        // Wymagane użycie Number do potęgowania
-        const hospitalMinutes = Math.min(120, 5 + Math.floor(Math.pow(Number(basePowerLevel), 0.25)));
-        const hospitalUntilUTC = new Date(Date.now() + hospitalMinutes * 60000).toISOString();
         
         // KRYTYCZNE (Postgres Timezone Fix): Wymuszamy na bazie zapis czystych cyfr.
         const hospitalUntilDB = hospitalUntilUTC.replace('Z', '');
