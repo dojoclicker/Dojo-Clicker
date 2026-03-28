@@ -222,21 +222,6 @@ app.get('/api/character', authenticateToken, async (req, res) => {
     // Obliczenia Max HP/MP/Stamina (Balans: +1 Max HP za każde 20 pkt Siły)
     const max_hp = 100n + (strength / 20n) + bonus_hp;
     const max_mp = 100n + (intelligence / 5n) + bonus_mp;
-    const max_stamina = 100n + bonus_stamina;
-
-    // ==========================================
-    // LENIWA EWALUACJA (LAZY EVALUATION) - ZUNIFIKOWANY TICK 60s
-    // ==========================================
-    // KRYTYCZNE: Bezpieczny parser chroniący przed "nullZ" i uszkodzonymi danymi (NaN) z bazy!
-    const ensureUTC = (dateVal) => {
-        if (!dateVal || dateVal === 'null' || dateVal === 'undefined') return null;
-        const str = String(dateVal);
-        return str.endsWith('Z') ? str : str + 'Z';
-    };
-
-    const lastCalcStr = ensureUTC(character.last_calculation_time);
-    const hospitalUntilStr = ensureUTC(character.hospital_until);
-
     const now = Date.now();
     let effectiveLastCalcTime = now;
     
