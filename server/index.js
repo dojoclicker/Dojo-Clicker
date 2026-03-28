@@ -275,9 +275,6 @@ app.get('/api/character', authenticateToken, async (req, res) => {
     // Przesuwamy nowy punkt zapisu w przeszłość o niewykorzystane milisekundy. Samo-naprawa zepsutego konta.
     const newCalcTimeUTC = new Date(now - remainderMs).toISOString(); 
     
-    // KRYTYCZNE (Postgres Timezone Fix): Ucinamy 'Z' przed wysłaniem do bazy, aby czas nie cofnął się w przeszłość!
-    const newCalcTimeDB = newCalcTimeUTC.replace('Z', '');
-    
     let current_stamina = BigInt(character.stamina ?? '100');
     let current_hp = BigInt(character.hp ?? '100');
     let current_mp = BigInt(character.mp ?? '100');
@@ -311,7 +308,7 @@ app.get('/api/character', authenticateToken, async (req, res) => {
           stamina: current_stamina.toString(),
           hp: current_hp.toString(),
           mp: current_mp.toString(),
-          last_calculation_time: newCalcTimeDB
+          last_calculation_time: newCalcTimeUTC
         })
         .eq('profile_id', userId);
     }
@@ -538,7 +535,7 @@ app.post('/api/missions/start', authenticateToken, async (req, res) => {
             intelligence: finalInt.toString(),
             mental_strength: finalMen.toString(),
             last_death_penalty: deathPenalty,
-            hospital_until: hospitalUntilDB,
+            hospital_until: hospitalUntilUTC, // WYSYŁAMY BEZPOŚREDNIO CZYSTE UTC Z LITERĄ Z
             current_form: 'Stan Podstawowy' // Dezaktywacja formy
         }).eq('profile_id', userId);
 
