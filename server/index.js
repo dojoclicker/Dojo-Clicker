@@ -263,11 +263,18 @@ app.get('/api/character', authenticateToken, async (req, res) => {
         }
     }
     
-    // BLOKADA SZPITALNA: Jeśli gracz jest w Szpitalu, zatrzymujemy tykanie czasu dla regeneracji
-    if (BigInt(character.hp || '100') <= 0n && exactHospitalEndTime) {
-      if (!isNaN(exactHospitalEndTime) && now < exactHospitalEndTime) {
-        effectiveLastCalcTime = now; 
-      }
+    // PANCERNA BLOKADA SZPITALNA: Chroni przed wyciekiem regeneracji przy uszkodzonych datach
+    if (BigInt(character.hp || '100') <= 0n) {
+        // Domyślnie zamrażamy czas (0 regeneracji), jeśli gracz ma 0 HP
+        effectiveLastCalcTime = now;
+
+        // ODBLOKOWANIE: Tylko jeśli mamy poprawny czas wyjścia i on faktycznie minął
+        if (exactHospitalEndTime && !isNaN(exactHospitalEndTime)) {
+            if (now >= exactHospitalEndTime) {
+                // Kara minęła. Leniwa Ewaluacja startuje dokładnie od sekundy wyjścia ze Szpitala!
+                effectiveLastCalcTime = exactHospitalEndTime;
+            }
+        }
     }
 
     let elapsedMs = now - effectiveLastCalcTime;
@@ -309,14 +316,13 @@ app.get('/api/character', authenticateToken, async (req, res) => {
     }
 
     if (dbUpdateNeeded) {
-      const newCalcTimeDB = newCalcTimeUTC.replace('Z', ''); // Fix dla bazy
       await supabase
         .from('characters')
         .update({ 
           stamina: current_stamina.toString(),
           hp: current_hp.toString(),
           mp: current_mp.toString(),
-          last_calculation_time: newCalcTimeDB
+          last_calculation_time: newCalcTimeUTC // Czyste UTC
         })
         .eq('profile_id', userId);
     }
@@ -528,16 +534,13 @@ app.post('/api/missions/start', authenticateToken, async (req, res) => {
             endurance: endLoss.toString(),
             intelligence: intLoss.toString(),
             mental_strength: menLoss.toString(),
-            hospital_end_ms: exactEndMs.toString() // Ochrona przez modyfikacją stref czasowych przez Postgres!
+            hospital_end_ms: exactEndMs.toString() 
         };
-        
-        // KRYTYCZNE (Postgres Timezone Fix): Wymuszamy na bazie zapis czystych cyfr.
-        const hospitalUntilDB = hospitalUntilUTC.replace('Z', '');
 
         // 4. Zapis śmierci do Bazy Danych
         await supabase.from('characters').update({
             hp: '0',
-            mp: '0', // Śmierć zeruje MP
+            mp: '0', 
             stamina: newStamina.toString(),
             coins: newCoins.toString(),
             strength: finalStr.toString(),
@@ -546,8 +549,8 @@ app.post('/api/missions/start', authenticateToken, async (req, res) => {
             intelligence: finalInt.toString(),
             mental_strength: finalMen.toString(),
             last_death_penalty: deathPenalty,
-            hospital_until: hospitalUntilDB, // Blokujemy cofanie czasu przez bazę
-            current_form: 'Stan Podstawowy' // Dezaktywacja formy
+            hospital_until: hospitalUntilUTC, // Czyste UTC, bez ucinania 'Z'
+            current_form: 'Stan Podstawowy' 
         }).eq('profile_id', userId);
 
         return res.json({
