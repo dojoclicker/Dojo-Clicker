@@ -227,37 +227,45 @@ app.get('/api/character', authenticateToken, async (req, res) => {
     // ==========================================
     // LENIWA EWALUACJA (LAZY EVALUATION) - ZUNIFIKOWANY TICK 60s
     // ==========================================
-    // KRYTYCZNE: Baza PostgreSQL obcina 'Z' (Znak UTC) z ISO Stringów. 
-    // Musimy to sztucznie dokleić, inaczej Node.js i Przeglądarka zinterpretują to jako czas lokalny, co zepsuje timery!
-    const ensureUTC = (dateStr) => {
-        if (!dateStr) return null;
-        return dateStr.endsWith('Z') ? dateStr : dateStr + 'Z';
+    // KRYTYCZNE: Bezpieczny parser chroniący przed "nullZ" i uszkodzonymi danymi (NaN) z bazy!
+    const ensureUTC = (dateVal) => {
+        if (!dateVal || dateVal === 'null' || dateVal === 'undefined') return null;
+        const str = String(dateVal);
+        return str.endsWith('Z') ? str : str + 'Z';
     };
 
     const lastCalcStr = ensureUTC(character.last_calculation_time);
     const hospitalUntilStr = ensureUTC(character.hospital_until);
 
     const now = Date.now();
-    let effectiveLastCalcTime = lastCalcStr ? new Date(lastCalcStr).getTime() : now;
+    let effectiveLastCalcTime = now;
+    
+    // Walidacja timestampu z bazy (chroni przed RangeError: Invalid time value)
+    if (lastCalcStr) {
+        const parsedTime = new Date(lastCalcStr).getTime();
+        if (!isNaN(parsedTime)) {
+            effectiveLastCalcTime = parsedTime;
+        }
+    }
     
     // BLOKADA SZPITALNA: Jeśli gracz jest w Szpitalu, zatrzymujemy tykanie czasu dla regeneracji
     if (BigInt(character.hp || '100') <= 0n && hospitalUntilStr) {
       const hospitalEndTime = new Date(hospitalUntilStr).getTime();
-      if (now < hospitalEndTime) {
-        // Wciąż w szpitalu = ZERO regeneracji (czas dla zasobów stoi w miejscu)
+      if (!isNaN(hospitalEndTime) && now < hospitalEndTime) {
         effectiveLastCalcTime = now; 
       }
     }
 
-    const elapsedMs = Math.max(0, now - effectiveLastCalcTime); 
+    let elapsedMs = now - effectiveLastCalcTime;
+    if (isNaN(elapsedMs) || elapsedMs < 0) elapsedMs = 0;
     
-    // ZUNIFIKOWANY TICK: 60 sekund (60000 ms). Rozwiązuje problem desynchronizacji i kradzieży czasu!
     const consumedMs = elapsedMs - (elapsedMs % 60000); 
-    const remainderMs = elapsedMs % 60000; 
+    let remainderMs = elapsedMs % 60000; 
+    if (isNaN(remainderMs)) remainderMs = 0;
     
     const ticks60s = BigInt(Math.floor(consumedMs / 60000));
     
-    // Przesuwamy nowy punkt zapisu w przeszłość o niewykorzystane milisekundy
+    // Przesuwamy nowy punkt zapisu w przeszłość o niewykorzystane milisekundy. Samo-naprawa zepsutego konta.
     const newCalcTime = new Date(now - remainderMs).toISOString(); 
     
     let current_stamina = BigInt(character.stamina ?? '100');
