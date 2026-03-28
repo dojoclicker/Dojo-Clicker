@@ -537,8 +537,8 @@ app.post('/api/missions/start', authenticateToken, async (req, res) => {
             hospital_end_ms: exactEndMs.toString() 
         };
 
-        // 4. Zapis śmierci do Bazy Danych
-        await supabase.from('characters').update({
+        // 4. Zapis śmierci do Bazy Danych (Z Twardą Obsługą Błędów)
+        const { error: deathUpdateError } = await supabase.from('characters').update({
             hp: '0',
             mp: '0', 
             stamina: newStamina.toString(),
@@ -549,9 +549,18 @@ app.post('/api/missions/start', authenticateToken, async (req, res) => {
             intelligence: finalInt.toString(),
             mental_strength: finalMen.toString(),
             last_death_penalty: deathPenalty,
-            hospital_until: hospitalUntilUTC, // Czyste UTC, bez ucinania 'Z'
+            hospital_until: hospitalUntilUTC, 
             current_form: 'Stan Podstawowy' 
         }).eq('profile_id', userId);
+
+        // KRYTYCZNE: Jeśli baza odrzuci zapis (np. brak kolumny), wywalamy błąd na frontend!
+        if (deathUpdateError) {
+            console.error('[CRITICAL] Błąd zapisu śmierci do bazy:', deathUpdateError);
+            return res.status(500).json({ 
+                status: 'error', 
+                message: `CICHY BŁĄD BAZY DANYCH: ${deathUpdateError.message}. Sprawdź, czy w tabeli 'characters' nie brakuje kolumn (np. last_death_penalty, current_form)!` 
+            });
+        }
 
         return res.json({
             result: 'death',
@@ -560,7 +569,7 @@ app.post('/api/missions/start', authenticateToken, async (req, res) => {
                 coins_lost: coinsLost.toString(),
                 hospital_minutes: hospitalMinutes,
                 stats_lost: deathPenalty,
-                hospital_until: hospitalUntilUTC // Frontend MUSI dostać wersję z Z, żeby poprawnie odliczać czas!
+                hospital_until: hospitalUntilUTC 
             }
         });
 
