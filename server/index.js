@@ -273,7 +273,10 @@ app.get('/api/character', authenticateToken, async (req, res) => {
     const ticks60s = BigInt(Math.floor(consumedMs / 60000));
     
     // Przesuwamy nowy punkt zapisu w przeszłość o niewykorzystane milisekundy. Samo-naprawa zepsutego konta.
-    const newCalcTime = new Date(now - remainderMs).toISOString(); 
+    const newCalcTimeUTC = new Date(now - remainderMs).toISOString(); 
+    
+    // KRYTYCZNE (Postgres Timezone Fix): Ucinamy 'Z' przed wysłaniem do bazy, aby czas nie cofnął się w przeszłość!
+    const newCalcTimeDB = newCalcTimeUTC.replace('Z', '');
     
     let current_stamina = BigInt(character.stamina ?? '100');
     let current_hp = BigInt(character.hp ?? '100');
@@ -308,7 +311,7 @@ app.get('/api/character', authenticateToken, async (req, res) => {
           stamina: current_stamina.toString(),
           hp: current_hp.toString(),
           mp: current_mp.toString(),
-          last_calculation_time: newCalcTime
+          last_calculation_time: newCalcTimeDB
         })
         .eq('profile_id', userId);
     }
@@ -517,7 +520,11 @@ app.post('/api/missions/start', authenticateToken, async (req, res) => {
         
         // Wymagane użycie Number do potęgowania
         const hospitalMinutes = Math.min(120, 5 + Math.floor(Math.pow(Number(basePowerLevel), 0.25)));
-        const hospitalUntil = new Date(Date.now() + hospitalMinutes * 60000).toISOString();
+        const hospitalUntilUTC = new Date(Date.now() + hospitalMinutes * 60000).toISOString();
+        
+        // KRYTYCZNE (Postgres Timezone Fix): Baza Postgres konwertuje ISO stringi z literą Z do lokalnej strefy.
+        // Aby uniknąć cofania czasu (i przedwczesnego leczenia), zapisujemy czyste cyfry ucinając Z.
+        const hospitalUntilDB = hospitalUntilUTC.replace('Z', '');
 
         // 4. Zapis śmierci do Bazy Danych
         await supabase.from('characters').update({
@@ -531,7 +538,7 @@ app.post('/api/missions/start', authenticateToken, async (req, res) => {
             intelligence: finalInt.toString(),
             mental_strength: finalMen.toString(),
             last_death_penalty: deathPenalty,
-            hospital_until: hospitalUntil,
+            hospital_until: hospitalUntilDB,
             current_form: 'Stan Podstawowy' // Dezaktywacja formy
         }).eq('profile_id', userId);
 
@@ -542,7 +549,7 @@ app.post('/api/missions/start', authenticateToken, async (req, res) => {
                 coins_lost: coinsLost.toString(),
                 hospital_minutes: hospitalMinutes,
                 stats_lost: deathPenalty,
-                hospital_until: hospitalUntil // KRYTYCZNE: Wysyłamy timestamp, by licznik ruszył od razu!
+                hospital_until: hospitalUntilUTC // Frontend MUSI dostać wersję z Z, żeby poprawnie odliczać czas!
             }
         });
 
