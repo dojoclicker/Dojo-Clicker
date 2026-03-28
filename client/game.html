@@ -986,7 +986,7 @@
             // 4. Event Listener dla przycisku Magicznej Fasolki
             document.getElementById('btn-use-senzu')?.addEventListener('click', async function() {
                 try {
-                    const response = await fetch(`${API_BASE_URL}/api/items/use-senzu`, {
+                    const response = await fetch(`${API_BASE_URL}/api/debug/zenkai`, {
                         method: 'POST',
                         headers: {
                             'Authorization': `Bearer ${localStorage.getItem('session_token')}`,

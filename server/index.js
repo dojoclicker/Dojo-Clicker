@@ -264,26 +264,24 @@ app.get('/api/character', authenticateToken, async (req, res) => {
     }
     
     // ==========================================
-    // POPRAWIONA LOGIKA WYJŚCIA ZE SZPITALA
+    // POPRAWIONA LOGIKA WYJŚCIA - ZERO OPÓŹNIEŃ
     // ==========================================
     let isHospitalized = false;
     let hospitalExitTime = null;
     
-    // Sprawdzamy, czy postać ma 0 HP (jest nieprzytomna)
     if (BigInt(character.hp ?? '100') <= 0n) {
         if (exactHospitalEndTime && !isNaN(exactHospitalEndTime)) {
-            if (now < exactHospitalEndTime) {
-                // NADAL W SZPITALU - Całkowita blokada regeneracji
+            // Dodajemy 500ms marginesu, aby wyjście było płynne dla frontendu
+            if (now + 500 < exactHospitalEndTime) {
                 isHospitalized = true;
                 effectiveLastCalcTime = now; 
             } else {
-                // MOMENT WYJŚCIA - Czas kary minął!
-                isHospitalized = false; // KLUCZOWE: Odblokowujemy flagę, by naliczyć 10% HP poniżej
+                // CZAS MINĄŁ - Wychodzisz natychmiast
+                isHospitalized = false;
                 hospitalExitTime = exactHospitalEndTime;
                 effectiveLastCalcTime = exactHospitalEndTime; 
             }
         } else {
-            // Brak danych o czasie - dla bezpieczeństwa uznajemy za szpital
             isHospitalized = true;
             effectiveLastCalcTime = now;
         }
@@ -732,6 +730,49 @@ app.post('/api/missions/start', authenticateToken, async (req, res) => {
   } catch (err) {
     console.error('[Mission] Błąd podczas rozpoczynania misji:', err.message);
     res.status(500).json({ error: 'Błąd serwera podczas rozpoczynania misji' });
+  }
+});
+
+// ==========================================
+// ENDPOINT TESTOWY: Magiczna Fasolka (Zenkai)
+// ==========================================
+app.post('/api/debug/zenkai', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { data: char, error: fetchError } = await supabase
+      .from('characters')
+      .select('*')
+      .eq('profile_id', userId)
+      .single();
+
+    if (fetchError || !char) throw new Error('Nie znaleziono postaci');
+
+    const strength = BigInt(char.strength || '1');
+    const intelligence = BigInt(char.intelligence || '1');
+    const bonus_hp = BigInt(char.bonus_hp || '0');
+    const bonus_mp = BigInt(char.bonus_mp || '0');
+    const bonus_stamina = BigInt(char.bonus_stamina || '0');
+
+    const max_hp = 100n + (strength / 20n) + bonus_hp;
+    const max_mp = 100n + (intelligence / 5n) + bonus_mp;
+    const max_stamina = 100n + bonus_stamina;
+
+    const { error: updateError } = await supabase
+      .from('characters')
+      .update({
+        hp: max_hp.toString(),
+        mp: max_mp.toString(),
+        stamina: max_stamina.toString(),
+        hospital_until: null,
+        last_calculation_time: new Date().toISOString(),
+        last_death_penalty: null
+      })
+      .eq('profile_id', userId);
+
+    if (updateError) throw updateError;
+    res.json({ status: 'success', message: 'Zasoby odnowione do 100%.' });
+  } catch (err) {
+    res.status(500).json({ status: 'error', message: err.message });
   }
 });
 
