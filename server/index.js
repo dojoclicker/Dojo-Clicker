@@ -302,13 +302,14 @@ app.get('/api/character', authenticateToken, async (req, res) => {
     }
 
     if (dbUpdateNeeded) {
+      const newCalcTimeDB = newCalcTimeUTC.replace('Z', ''); // Fix dla bazy
       await supabase
         .from('characters')
         .update({ 
           stamina: current_stamina.toString(),
           hp: current_hp.toString(),
           mp: current_mp.toString(),
-          last_calculation_time: newCalcTimeUTC
+          last_calculation_time: newCalcTimeDB
         })
         .eq('profile_id', userId);
     }
@@ -519,8 +520,7 @@ app.post('/api/missions/start', authenticateToken, async (req, res) => {
         const hospitalMinutes = Math.min(120, 5 + Math.floor(Math.pow(Number(basePowerLevel), 0.25)));
         const hospitalUntilUTC = new Date(Date.now() + hospitalMinutes * 60000).toISOString();
         
-        // KRYTYCZNE (Postgres Timezone Fix): Baza Postgres konwertuje ISO stringi z literą Z do lokalnej strefy.
-        // Aby uniknąć cofania czasu (i przedwczesnego leczenia), zapisujemy czyste cyfry ucinając Z.
+        // KRYTYCZNE (Postgres Timezone Fix): Wymuszamy na bazie zapis czystych cyfr.
         const hospitalUntilDB = hospitalUntilUTC.replace('Z', '');
 
         // 4. Zapis śmierci do Bazy Danych
@@ -535,7 +535,7 @@ app.post('/api/missions/start', authenticateToken, async (req, res) => {
             intelligence: finalInt.toString(),
             mental_strength: finalMen.toString(),
             last_death_penalty: deathPenalty,
-            hospital_until: hospitalUntilUTC, // WYSYŁAMY BEZPOŚREDNIO CZYSTE UTC Z LITERĄ Z
+            hospital_until: hospitalUntilDB, // Blokujemy cofanie czasu przez bazę
             current_form: 'Stan Podstawowy' // Dezaktywacja formy
         }).eq('profile_id', userId);
 
