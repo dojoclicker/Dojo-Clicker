@@ -222,6 +222,7 @@ app.get('/api/character', authenticateToken, async (req, res) => {
     // Obliczenia Max HP/MP/Stamina (Balans: +1 Max HP za każde 20 pkt Siły)
     const max_hp = 100n + (strength / 20n) + bonus_hp;
     const max_mp = 100n + (intelligence / 5n) + bonus_mp;
+    const max_stamina = 100n + bonus_stamina;
 
     // ==========================================
     // LENIWA EWALUACJA (LAZY EVALUATION) - ZUNIFIKOWANY TICK 60s
