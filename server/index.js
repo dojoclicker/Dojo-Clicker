@@ -264,7 +264,8 @@ app.get('/api/character', authenticateToken, async (req, res) => {
     }
     
     // PANCERNA BLOKADA SZPITALNA: Chroni przed wyciekiem regeneracji przy uszkodzonych datach
-    if (BigInt(character.hp || '100') <= 0n) {
+    // KRYTYCZNY FIX: Używamy ?? (Nullish Coalescing) zamiast ||, aby szanować wartość 0!
+    if (BigInt(character.hp ?? '100') <= 0n) {
         // Domyślnie zamrażamy czas (0 regeneracji), jeśli gracz ma 0 HP
         effectiveLastCalcTime = now;
 
