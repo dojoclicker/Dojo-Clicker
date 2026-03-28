@@ -304,31 +304,24 @@ app.get('/api/character', authenticateToken, async (req, res) => {
     let current_mp = BigInt(character.mp ?? '100');
     let dbUpdateNeeded = false;
 
-    // Obliczenia przyrostów (BigInt) - Logika szpitalna i regeneracji
+    // ==========================================
+    // 1. NATYCHMIASTOWY WYPIS ZE SZPITALA (Niezależny od 60s ticków)
+    // ==========================================
+    if (hospitalExitTime && current_hp <= 0n) {
+        const initialHp = (max_hp * 10n) / 100n; // 10% Max HP
+        current_hp = maxBigInt(initialHp, current_hp);
+        dbUpdateNeeded = true;
+    }
+
+    // ==========================================
+    // 2. PASYWNA REGENERACJA (Zależna od 60s ticków)
+    // ==========================================
     if (ticks60s > 0n || !character.last_calculation_time) {
       if (isHospitalized) {
         // GRACZ W SZPITALU - Całkowita blokada regeneracji
-        // Nie naliczamy żadnych przyrostów
         dbUpdateNeeded = false;
-      } else if (hospitalExitTime) {
-        // GRACZ WŁAŚNIE WYSZEDŁ ZE SZPITALA - Nadaj 10% Max HP i regeneruj od teraz
-        const initialHp = (max_hp * 10n) / 100n; // 10% Max HP
-        current_hp = maxBigInt(initialHp, current_hp);
-        
-        // Nalicz regenerację TYLKO za czas od wyjścia ze szpitala
-        const staminaGain = ticks60s * 1n;
-        const enduranceBonus = BigInt(Math.floor(Math.sqrt(Number(endurance)) / 10));
-        const hpGain = ticks60s * (1n + enduranceBonus);
-        const mentalBonus = BigInt(Math.floor(Math.sqrt(Number(mental_strength)) / 5));
-        const mpGain = ticks60s * (2n + mentalBonus);
-
-        current_stamina = minBigInt(max_stamina, current_stamina + staminaGain);
-        current_hp = minBigInt(max_hp, current_hp + hpGain);
-        current_mp = minBigInt(max_mp, current_mp + mpGain);
-        
-        dbUpdateNeeded = true;
       } else {
-        // GRACZ ZDROWY (IDLE) - Pełna regeneracja za cały czas
+        // GRACZ ZDROWY (LUB WŁAŚNIE WYSZEDŁ) - Pełna regeneracja za obliczony czas
         const staminaGain = ticks60s * 1n;
         const enduranceBonus = BigInt(Math.floor(Math.sqrt(Number(endurance)) / 10));
         const hpGain = ticks60s * (1n + enduranceBonus);
