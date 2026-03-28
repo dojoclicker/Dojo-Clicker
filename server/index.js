@@ -265,16 +265,25 @@ app.get('/api/character', authenticateToken, async (req, res) => {
     
     // PANCERNA BLOKADA SZPITALNA: Chroni przed wyciekiem regeneracji przy uszkodzonych datach
     // KRYTYCZNY FIX: Używamy ?? (Nullish Coalescing) zamiast ||, aby szanować wartość 0!
+    let isHospitalized = false;
+    let hospitalExitTime = null;
+    
     if (BigInt(character.hp ?? '100') <= 0n) {
-        // Domyślnie zamrażamy czas (0 regeneracji), jeśli gracz ma 0 HP
-        effectiveLastCalcTime = now;
-
-        // ODBLOKOWANIE: Tylko jeśli mamy poprawny czas wyjścia i on faktycznie minął
+        // Gracz ma 0 HP - sprawdzamy status szpitala
         if (exactHospitalEndTime && !isNaN(exactHospitalEndTime)) {
-            if (now >= exactHospitalEndTime) {
-                // Kara minęła. Leniwa Ewaluacja startuje dokładnie od sekundy wyjścia ze Szpitala!
-                effectiveLastCalcTime = exactHospitalEndTime;
+            if (now < exactHospitalEndTime) {
+                // NADAL W SZPITALU - Całkowita blokada regeneracji
+                isHospitalized = true;
+                effectiveLastCalcTime = now; // Zamrażamy czas
+            } else {
+                // KARA MINĘŁA - Gracz wychodzi ze szpitala
+                hospitalExitTime = exactHospitalEndTime;
+                effectiveLastCalcTime = exactHospitalEndTime; // Start regeneracji od wyjścia
             }
+        } else {
+            // Brak danych o czasie szpitala - domyślnie zamrażamy regenerację
+            isHospitalized = true;
+            effectiveLastCalcTime = now;
         }
     }
 
@@ -295,25 +304,43 @@ app.get('/api/character', authenticateToken, async (req, res) => {
     let current_mp = BigInt(character.mp ?? '100');
     let dbUpdateNeeded = false;
 
-    // Obliczenia przyrostów (BigInt) - Wszystko odpala się równo co 60 sekund
+    // Obliczenia przyrostów (BigInt) - Logika szpitalna i regeneracji
     if (ticks60s > 0n || !character.last_calculation_time) {
-      const staminaGain = ticks60s * 1n;
-      
-      // HP: Bazowo 1 pkt/min. Bonus to pierwiastek z Wytrzymałości / 10.
-      // (Krzywa pierwiastkowa zapobiega byciu nieśmiertelnym w Late-Game i wymusza używanie Sklepu)
-      const enduranceBonus = BigInt(Math.floor(Math.sqrt(Number(endurance)) / 10));
-      const hpGain = ticks60s * (1n + enduranceBonus);
-      
-      // MP: Bazowo 2 pkt/min. Bonus to pierwiastek z Siły Mentalnej / 5.
-      // Skaluje się dwukrotnie szybciej niż HP.
-      const mentalBonus = BigInt(Math.floor(Math.sqrt(Number(mental_strength)) / 5));
-      const mpGain = ticks60s * (2n + mentalBonus);
+      if (isHospitalized) {
+        // GRACZ W SZPITALU - Całkowita blokada regeneracji
+        // Nie naliczamy żadnych przyrostów
+        dbUpdateNeeded = false;
+      } else if (hospitalExitTime) {
+        // GRACZ WŁAŚNIE WYSZEDŁ ZE SZPITALA - Nadaj 10% Max HP i regeneruj od teraz
+        const initialHp = (max_hp * 10n) / 100n; // 10% Max HP
+        current_hp = maxBigInt(initialHp, current_hp);
+        
+        // Nalicz regenerację TYLKO za czas od wyjścia ze szpitala
+        const staminaGain = ticks60s * 1n;
+        const enduranceBonus = BigInt(Math.floor(Math.sqrt(Number(endurance)) / 10));
+        const hpGain = ticks60s * (1n + enduranceBonus);
+        const mentalBonus = BigInt(Math.floor(Math.sqrt(Number(mental_strength)) / 5));
+        const mpGain = ticks60s * (2n + mentalBonus);
 
-      current_stamina = minBigInt(max_stamina, current_stamina + staminaGain);
-      current_hp = minBigInt(max_hp, current_hp + hpGain);
-      current_mp = minBigInt(max_mp, current_mp + mpGain);
-      
-      dbUpdateNeeded = true;
+        current_stamina = minBigInt(max_stamina, current_stamina + staminaGain);
+        current_hp = minBigInt(max_hp, current_hp + hpGain);
+        current_mp = minBigInt(max_mp, current_mp + mpGain);
+        
+        dbUpdateNeeded = true;
+      } else {
+        // GRACZ ZDROWY (IDLE) - Pełna regeneracja za cały czas
+        const staminaGain = ticks60s * 1n;
+        const enduranceBonus = BigInt(Math.floor(Math.sqrt(Number(endurance)) / 10));
+        const hpGain = ticks60s * (1n + enduranceBonus);
+        const mentalBonus = BigInt(Math.floor(Math.sqrt(Number(mental_strength)) / 5));
+        const mpGain = ticks60s * (2n + mentalBonus);
+
+        current_stamina = minBigInt(max_stamina, current_stamina + staminaGain);
+        current_hp = minBigInt(max_hp, current_hp + hpGain);
+        current_mp = minBigInt(max_mp, current_mp + mpGain);
+        
+        dbUpdateNeeded = true;
+      }
     }
 
     if (dbUpdateNeeded) {
@@ -522,6 +549,7 @@ app.post('/api/missions/start', authenticateToken, async (req, res) => {
         const statsSum = finalStr + finalSpd + finalEnd + finalInt + finalMen;
         const basePowerLevel = statsSum + bonusHp + (bonusMp * 2n) + (bonusStamina * 5n);
         
+        // NOWY WZÓR NA SZPITAL: Czas kary w minutach RL
         const hospitalMinutes = Math.min(120, 5 + Math.floor(Math.pow(Number(basePowerLevel), 0.25)));
         
         // PANCERNY ZAPIS CZASU (Bypass dla bazy danych): Zapisujemy absolutne milisekundy
