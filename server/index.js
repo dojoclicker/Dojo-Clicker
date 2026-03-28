@@ -227,12 +227,22 @@ app.get('/api/character', authenticateToken, async (req, res) => {
     // ==========================================
     // LENIWA EWALUACJA (LAZY EVALUATION) - ZUNIFIKOWANY TICK 60s
     // ==========================================
+    // KRYTYCZNE: Baza PostgreSQL obcina 'Z' (Znak UTC) z ISO Stringów. 
+    // Musimy to sztucznie dokleić, inaczej Node.js i Przeglądarka zinterpretują to jako czas lokalny, co zepsuje timery!
+    const ensureUTC = (dateStr) => {
+        if (!dateStr) return null;
+        return dateStr.endsWith('Z') ? dateStr : dateStr + 'Z';
+    };
+
+    const lastCalcStr = ensureUTC(character.last_calculation_time);
+    const hospitalUntilStr = ensureUTC(character.hospital_until);
+
     const now = Date.now();
-    let effectiveLastCalcTime = character.last_calculation_time ? new Date(character.last_calculation_time).getTime() : now;
+    let effectiveLastCalcTime = lastCalcStr ? new Date(lastCalcStr).getTime() : now;
     
     // BLOKADA SZPITALNA: Jeśli gracz jest w Szpitalu, zatrzymujemy tykanie czasu dla regeneracji
-    if (BigInt(character.hp || '100') <= 0n && character.hospital_until) {
-      const hospitalEndTime = new Date(character.hospital_until).getTime();
+    if (BigInt(character.hp || '100') <= 0n && hospitalUntilStr) {
+      const hospitalEndTime = new Date(hospitalUntilStr).getTime();
       if (now < hospitalEndTime) {
         // Wciąż w szpitalu = ZERO regeneracji (czas dla zasobów stoi w miejscu)
         effectiveLastCalcTime = now; 
@@ -302,9 +312,9 @@ app.get('/api/character', authenticateToken, async (req, res) => {
       coins: character.coins ?? '0',
       current_form: character.current_form ?? 'Stan Podstawowy',
       
-      current_hp: character.hp ?? '100',
-      current_mp: character.mp ?? '100',
-      current_stamina: current_stamina.toString(), // Wstrzyknięcie przeliczonej staminy z bufora RAM!
+      current_hp: current_hp.toString(),
+      current_mp: current_mp.toString(),
+      current_stamina: current_stamina.toString(), 
       
       max_hp: max_hp.toString(),
       max_mp: max_mp.toString(),
@@ -319,7 +329,7 @@ app.get('/api/character', authenticateToken, async (req, res) => {
       },
       
       completed_missions: character.completed_missions || [],
-      hospital_until: character.hospital_until // KRYTYCZNE: Frontend potrzebuje tego do licznika!
+      hospital_until: hospitalUntilStr // Wysłanie zabezpieczonego stringa UTC z doklejoną literą 'Z'
     };
 
     // Wysłanie odpowiedzi z konwersją BigInt na String
