@@ -671,66 +671,94 @@
             }
         }
 
+        // ==========================================
+        // GŁÓWNA FUNKCJA ZAKŁADEK (GLOBAL SCOPE)
+        // ==========================================
+        function activateTab(tabName) {
+            localStorage.setItem('active_game_tab', tabName);
+
+            const allViews = document.querySelectorAll('[id$="-view"]');
+            allViews.forEach(view => {
+                view.style.display = 'none';
+            });
+
+            const targetView = document.getElementById(`${tabName}-view`);
+            if (targetView) {
+                // SZPITAL ma Flexbox. Pozostałe zakładki mają Block (dzięki czemu idealnie się środkują!)
+                if (tabName === 'hospital') {
+                    targetView.style.display = 'flex'; 
+                } else {
+                    targetView.style.display = 'block'; 
+                }
+            }
+
+            const navBtns = document.querySelectorAll('.nav-btn');
+            navBtns.forEach(btn => btn.classList.remove('active'));
+            
+            if (tabName !== 'dashboard') {
+                const activeBtn = document.querySelector(`[data-tab="${tabName}"]`);
+                if (activeBtn) activeBtn.classList.add('active');
+            }
+        }
+
         let hospitalInterval = null;
 
         function startHospitalCountdown(hospitalUntilStr) {
-          // Czyścimy poprzedni licznik, żeby nie było wycieków pamięci
           if (hospitalInterval) clearInterval(hospitalInterval);
           
           const hospitalUntil = new Date(hospitalUntilStr).getTime();
           const countdownEl = document.getElementById('hospital-countdown');
           
-          // Natychmiastowe zablokowanie zakładek
           lockTabsForHospital(true);
           
-          // Ustawienie czerwonych kolorów na starcie odliczania
-          countdownEl.classList.remove('text-hospital-success');
-          countdownEl.classList.add('text-hospital-danger');
+          if (countdownEl) {
+              countdownEl.classList.remove('text-hospital-success');
+              countdownEl.classList.add('text-hospital-danger');
+          }
           
           const headerEl = document.getElementById('hospital-header');
           const descEl = document.getElementById('hospital-desc');
           const graphicEl = document.querySelector('.hospital-big-graphic');
           
-          if (headerEl) headerEl.style.backgroundColor = '#8b0000'; // Krwisty czerwony
+          if (headerEl) headerEl.style.backgroundColor = '#8b0000';
           if (descEl) descEl.innerText = "Straciłeś przytomność w walce. Twój organizm musi się zregenerować.";
-          if (graphicEl) graphicEl.style.borderColor = '#dc2626'; // Czerwona ramka
+          if (graphicEl) graphicEl.style.borderColor = '#dc2626';
           
           function updateTimer() {
             const now = Date.now();
             const distance = hospitalUntil - now;
             
             if (distance <= 0) {
-              // CZAS MINĄŁ - LECZENIE ZAKOŃCZONE!
               clearInterval(hospitalInterval);
-              countdownEl.innerText = "00:00:00";
+              if (countdownEl) countdownEl.innerText = "00:00:00";
               
-              // Zmień kolor licznika i całego nagłówka na ZIELONY
-              countdownEl.classList.remove('text-hospital-danger');
-              countdownEl.classList.add('text-hospital-success');
+              if (countdownEl) {
+                  countdownEl.classList.remove('text-hospital-danger');
+                  countdownEl.classList.add('text-hospital-success');
+              }
               
-              if (headerEl) headerEl.style.backgroundColor = '#166534'; // Głęboka zieleń
+              if (headerEl) headerEl.style.backgroundColor = '#166534';
               if (descEl) descEl.innerText = "Jesteś zdrowy! Pomożemy ci w razie potrzeby.";
-              if (graphicEl) graphicEl.style.borderColor = '#166534'; // Zielona ramka
+              if (graphicEl) graphicEl.style.borderColor = '#166534';
               
-              // Odblokuj zakładki i odśwież postać
               lockTabsForHospital(false);
               fetchCharacterData(); 
               return;
             }
             
-            // Obliczenia czasu
             const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
             const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
             const seconds = Math.floor((distance % (1000 * 60)) / 1000);
             
-            // Formatowanie z zerami wiodącymi
-            countdownEl.innerText = 
-              (hours < 10 ? "0" + hours : hours) + ":" + 
-              (minutes < 10 ? "0" + minutes : minutes) + ":" + 
-              (seconds < 10 ? "0" + seconds : seconds);
+            if (countdownEl) {
+                countdownEl.innerText = 
+                  (hours < 10 ? "0" + hours : hours) + ":" + 
+                  (minutes < 10 ? "0" + minutes : minutes) + ":" + 
+                  (seconds < 10 ? "0" + seconds : seconds);
+            }
           }
           
-          // Wywołaj natychmiast pierwszą klatkę czasu, aby uniknąć opóźnienia
+          // Wywołaj natychmiast pierwszą klatkę czasu, aby uniknąć sekundy zawieszenia!
           updateTimer();
           hospitalInterval = setInterval(updateTimer, 1000);
         }
@@ -982,11 +1010,9 @@
 
             // 3. ZARZĄDZANIE WIDOKAMI I PAMIĘĆ ZAKŁADKI (STATE PERSISTENCE)
             const navButtons = document.querySelectorAll('.nav-btn');
-            
-            // Pobierz ostatnio zapisaną zakładkę lub ustaw "dashboard" jako domyślną
             const savedTab = localStorage.getItem('active_game_tab') || 'dashboard';
 
-            // Podepnij nasłuchiwanie pod przyciski nawigacyjne (Misje, Ekwipunek, itd.)
+            // Podepnij nasłuchiwanie pod przyciski nawigacyjne
             navButtons.forEach(button => {
                 button.addEventListener('click', function() {
                     const tabName = this.getAttribute('data-tab');
