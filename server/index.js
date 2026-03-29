@@ -447,6 +447,153 @@ app.get('/api/inventory', authenticateToken, async (req, res) => {
   }
 });
 
+// Endpoint zamiany przedmiotów w ekwipunku
+app.post('/api/inventory/swap', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { item_id_1, slot_target } = req.body;
+
+    if (!item_id_1 || !slot_target) {
+      return res.status(400).json({ error: 'Brak wymaganych parametrów: item_id_1, slot_target' });
+    }
+
+    // Pobierz dane postaci
+    const { data: character, error: characterError } = await supabase
+      .from('characters')
+      .select('*')
+      .eq('profile_id', userId)
+      .single();
+
+    if (characterError || !character) {
+      return res.status(404).json({ error: 'Nie znaleziono postaci gracza' });
+    }
+
+    // Pobierz przeciągany przedmiot z relacją do szablonu
+    const { data: draggedItem, error: draggedError } = await supabase
+      .from('inventory')
+      .select('*, item_templates(*)')
+      .eq('id', item_id_1)
+      .eq('character_id', character.id)
+      .single();
+
+    if (draggedError || !draggedItem) {
+      return res.status(404).json({ error: 'Nie znaleziono przedmiotu' });
+    }
+
+    // Sprawdź wymagania statystyk dla sprzętu
+    if (draggedItem.item_templates.category === 'equipment' && draggedItem.item_templates.req_stats) {
+      for (const [stat, requiredValue] of Object.entries(draggedItem.item_templates.req_stats)) {
+        const playerStat = BigInt(character[stat] || '1');
+        const requiredStat = BigInt(requiredValue);
+        
+        if (playerStat < requiredStat) {
+          const statNames = {
+            'strength': 'Siła',
+            'speed': 'Szybkość',
+            'endurance': 'Wytrzymałość',
+            'intelligence': 'Inteligencja',
+            'mental_strength': 'Siła Mentalna'
+          };
+          
+          return res.status(400).json({ 
+            error: `Nie spełniasz wymagań! Wymagana ${statNames[stat] || stat}: ${requiredValue}` 
+          });
+        }
+      }
+    }
+
+    // Rozpocznij transakcję
+    const { data: swapResult, error: swapError } = await supabase.rpc('swap_items', {
+      p_character_id: character.id,
+      p_item_id_1: item_id_1,
+      p_slot_target: slot_target
+    });
+
+    if (swapError) {
+      console.error('[Inventory] Błąd zamiany przedmiotów:', swapError);
+      return res.status(500).json({ error: 'Błąd podczas zamiany przedmiotów' });
+    }
+
+    // Po zamianie - przelicz Max HP/MP gracza (Truncation Bug fix)
+    const { data: updatedInventory, error: inventoryError } = await supabase
+      .from('inventory')
+      .select('*, item_templates(*)')
+      .eq('character_id', character.id)
+      .eq('equipped_slot', 'IS NOT', null);
+
+    if (inventoryError) {
+      console.error('[Inventory] Błąd pobierania ekwipunku po zamianie:', inventoryError);
+    }
+
+    // Oblicz nowe bonusy z założonego sprzętu
+    let newBonusHp = 0n;
+    let newBonusMp = 0n;
+    let newBonusStamina = 0n;
+
+    if (updatedInventory) {
+      for (const item of updatedInventory) {
+        if (item.item_templates && item.item_templates.bonuses) {
+          if (item.item_templates.bonuses.bonus_hp) {
+            newBonusHp += BigInt(item.item_templates.bonuses.bonus_hp);
+          }
+          if (item.item_templates.bonuses.bonus_mp) {
+            newBonusMp += BigInt(item.item_templates.bonuses.bonus_mp);
+          }
+          if (item.item_templates.bonuses.bonus_stamina) {
+            newBonusStamina += BigInt(item.item_templates.bonuses.bonus_stamina);
+          }
+        }
+      }
+    }
+
+    // Oblicz nowe maksymalne wartości
+    const currentStr = BigInt(character.strength || '1');
+    const currentInt = BigInt(character.intelligence || '1');
+    const currentEnd = BigInt(character.endurance || '1');
+    
+    const newMaxHp = 100n + (currentStr / 20n) + newBonusHp;
+    const newMaxMp = 100n + (currentInt / 5n) + newBonusMp;
+    const newMaxStamina = 100n + newBonusStamina;
+
+    // Zabezpieczenie przed Truncation Bug - obetnij aktualne wartości jeśli przekraczają nowe maksimum
+    const currentHp = BigInt(character.hp || '100');
+    const currentMp = BigInt(character.mp || '100');
+    const currentStamina = BigInt(character.stamina || '100');
+
+    const finalHp = currentHp > newMaxHp ? newMaxHp : currentHp;
+    const finalMp = currentMp > newMaxMp ? newMaxMp : currentMp;
+    const finalStamina = currentStamina > newMaxStamina ? newMaxStamina : currentStamina;
+
+    // Zaktualizuj postać z nowymi maksymalnymi wartościami
+    const { error: updateError } = await supabase
+      .from('characters')
+      .update({
+        hp: finalHp.toString(),
+        mp: finalMp.toString(),
+        stamina: finalStamina.toString()
+      })
+      .eq('id', character.id);
+
+    if (updateError) {
+      console.error('[Inventory] Błąd aktualizacji postaci po zamianie:', updateError);
+    }
+
+    res.json({ 
+      success: true, 
+      message: 'Przedmioty zostały zamienione',
+      character_updates: {
+        hp: finalHp.toString(),
+        mp: finalMp.toString(),
+        stamina: finalStamina.toString()
+      }
+    });
+
+  } catch (err) {
+    console.error('[Inventory] Błąd endpointu swap:', err.message);
+    res.status(500).json({ error: 'Błąd serwera podczas zamiany przedmiotów' });
+  }
+});
+
 // Debug endpoint - dawanie przedmiotów testowych
 app.post('/api/debug/give-items', authenticateToken, async (req, res) => {
   try {

@@ -1441,6 +1441,39 @@
             }, 4000);
         }
 
+        // Wykonywanie zamiany przedmiotów z backendem
+        async function performItemSwap(inventoryId, slotTarget) {
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/inventory/swap`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${localStorage.getItem('session_token')}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        item_id_1: inventoryId,
+                        slot_target: slotTarget
+                    })
+                });
+
+                const data = await response.json();
+                
+                if (data.success) {
+                    // Sukces - odśwież dane
+                    await fetchInventory();
+                    await fetchCharacterData();
+                    showSuccessMessage('Przedmioty zostały zamienione!');
+                } else {
+                    // Błąd z backendu
+                    showWarningMessage(data.error || 'Błąd podczas zamiany przedmiotów');
+                }
+                
+            } catch (error) {
+                console.error('[Swap] Błąd komunikacji z backendem:', error);
+                showWarningMessage('Wystąpił błąd podczas zamiany przedmiotów');
+            }
+        }
+
         // Inicjalizacja mechaniki Drag & Drop
         function initializeDragAndDrop() {
             // Dodaj event listenery do wszystkich slotów wyposażenia
@@ -1473,6 +1506,9 @@
                         return;
                     }
                     
+                    // Rozpoznanie celu dla frontendu
+                    let slotTarget = targetSlot; // Dla slotów wyposażenia
+                    
                     // Zabezpieczenie 1: Zły slot dla sprzętu
                     if (itemCategory === 'equipment' && itemSlot && itemSlot !== targetSlot) {
                         const slotNames = {
@@ -1496,9 +1532,8 @@
                         return;
                     }
                     
-                    console.log('Próba przeniesienia przedmiotu:', itemName, '(ID:', inventoryId, ')', 'do slota:', targetSlot);
-                    
-                    // TODO: Implementacja swap_items w kolejnym kroku
+                    // Wywołaj backend do zamiany przedmiotów
+                    performItemSwap(inventoryId, slotTarget);
                 });
             });
 
@@ -1531,9 +1566,11 @@
                         return;
                     }
                     
-                    console.log('Próba przeniesienia przedmiotu:', itemName, '(ID:', inventoryId, ')', 'do plecaka');
+                    // Rozpoznanie celu dla frontendu
+                    const slotTarget = 'backpack'; // Dla plecaka zawsze 'backpack'
                     
-                    // TODO: Backend obsłuży przenoszenie do plecaka w kolejnym kroku
+                    // Wywołaj backend do zamiany przedmiotów
+                    performItemSwap(inventoryId, slotTarget);
                 });
             });
 

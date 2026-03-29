@@ -819,8 +819,8 @@ body {
     margin-bottom: 15px;
     left: 50%;
     transform: translateX(-50%);
-    min-width: 220px;
-    max-width: 300px;
+    width: max-content;
+    max-width: 250px;
     background: var(--goku-panel-bg);
     border: 1px solid var(--goku-accent);
     border-radius: 8px;
@@ -829,7 +829,7 @@ body {
     visibility: hidden;
     transition: all var(--transition-normal);
     transition-delay: 0.4s;
-    z-index: 1000;
+    z-index: 99999;
     pointer-events: none;
     box-shadow: var(--shadow-xl);
     font-size: 0.85rem;
