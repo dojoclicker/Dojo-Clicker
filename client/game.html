@@ -587,12 +587,27 @@
                     popup.style.color = 'white';
                     popup.style.border = '2px solid #cc0000';
                     
+                    // Formatowanie utraconych statystyk
+                    const statsLost = data.penalty.stats_lost;
+                    const statsList = [];
+                    if (statsLost.strength && statsLost.strength !== '0') statsList.push(`-${statsLost.strength} Siła`);
+                    if (statsLost.speed && statsLost.speed !== '0') statsList.push(`-${statsLost.speed} Szybkość`);
+                    if (statsLost.endurance && statsLost.endurance !== '0') statsList.push(`-${statsLost.endurance} Wytrzymałość`);
+                    if (statsLost.intelligence && statsLost.intelligence !== '0') statsList.push(`-${statsLost.intelligence} Inteligencja`);
+                    if (statsLost.mental_strength && statsLost.mental_strength !== '0') statsList.push(`-${statsLost.mental_strength} Siła Mentalna`);
+                    
                     popup.innerHTML = `
                         <h3 style="margin: 0 0 1rem 0; font-size: 1.5rem;">🩹 ${data.message}</h3>
                         <div style="font-size: 1rem; margin-top: 0.5rem;">
+                            <div style="margin-bottom: 0.5rem;"><strong>Obrażenia:</strong></div>
                             <div>❤️ HP: -${data.damage.hp}</div>
                             <div>💙 MP: -${data.damage.mp}</div>
                             <div>⚡ Stamina: -${data.damage.stamina}</div>
+                        </div>
+                        <div style="font-size: 1rem; margin-top: 1rem;">
+                            <div style="margin-bottom: 0.5rem;"><strong>Kara:</strong></div>
+                            <div>💰 Utrata monet: -${data.penalty.coins_lost}</div>
+                            ${statsList.length > 0 ? `<div>📊 Utrata statystyk: ${statsList.join(', ')}</div>` : ''}
                         </div>
                     `;
                 } else if (data.result === 'death') {
@@ -601,12 +616,23 @@
                     popup.style.color = 'white';
                     popup.style.border = '2px solid #8b0000';
                     
+                    // Formatowanie utraconych statystyk
+                    const statsLost = data.penalty.stats_lost;
+                    const statsList = [];
+                    if (statsLost.strength && statsLost.strength !== '0') statsList.push(`-${statsLost.strength} Siła`);
+                    if (statsLost.speed && statsLost.speed !== '0') statsList.push(`-${statsLost.speed} Szybkość`);
+                    if (statsLost.endurance && statsLost.endurance !== '0') statsList.push(`-${statsLost.endurance} Wytrzymałość`);
+                    if (statsLost.intelligence && statsLost.intelligence !== '0') statsList.push(`-${statsLost.intelligence} Inteligencja`);
+                    if (statsLost.mental_strength && statsLost.mental_strength !== '0') statsList.push(`-${statsLost.mental_strength} Siła Mentalna`);
+                    
                     popup.innerHTML = `
                         <h3 style="margin: 0 0 1rem 0; font-size: 1.5rem; font-weight: bold;">🏥 ${data.message}</h3>
                         <div style="font-size: 1rem; margin-top: 0.5rem; font-weight: bold;">
+                            <div style="margin-bottom: 0.5rem;"><strong>Kary:</strong></div>
                             <div>💰 Utrata monet: -${data.penalty.coins_lost}</div>
-                            <div>⏱️ Czas w szpitalu: ${data.penalty.hospital_minutes} minut</div>
-                            <div style="font-size: 0.9rem; margin-top: 8px;">Utrata statystyk zapisana w profilu!</div>
+                            <div>🏥️ Czas w szpitalu: ${data.penalty.hospital_minutes} minut</div>
+                            ${statsList.length > 0 ? `<div>📊 Utrata statystyk: ${statsList.join(', ')}</div>` : ''}
+                            <div style="font-size: 0.9rem; margin-top: 8px;">ℹ️ Utrata statystyk zapisana w profilu!</div>
                         </div>
                     `;
                     

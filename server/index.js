@@ -597,10 +597,40 @@ app.post('/api/missions/start', authenticateToken, async (req, res) => {
 
       } else {
         // ZWYKŁA PORAŻKA (Rany, ale gracz przeżył)
+        
+        // 1. Utrata 5% monet
+        const currentCoins = BigInt(character.coins || '0');
+        const coinsLost = (currentCoins * 5n) / 100n;
+        const newCoins = currentCoins - coinsLost;
+        
+        // 2. Kara 1% do głównych statystyk
+        const calcStatLoss = (stat) => {
+            const loss = (stat * 1n) / 100n;
+            return loss > 0n ? loss : 0n;
+        };
+
+        const strLoss = calcStatLoss(currentStr);
+        const spdLoss = calcStatLoss(currentSpd);
+        const endLoss = calcStatLoss(currentEnd);
+        const intLoss = calcStatLoss(currentInt);
+        const menLoss = calcStatLoss(currentMen);
+
+        const finalStr = maxBigInt(1n, currentStr - strLoss);
+        const finalSpd = maxBigInt(1n, currentSpd - spdLoss);
+        const finalEnd = maxBigInt(1n, currentEnd - endLoss);
+        const finalInt = maxBigInt(1n, currentInt - intLoss);
+        const finalMen = maxBigInt(1n, currentMen - menLoss);
+
         await supabase.from('characters').update({
             hp: newHp.toString(),
             mp: newMp.toString(),
-            stamina: newStamina.toString()
+            stamina: newStamina.toString(),
+            coins: newCoins.toString(),
+            strength: finalStr.toString(),
+            speed: finalSpd.toString(),
+            endurance: finalEnd.toString(),
+            intelligence: finalInt.toString(),
+            mental_strength: finalMen.toString()
         }).eq('profile_id', userId);
 
         return res.json({
@@ -610,6 +640,16 @@ app.post('/api/missions/start', authenticateToken, async (req, res) => {
                 hp: hpDamage.toString(),
                 mp: mpDamage.toString(),
                 stamina: staminaDamage.toString()
+            },
+            penalty: {
+                coins_lost: coinsLost.toString(),
+                stats_lost: {
+                    strength: strLoss.toString(),
+                    speed: spdLoss.toString(),
+                    endurance: endLoss.toString(),
+                    intelligence: intLoss.toString(),
+                    mental_strength: menLoss.toString()
+                }
             }
         });
       }
@@ -724,9 +764,6 @@ app.post('/api/missions/start', authenticateToken, async (req, res) => {
     console.error('[Mission] Błąd podczas rozpoczynania misji:', err.message);
     res.status(500).json({ error: 'Błąd serwera podczas rozpoczynania misji' });
   }
-});
-
-// ==========================================
 // ENDPOINT TESTOWY: Magiczna Fasolka (Zenkai)
 // ==========================================
 app.post('/api/debug/zenkai', authenticateToken, async (req, res) => {
@@ -740,22 +777,53 @@ app.post('/api/debug/zenkai', authenticateToken, async (req, res) => {
 
     if (fetchError || !char) throw new Error('Nie znaleziono postaci');
 
-    const strength = BigInt(char.strength || '1');
-    const intelligence = BigInt(char.intelligence || '1');
+    // Odczytaj utracone statystyki z last_death_penalty
+    const deathPenalty = char.last_death_penalty;
+    if (!deathPenalty) {
+      return res.json({ status: 'success', message: 'Brak statystyk do odzyskania.' });
+    }
+
+    // Konwertuj stringi na BigInt
+    const strRecovery = BigInt(deathPenalty.strength || '0');
+    const spdRecovery = BigInt(deathPenalty.speed || '0');
+    const endRecovery = BigInt(deathPenalty.endurance || '0');
+    const intRecovery = BigInt(deathPenalty.intelligence || '0');
+    const menRecovery = BigInt(deathPenalty.mental_strength || '0');
+
+    // Dodaj odzyskane statystyki do aktualnych
+    const currentStr = BigInt(char.strength || '1');
+    const currentSpd = BigInt(char.speed || '1');
+    const currentEnd = BigInt(char.endurance || '1');
+    const currentInt = BigInt(char.intelligence || '1');
+    const currentMen = BigInt(char.mental_strength || '1');
+
+    const newStr = currentStr + strRecovery;
+    const newSpd = currentSpd + spdRecovery;
+    const newEnd = currentEnd + endRecovery;
+    const newInt = currentInt + intRecovery;
+    const newMen = currentMen + menRecovery;
+
+    // Przelicz max_hp i max_mp na podstawie nowych statystyk
     const bonus_hp = BigInt(char.bonus_hp || '0');
     const bonus_mp = BigInt(char.bonus_mp || '0');
     const bonus_stamina = BigInt(char.bonus_stamina || '0');
 
-    const max_hp = 100n + (strength / 20n) + bonus_hp;
-    const max_mp = 100n + (intelligence / 5n) + bonus_mp;
+    const max_hp = 100n + (newStr / 20n) + bonus_hp;
+    const max_mp = 100n + (newInt / 5n) + bonus_mp;
     const max_stamina = 100n + bonus_stamina;
 
+    // Zapisz do bazy
     const { error: updateError } = await supabase
       .from('characters')
       .update({
         hp: max_hp.toString(),
         mp: max_mp.toString(),
         stamina: max_stamina.toString(),
+        strength: newStr.toString(),
+        speed: newSpd.toString(),
+        endurance: newEnd.toString(),
+        intelligence: newInt.toString(),
+        mental_strength: newMen.toString(),
         hospital_until: null,
         last_calculation_time: new Date().toISOString(),
         last_death_penalty: null
@@ -763,7 +831,17 @@ app.post('/api/debug/zenkai', authenticateToken, async (req, res) => {
       .eq('profile_id', userId);
 
     if (updateError) throw updateError;
-    res.json({ status: 'success', message: 'Zasoby odnowione do 100%.' });
+    res.json({ 
+      status: 'success', 
+      message: 'Odzyskano utracone statystyki i odnowiono zasoby do 100%.',
+      recovered: {
+        strength: strRecovery.toString(),
+        speed: spdRecovery.toString(),
+        endurance: endRecovery.toString(),
+        intelligence: intRecovery.toString(),
+        mental_strength: menRecovery.toString(),
+      }
+    });
   } catch (err) {
     res.status(500).json({ status: 'error', message: err.message });
   }
