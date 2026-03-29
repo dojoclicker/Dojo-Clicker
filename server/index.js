@@ -683,7 +683,7 @@ app.post('/api/inventory/consume', authenticateToken, async (req, res) => {
           currentHp = maxBigInt(initialHp, currentHp);
           effectMessages.push('Wskrzeszenie Zenkai!');
         } else {
-          return res.status(400).json({ error: 'Fasolka Zenkai działa tylko w szpitalu!' });
+          return res.status(400).json({ error: 'Magiczna Fasolka działa tylko w szpitalu!' });
         }
       } else if (effect === 'restore_hp' && value === 'full') {
         currentHp = maxHp;
@@ -1274,6 +1274,28 @@ app.post('/api/inventory/split', authenticateToken, async (req, res) => {
   } catch (err) {
     console.error('[Split] Błąd endpointu:', err.message);
     res.status(500).json({ error: 'Błąd serwera podczas dzielenia przedmiotu' });
+  }
+});
+
+// Endpoint pobierania przedmiotów sklepu
+app.get('/api/shop/items', authenticateToken, async (req, res) => {
+  try {
+    // Pobierz wszystkie szablony przedmiotów z ceną zakupu
+    const { data: items, error } = await supabase
+      .from('item_templates')
+      .select('*')
+      .not('buy_price_coins', 'is', null)
+      .order('buy_price_coins', { ascending: true });
+
+    if (error) {
+      console.error('[Shop] Błąd pobierania przedmiotów sklepu:', error);
+      return res.status(500).json({ error: 'Błąd podczas pobierania asortymentu sklepu' });
+    }
+
+    res.json(items);
+  } catch (err) {
+    console.error('[Shop] Błąd endpointu items:', err.message);
+    res.status(500).json({ error: 'Błąd serwera podczas pobierania przedmiotów sklepu' });
   }
 });
 

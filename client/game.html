@@ -1338,6 +1338,9 @@
                 e.preventDefault();
                 e.stopPropagation();
                 
+                // Blokada konsumpcji w sklepie
+                if (localStorage.getItem('active_game_tab') === 'shop') return;
+                
                 const category = item.item_templates?.category;
                 if (category === 'consumable' || category === 'special_consumable') {
                     consumeItem(item.id);
@@ -1353,33 +1356,74 @@
         let currentShopCategory = 'consumables';
         let currentShopLevel = 1;
 
-        // Dane sklepu (statyczne na razie)
-        const shopData = {
-            1: {
-                consumables: [
-                    { id: 'mięso', name: 'Mięso', emoji: '🍖', description: 'Przywraca +50 HP', price: 50 },
-                    { id: 'jagody', name: 'Jagody', emoji: '🫐', description: 'Przywraca +30 MP', price: 40 },
-                    { id: 'woda', name: 'Woda Źródlana', emoji: '💧', description: 'Przywraca +20 Staminy', price: 30 },
-                    { id: 'fasolka', name: 'Magiczna Fasolka', emoji: '🫘', description: 'Wskrzeszenie z szpitala', price: 500 }
-                ],
-                training: [
-                    { id: 'gi', name: 'Podstawowe Gi', emoji: '🥋', description: 'Podstawowy strój treningowy', price: 1500 },
-                    { id: 'rękawice', name: 'Rękawice Treningowe', emoji: '🥊', description: 'Lekkie rękawice treningowe', price: 800 }
-                ],
-                equipment: [
-                    { id: 'trampki', name: 'Trampki', emoji: '👟', description: 'Wygodne buty do biegania', price: 600 },
-                    { id: 'opaska', name: 'Opaska Nowicjusza', emoji: '🪢', description: 'Oznacza początkującego wojownika', price: 200 }
-                ]
-            },
-            2: {
-                consumables: [],
-                training: [],
-                equipment: []
-            }
+        // Dane sklepu (dynamiczne z bazy danych)
+        let shopData = { 
+            1: { consumables: [], training: [], equipment: [] }, 
+            2: { consumables: [], training: [], equipment: [] } 
         };
 
+        // Pobieranie przedmiotów sklepu z bazy danych
+        async function fetchShopItems() {
+            try {
+                const sessionToken = localStorage.getItem('session_token');
+                const response = await fetch(`${API_BASE_URL}/api/shop/items`, {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${sessionToken}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                if (!response.ok) {
+                    if (response.status === 401 || response.status === 403) {
+                        localStorage.removeItem('session_token');
+                        window.location.href = 'index.html';
+                        return;
+                    }
+                    throw new Error(`Błąd HTTP: ${response.status}`);
+                }
+
+                const templates = await response.json();
+                
+                // Wyczyść tablice dla poziomu 1
+                shopData[1].consumables = [];
+                shopData[1].training = [];
+                shopData[1].equipment = [];
+
+                // Przetwarzanie i segregacja szablonów
+                templates.forEach(template => {
+                    const item = {
+                        id: template.id,
+                        name: template.name,
+                        emoji: getItemEmoji(template.name, template.category),
+                        description: 'Cena: ' + template.buy_price_coins + ' monet',
+                        price: template.buy_price_coins
+                    };
+
+                    // Logika segregacji
+                    if (template.category === 'consumable' || template.category === 'special_consumable') {
+                        shopData[1].consumables.push(item);
+                    } else if (template.category === 'equipment') {
+                        // Sprzęt treningowy - sprawdź nazwę
+                        if (template.name.includes('Ciężk') || template.name.includes('Obciążon') || template.name.includes('Trening')) {
+                            shopData[1].training.push(item);
+                        } else {
+                            shopData[1].equipment.push(item);
+                        }
+                    }
+                });
+
+                console.log('[Shop] Pobrano', templates.length, 'przedmiotów z bazy danych');
+                
+            } catch (error) {
+                console.error('[Shop] Błąd pobierania przedmiotów sklepu:', error);
+                showWarningMessage('Nie udało się pobrać asortymentu sklepu.');
+            }
+        }
+
         // Inicjalizacja sklepu
-        function initShop() {
+        async function initShop() {
+            await fetchShopItems(); // Pobierz dane z bazy przed renderowaniem
             renderShopItems();
             renderShopBackpack();
             
