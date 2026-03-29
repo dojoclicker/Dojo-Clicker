@@ -473,10 +473,17 @@ app.post('/api/missions/start', authenticateToken, async (req, res) => {
     if (lowestRatioPercent >= 400n && lowestRatioPercent < 800n) rewardMultiplier = 50n;
     if (lowestRatioPercent >= 800n) rewardMultiplier = 10n;
 
-    // Pobranie WSZYSTKICH statystyk i bonusów niezbędnych do wyliczenia Max HP/MP/Staminy w razie porażki
+    // --- Ochrona Początkujących (Newbie Protection) ---
+    // Jeśli jakakolwiek z bazowych statystyk gracza jest niższa niż 15 (wymóg Misji 2), 
+    // całkowicie ignorujemy system kar, aby pozwolić mu płynnie dobić do kolejnego etapu.
     const currentStr = BigInt(character.strength || '1');
     const currentSpd = BigInt(character.speed || '1');
     const currentEnd = BigInt(character.endurance || '1');
+    if (currentStr < 15n || currentSpd < 15n || currentEnd < 15n) {
+        rewardMultiplier = 100n;
+    }
+
+    // Pobranie WSZYSTKICH statystyk i bonusów niezbędnych do wyliczenia Max HP/MP/Staminy w razie porażki
     const currentInt = BigInt(character.intelligence || '1');
     const currentMen = BigInt(character.mental_strength || '1');
     
