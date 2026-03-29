@@ -9,6 +9,7 @@ const supabase = createClient(supabaseUrl, supabaseKey);
 // Dane misji 1-5 z GDD - wszystkie wartości liczbowe w JSONB jako stringi!
 const missionsData = [
     {
+        id: "00000000-0000-0000-0000-000000000001",
         name: "Trening w pobliskim lesie",
         description: "Wzmocnij swoje statystyki, trenując rąbanie drewna i bieganie.",
         stamina_cost: 2,
@@ -20,8 +21,8 @@ const missionsData = [
         reward_coins_min: 0,
         reward_coins_max: 1,
         reward_stats: { 
-            "min": "1", 
-            "max": "2" 
+            "min": "2", 
+            "max": "3" 
         },
         drop_table: [
             { 
@@ -32,6 +33,7 @@ const missionsData = [
         is_repeatable: true
     },
     {
+        id: "00000000-0000-0000-0000-000000000002",
         name: "Atak z przestworzy",
         description: "Z nieba niespodziewanie pikuje na ciebie gigantyczna, wygłodniała bestia. Odeprzyj atak!",
         stamina_cost: 3,
@@ -55,6 +57,7 @@ const missionsData = [
         is_repeatable: true
     },
     {
+        id: "00000000-0000-0000-0000-000000000003",
         name: "Zagubiony Wędrowiec",
         description: "Znajdujesz ogromnego, morskiego żółwia, który zgubił drogę. Eskortuj go do oceanu.",
         stamina_cost: 4,
@@ -73,6 +76,7 @@ const missionsData = [
         is_repeatable: true
     },
     {
+        id: "00000000-0000-0000-0000-000000000004",
         name: "Bandyta z wielkim mieczem",
         description: "Tuż przed celem drogę zachodzi wam potężny rabuś dzierżący wielki miecz. Pokaż mu siłę swoich pięści.",
         stamina_cost: 5,
@@ -96,6 +100,7 @@ const missionsData = [
         is_repeatable: true
     },
     {
+        id: "00000000-0000-0000-0000-000000000005",
         name: "Test Starego Mistrza",
         description: "W podzięce za uratowanie morskiego żółwia, Stary Mistrz zgadza się wziąć cię pod swoje skrzydła. Najpierw jednak musisz udowodnić swój potencjał w sparingu.",
         stamina_cost: 10,
@@ -127,35 +132,22 @@ const missionsData = [
 // Funkcja wgrania misji do bazy danych
 async function seedMissions() {
     try {
-        console.log('🌱 Rozpoczynam wgranie misji do bazy danych...');
+        console.log('🌱 Rozpoczynam aktualizację misji w bazie danych...');
         
-        // Krok 1: Usuń istniejące misje (czysty start)
-        console.log('🧹 Czyśczenie tabeli missions...');
-        const { error: deleteError } = await supabase
-            .from('missions')
-            .delete()
-            .neq('id', '00000000-0000-0000-0000-000000000000'); // Usuń wszystko (warunek zawsze prawdziwy)
-            
-        if (deleteError) {
-            console.error('❌ Błąd usuwania istniejących misji:', deleteError.message);
-        } else {
-            console.log('✅ Tabela missions wyczyszczona');
-        }
-        
-        // Krok 2: Wgraj nowe misje
-        console.log('📦 Wgrywanie nowych misji...');
+        // Krok 1: Wgraj/zaktualizuj misje za pomocą upsert
+        console.log('📦 Aktualizowanie misji (upsert)...');
         const { data, error } = await supabase
             .from('missions')
-            .insert(missionsData)
+            .upsert(missionsData, { onConflict: 'id' })
             .select();
             
         if (error) {
-            console.error('❌ Błąd wgrywania misji:', error.message);
+            console.error('❌ Błąd aktualizacji misji:', error.message);
             console.error('Szczegóły błędu:', error);
             process.exit(1);
         }
         
-        console.log(`✅ Pomyślnie wgrano ${data.length} misji do bazy danych:`);
+        console.log(`✅ Pomyślnie zaktualizowano ${data.length} misji w bazie danych:`);
         data.forEach((mission, index) => {
             console.log(`   ${index + 1}. ${mission.name} (ID: ${mission.id})`);
         });
