@@ -1238,6 +1238,7 @@
             card.setAttribute('draggable', 'true');
             card.setAttribute('data-inventory-id', item.id);
             card.setAttribute('data-template-id', item.item_template_id);
+            card.setAttribute('data-quantity', item.quantity || 1);
             
             // Emotikona jako ikona przedmiotu
             const emoji = getItemEmoji(item.item_templates?.name || 'Przedmiot', item.item_templates?.category || 'unknown');
@@ -1259,37 +1260,97 @@
                 e.dataTransfer.setData('item_name', item.item_templates?.name || 'Przedmiot');
                 e.dataTransfer.setData('item_slot', item.item_templates?.slot || null);
                 e.dataTransfer.setData('item_category', item.item_templates?.category || 'unknown');
-                
-                // Dodaj informację o źródle (slot wyposażenia czy plecak)
-                const sourceSlot = e.target.closest('[data-slot]') 
-                    ? e.target.closest('[data-slot]').dataset.slot 
-                    : 'backpack';
-                e.dataTransfer.setData('source_slot', sourceSlot);
-                
-                console.log('Drag start:', item.item_templates?.name, '(ID:', item.id, ')', 'źródło:', sourceSlot);
+                e.dataTransfer.setData('source_slot', item.equipped_slot);
+                card.classList.add('dragging');
             });
 
-            // Dodaj event listener dla double-click (konsumpcja)
+            // Dodaj event listener dla dragend
+            card.addEventListener('dragend', function(e) {
+                card.classList.remove('dragging');
+            });
+
+            // Event listener dla dzielenia stosów (Shift+Click)
+            card.addEventListener('click', function(e) {
+                if (e.shiftKey) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    
+                    const quantity = parseInt(card.getAttribute('data-quantity'));
+                    
+                    if (quantity > 1) {
+                        const amount = prompt('Ile sztuk chcesz oddzielić?', '1');
+                        
+                        if (amount !== null) {
+                            const splitAmount = parseInt(amount);
+                            
+                            if (isNaN(splitAmount) || splitAmount <= 0) {
+                                showWarningMessage('Podaj poprawną liczbę większą od 0!');
+                                return;
+                            }
+                            
+                            if (splitAmount >= quantity) {
+                                showWarningMessage(`Nie można oddzielić ${splitAmount} sztuk z ${quantity}!`);
+                                return;
+                            }
+                            
+                            splitItem(item.id, splitAmount);
+                        }
+                    } else {
+                        showWarningMessage('Nie można dzielić pojedynczego przedmiotu!');
+                    }
+                }
+            });
+
+            // Event listener dla double-click (konsumpcja)
             card.addEventListener('dblclick', function(e) {
-                e.preventDefault(); // Zablokuj domyślne zachowanie (zaznaczanie tekstu)
+                e.preventDefault();
+                e.stopPropagation();
                 
-                const inventoryId = this.dataset.inventoryId;
-                const itemName = item.item_templates?.name || 'Przedmiot';
-                const itemCategory = item.item_templates?.category || 'unknown';
-                
-                console.log('Double-click:', itemName, '(ID:', inventoryId, ')');
-                
-                // Sprawdź czy przedmiot jest używalny
-                if (itemCategory !== 'consumable' && itemCategory !== 'special_consumable') {
+                const category = item.item_templates?.category;
+                if (category === 'consumable' || category === 'special_consumable') {
+                    consumeItem(item.id);
+                } else {
                     showWarningMessage('Ten przedmiot nie jest używalny!');
+                }
+            });
+
+            return card;
+        }
+
+        // Funkcja do dzielenia przedmiotów
+        async function splitItem(inventoryId, amount) {
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/inventory/split`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${localStorage.getItem('session_token')}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        inventory_id: inventoryId,
+                        amount_to_split: amount
+                    })
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    showWarningMessage(errorData.error || 'Błąd podczas dzielenia przedmiotu');
                     return;
                 }
+
+                const data = await response.json();
                 
-                // Wywołaj konsumpcję przedmiotu
-                consumeItem(inventoryId);
-            });
-            
-            return card;
+                if (data.success) {
+                    showSuccessMessage('Podzielono przedmiot!');
+                    await fetchInventory();
+                } else {
+                    showWarningMessage(data.error || 'Błąd podczas dzielenia przedmiotu');
+                }
+                
+            } catch (error) {
+                console.error('[Split] Błąd komunikacji z backendem:', error);
+                showWarningMessage('Wystąpił błąd podczas dzielenia przedmiotu');
+            }
         }
 
         // Tworzenie tooltipu dla przedmiotu

@@ -502,60 +502,29 @@ app.post('/api/inventory/swap', authenticateToken, async (req, res) => {
       }
     }
 
-    // Rozpocznij transakcję
-    const { data: swapResult, error: swapError } = await supabase.rpc('swap_items', {
-      p_character_id: character.id,
-      p_item_id_1: item_id_1,
-      p_slot_target: slot_target
-    });
+    // Wywołaj funkcję RPC do zamiany przedmiotów
+    const { data: swapResult, error: swapError } = await supabase
+      .rpc('swap_items', {
+        p_item_1_id: item_1_id,
+        p_item_2_id: item_2_id || null,
+        p_slot_target: slot_target
+      });
 
     if (swapError) {
-      console.error('[Inventory] Błąd zamiany przedmiotów:', swapError);
+      console.error('[Inventory] Błąd RPC swap_items:', swapError);
       return res.status(500).json({ error: 'Błąd podczas zamiany przedmiotów' });
     }
 
-    // Po zamianie - przelicz Max HP/MP gracza (Truncation Bug fix)
-    const { data: updatedInventory, error: inventoryError } = await supabase
-      .from('inventory')
-      .select('*, item_templates(*)')
-      .eq('character_id', character.id)
-      .eq('equipped_slot', 'IS NOT', null);
-
-    if (inventoryError) {
-      console.error('[Inventory] Błąd pobierania ekwipunku po zamianie:', inventoryError);
-    }
-
-    // Oblicz nowe bonusy z założonego sprzętu
-    let newBonusHp = 0n;
-    let newBonusMp = 0n;
-    let newBonusStamina = 0n;
-
-    if (updatedInventory) {
-      for (const item of updatedInventory) {
-        if (item.item_templates && item.item_templates.bonuses) {
-          if (item.item_templates.bonuses.bonus_hp) {
-            newBonusHp += BigInt(item.item_templates.bonuses.bonus_hp);
-          }
-          if (item.item_templates.bonuses.bonus_mp) {
-            newBonusMp += BigInt(item.item_templates.bonuses.bonus_mp);
-          }
-          if (item.item_templates.bonuses.bonus_stamina) {
-            newBonusStamina += BigInt(item.item_templates.bonuses.bonus_stamina);
-          }
-        }
-      }
-    }
-
-    // Oblicz nowe maksymalne wartości
+    // Przelicz maksymalne HP/MP/Staminę po zamianie
     const currentStr = BigInt(character.strength || '1');
     const currentInt = BigInt(character.intelligence || '1');
     const currentEnd = BigInt(character.endurance || '1');
+    const currentBonusStamina = BigInt(character.bonus_stamina || '0');
     
-    const newMaxHp = 100n + (currentStr / 20n) + newBonusHp;
-    const newMaxMp = 100n + (currentInt / 5n) + newBonusMp;
-    const newMaxStamina = 100n + newBonusStamina;
+    const newMaxHp = 100n + (currentStr / 20n) + BigInt(character.bonus_hp || '0');
+    const newMaxMp = 100n + (currentInt / 5n) + BigInt(character.bonus_mp || '0');
+    const newMaxStamina = 100n + currentBonusStamina;
 
-    // Zabezpieczenie przed Truncation Bug - obetnij aktualne wartości jeśli przekraczają nowe maksimum
     const currentHp = BigInt(character.hp || '100');
     const currentMp = BigInt(character.mp || '100');
     const currentStamina = BigInt(character.stamina || '100');
@@ -578,9 +547,18 @@ app.post('/api/inventory/swap', authenticateToken, async (req, res) => {
       console.error('[Inventory] Błąd aktualizacji postaci po zamianie:', updateError);
     }
 
+    // Kontekstowe komunikaty
+    let responseMessage = 'Przedmiot został założony!';
+    
+    if (slot_target === 'backpack') {
+      responseMessage = 'Przedmiot schowany do plecaka.';
+    } else if (item_2_id) {
+      responseMessage = 'Przedmioty zostały zamienione!';
+    }
+
     res.json({ 
       success: true, 
-      message: 'Przedmioty zostały zamienione',
+      message: responseMessage,
       character_updates: {
         hp: finalHp.toString(),
         mp: finalMp.toString(),
@@ -767,10 +745,10 @@ app.post('/api/inventory/consume', authenticateToken, async (req, res) => {
     }
 
     // Atomowe usuwanie/zmniejszanie ilości przedmiotu
-    if (Number(item.quantity) > 1) {
+    if (BigInt(item.quantity) > 1n) {
       const { error: updateError } = await supabase
         .from('inventory')
-        .update({ quantity: item.quantity - 1 })
+        .update({ quantity: (BigInt(item.quantity) - 1n).toString() })
         .eq('id', inventory_id);
 
       if (updateError) {
@@ -821,190 +799,6 @@ app.post('/api/inventory/consume', authenticateToken, async (req, res) => {
   } catch (err) {
     console.error('[Consume] Błąd endpointu:', err.message);
     res.status(500).json({ error: 'Błąd serwera podczas konsumpcji przedmiotu' });
-  }
-});
-
-// Debug endpoint - losowe przedmioty testowe
-app.post('/api/debug/give-items', authenticateToken, async (req, res) => {
-  try {
-    const userId = req.user.id;
-
-    // Pobierz dane postaci aby uzyskać character_id
-    const { data: character, error: characterError } = await supabase
-      .from('characters')
-      .select('id')
-      .eq('profile_id', userId)
-      .single();
-
-    if (characterError || !character) {
-      return res.status(404).json({ error: 'Nie znaleziono postaci gracza' });
-    }
-
-    // Pobierz wszystkie przedmioty z bazy
-    const { data: allItems, error: itemsError } = await supabase
-      .from('item_templates')
-      .select('*');
-
-    if (itemsError || !allItems) {
-      return res.status(500).json({ error: 'Błąd pobierania przedmiotów z bazy' });
-    }
-
-    // Podziel przedmioty na 3 pule
-    const usableItems = allItems.filter(item => 
-      item.category === 'consumable' || item.category === 'special_consumable'
-    );
-
-    const trainingItems = allItems.filter(item => 
-      item.category === 'equipment' && 
-      (item.name.includes('Ciężk') || item.name.includes('Obciążon'))
-    );
-
-    const passiveItems = allItems.filter(item => 
-      item.category === 'equipment' && 
-      !item.name.includes('Ciężk') && 
-      !item.name.includes('Obciążon')
-    );
-
-    // Wylosuj po 1 przedmiocie z każdej puli
-    const getRandomItem = (array) => {
-      if (array.length === 0) return null;
-      return array[Math.floor(Math.random() * array.length)];
-    };
-
-    const selectedItems = [];
-    
-    const usableItem = getRandomItem(usableItems);
-    const trainingItem = getRandomItem(trainingItems);
-    const passiveItem = getRandomItem(passiveItems);
-
-    if (usableItem) {
-      selectedItems.push({
-        template: usableItem,
-        quantity: Math.floor(Math.random() * 5) + 1 // 1-5 sztuk
-      });
-    }
-
-    if (trainingItem) {
-      selectedItems.push({
-        template: trainingItem,
-        quantity: 1 // Sprzęt zawsze 1 sztuka
-      });
-    }
-
-    if (passiveItem) {
-      selectedItems.push({
-        template: passiveItem,
-        quantity: 1 // Sprzęt zawsze 1 sztuka
-      });
-    }
-
-    // Dodaj wylosowane przedmioty do ekwipunku gracza
-    for (const { template, quantity } of selectedItems) {
-      // Sprawdź czy gracz już ma taki przedmiot (dla stackowania)
-      const { data: existingItem, error: existingError } = await supabase
-        .from('inventory')
-        .select('*')
-        .eq('character_id', character.id)
-        .eq('item_template_id', template.id)
-        .eq('equipped_slot', null) // Tylko przedmioty w plecaku mogą się stackować
-        .single();
-
-      if (existingError && existingError.code !== 'PGRST116') { // PGRST116 = nie znaleziono
-        console.error(`[Debug] Błąd sprawdzania istniejącego przedmiotu:`, existingError);
-        continue;
-      }
-
-      if (existingItem && (template.category === 'consumable' || template.category === 'special_consumable')) {
-        // Gracz już ma ten przedmiot używalny - zaktualizuj ilość
-        const newQuantity = Number(existingItem.quantity) + quantity;
-        const { error: updateError } = await supabase
-          .from('inventory')
-          .update({ quantity: newQuantity })
-          .eq('id', existingItem.id);
-
-        if (updateError) {
-          console.error(`[Debug] Błąd aktualizacji ilości przedmiotu ${template.name}:`, updateError);
-        } else {
-          console.log(`[Debug] Zaktualizowano ilość ${template.name}: ${existingItem.quantity} → ${newQuantity}`);
-        }
-      } else {
-        // Nowy przedmiot - dodaj do bazy
-        const { error: insertError } = await supabase
-          .from('inventory')
-          .insert({
-            character_id: character.id,
-            item_template_id: template.id,
-            quantity: quantity,
-            equipped_slot: null
-          });
-
-        if (insertError) {
-          console.error(`[Debug] Błąd dodawania przedmiotu ${template.name}:`, insertError);
-        } else {
-          console.log(`[Debug] Dodano nowy przedmiot: ${template.name} (ID: ${template.id})`);
-        }
-      }
-    }
-
-    const itemNames = selectedItems.map(({ template, quantity }) => 
-      `${template.name} x${quantity}`
-    ).join(', ');
-
-    res.json({ 
-      status: 'success', 
-      message: `Otrzymano losowe przedmioty: ${itemNames}`,
-      items_given: selectedItems.length,
-      items: selectedItems.map(({ template, quantity }) => ({
-        name: template.name,
-        category: template.category,
-        quantity: quantity
-      }))
-    });
-
-  } catch (err) {
-    console.error('[Debug] Błąd losowania przedmiotów:', err.message);
-    res.status(500).json({ error: 'Błąd serwera podczas losowania przedmiotów testowych' });
-  }
-});
-
-// Debug endpoint - czyszczenie plecaka
-app.post('/api/debug/clear-backpack', authenticateToken, async (req, res) => {
-  try {
-    const userId = req.user.id;
-
-    // Pobierz dane postaci aby uzyskać character_id
-    const { data: character, error: characterError } = await supabase
-      .from('characters')
-      .select('id')
-      .eq('profile_id', userId)
-      .single();
-
-    if (characterError || !character) {
-      return res.status(404).json({ error: 'Nie znaleziono postaci gracza' });
-    }
-
-    // Twarde usunięcie wszystkich przedmiotów z plecaka (equipped_slot IS NULL)
-    const { error: deleteError } = await supabase
-      .from('inventory')
-      .delete()
-      .eq('character_id', character.id)
-      .eq('equipped_slot', null);
-
-    if (deleteError) {
-      console.error('[Debug] Błąd czyszczenia plecaka:', deleteError);
-      return res.status(500).json({ error: 'Błąd podczas czyszczenia plecaka' });
-    }
-
-    console.log(`[Debug] Wyczyszczono plecak dla postaci ID: ${character.id}`);
-
-    res.json({ 
-      status: 'success',
-      message: 'Plecak został wyczyszczony!'
-    });
-
-  } catch (err) {
-    console.error('[Debug] Błąd czyszczenia plecaka:', err.message);
-    res.status(500).json({ error: 'Błąd serwera podczas czyszczenia plecaka' });
   }
 });
 
@@ -1374,14 +1168,20 @@ app.post('/api/missions/start', authenticateToken, async (req, res) => {
     console.error('[Mission] Błąd podczas rozpoczynania misji:', err.message);
     res.status(500).json({ error: 'Błąd serwera podczas rozpoczynania misji' });
   }
-}); // <--- DODAJ TĘ LINIJKĘ (ZAMKNIĘCIE ENDPOINTU)
+});
 
-// ENDPOINT TESTOWY: Magiczna Fasolka (Zenkai)
-// ==========================================
-app.post('/api/debug/zenkai', authenticateToken, async (req, res) => {
+// Endpoint dzielenia stosów przedmiotów
+app.post('/api/inventory/split', authenticateToken, async (req, res) => {
   try {
     const userId = req.user.id;
-    const { data: char, error: fetchError } = await supabase
+    const { inventory_id, amount_to_split } = req.body;
+
+    if (!inventory_id || !amount_to_split) {
+      return res.status(400).json({ error: 'Brak wymaganych parametrów: inventory_id, amount_to_split' });
+    }
+
+    // Pobierz dane postaci
+    const { data: character, error: characterError } = await supabase
       .from('characters')
       .select('*')
       .eq('profile_id', userId)
