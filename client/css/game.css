@@ -665,21 +665,20 @@ body {
     min-width: 450px;
 }
 
-/* Układ Paper Doll - rygorystyczna siatka anatomiczna */
+/* Układ Paper Doll - zwarty układ anatomiczny */
 .character-body {
     display: grid;
-    grid-template-columns: 80px 100px 80px; /* Środkowa kolumna nieco szersza */
-    grid-template-rows: 80px 60px 80px 80px 80px;
-    gap: 10px 15px;
+    grid-template-columns: 80px 100px 80px; /* Środkowa kolumna szersza na główne elementy */
+    grid-template-rows: 80px 60px 80px 80px; /* 4 rzędy */
+    gap: 15px;
     justify-content: center;
     
-    /* Precyzyjny układ anatomiczny */
+    /* Nowy, zwarty układ anatomiczny */
     grid-template-areas:
         "ear_l   head       ear_r"
         ".       necklace   ."
-        ".       chest      hands"
-        "ring_l  legs       ring_r"
-        ".       feet       .";
+        "ring_l  chest      ring_r"
+        "hands   legs       feet";
 }
 
 /* Sloty wyposażenia - domyślne (małe - biżuteria) */
@@ -742,10 +741,10 @@ body {
     min-width: 500px;
 }
 
-/* Siatka plecaka - uporządkowana */
+/* Siatka plecaka - estetyczny rząd */
 .inventory-grid {
     display: grid;
-    grid-template-columns: repeat(5, 1fr);
+    grid-template-columns: repeat(5, 80px);
     gap: 10px;
     justify-content: center;
 }
@@ -820,8 +819,8 @@ body {
     
     .character-body {
         grid-template-columns: 70px 85px 70px;
-        grid-template-rows: 70px 50px 70px 70px 70px;
-        gap: 8px 12px;
+        grid-template-rows: 70px 50px 70px 70px; /* 4 rzędy */
+        gap: 12px;
     }
     
     .equipment-slot {
@@ -844,6 +843,10 @@ body {
         width: 70px;
         height: 70px;
     }
+    
+    .inventory-grid {
+        grid-template-columns: repeat(5, 70px);
+    }
 }
 
 @media (max-width: 768px) {
@@ -860,8 +863,8 @@ body {
     
     .character-body {
         grid-template-columns: 60px 70px 60px;
-        grid-template-rows: 60px 45px 60px 60px 60px;
-        gap: 6px 10px;
+        grid-template-rows: 60px 45px 60px 60px; /* 4 rzędy */
+        gap: 10px;
     }
     
     .equipment-slot {
@@ -883,6 +886,10 @@ body {
     .inventory-slot {
         width: 60px;
         height: 60px;
+    }
+    
+    .inventory-grid {
+        grid-template-columns: repeat(5, 60px);
     }
 }
 
