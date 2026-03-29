@@ -1128,7 +1128,7 @@
         function renderInventory(items) {
             // Krok A: Złap wszystkie sloty i wyczyść je
             const equipmentSlots = document.querySelectorAll('[data-slot]');
-            const inventorySlots = document.querySelectorAll('.inventory-slot');
+            const inventorySlots = document.querySelectorAll('.inventory-panel .inventory-slot');
             
             // Wyczyść sloty wyposażenia, zostawiając domyślne napisy
             equipmentSlots.forEach(slot => {
@@ -1159,7 +1159,7 @@
                     }
                 } else {
                     // Przedmiot w plecaku - umieść w pierwszym wolnym slocie
-                    const emptySlot = document.querySelector('.inventory-slot:empty');
+                    const emptySlot = document.querySelector('.inventory-panel .inventory-slot:empty');
                     if (emptySlot) {
                         const card = createItemCard(item);
                         emptySlot.innerHTML = ''; // Kompletne wyczyszczenie slotu
@@ -1169,6 +1169,11 @@
             });
 
             console.log(`[Inventory] Wyrenderowano ${items.length} przedmiotów`);
+            
+            // Synchronizacja plecaka w sklepie
+            if (typeof renderShopBackpack === 'function') {
+                renderShopBackpack();
+            }
         }
 
         // Czyszczenie wszystkich slotów
