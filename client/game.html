@@ -138,6 +138,7 @@
 
         <!-- Widok Ekwipunku -->
         <div id="equipment-view" style="display: none;">
+            <button id="dev-give-items-btn" style="background: red; color: white; margin-bottom: 10px;">[DEV] Daj przedmioty testowe</button>
             <div class="equipment-container">
                 <!-- Lewy Panel - Wyposażenie (Paper Doll) -->
                 <div class="equipment-panel">
@@ -1235,28 +1236,50 @@
                         // Dodanie info o odzyskanych statystykach
                         if (data.recovered) {
                             const recList = [];
-                            if (Number(data.recovered.strength) > 0) recList.push(`+${data.recovered.strength} Siła`);
-                            if (Number(data.recovered.speed) > 0) recList.push(`+${data.recovered.speed} Szybkość`);
-                            if (Number(data.recovered.endurance) > 0) recList.push(`+${data.recovered.endurance} Wytrz.`);
-                            if (Number(data.recovered.intelligence) > 0) recList.push(`+${data.recovered.intelligence} Int.`);
-                            if (Number(data.recovered.mental_strength) > 0) recList.push(`+${data.recovered.mental_strength} Siła Men.`);
+                            if (data.recovered.strength) recList.push(`+${data.recovered.strength} Siły`);
+                            if (data.recovered.speed) recList.push(`+${data.recovered.speed} Szybkości`);
+                            if (data.recovered.endurance) recList.push(`+${data.recovered.endurance} Wytrzymałości`);
+                            if (data.recovered.intelligence) recList.push(`+${data.recovered.intelligence} Inteligencji`);
+                            if (data.recovered.mental_strength) recList.push(`+${data.recovered.mental_strength} Siły Mentalnej`);
                             
                             if (recList.length > 0) {
-                                successMsg += `<br>📈 Odzyskano: ${recList.join(', ')}`;
+                                successMsg += `<br><small>Odzyskano: ${recList.join(', ')}</small>`;
                             }
                         }
                         
                         showSuccessMessage(successMsg);
-                        fetchCharacterData(); // Odśwież dane postaci
-                    } else if (data.status === 'warning') {
-                        // Ostrzeżenie, gdy zasoby są pełne (żółty komunikat)
-                        showWarningMessage(data.message);
+                        await fetchCharacterData(); // Odśwież dane postaci
                     } else {
-                        showErrorMessage(data.message || 'Nie udało się użyć Magicznej Fasolki');
+                        showErrorMessage(data.message || 'Nie udało się użyć Magicznej Fasolki.');
                     }
                 } catch (error) {
-                    console.error('[Senzu] Błąd:', error);
-                    showErrorMessage('Błąd serwera podczas używania Magicznej Fasolki');
+                    console.error('[Zenkai] Błąd:', error);
+                    showErrorMessage('Wystąpił błąd podczas używania Magicznej Fasolki.');
+                }
+            });
+
+            // 5. Event Listener dla przycisku deweloperskiego - dawanie przedmiotów
+            document.getElementById('dev-give-items-btn')?.addEventListener('click', async function() {
+                try {
+                    const response = await fetch(`${API_BASE_URL}/api/debug/give-items`, {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': `Bearer ${localStorage.getItem('session_token')}`,
+                            'Content-Type': 'application/json'
+                        }
+                    });
+
+                    const data = await response.json();
+                    
+                    if (data.status === 'success') {
+                        showSuccessMessage('Otrzymano przedmioty testowe!');
+                        await fetchInventory(); // Natychmiastowe odświeżenie widoku ekwipunku
+                    } else {
+                        showErrorMessage(data.message || 'Nie udało się dać przedmiotów testowych.');
+                    }
+                } catch (error) {
+                    console.error('[Debug] Błąd dawania przedmiotów:', error);
+                    showErrorMessage('Wystąpił błąd podczas dawania przedmiotów testowych.');
                 }
             });
 

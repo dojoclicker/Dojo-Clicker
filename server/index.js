@@ -447,6 +447,86 @@ app.get('/api/inventory', authenticateToken, async (req, res) => {
   }
 });
 
+// Debug endpoint - dawanie przedmiotów testowych
+app.post('/api/debug/give-items', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    // Pobierz dane postaci aby uzyskać character_id
+    const { data: character, error: characterError } = await supabase
+      .from('characters')
+      .select('id')
+      .eq('profile_id', userId)
+      .single();
+
+    if (characterError || !character) {
+      return res.status(404).json({ error: 'Nie znaleziono postaci gracza' });
+    }
+
+    // Zestaw testowy przedmiotów (wszystkie trafią do plecaka - equipped_slot: null)
+    const testItems = [
+      // Pasywne
+      { item_template_id: 1, quantity: 1, equipped_slot: null }, // Podstawowe Gi (chest)
+      { item_template_id: 2, quantity: 1, equipped_slot: null }, // Opaska Nowicjusza (head)
+      { item_template_id: 3, quantity: 1, equipped_slot: null }, // Wygodne Spodnie (legs)
+      { item_template_id: 4, quantity: 1, equipped_slot: null }, // Trampki (feet)
+      
+      // Treningowe
+      { item_template_id: 5, quantity: 1, equipped_slot: null }, // Ciężka Skorupa (chest)
+      { item_template_id: 6, quantity: 1, equipped_slot: null }, // Ciężka Opaska (head)
+      { item_template_id: 7, quantity: 1, equipped_slot: null }, // Ciężkie Spodnie (legs)
+      { item_template_id: 8, quantity: 1, equipped_slot: null }, // Obciążone Buty (feet)
+      { item_template_id: 9, quantity: 1, equipped_slot: null }, // Ciężkie Rękawice (hands)
+      
+      // Używalne
+      { item_template_id: 10, quantity: 5, equipped_slot: null }, // Mięso (5 sztuk)
+      { item_template_id: 11, quantity: 5, equipped_slot: null }, // Jagody (5 sztuk)
+      { item_template_id: 12, quantity: 1, equipped_slot: null }, // Magiczna Fasolka (1 sztuka)
+    ];
+
+    // Przetwarzanie każdego przedmiotu
+    for (const item of testItems) {
+      // Sprawdź czy gracz już ma taki przedmiot (dla stackowania)
+      const { data: existingItem, error: existingError } = await supabase
+        .from('inventory')
+        .select('*')
+        .eq('character_id', character.id)
+        .eq('item_template_id', item.item_template_id)
+        .eq('equipped_slot', null) // Tylko przedmioty w plecaku mogą się stackować
+        .single();
+
+      if (existingItem && !existingError) {
+        // Gracz już ma ten przedmiot - zaktualizuj ilość
+        const newQuantity = Number(existingItem.quantity) + item.quantity;
+        await supabase
+          .from('inventory')
+          .update({ quantity: newQuantity })
+          .eq('id', existingItem.id);
+      } else {
+        // Nowy przedmiot - dodaj do bazy
+        await supabase
+          .from('inventory')
+          .insert({
+            character_id: character.id,
+            item_template_id: item.item_template_id,
+            quantity: item.quantity,
+            equipped_slot: item.equipped_slot
+          });
+      }
+    }
+
+    res.json({ 
+      status: 'success', 
+      message: 'Otrzymano przedmioty testowe!',
+      items_given: testItems.length 
+    });
+
+  } catch (err) {
+    console.error('[Debug] Błąd dawania przedmiotów:', err.message);
+    res.status(500).json({ error: 'Błąd serwera podczas dawania przedmiotów testowych' });
+  }
+});
+
 // Silnik Misji - Rozpoczęcie misji
 app.post('/api/missions/start', authenticateToken, async (req, res) => {
   try {
