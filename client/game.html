@@ -1119,21 +1119,21 @@
 
             // Krok B: Przeiteruj przez przedmioty i stwórz karty
             items.forEach(item => {
-                const itemCard = createItemCard(item);
-                
-                // Krok C: Znajdź odpowiedni slot docelowy
                 if (item.equipped_slot) {
-                    // Przedmiot założony - znajdź slot wyposażenia
-                    const equipmentSlot = document.querySelector(`[data-slot="${item.equipped_slot}"]`);
-                    if (equipmentSlot) {
-                        equipmentSlot.innerHTML = '';
-                        equipmentSlot.appendChild(itemCard);
+                    // Przedmiot założony - umieść w odpowiednim slocie wyposażenia
+                    const slot = document.querySelector(`[data-slot="${item.equipped_slot}"]`);
+                    if (slot) {
+                        const card = createItemCard(item);
+                        slot.innerHTML = ''; // Wyczyść slot przed dodaniem
+                        slot.appendChild(card);
                     }
                 } else {
-                    // Przedmiot w plecaku - znajdź pierwszy pusty slot
-                    const emptySlot = document.querySelector('.inventory-slot:not(:has(.item-card))');
+                    // Przedmiot w plecaku - umieść w pierwszym wolnym slocie
+                    const emptySlot = document.querySelector('.inventory-slot:empty');
                     if (emptySlot) {
-                        emptySlot.appendChild(itemCard);
+                        const card = createItemCard(item);
+                        emptySlot.innerHTML = ''; // Kompletne wyczyszczenie slotu
+                        emptySlot.appendChild(card);
                     }
                 }
             });
@@ -1202,7 +1202,14 @@
                 e.dataTransfer.setData('item_name', item.item_templates?.name || 'Przedmiot');
                 e.dataTransfer.setData('item_slot', item.item_templates?.slot || null);
                 e.dataTransfer.setData('item_category', item.item_templates?.category || 'unknown');
-                console.log('Drag start:', item.item_templates?.name, '(ID:', item.id, ')');
+                
+                // Dodaj informację o źródle (slot wyposażenia czy plecak)
+                const sourceSlot = e.target.closest('[data-slot]') 
+                    ? e.target.closest('[data-slot]').dataset.slot 
+                    : 'backpack';
+                e.dataTransfer.setData('source_slot', sourceSlot);
+                
+                console.log('Drag start:', item.item_templates?.name, '(ID:', item.id, ')', 'źródło:', sourceSlot);
             });
             
             return card;
@@ -1497,7 +1504,14 @@
                     const itemName = e.dataTransfer.getData('item_name');
                     const itemSlot = e.dataTransfer.getData('item_slot');
                     const itemCategory = e.dataTransfer.getData('item_category');
+                    const sourceSlot = e.dataTransfer.getData('source_slot');
                     const targetSlot = this.getAttribute('data-slot');
+                    
+                    // Zabezpieczenie przed sortowaniem w plecaku
+                    if (sourceSlot === 'backpack' && targetSlot === null) {
+                        console.log('Ignorowanie: Brak obsługi ręcznego sortowania plecaka w DB.');
+                        return;
+                    }
                     
                     // Zabezpieczenie 2: Zamiana w tym samym miejscu
                     const draggedElement = document.querySelector(`[data-inventory-id="${inventoryId}"]`);
@@ -1558,6 +1572,13 @@
                     const itemName = e.dataTransfer.getData('item_name');
                     const itemSlot = e.dataTransfer.getData('item_slot');
                     const itemCategory = e.dataTransfer.getData('item_category');
+                    const sourceSlot = e.dataTransfer.getData('source_slot');
+                    
+                    // Zabezpieczenie przed sortowaniem w plecaku
+                    if (sourceSlot === 'backpack') {
+                        console.log('Ignorowanie: Brak obsługi ręcznego sortowania plecaka w DB.');
+                        return;
+                    }
                     
                     // Zabezpieczenie: Zamiana w tym samym miejscu
                     const draggedElement = document.querySelector(`[data-inventory-id="${inventoryId}"]`);

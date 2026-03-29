@@ -480,8 +480,8 @@ app.post('/api/inventory/swap', authenticateToken, async (req, res) => {
       return res.status(404).json({ error: 'Nie znaleziono przedmiotu' });
     }
 
-    // Sprawdź wymagania statystyk dla sprzętu
-    if (draggedItem.item_templates.category === 'equipment' && draggedItem.item_templates.req_stats) {
+    // Sprawdź wymagania statystyk dla sprzętu (tylko przy zakładaniu, nie przy zdejmowaniu)
+    if (draggedItem.item_templates.category === 'equipment' && draggedItem.item_templates.req_stats && slot_target !== 'backpack') {
       for (const [stat, requiredValue] of Object.entries(draggedItem.item_templates.req_stats)) {
         const playerStat = BigInt(character[stat] || '1');
         const requiredStat = BigInt(requiredValue);
