@@ -1277,25 +1277,24 @@ app.post('/api/inventory/split', authenticateToken, async (req, res) => {
   }
 });
 
-// Endpoint pobierania przedmiotów sklepu
+// Endpoint pobierający asortyment sklepu
 app.get('/api/shop/items', authenticateToken, async (req, res) => {
   try {
-    // Pobierz wszystkie szablony przedmiotów z ceną zakupu
-    const { data: items, error } = await supabase
+    const { data, error } = await supabase
       .from('item_templates')
       .select('*')
       .not('buy_price_coins', 'is', null)
       .order('buy_price_coins', { ascending: true });
 
     if (error) {
-      console.error('[Shop] Błąd pobierania przedmiotów sklepu:', error);
-      return res.status(500).json({ error: 'Błąd podczas pobierania asortymentu sklepu' });
+      console.error('[Shop] Błąd bazy danych przy pobieraniu szablonów:', error);
+      return res.status(500).json({ error: 'Błąd bazy danych' });
     }
 
-    res.json(items);
+    res.json(data || []);
   } catch (err) {
-    console.error('[Shop] Błąd endpointu items:', err.message);
-    res.status(500).json({ error: 'Błąd serwera podczas pobierania przedmiotów sklepu' });
+    console.error('[Shop] Błąd endpointu /api/shop/items:', err.message);
+    res.status(500).json({ error: 'Błąd serwera podczas ładowania asortymentu' });
   }
 });
 
