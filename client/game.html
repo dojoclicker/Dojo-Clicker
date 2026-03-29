@@ -246,17 +246,6 @@
                             <!-- Sloty plecaka będą renderowane dynamicznie -->
                         </div>
                     </div>
-
-                    <!-- Informacje o graczu -->
-                    <div class="shop-player-info">
-                        <div class="player-coins">
-                            <span class="coins-icon">💰</span>
-                            <span id="shop-coins">0</span>
-                        </div>
-                        <div class="backpack-status">
-                            Plecak: <span id="shop-backpack-count">0/5</span>
-                        </div>
-                    </div>
                 </div>
             </div>
         </div>
@@ -1390,7 +1379,6 @@
         // Inicjalizacja sklepu
         function initShop() {
             renderShopItems();
-            updateShopPlayerInfo();
             renderShopBackpack();
             
             // Event listenery dla zakładek
@@ -1431,25 +1419,27 @@
             
             grid.innerHTML = '';
             
-            // Wypełnij puste sloty
+            // Wygeneruj 5 slotów inventory-slot (tak samo jak w widoku Ekwipunku)
             for (let i = 0; i < 5; i++) {
                 const slot = document.createElement('div');
-                slot.className = 'shop-backpack-slot';
+                slot.className = 'inventory-slot';
                 
                 if (i < backpackItems.length) {
                     const item = backpackItems[i];
-                    const emoji = getItemEmoji(item.item_templates?.name || 'Przedmiot', item.item_templates?.category || 'unknown');
+                    const card = createItemCard(item);
                     
-                    slot.innerHTML = `
-                        <div class="item-emoji">${emoji}</div>
-                        ${item.quantity > 1 ? `<div class="item-quantity">${item.quantity}</div>` : ''}
-                        <div class="item-tooltip">
-                            ${createItemTooltip(item.item_templates)}
-                        </div>
-                    `;
+                    // Zablokuj mechanikę drag&drop dla sklepu
+                    card.setAttribute('draggable', 'false');
                     
-                    // Dodaj tooltipy sprzedaży dla sklepu
-                    const tooltip = slot.querySelector('.item-tooltip');
+                    // Nadpisz event podwójnego kliknięcia do sprzedaży
+                    card.addEventListener('dblclick', function(e) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        sellItem(item.id);
+                    });
+                    
+                    // Dodaj tooltip sprzedaży dla sklepu
+                    const tooltip = card.querySelector('.item-tooltip');
                     if (tooltip && item.item_templates?.buy_price_coins) {
                         const sellPrice = Math.floor(item.item_templates.buy_price_coins / 2);
                         const totalSellPrice = sellPrice * item.quantity;
@@ -1460,12 +1450,7 @@
                         </div>`;
                     }
                     
-                    // Sprzedaż przez double-click w sklepie
-                    slot.addEventListener('dblclick', function(e) {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        sellItem(item.id);
-                    });
+                    slot.appendChild(card);
                 }
                 
                 grid.appendChild(slot);
@@ -1508,32 +1493,6 @@
             return card;
         }
 
-        // Aktualizacja informacji o graczu w sklepie
-        function updateShopPlayerInfo() {
-            const characterData = window.characterData;
-            if (characterData) {
-                const coinsEl = document.getElementById('shop-coins');
-                if (coinsEl) {
-                    coinsEl.textContent = characterData.coins || '0';
-                }
-                
-                // Policz przedmioty w plecaku
-                const backpackItems = (window.inventoryData || []).filter(item => item.equipped_slot === null);
-                const backpackCount = backpackItems.length;
-                
-                const backpackStatus = document.getElementById('shop-backpack-count');
-                if (backpackStatus) {
-                    backpackStatus.textContent = `${backpackCount}/5`;
-                    
-                    if (backpackCount >= 5) {
-                        backpackStatus.parentElement.classList.add('full');
-                    } else {
-                        backpackStatus.parentElement.classList.remove('full');
-                    }
-                }
-            }
-        }
-
         // Kupowanie przedmiotu
         async function buyItem(item) {
             try {
@@ -1565,7 +1524,6 @@
                     showSuccessMessage(`Kupiono ${item.name}!`);
                     await fetchInventory(); // Odśwież ekwipunek
                     await fetchCharacterData(); // Odśwież monety
-                    updateShopPlayerInfo();
                     renderShopItems(); // Odśwież przyciski
                     renderShopBackpack(); // Odśwież plecak
                 } else {
@@ -1604,7 +1562,6 @@
                     showSuccessMessage(`Sprzedano ${data.item.name} x${data.item.quantity} za ${data.item.total_sell_price} monet!`);
                     await fetchInventory(); // Odśwież ekwipunek
                     await fetchCharacterData(); // Odśwież monety
-                    updateShopPlayerInfo();
                     renderShopBackpack(); // Odśwież plecak
                 } else {
                     showWarningMessage(data.error || 'Błąd podczas sprzedaży');

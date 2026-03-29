@@ -852,6 +852,41 @@ body {
     flex-wrap: wrap;
 }
 
+/* Style przycisków zakładek sklepu */
+.shop-level-tabs button,
+.shop-category-tabs button {
+    background: rgba(0,0,0,0.4);
+    border: 1px solid var(--goku-panel-border);
+    color: var(--text-secondary);
+    border-radius: 6px;
+    padding: 8px 16px;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    font-size: 0.9rem;
+    font-weight: 500;
+}
+
+.shop-level-tabs button:hover,
+.shop-category-tabs button:hover {
+    background: rgba(0,0,0,0.6);
+    border-color: var(--goku-accent);
+    color: var(--text-primary);
+}
+
+.shop-level-tabs button.active,
+.shop-category-tabs button.active {
+    background: var(--goku-accent);
+    border: 1px solid var(--goku-accent-hover);
+    color: var(--text-primary);
+}
+
+.shop-level-tabs button.disabled,
+.shop-category-tabs button.disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    filter: grayscale(100%);
+}
+
 /* Grid przedmiotów sklepu */
 .shop-items-grid {
     display: grid;
@@ -859,6 +894,79 @@ body {
     gap: 15px;
     margin-bottom: 20px;
     min-height: 300px;
+}
+
+/* Karty przedmiotów w sklepie */
+.shop-item-card {
+    background: rgba(0,0,0,0.4);
+    border: 1px solid var(--goku-panel-border);
+    border-radius: 8px;
+    padding: 15px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    transition: all var(--transition-fast);
+    cursor: pointer;
+}
+
+.shop-item-card:hover {
+    border-color: var(--goku-accent);
+    transform: translateY(-2px);
+    background: rgba(0,0,0,0.6);
+}
+
+.shop-item-card .item-emoji {
+    font-size: 2rem;
+    margin-bottom: 8px;
+}
+
+.shop-item-card .item-name {
+    color: var(--text-primary);
+    font-size: 0.9rem;
+    font-weight: 600;
+    margin-bottom: 5px;
+}
+
+.shop-item-card .item-price {
+    color: var(--goku-accent);
+    font-size: 0.8rem;
+    font-weight: 500;
+    margin-bottom: 10px;
+}
+
+.shop-item-card .item-description {
+    color: var(--text-secondary);
+    font-size: 0.75rem;
+    margin-bottom: 10px;
+    flex-grow: 1;
+}
+
+/* Przycisk kupna w sklepie */
+.shop-buy-btn {
+    background: var(--goku-accent);
+    color: white;
+    border: none;
+    border-radius: 4px;
+    padding: 5px 10px;
+    cursor: pointer;
+    width: 100%;
+    margin-top: auto;
+    font-size: 0.8rem;
+    font-weight: 600;
+    transition: all var(--transition-fast);
+}
+
+.shop-buy-btn:hover:not(:disabled) {
+    background: var(--goku-accent-hover);
+    transform: scale(1.05);
+}
+
+.shop-buy-btn:disabled {
+    background: var(--goku-panel-border);
+    color: var(--text-muted);
+    cursor: not-allowed;
+    opacity: 0.6;
 }
 
 /* Panel plecaka do sprzedaży */
@@ -877,28 +985,11 @@ body {
 }
 
 .shop-backpack-grid {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 10px;
-    margin-bottom: 20px;
-}
-
-.shop-backpack-slot {
-    aspect-ratio: 1;
-    background: rgba(255, 107, 0, 0.1);
-    border: 2px solid var(--primary-color);
-    border-radius: 8px;
     display: flex;
-    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
     justify-content: center;
-    position: relative;
-    cursor: pointer;
-    transition: all 0.3s ease;
-}
-
-.shop-backpack-slot:hover {
-    background: rgba(255, 107, 0, 0.2);
-    transform: scale(1.05);
+    margin-bottom: 20px;
 }
 
 /* Informacje o graczu */
