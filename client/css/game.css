@@ -26,6 +26,10 @@
     --success: #22c55e;                  /* Sukces - zielony */
     --warning: #f59e0b;                  /* Ostrzeżenie - pomarańczowy */
     --error: #ef4444;                    /* Błąd - czerwony */
+    
+    /* Przejścia */
+    --transition-fast: 0.3s ease;        /* Szybkie przejścia */
+    --transition-normal: 0.5s ease;      /* Normalne przejścia */
 }
 
 /* Stany przycisków */
@@ -564,9 +568,10 @@ body {
     transform: translateX(-50%);
     z-index: 1000;
     opacity: 0;
+    visibility: hidden;
     pointer-events: none;
     transition: opacity var(--transition-fast), visibility var(--transition-fast);
-    transition-delay: 0.3s;
+    transition-delay: 0s;
     background: linear-gradient(135deg, var(--goku-panel-bg) 0%, rgba(22, 30, 49, 0.95) 100%);
     border: 2px solid var(--goku-accent);
     border-radius: 8px;
@@ -577,7 +582,8 @@ body {
 
 .mission-card:hover .mission-tooltip {
     opacity: 1;
-    transition-delay: 0s;
+    visibility: visible;
+    transition-delay: 0.4s;
 }
 
 /* Style dla zablokowanych misji */
