@@ -594,6 +594,213 @@ app.post('/api/inventory/swap', authenticateToken, async (req, res) => {
   }
 });
 
+// Endpoint konsumpcji przedmiotów
+app.post('/api/inventory/consume', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { inventory_id } = req.body;
+
+    if (!inventory_id) {
+      return res.status(400).json({ error: 'Brak wymaganego parametru: inventory_id' });
+    }
+
+    // Pobierz dane postaci
+    const { data: character, error: characterError } = await supabase
+      .from('characters')
+      .select('*')
+      .eq('profile_id', userId)
+      .single();
+
+    if (characterError || !character) {
+      return res.status(404).json({ error: 'Nie znaleziono postaci gracza' });
+    }
+
+    // Pobierz przedmiot z relacją do szablonu
+    const { data: item, error: itemError } = await supabase
+      .from('inventory')
+      .select('*, item_templates(*)')
+      .eq('id', inventory_id)
+      .eq('character_id', character.id)
+      .single();
+
+    if (itemError || !item) {
+      return res.status(404).json({ error: 'Nie znaleziono przedmiotu' });
+    }
+
+    // Sprawdź czy przedmiot jest używalny
+    if (item.item_templates.category !== 'consumable' && item.item_templates.category !== 'special_consumable') {
+      return res.status(400).json({ error: 'Ten przedmiot nie jest używalny!' });
+    }
+
+    // Sprawdź czy przedmiot nie jest założony
+    if (item.equipped_slot !== null) {
+      return res.status(400).json({ error: 'Zdejmij przedmiot przed użyciem!' });
+    }
+
+    // Oblicz obecne maksymalne zasoby
+    const currentStr = BigInt(character.strength || '1');
+    const currentInt = BigInt(character.intelligence || '1');
+    const currentEnd = BigInt(character.endurance || '1');
+    const currentBonusStamina = BigInt(character.bonus_stamina || '0');
+    
+    const maxHp = 100n + (currentStr / 20n);
+    const maxMp = 100n + (currentInt / 5n);
+    const maxStamina = 100n + currentBonusStamina;
+
+    // Pobierz obecne zasoby
+    let currentHp = BigInt(character.hp || '100');
+    let currentMp = BigInt(character.mp || '100');
+    let currentStamina = BigInt(character.stamina || '100');
+    let newBonusStamina = currentBonusStamina;
+
+    // Przetwarzaj efekty konsumpcji
+    const effects = item.item_templates.consumable_effect;
+    if (!effects) {
+      return res.status(400).json({ error: 'Przedmiot nie ma zdefiniowanych efektów!' });
+    }
+
+    let effectMessages = [];
+
+    for (const [effect, value] of Object.entries(effects)) {
+      if (effect === 'restore_hp') {
+        const healAmount = BigInt(value);
+        currentHp = minBigInt(maxHp, currentHp + healAmount);
+        effectMessages.push(`+${value} HP`);
+      } else if (effect === 'restore_mp') {
+        const manaAmount = BigInt(value);
+        currentMp = minBigInt(maxMp, currentMp + manaAmount);
+        effectMessages.push(`+${value} MP`);
+      } else if (effect === 'restore_stamina') {
+        const staminaAmount = BigInt(value);
+        currentStamina = minBigInt(maxStamina, currentStamina + staminaAmount);
+        effectMessages.push(`+${value} Staminy`);
+      } else if (effect === 'restore_hp_pct') {
+        const healPercent = BigInt(value);
+        const healAmount = (maxHp * healPercent) / 100n;
+        currentHp = minBigInt(maxHp, currentHp + healAmount);
+        effectMessages.push(`+${value}% HP`);
+      } else if (effect === 'restore_mp_pct') {
+        const manaPercent = BigInt(value);
+        const manaAmount = (maxMp * manaPercent) / 100n;
+        currentMp = minBigInt(maxMp, currentMp + manaAmount);
+        effectMessages.push(`+${value}% MP`);
+      } else if (effect === 'restore_stamina_pct') {
+        const staminaPercent = BigInt(value);
+        const staminaAmount = (maxStamina * staminaPercent) / 100n;
+        currentStamina = minBigInt(maxStamina, currentStamina + staminaAmount);
+        effectMessages.push(`+${value}% Staminy`);
+      } else if (effect === 'bonus_stamina') {
+        const bonusAmount = BigInt(value);
+        newBonusStamina = currentBonusStamina + bonusAmount;
+        
+        // Twarda blokada: Limit 900 na bonus_stamina
+        if (newBonusStamina > 900n) {
+          return res.status(400).json({ error: 'Osiągnięto maksymalny limit bonusu staminy (900)!' });
+        }
+        effectMessages.push(`+${value} Max Staminy`);
+      } else if (effect === 'zenkai_resurrection' && value === 'true') {
+        // Logika wskrzeszenia z szpitala
+        if (BigInt(character.hp || '0') <= 0n) {
+          const initialHp = (maxHp * 10n) / 100n; // 10% Max HP
+          currentHp = maxBigInt(initialHp, currentHp);
+          effectMessages.push('Wskrzeszenie Zenkai!');
+        } else {
+          return res.status(400).json({ error: 'Fasolka Zenkai działa tylko w szpitalu!' });
+        }
+      } else if (effect === 'restore_hp' && value === 'full') {
+        currentHp = maxHp;
+        effectMessages.push('Pełne odzyskanie HP');
+      } else if (effect === 'restore_mp' && value === 'full') {
+        currentMp = maxMp;
+        effectMessages.push('Pełne odzyskanie MP');
+      } else if (effect === 'restore_stamina' && value === 'full') {
+        currentStamina = maxStamina;
+        effectMessages.push('Pełne odzyskanie Staminy');
+      } else if (effect === 'permanent_bonus') {
+        // Trwały bonus statystyk - specjalne przedmioty
+        const updateData = {};
+        for (const [stat, statValue] of Object.entries(value)) {
+          const currentStat = BigInt(character[stat] || '1');
+          const newStat = currentStat + BigInt(statValue);
+          updateData[stat] = newStat.toString();
+          effectMessages.push(`+${statValue} ${stat}`);
+        }
+        
+        const { error: statUpdateError } = await supabase
+          .from('characters')
+          .update(updateData)
+          .eq('id', character.id);
+
+        if (statUpdateError) {
+          console.error('[Consume] Błąd aktualizacji statystyk:', statUpdateError);
+          return res.status(500).json({ error: 'Błąd podczas aktualizacji statystyk' });
+        }
+      } else if (effect === 'temporary_buff') {
+        // Tymczasowe buffy - na razie tylko logowanie
+        effectMessages.push('Tymczasowy błogosławieństwo');
+      } else if (effect === 'unlock_transformation') {
+        // Odblokowanie transformacji - na razie tylko logowanie
+        effectMessages.push('Odblokowano transformację');
+      }
+    }
+
+    // Atomowe usuwanie/zmniejszanie ilości przedmiotu
+    if (item.quantity > 1) {
+      const { error: updateError } = await supabase
+        .from('inventory')
+        .update({ quantity: item.quantity - 1 })
+        .eq('id', inventory_id);
+
+      if (updateError) {
+        console.error('[Consume] Błąd aktualizacji ilości:', updateError);
+        return res.status(500).json({ error: 'Błąd podczas aktualizacji ilości przedmiotu' });
+      }
+    } else {
+      const { error: deleteError } = await supabase
+        .from('inventory')
+        .delete()
+        .eq('id', inventory_id);
+
+      if (deleteError) {
+        console.error('[Consume] Błąd usuwania przedmiotu:', deleteError);
+        return res.status(500).json({ error: 'Błąd podczas usuwania przedmiotu' });
+      }
+    }
+
+    // Zaktualizuj postać z nowymi wartościami
+    const { error: updateError } = await supabase
+      .from('characters')
+      .update({
+        hp: currentHp.toString(),
+        mp: currentMp.toString(),
+        stamina: currentStamina.toString(),
+        bonus_stamina: newBonusStamina.toString()
+      })
+      .eq('id', character.id);
+
+    if (updateError) {
+      console.error('[Consume] Błąd aktualizacji postaci:', updateError);
+      return res.status(500).json({ error: 'Błąd podczas aktualizacji postaci' });
+    }
+
+    res.json({ 
+      success: true, 
+      message: `Użyto ${item.item_templates.name}! ${effectMessages.join(', ')}`,
+      effects: effectMessages,
+      character_updates: {
+        hp: currentHp.toString(),
+        mp: currentMp.toString(),
+        stamina: currentStamina.toString(),
+        bonus_stamina: newBonusStamina.toString()
+      }
+    });
+
+  } catch (err) {
+    console.error('[Consume] Błąd endpointu:', err.message);
+    res.status(500).json({ error: 'Błąd serwera podczas konsumpcji przedmiotu' });
+  }
+});
+
 // Debug endpoint - dawanie przedmiotów testowych
 app.post('/api/debug/give-items', authenticateToken, async (req, res) => {
   try {

@@ -1211,6 +1211,26 @@
                 
                 console.log('Drag start:', item.item_templates?.name, '(ID:', item.id, ')', 'źródło:', sourceSlot);
             });
+
+            // Dodaj event listener dla double-click (konsumpcja)
+            card.addEventListener('dblclick', function(e) {
+                e.preventDefault(); // Zablokuj domyślne zachowanie (zaznaczanie tekstu)
+                
+                const inventoryId = this.dataset.inventoryId;
+                const itemName = item.item_templates?.name || 'Przedmiot';
+                const itemCategory = item.item_templates?.category || 'unknown';
+                
+                console.log('Double-click:', itemName, '(ID:', inventoryId, ')');
+                
+                // Sprawdź czy przedmiot jest używalny
+                if (itemCategory !== 'consumable' && itemCategory !== 'special_consumable') {
+                    showWarningMessage('Ten przedmiot nie jest używalny!');
+                    return;
+                }
+                
+                // Wywołaj konsumpcję przedmiotu
+                consumeItem(inventoryId);
+            });
             
             return card;
         }
@@ -1366,6 +1386,88 @@
             console.error('[Inventory] Error:', message);
         }
 
+        // Wyświetlanie komunikatu sukcesu
+        function showSuccessMessage(message) {
+            // Sprawdź czy istnieje kontener na komunikaty
+            let messageContainer = document.getElementById('message-container');
+            if (!messageContainer) {
+                messageContainer = document.createElement('div');
+                messageContainer.id = 'message-container';
+                messageContainer.style.cssText = `
+                    position: fixed;
+                    top: 20px;
+                    right: 20px;
+                    z-index: 9999;
+                    max-width: 300px;
+                `;
+                document.body.appendChild(messageContainer);
+            }
+
+            const successDiv = document.createElement('div');
+            successDiv.style.cssText = `
+                background: linear-gradient(135deg, #10b981, #059669);
+                color: white;
+                padding: 12px 16px;
+                border-radius: 8px;
+                margin-bottom: 10px;
+                box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+                border-left: 4px solid #10b981;
+                font-weight: 500;
+                animation: slideIn 0.3s ease-out;
+                cursor: pointer;
+                transition: all 0.2s ease;
+            `;
+            successDiv.innerHTML = `
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <span style="font-size: 18px;">✅</span>
+                    <span>${message}</span>
+                </div>
+            `;
+
+            // Dodaj animację CSS jeśli nie istnieje
+            if (!document.querySelector('#success-animation-style')) {
+                const style = document.createElement('style');
+                style.id = 'success-animation-style';
+                style.textContent = `
+                    @keyframes slideIn {
+                        from {
+                            transform: translateX(100%);
+                            opacity: 0;
+                        }
+                        to {
+                            transform: translateX(0);
+                            opacity: 1;
+                        }
+                    }
+                `;
+                document.head.appendChild(style);
+            }
+
+            // Dodaj event do zamknięcia
+            successDiv.addEventListener('click', function() {
+                successDiv.style.animation = 'slideIn 0.2s ease-out reverse';
+                setTimeout(() => {
+                    if (successDiv.parentNode) {
+                        successDiv.parentNode.removeChild(successDiv);
+                    }
+                }, 200);
+            });
+
+            messageContainer.appendChild(successDiv);
+
+            // Automatyczne usunięcie po 3 sekundach
+            setTimeout(() => {
+                if (successDiv.parentNode) {
+                    successDiv.style.animation = 'slideIn 0.2s ease-out reverse';
+                    setTimeout(() => {
+                        if (successDiv.parentNode) {
+                            successDiv.parentNode.removeChild(successDiv);
+                        }
+                    }, 200);
+                }
+            }, 3000);
+        }
+
         // Wyświetlanie komunikatu ostrzegawczego
         function showWarningMessage(message) {
             // Sprawdź czy istnieje kontener na komunikaty
@@ -1446,6 +1548,38 @@
                     }, 200);
                 }
             }, 4000);
+        }
+
+        // Wykonywanie konsumpcji przedmiotu z backendem
+        async function consumeItem(inventoryId) {
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/inventory/consume`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${localStorage.getItem('session_token')}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        inventory_id: inventoryId
+                    })
+                });
+
+                const data = await response.json();
+                
+                if (data.success) {
+                    // Sukces - odśwież dane
+                    await fetchInventory();
+                    await fetchCharacterData();
+                    showSuccessMessage(data.message);
+                } else {
+                    // Błąd z backendu
+                    showWarningMessage(data.error || 'Błąd podczas używania przedmiotu');
+                }
+                
+            } catch (error) {
+                console.error('[Consume] Błąd komunikacji z backendem:', error);
+                showWarningMessage('Wystąpił błąd podczas używania przedmiotu');
+            }
         }
 
         // Wykonywanie zamiany przedmiotów z backendem
