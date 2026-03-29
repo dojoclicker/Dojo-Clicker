@@ -818,12 +818,6 @@ app.post('/api/inventory/consume', authenticateToken, async (req, res) => {
     });
 
   } catch (err) {
-    console.error('[Consume] Błąd endpointu:', err.message);
-    res.status(500).json({ error: 'Błąd serwera podczas konsumpcji przedmiotu' });
-  }
-});
-
-// Debug endpoint - dawanie przedmiotów testowych
 app.post('/api/debug/give-items', authenticateToken, async (req, res) => {
   try {
     const userId = req.user.id;
@@ -839,49 +833,72 @@ app.post('/api/debug/give-items', authenticateToken, async (req, res) => {
       return res.status(404).json({ error: 'Nie znaleziono postaci gracza' });
     }
 
-    // Zestaw testowy przedmiotów (wszystkie trafią do plecaka - equipped_slot: null)
-    const testItems = [
-      // Pasywne
-      { name: 'Podstawowe Gi', quantity: 1, equipped_slot: null }, // chest
-      { name: 'Opaska Nowicjusza', quantity: 1, equipped_slot: null }, // head
-      { name: 'Wygodne Spodnie', quantity: 1, equipped_slot: null }, // legs
-      { name: 'Trampki', quantity: 1, equipped_slot: null }, // feet
-      
-      // Treningowe
-      { name: 'Ciężka Skorupa', quantity: 1, equipped_slot: null }, // chest
-      { name: 'Ciężka Opaska', quantity: 1, equipped_slot: null }, // head
-      { name: 'Ciężkie Spodnie', quantity: 1, equipped_slot: null }, // legs
-      { name: 'Obciążone Buty', quantity: 1, equipped_slot: null }, // feet
-      { name: 'Ciężkie Rękawice', quantity: 1, equipped_slot: null }, // hands
-      
-      // Używalne
-      { name: 'Mięso', quantity: 5, equipped_slot: null }, // stackowalny
-      { name: 'Jagody', quantity: 5, equipped_slot: null }, // stackowalny
-      { name: 'Magiczna Fasolka', quantity: 1, equipped_slot: null }, // używalny
-    ];
+    // Pobierz wszystkie przedmioty z bazy
+    const { data: allItems, error: itemsError } = await supabase
+      .from('item_templates')
+      .select('*');
 
-    // Przetwarzanie każdego przedmiotu
-    for (const item of testItems) {
-      // Najpierw pobierz ID szablonu po nazwie
-      const { data: template, error: templateError } = await supabase
-        .from('item_templates')
-        .select('id')
-        .eq('name', item.name)
-        .single();
+    if (itemsError || !allItems) {
+      return res.status(500).json({ error: 'Błąd pobierania przedmiotów z bazy' });
+    }
 
-      if (templateError || !template) {
-        console.error(`[Debug] Nie znaleziono szablonu przedmiotu: ${item.name}`, templateError);
-        continue; // Pomiń ten przedmiot i idź dalej
-      }
+    // Podziel przedmioty na 3 pule
+    const usableItems = allItems.filter(item => 
+      item.category === 'consumable' || item.category === 'special_consumable'
+    );
 
-      const itemTemplateId = template.id;
+    const trainingItems = allItems.filter(item => 
+      item.category === 'equipment' && 
+      (item.name.includes('Ciężk') || item.name.includes('Obciążon'))
+    );
 
+    const passiveItems = allItems.filter(item => 
+      item.category === 'equipment' && 
+      !item.name.includes('Ciężk') && 
+      !item.name.includes('Obciążon')
+    );
+
+    // Wylosuj po 1 przedmiocie z każdej puli
+    const getRandomItem = (array) => {
+      if (array.length === 0) return null;
+      return array[Math.floor(Math.random() * array.length)];
+    };
+
+    const selectedItems = [];
+    
+    const usableItem = getRandomItem(usableItems);
+    const trainingItem = getRandomItem(trainingItems);
+    const passiveItem = getRandomItem(passiveItems);
+
+    if (usableItem) {
+      selectedItems.push({
+        template: usableItem,
+        quantity: Math.floor(Math.random() * 5) + 1 // 1-5 sztuk
+      });
+    }
+
+    if (trainingItem) {
+      selectedItems.push({
+        template: trainingItem,
+        quantity: 1 // Sprzęt zawsze 1 sztuka
+      });
+    }
+
+    if (passiveItem) {
+      selectedItems.push({
+        template: passiveItem,
+        quantity: 1 // Sprzęt zawsze 1 sztuka
+      });
+    }
+
+    // Dodaj wylosowane przedmioty do ekwipunku gracza
+    for (const { template, quantity } of selectedItems) {
       // Sprawdź czy gracz już ma taki przedmiot (dla stackowania)
       const { data: existingItem, error: existingError } = await supabase
         .from('inventory')
         .select('*')
         .eq('character_id', character.id)
-        .eq('item_template_id', itemTemplateId)
+        .eq('item_template_id', template.id)
         .eq('equipped_slot', null) // Tylko przedmioty w plecaku mogą się stackować
         .single();
 
@@ -890,18 +907,18 @@ app.post('/api/debug/give-items', authenticateToken, async (req, res) => {
         continue;
       }
 
-      if (existingItem) {
-        // Gracz już ma ten przedmiot - zaktualizuj ilość
-        const newQuantity = Number(existingItem.quantity) + item.quantity;
+      if (existingItem && (template.category === 'consumable' || template.category === 'special_consumable')) {
+        // Gracz już ma ten przedmiot używalny - zaktualizuj ilość
+        const newQuantity = Number(existingItem.quantity) + quantity;
         const { error: updateError } = await supabase
           .from('inventory')
           .update({ quantity: newQuantity })
           .eq('id', existingItem.id);
 
         if (updateError) {
-          console.error(`[Debug] Błąd aktualizacji ilości przedmiotu ${item.name}:`, updateError);
+          console.error(`[Debug] Błąd aktualizacji ilości przedmiotu ${template.name}:`, updateError);
         } else {
-          console.log(`[Debug] Zaktualizowano ilość ${item.name}: ${existingItem.quantity} → ${newQuantity}`);
+          console.log(`[Debug] Zaktualizowano ilość ${template.name}: ${existingItem.quantity} → ${newQuantity}`);
         }
       } else {
         // Nowy przedmiot - dodaj do bazy
@@ -909,34 +926,39 @@ app.post('/api/debug/give-items', authenticateToken, async (req, res) => {
           .from('inventory')
           .insert({
             character_id: character.id,
-            item_template_id: itemTemplateId,
-            quantity: item.quantity,
-            equipped_slot: item.equipped_slot
+            item_template_id: template.id,
+            quantity: quantity,
+            equipped_slot: null
           });
 
         if (insertError) {
-          console.error(`[Debug] Błąd dodawania przedmiotu ${item.name}:`, insertError);
+          console.error(`[Debug] Błąd dodawania przedmiotu ${template.name}:`, insertError);
         } else {
-          console.log(`[Debug] Dodano nowy przedmiot: ${item.name} (ID: ${itemTemplateId})`);
+          console.log(`[Debug] Dodano nowy przedmiot: ${template.name} (ID: ${template.id})`);
         }
       }
     }
 
+    const itemNames = selectedItems.map(({ template, quantity }) => 
+      `${template.name} x${quantity}`
+    ).join(', ');
+
     res.json({ 
       status: 'success', 
-      message: 'Otrzymano przedmioty testowe!',
-      items_given: testItems.length 
+      message: `Otrzymano losowe przedmioty: ${itemNames}`,
+      items_given: selectedItems.length,
+      items: selectedItems.map(({ template, quantity }) => ({
+        name: template.name,
+        category: template.category,
+        quantity: quantity
+      }))
     });
 
   } catch (err) {
-    console.error('[Debug] Błąd dawania przedmiotów:', err.message);
-    res.status(500).json({ error: 'Błąd serwera podczas dawania przedmiotów testowych' });
+    console.error('[Debug] Błąd losowania przedmiotów:', err.message);
+    res.status(500).json({ error: 'Błąd serwera podczas losowania przedmiotów testowych' });
   }
 });
-
-// Silnik Misji - Rozpoczęcie misji
-app.post('/api/missions/start', authenticateToken, async (req, res) => {
-  try {
     const { missionId } = req.body;
     const userId = req.user.id;
 

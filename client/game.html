@@ -133,12 +133,15 @@
         <div id="missions-view">
             <div class="missions-grid">
                 <!-- Misje będą renderowane dynamicznie przez JavaScript -->
+                <div style="position: fixed; bottom: 20px; right: 20px; z-index: 9999; background: rgba(0,0,0,0.8); padding: 10px; border-radius: 5px;">
+                    <button id="dev-give-items-btn" style="background: #4CAF50; color: white; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer; margin-bottom: 10px;">[DEV] Daj losowe przedmioty</button>
+                    <button id="dev-clear-backpack-btn" style="background: darkred; color: white; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer; margin-bottom: 10px; margin-left: 10px;">[DEV] Usuń przedmioty z plecaka</button>
+                </div>
             </div>
         </div>
 
         <!-- Widok Ekwipunku -->
         <div id="equipment-view" style="display: none;">
-            <button id="dev-give-items-btn" style="background: red; color: white; margin-bottom: 10px;">[DEV] Daj przedmioty testowe</button>
             <div class="equipment-container">
                 <!-- Lewy Panel - Wyposażenie (Paper Doll) -->
                 <div class="equipment-panel">
@@ -1793,7 +1796,33 @@
                 }
             });
 
-            // 5. Event Listener dla przycisku deweloperskiego - dawanie przedmiotów
+            // 5. Event Listener dla przycisku czyszczenia plecaka
+            document.getElementById('dev-clear-backpack-btn').addEventListener('click', async function() {
+                try {
+                    const response = await fetch(`${API_BASE_URL}/api/debug/clear-backpack`, {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': `Bearer ${localStorage.getItem('session_token')}`,
+                            'Content-Type': 'application/json'
+                        }
+                    });
+
+                    const data = await response.json();
+                    
+                    if (data.status === 'success') {
+                        showSuccessMessage('Plecak wyczyszczony!');
+                        await fetchInventory();
+                    } else {
+                        showWarningMessage(data.error || 'Błąd podczas czyszczenia plecaka');
+                    }
+                    
+                } catch (error) {
+                    console.error('[DEV] Błąd czyszczenia plecaka:', error);
+                    showWarningMessage('Wystąpił błąd podczas czyszczenia plecaka');
+                }
+            });
+
+            // Event Listener dla przycisku deweloperskiego - dawanie przedmiotów
             document.getElementById('dev-give-items-btn')?.addEventListener('click', async function() {
                 try {
                     const response = await fetch(`${API_BASE_URL}/api/debug/give-items`, {
