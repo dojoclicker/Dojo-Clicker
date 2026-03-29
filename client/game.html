@@ -1186,9 +1186,13 @@
             // Placeholder ikony (pierwsza litera nazwy lub emotikona)
             const icon = getItemIcon(item.item_templates?.name || 'Przedmiot');
             
+            // Stwórz tooltip dynamiczny
+            const tooltip = createItemTooltip(item.item_templates);
+            
             card.innerHTML = `
                 <div class="item-icon">${icon}</div>
                 ${item.quantity > 1 ? `<div class="item-quantity">${item.quantity}</div>` : ''}
+                ${tooltip}
             `;
             
             // Dodaj event listener dla dragstart
@@ -1196,13 +1200,141 @@
                 e.dataTransfer.setData('inventory_id', item.id);
                 e.dataTransfer.setData('template_id', item.item_template_id);
                 e.dataTransfer.setData('item_name', item.item_templates?.name || 'Przedmiot');
+                e.dataTransfer.setData('item_slot', item.item_templates?.slot || null);
+                e.dataTransfer.setData('item_category', item.item_templates?.category || 'unknown');
                 console.log('Drag start:', item.item_templates?.name, '(ID:', item.id, ')');
             });
             
             return card;
         }
 
-        // Pobieranie ikony przedmiotu
+        // Tworzenie tooltipu dla przedmiotu
+        function createItemTooltip(template) {
+            if (!template) return '';
+            
+            const categoryNames = {
+                'consumable': 'Używalne',
+                'special_consumable': 'Przedmiot Specjalny',
+                'equipment': 'Ekwipunek'
+            };
+            
+            const slotNames = {
+                'head': 'Głowa',
+                'chest': 'Klatka piersiowa',
+                'legs': 'Nogi',
+                'feet': 'Stopy',
+                'hands': 'Dłonie',
+                'ear_l': 'Lewe ucho',
+                'ear_r': 'Prawe ucho',
+                'ring_l': 'Lewy pierścień',
+                'ring_r': 'Prawy pierścień',
+                'necklace': 'Naszyjnik'
+            };
+            
+            const statNames = {
+                'strength': 'Siła',
+                'speed': 'Szybkość',
+                'endurance': 'Wytrzymałość',
+                'intelligence': 'Inteligencja',
+                'mental_strength': 'Siła Mentalna'
+            };
+            
+            let tooltipHTML = `
+                <div class="item-tooltip">
+                    <h4>${template.name}</h4>
+                    <div class="item-category">${categoryNames[template.category] || template.category}</div>
+            `;
+            
+            // Jeśli to sprzęt (equipment)
+            if (template.category === 'equipment') {
+                // Wymagania statystyk
+                if (template.req_stats && Object.keys(template.req_stats).length > 0) {
+                    tooltipHTML += '<div class="item-stats"><strong>Wymagania:</strong>';
+                    for (const [stat, value] of Object.entries(template.req_stats)) {
+                        const statName = statNames[stat] || stat;
+                        tooltipHTML += `<div class="stat-row">
+                            <span class="stat-name">${statName}:</span>
+                            <span class="stat-value">${value}</span>
+                        </div>`;
+                    }
+                    tooltipHTML += '</div>';
+                }
+                
+                // Bonusy
+                if (template.bonuses && Object.keys(template.bonuses).length > 0) {
+                    tooltipHTML += '<div class="item-stats"><strong>Bonusy:</strong>';
+                    for (const [bonus, value] of Object.entries(template.bonuses)) {
+                        let bonusName = bonus;
+                        let valueClass = 'positive';
+                        
+                        // Tłumaczenie nazw bonusów
+                        if (bonus === 'bonus_hp') bonusName = 'Bonus HP';
+                        else if (bonus === 'bonus_mp') bonusName = 'Bonus MP';
+                        else if (bonus === 'defense') bonusName = 'Obrona';
+                        else if (bonus === 'attack_power') bonusName = 'Siła ataku';
+                        else if (bonus.startsWith('speed')) {
+                            bonusName = bonus.includes('penalty') ? 'Kara Szybkości' : 'Bonus Szybkości';
+                            valueClass = bonus.includes('penalty') ? 'negative' : 'positive';
+                        }
+                        
+                        tooltipHTML += `<div class="stat-row">
+                            <span class="stat-name">${bonusName}:</span>
+                            <span class="stat-value ${valueClass}">${value}</span>
+                        </div>`;
+                    }
+                    tooltipHTML += '</div>';
+                }
+                
+                // Informacja o slocie
+                if (template.slot) {
+                    const slotName = slotNames[template.slot] || template.slot;
+                    tooltipHTML += `<div class="item-slot-info">Wymagany slot: ${slotName}</div>`;
+                }
+            }
+            
+            // Jeśli to przedmiot używalny
+            if (template.category === 'consumable' || template.category === 'special_consumable') {
+                if (template.consumable_effect) {
+                    tooltipHTML += '<div class="item-effect"><strong>Effekt:</strong>';
+                    
+                    // Parsowanie różnych typów efektów
+                    for (const [effect, value] of Object.entries(template.consumable_effect)) {
+                        if (effect === 'restore_hp') {
+                            tooltipHTML += `<div>Przywraca ${value} HP</div>`;
+                        } else if (effect === 'restore_mp') {
+                            tooltipHTML += `<div>Przywraca ${value} MP</div>`;
+                        } else if (effect === 'restore_stamina') {
+                            tooltipHTML += `<div>Przywraca ${value} Staminy</div>`;
+                        } else if (effect === 'zenkai_resurrection') {
+                            tooltipHTML += `<div>Wskrzeszenie po śmierci (Zenkai)</div>`;
+                        } else if (effect === 'permanent_bonus') {
+                            tooltipHTML += `<div>Trwały bonus statystyk:</div>`;
+                            for (const [stat, statValue] of Object.entries(value)) {
+                                const statName = statNames[stat] || stat;
+                                tooltipHTML += `<div style="margin-left: 10px;">+${statValue} ${statName}</div>`;
+                            }
+                        } else if (effect === 'temporary_buff') {
+                            tooltipHTML += `<div>Tymczasowy błogosławieństwo</div>`;
+                        } else if (effect === 'unlock_transformation') {
+                            tooltipHTML += `<div>Odblokowuje transformację</div>`;
+                        } else if (effect === 'restore_hp' && value === 'full') {
+                            tooltipHTML += `<div>Pełne odzyskanie HP</div>`;
+                        } else if (effect === 'restore_mp' && value === 'full') {
+                            tooltipHTML += `<div>Pełne odzyskanie MP</div>`;
+                        } else if (effect === 'restore_stamina' && value === 'full') {
+                            tooltipHTML += `<div>Pełne odzyskanie Staminy</div>`;
+                        } else {
+                            tooltipHTML += `<div>${effect}: ${JSON.stringify(value)}</div>`;
+                        }
+                    }
+                    
+                    tooltipHTML += '</div>';
+                }
+            }
+            
+            tooltipHTML += '</div>';
+            return tooltipHTML;
+        }
         function getItemIcon(itemName) {
             const name = itemName.toLowerCase();
             
@@ -1227,6 +1359,88 @@
             console.error('[Inventory] Error:', message);
         }
 
+        // Wyświetlanie komunikatu ostrzegawczego
+        function showWarningMessage(message) {
+            // Sprawdź czy istnieje kontener na komunikaty
+            let messageContainer = document.getElementById('message-container');
+            if (!messageContainer) {
+                messageContainer = document.createElement('div');
+                messageContainer.id = 'message-container';
+                messageContainer.style.cssText = `
+                    position: fixed;
+                    top: 20px;
+                    right: 20px;
+                    z-index: 9999;
+                    max-width: 300px;
+                `;
+                document.body.appendChild(messageContainer);
+            }
+
+            const warningDiv = document.createElement('div');
+            warningDiv.style.cssText = `
+                background: linear-gradient(135deg, #f59e0b, #d97706);
+                color: white;
+                padding: 12px 16px;
+                border-radius: 8px;
+                margin-bottom: 10px;
+                box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
+                border-left: 4px solid #f59e0b;
+                font-weight: 500;
+                animation: slideIn 0.3s ease-out;
+                cursor: pointer;
+                transition: all 0.2s ease;
+            `;
+            warningDiv.innerHTML = `
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <span style="font-size: 18px;">⚠️</span>
+                    <span>${message}</span>
+                </div>
+            `;
+
+            // Dodaj animację CSS jeśli nie istnieje
+            if (!document.querySelector('#warning-animation-style')) {
+                const style = document.createElement('style');
+                style.id = 'warning-animation-style';
+                style.textContent = `
+                    @keyframes slideIn {
+                        from {
+                            transform: translateX(100%);
+                            opacity: 0;
+                        }
+                        to {
+                            transform: translateX(0);
+                            opacity: 1;
+                        }
+                    }
+                `;
+                document.head.appendChild(style);
+            }
+
+            // Dodaj event do zamknięcia
+            warningDiv.addEventListener('click', function() {
+                warningDiv.style.animation = 'slideIn 0.2s ease-out reverse';
+                setTimeout(() => {
+                    if (warningDiv.parentNode) {
+                        warningDiv.parentNode.removeChild(warningDiv);
+                    }
+                }, 200);
+            });
+
+            messageContainer.appendChild(warningDiv);
+
+            // Automatyczne usunięcie po 4 sekundach
+            setTimeout(() => {
+                if (warningDiv.parentNode) {
+                    warningDiv.style.animation = 'slideIn 0.2s ease-out reverse';
+                    setTimeout(() => {
+                        if (warningDiv.parentNode) {
+                            warningDiv.parentNode.removeChild(warningDiv);
+                        }
+                    }, 200);
+                }
+            }, 4000);
+        }
+
         // Inicjalizacja mechaniki Drag & Drop
         function initializeDragAndDrop() {
             // Dodaj event listenery do wszystkich slotów wyposażenia
@@ -1248,11 +1462,42 @@
                     const inventoryId = e.dataTransfer.getData('inventory_id');
                     const templateId = e.dataTransfer.getData('template_id');
                     const itemName = e.dataTransfer.getData('item_name');
-                    const slotName = this.getAttribute('data-slot');
+                    const itemSlot = e.dataTransfer.getData('item_slot');
+                    const itemCategory = e.dataTransfer.getData('item_category');
+                    const targetSlot = this.getAttribute('data-slot');
                     
-                    console.log('Próba przeniesienia przedmiotu:', itemName, '(ID:', inventoryId, ')', 'do slota:', slotName);
+                    // Zabezpieczenie 2: Zamiana w tym samym miejscu
+                    const draggedElement = document.querySelector(`[data-inventory-id="${inventoryId}"]`);
+                    if (draggedElement && draggedElement.parentElement === this) {
+                        console.log('Anulowano: upuszczenie w tym samym miejscu');
+                        return;
+                    }
                     
-                    // Na razie tylko logowanie - bez fetch do backendu
+                    // Zabezpieczenie 1: Zły slot dla sprzętu
+                    if (itemCategory === 'equipment' && itemSlot && itemSlot !== targetSlot) {
+                        const slotNames = {
+                            'head': 'Głowa',
+                            'chest': 'Klatka piersiowa',
+                            'legs': 'Nogi',
+                            'feet': 'Stopy',
+                            'hands': 'Dłonie',
+                            'ear_l': 'Lewe ucho',
+                            'ear_r': 'Prawe ucho',
+                            'ring_l': 'Lewy pierścień',
+                            'ring_r': 'Prawy pierścień',
+                            'necklace': 'Naszyjnik'
+                        };
+                        
+                        const targetSlotName = slotNames[targetSlot] || targetSlot;
+                        const requiredSlotName = slotNames[itemSlot] || itemSlot;
+                        
+                        showWarningMessage(`Ten przedmiot nie pasuje do tego miejsca! Wymaga: ${requiredSlotName}`);
+                        console.log('Błędny slot:', itemName, '(wymaga:', itemSlot, ', cel:', targetSlot, ')');
+                        return;
+                    }
+                    
+                    console.log('Próba przeniesienia przedmiotu:', itemName, '(ID:', inventoryId, ')', 'do slota:', targetSlot);
+                    
                     // TODO: Implementacja swap_items w kolejnym kroku
                 });
             });
@@ -1276,11 +1521,19 @@
                     const inventoryId = e.dataTransfer.getData('inventory_id');
                     const templateId = e.dataTransfer.getData('template_id');
                     const itemName = e.dataTransfer.getData('item_name');
+                    const itemSlot = e.dataTransfer.getData('item_slot');
+                    const itemCategory = e.dataTransfer.getData('item_category');
+                    
+                    // Zabezpieczenie: Zamiana w tym samym miejscu
+                    const draggedElement = document.querySelector(`[data-inventory-id="${inventoryId}"]`);
+                    if (draggedElement && draggedElement.parentElement === this) {
+                        console.log('Anulowano: upuszczenie w tym samym miejscu (plecak)');
+                        return;
+                    }
                     
                     console.log('Próba przeniesienia przedmiotu:', itemName, '(ID:', inventoryId, ')', 'do plecaka');
                     
-                    // Na razie tylko logowanie - bez fetch do backendu
-                    // TODO: Implementacja swap_items w kolejnym kroku
+                    // TODO: Backend obsłuży przenoszenie do plecaka w kolejnym kroku
                 });
             });
 

@@ -809,6 +809,113 @@ body {
     text-align: center;
 }
 
+/* ==========================================
+   SYSTEM TOOLTIPÓW DLA PRZEDMIOTÓW
+   ========================================== */
+
+.item-tooltip {
+    position: absolute;
+    bottom: 100%;
+    margin-bottom: 15px;
+    left: 50%;
+    transform: translateX(-50%);
+    min-width: 220px;
+    max-width: 300px;
+    background: var(--goku-panel-bg);
+    border: 1px solid var(--goku-accent);
+    border-radius: 8px;
+    padding: 0.75rem;
+    opacity: 0;
+    visibility: hidden;
+    transition: all var(--transition-normal);
+    transition-delay: 0.4s;
+    z-index: 1000;
+    pointer-events: none;
+    box-shadow: var(--shadow-xl);
+    font-size: 0.85rem;
+    line-height: 1.4;
+}
+
+.item-tooltip::after {
+    content: '';
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    border: 6px solid transparent;
+    border-top-color: var(--goku-accent);
+}
+
+.item-tooltip h4 {
+    margin: 0 0 0.5rem 0;
+    color: var(--goku-accent);
+    font-size: 0.95rem;
+    font-weight: bold;
+    text-align: center;
+    border-bottom: 1px solid rgba(255, 107, 0, 0.3);
+    padding-bottom: 0.25rem;
+}
+
+.item-tooltip .item-category {
+    text-align: center;
+    color: var(--text-secondary);
+    font-size: 0.75rem;
+    margin-bottom: 0.5rem;
+    font-style: italic;
+}
+
+.item-tooltip .item-stats {
+    margin: 0.5rem 0;
+}
+
+.item-tooltip .stat-row {
+    display: flex;
+    justify-content: space-between;
+    margin: 0.25rem 0;
+    padding: 0.2rem 0;
+}
+
+.item-tooltip .stat-name {
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+
+.item-tooltip .stat-value {
+    color: var(--text-primary);
+    font-weight: bold;
+}
+
+.item-tooltip .stat-value.positive {
+    color: #4ade80;
+}
+
+.item-tooltip .stat-value.negative {
+    color: #f87171;
+}
+
+.item-tooltip .item-effect {
+    margin: 0.5rem 0;
+    padding: 0.5rem;
+    background: rgba(255, 107, 0, 0.1);
+    border-radius: 4px;
+    border-left: 3px solid var(--goku-accent);
+}
+
+.item-tooltip .item-slot-info {
+    text-align: center;
+    margin-top: 0.5rem;
+    padding-top: 0.5rem;
+    border-top: 1px solid rgba(255, 107, 0, 0.3);
+    color: var(--text-secondary);
+    font-size: 0.8rem;
+}
+
+.item-card:hover .item-tooltip {
+    opacity: 1;
+    visibility: visible;
+    transition-delay: 0.4s;
+}
+
 /* Responsywność dla ekwipunku */
 @media (max-width: 1024px) {
     .equipment-container {
