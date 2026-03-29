@@ -134,6 +134,14 @@ async function seedMissions() {
     try {
         console.log('🌱 Rozpoczynam aktualizację misji w bazie danych...');
         
+        console.log('🧹 Czyszczenie starych misji z losowymi ID...');
+        const { error: deleteError } = await supabase.from('missions').delete().not('id', 'is', null);
+        if (deleteError) throw deleteError;
+
+        console.log('🔄 Resetowanie starych postępów graczy...');
+        const { error: resetError } = await supabase.from('characters').update({ completed_missions: [] }).not('profile_id', 'is', null);
+        if (resetError) throw resetError;
+        
         // Krok 1: Wgraj/zaktualizuj misje za pomocą upsert
         console.log('📦 Aktualizowanie misji (upsert)...');
         const { data, error } = await supabase
