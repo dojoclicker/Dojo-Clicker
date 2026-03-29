@@ -138,9 +138,37 @@
 
         <!-- Widok Ekwipunku -->
         <div id="equipment-view" style="display: none;">
-            <div class="welcome-placeholder">
-                <h1 class="welcome-title">Ekwipunek</h1>
-                <p class="welcome-subtitle">Tutaj pojawi się zarządzanie przedmiotami postaci</p>
+            <div class="equipment-container">
+                <!-- Lewa Kolumna - Papierowa Lalka / Wyposażenie -->
+                <div class="equipment-panel">
+                    <h3 class="panel-title">Wyposażenie</h3>
+                    <div class="character-body">
+                        <!-- Sloty wyposażenia -->
+                        <div class="equipment-slot" data-slot="head" style="grid-area: head;">Głowa</div>
+                        <div class="equipment-slot" data-slot="chest" style="grid-area: chest;">Tors</div>
+                        <div class="equipment-slot" data-slot="legs" style="grid-area: legs;">Nogi</div>
+                        <div class="equipment-slot" data-slot="feet" style="grid-area: feet;">Stopy</div>
+                        <div class="equipment-slot" data-slot="hands" style="grid-area: hands;">Ręce</div>
+                        <div class="equipment-slot" data-slot="ear_l" style="grid-area: ear_l;">L. Ucho</div>
+                        <div class="equipment-slot" data-slot="ear_r" style="grid-area: ear_r;">P. Ucho</div>
+                        <div class="equipment-slot" data-slot="ring_l" style="grid-area: ring_l;">L. Pierścień</div>
+                        <div class="equipment-slot" data-slot="ring_r" style="grid-area: ring_r;">P. Pierścień</div>
+                        <div class="equipment-slot" data-slot="necklace" style="grid-area: necklace;">Naszyjnik</div>
+                    </div>
+                </div>
+
+                <!-- Prawa Kolumna - Plecak -->
+                <div class="inventory-panel">
+                    <h3 class="panel-title">Plecak</h3>
+                    <div class="inventory-grid">
+                        <!-- Sloty plecaka - 5 podstawowych -->
+                        <div class="inventory-slot"></div>
+                        <div class="inventory-slot"></div>
+                        <div class="inventory-slot"></div>
+                        <div class="inventory-slot"></div>
+                        <div class="inventory-slot"></div>
+                    </div>
+                </div>
             </div>
         </div>
 

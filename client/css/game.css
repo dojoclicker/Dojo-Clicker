@@ -632,6 +632,217 @@ body {
     font-weight: 500;
 }
 
+/* ==========================================
+   WIDOK EKWIPUNKU I PLECAKA
+   ========================================== */
+
+.equipment-container {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2rem;
+    width: 100%;
+    height: 100%;
+    min-height: 600px;
+}
+
+.panel-title {
+    font-size: 1.3rem;
+    font-weight: bold;
+    color: var(--goku-accent);
+    margin-bottom: 1.5rem;
+    text-align: center;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+}
+
+/* Panel Lewy - Wyposażenie */
+.equipment-panel {
+    background: var(--goku-panel-bg);
+    border: 2px solid var(--goku-panel-border);
+    border-radius: 12px;
+    padding: 1.5rem;
+    display: flex;
+    flex-direction: column;
+}
+
+.character-body {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    grid-template-rows: repeat(4, 1fr);
+    gap: 1rem;
+    flex: 1;
+    min-height: 400px;
+    
+    /* Definicja layoutu anatomicznego */
+    grid-template-areas:
+        ". head ."
+        "ear_l chest ear_r"
+        ". legs ."
+        "ring_l necklace ring_r";
+}
+
+.equipment-slot {
+    background: rgba(0, 0, 0, 0.3);
+    border: 2px solid var(--goku-panel-border);
+    border-radius: 8px;
+    width: 64px;
+    height: 64px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-muted);
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-align: center;
+    transition: all var(--transition-fast);
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+}
+
+.equipment-slot:hover {
+    border-color: var(--goku-accent);
+    background: rgba(255, 107, 0, 0.1);
+    transform: scale(1.05);
+    box-shadow: 0 0 15px rgba(255, 107, 0, 0.3);
+}
+
+/* Specjalne pozycjonowanie dla rąk i stóp */
+.equipment-slot[data-slot="hands"] {
+    grid-area: hands;
+    position: absolute;
+    bottom: 80px;
+    left: 50%;
+    transform: translateX(-50%);
+}
+
+.equipment-slot[data-slot="feet"] {
+    grid-area: feet;
+    position: absolute;
+    bottom: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+}
+
+/* Panel Prawy - Plecak */
+.inventory-panel {
+    background: var(--goku-panel-bg);
+    border: 2px solid var(--goku-panel-border);
+    border-radius: 12px;
+    padding: 1.5rem;
+    display: flex;
+    flex-direction: column;
+}
+
+.inventory-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1rem;
+    flex: 1;
+    min-height: 400px;
+}
+
+.inventory-slot {
+    background: rgba(0, 0, 0, 0.3);
+    border: 2px solid var(--goku-panel-border);
+    border-radius: 8px;
+    width: 64px;
+    height: 64px;
+    transition: all var(--transition-fast);
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+}
+
+.inventory-slot:hover {
+    border-color: var(--goku-accent);
+    background: rgba(255, 107, 0, 0.1);
+    transform: scale(1.05);
+    box-shadow: 0 0 15px rgba(255, 107, 0, 0.3);
+}
+
+/* Karta przedmiotu (dla przyszłego użycia) */
+.item-card {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 4px;
+    padding: 4px;
+}
+
+.item-icon {
+    font-size: 1.5rem;
+    filter: drop-shadow(1px 1px 2px rgba(0, 0, 0, 0.5));
+}
+
+.item-stack-count {
+    position: absolute;
+    bottom: 2px;
+    right: 2px;
+    background: rgba(0, 0, 0, 0.8);
+    color: var(--text-primary);
+    font-size: 0.7rem;
+    font-weight: bold;
+    padding: 2px 4px;
+    border-radius: 4px;
+    min-width: 16px;
+    text-align: center;
+}
+
+/* Responsywność dla ekwipunku */
+@media (max-width: 1024px) {
+    .equipment-container {
+        grid-template-columns: 1fr;
+        gap: 1.5rem;
+    }
+    
+    .character-body {
+        grid-template-columns: repeat(2, 1fr);
+        grid-template-rows: repeat(3, 1fr);
+        grid-template-areas:
+            ". head"
+            "ear_l chest"
+            "ear_r legs"
+            ". hands"
+            "ring_l feet"
+            "ring_r necklace";
+    }
+    
+    .inventory-grid {
+        grid-template-columns: repeat(4, 1fr);
+    }
+}
+
+@media (max-width: 768px) {
+    .equipment-container {
+        gap: 1rem;
+    }
+    
+    .equipment-panel,
+    .inventory-panel {
+        padding: 1rem;
+    }
+    
+    .character-body {
+        gap: 0.75rem;
+        min-height: 300px;
+    }
+    
+    .inventory-grid {
+        grid-template-columns: repeat(3, 1fr);
+        gap: 0.75rem;
+    }
+    
+    .equipment-slot,
+    .inventory-slot {
+        width: 56px;
+        height: 56px;
+    }
+}
+
 /* Responsywność dla misji */
 @media (max-width: 768px) {
     .missions-grid {
