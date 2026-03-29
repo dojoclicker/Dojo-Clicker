@@ -214,9 +214,37 @@
 
         <!-- Widok Sklepu -->
         <div id="shop-view" style="display: none;">
-            <div class="welcome-placeholder">
-                <h1 class="welcome-title">Sklep</h1>
-                <p class="welcome-subtitle">Tutaj pojawi się zakupy przedmiotów i ulepszeń</p>
+            <div class="shop-container">
+                <!-- Zakładki poziomów sklepu -->
+                <div class="shop-level-tabs">
+                    <button class="shop-tab active" data-level="1">Sklep Nowicjusza</button>
+                    <button class="shop-tab disabled" data-level="2" disabled>Sklep Poziom 2</button>
+                </div>
+
+                <!-- Zakładki kategorii -->
+                <div class="shop-category-tabs">
+                    <button class="category-tab active" data-category="consumables">Przedmioty Używalne</button>
+                    <button class="category-tab" data-category="training">Sprzęt Treningowy</button>
+                    <button class="category-tab" data-category="equipment">Ekwipunek Zwykły</button>
+                </div>
+
+                <!-- Kontent sklepu -->
+                <div class="shop-content">
+                    <div class="shop-items-grid" id="shop-items-grid">
+                        <!-- Przedmioty będą renderowane dynamicznie -->
+                    </div>
+                </div>
+
+                <!-- Informacje o graczu -->
+                <div class="shop-player-info">
+                    <div class="player-coins">
+                        <span class="coins-icon">💰</span>
+                        <span id="shop-player-coins">0</span>
+                    </div>
+                    <div class="backpack-status">
+                        Plecak: <span id="shop-backpack-count">0/5</span>
+                    </div>
+                </div>
             </div>
         </div>
     </main>
@@ -1317,6 +1345,167 @@
             return card;
         }
 
+        // === SKLEP ===
+        let currentShopCategory = 'consumables';
+        let currentShopLevel = 1;
+
+        // Dane sklepu (statyczne na razie)
+        const shopData = {
+            1: {
+                consumables: [
+                    { id: 'mięso', name: 'Mięso', emoji: '🍖', description: 'Przywraca +50 HP', price: 50 },
+                    { id: 'jagody', name: 'Jagody', emoji: '🫐', description: 'Przywraca +30 MP', price: 40 },
+                    { id: 'woda', name: 'Woda Źródlana', emoji: '💧', description: 'Przywraca +20 Staminy', price: 30 },
+                    { id: 'fasolka', name: 'Magiczna Fasolka', emoji: '🫘', description: 'Wskrzeszenie z szpitala', price: 500 }
+                ],
+                training: [
+                    { id: 'gi', name: 'Podstawowe Gi', emoji: '🥋', description: 'Podstawowy strój treningowy', price: 1500 },
+                    { id: 'rękawice', name: 'Rękawice Treningowe', emoji: '🥊', description: 'Lekkie rękawice treningowe', price: 800 }
+                ],
+                equipment: [
+                    { id: 'trampki', name: 'Trampki', emoji: '👟', description: 'Wygodne buty do biegania', price: 600 },
+                    { id: 'opaska', name: 'Opaska Nowicjusza', emoji: '🪢', description: 'Oznacza początkującego wojownika', price: 200 }
+                ]
+            },
+            2: {
+                consumables: [],
+                training: [],
+                equipment: []
+            }
+        };
+
+        // Inicjalizacja sklepu
+        function initShop() {
+            renderShopItems();
+            updateShopPlayerInfo();
+            
+            // Event listenery dla zakładek
+            document.querySelectorAll('.category-tab').forEach(tab => {
+                tab.addEventListener('click', function() {
+                    if (this.classList.contains('active')) return;
+                    
+                    document.querySelectorAll('.category-tab').forEach(t => t.classList.remove('active'));
+                    this.classList.add('active');
+                    
+                    currentShopCategory = this.getAttribute('data-category');
+                    renderShopItems();
+                });
+            });
+        }
+
+        // Renderowanie przedmiotów sklepu
+        function renderShopItems() {
+            const grid = document.getElementById('shop-items-grid');
+            const items = shopData[currentShopLevel][currentShopCategory] || [];
+            
+            grid.innerHTML = '';
+            
+            items.forEach(item => {
+                const card = createShopItemCard(item);
+                grid.appendChild(card);
+            });
+            
+            if (items.length === 0) {
+                grid.innerHTML = '<div style="text-align: center; color: #666; grid-column: 1/-1;">Brak przedmiotów w tej kategorii</div>';
+            }
+        }
+
+        // Tworzenie karty przedmiotu sklepu
+        function createShopItemCard(item) {
+            const card = document.createElement('div');
+            card.className = 'shop-item-card';
+            
+            const playerCoins = parseInt(document.getElementById('shop-player-coins').textContent);
+            const backpackCount = parseInt(document.getElementById('shop-backpack-count').textContent.split('/')[0]);
+            const canAfford = playerCoins >= item.price;
+            const hasSpace = backpackCount < 5;
+            
+            card.innerHTML = `
+                <div class="shop-item-emoji">${item.emoji}</div>
+                <div class="shop-item-name">${item.name}</div>
+                <div class="shop-item-description">${item.description}</div>
+                <div class="shop-item-price">
+                    <span>💰</span>
+                    <span>${item.price}</span>
+                </div>
+                <button class="shop-buy-btn" ${!canAfford || !hasSpace ? 'disabled' : ''}>
+                    ${!canAfford ? 'Brak monet' : !hasSpace ? 'Brak miejsca' : 'Kup'}
+                </button>
+            `;
+            
+            // Event listener dla kupna
+            const buyBtn = card.querySelector('.shop-buy-btn');
+            if (canAfford && hasSpace) {
+                buyBtn.addEventListener('click', () => buyItem(item));
+            }
+            
+            return card;
+        }
+
+        // Aktualizacja informacji o graczu w sklepie
+        function updateShopPlayerInfo() {
+            const characterData = window.characterData;
+            if (characterData) {
+                document.getElementById('shop-player-coins').textContent = characterData.coins || '0';
+                
+                // Policz przedmioty w plecaku
+                const backpackItems = (window.inventoryData || []).filter(item => item.equipped_slot === null);
+                const backpackCount = backpackItems.length;
+                
+                const backpackStatus = document.getElementById('shop-backpack-count');
+                backpackStatus.textContent = `${backpackCount}/5`;
+                
+                if (backpackCount >= 5) {
+                    backpackStatus.parentElement.classList.add('full');
+                } else {
+                    backpackStatus.parentElement.classList.remove('full');
+                }
+            }
+        }
+
+        // Kupowanie przedmiotu
+        async function buyItem(item) {
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/shop/buy`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${localStorage.getItem('session_token')}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        item_id: item.id,
+                        shop_level: currentShopLevel
+                    })
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    if (response.status === 400 && errorData.error && errorData.error.includes('miejsce')) {
+                        showWarningMessage('Brak miejsca w plecaku!');
+                        return;
+                    }
+                    showWarningMessage(errorData.error || 'Błąd podczas kupna');
+                    return;
+                }
+
+                const data = await response.json();
+                
+                if (data.success) {
+                    showSuccessMessage(`Kupiono ${item.name}!`);
+                    await fetchInventory(); // Odśwież ekwipunek
+                    await fetchCharacterData(); // Odśwież monety
+                    updateShopPlayerInfo();
+                    renderShopItems(); // Odśwież przyciski
+                } else {
+                    showWarningMessage(data.error || 'Błąd podczas kupna');
+                }
+                
+            } catch (error) {
+                console.error('[Shop] Błąd komunikacji z backendem:', error);
+                showWarningMessage('Wystąpił błąd podczas kupna');
+            }
+        }
+
         // Funkcja do dzielenia przedmiotów
         async function splitItem(inventoryId, amount) {
             try {
@@ -1879,7 +2068,12 @@
             // 4. Pobierz ekwipunek
             fetchInventory();
 
-            // 5. Zainicjalizuj Drag & Drop
+            // 5. Zainicjalizuj sklep (jeśli widok sklepu istnieje)
+            if (document.getElementById('shop-view')) {
+                initShop();
+            }
+
+            // 6. Zainicjalizuj Drag & Drop
             setTimeout(() => {
                 initializeDragAndDrop();
             }, 500); // Małe opóźnienie dla pewności, że elementy są w DOM

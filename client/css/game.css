@@ -805,6 +805,199 @@ body {
     filter: drop-shadow(1px 1px 2px rgba(0,0,0,0.3));
 }
 
+/* === SKLEP === */
+.shop-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+    background: rgba(0, 0, 0, 0.8);
+    border-radius: 15px;
+    border: 2px solid var(--primary-color);
+    box-shadow: 0 0 30px rgba(255, 107, 0, 0.3);
+}
+
+/* Zakładki poziomów sklepu */
+.shop-level-tabs {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+    border-bottom: 2px solid rgba(255, 107, 0, 0.3);
+    padding-bottom: 10px;
+}
+
+.shop-tab {
+    padding: 12px 24px;
+    background: rgba(255, 107, 0, 0.1);
+    border: 2px solid var(--primary-color);
+    border-radius: 8px 8px 0 0;
+    color: var(--text-primary);
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-size: 1.1rem;
+}
+
+.shop-tab.active {
+    background: var(--primary-color);
+    color: #000;
+    box-shadow: 0 0 15px rgba(255, 107, 0, 0.5);
+}
+
+.shop-tab.disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    pointer-events: none;
+    background: rgba(128, 128, 128, 0.2);
+    border-color: #666;
+}
+
+/* Zakładki kategorii */
+.shop-category-tabs {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 30px;
+    justify-content: center;
+}
+
+.category-tab {
+    padding: 10px 20px;
+    background: rgba(255, 107, 0, 0.1);
+    border: 1px solid var(--primary-color);
+    border-radius: 25px;
+    color: var(--text-primary);
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-size: 0.9rem;
+}
+
+.category-tab.active {
+    background: var(--primary-color);
+    color: #000;
+    transform: scale(1.05);
+}
+
+.category-tab:hover:not(.active) {
+    background: rgba(255, 107, 0, 0.3);
+    transform: translateY(-2px);
+}
+
+/* Grid przedmiotów sklepu */
+.shop-items-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 20px;
+    margin-bottom: 30px;
+    min-height: 300px;
+}
+
+.shop-item-card {
+    background: rgba(255, 107, 0, 0.1);
+    border: 2px solid var(--primary-color);
+    border-radius: 12px;
+    padding: 15px;
+    text-align: center;
+    transition: all 0.3s ease;
+    cursor: pointer;
+    position: relative;
+}
+
+.shop-item-card:hover {
+    background: rgba(255, 107, 0, 0.2);
+    transform: translateY(-5px);
+    box-shadow: 0 5px 20px rgba(255, 107, 0, 0.4);
+}
+
+.shop-item-emoji {
+    font-size: 3rem;
+    margin-bottom: 10px;
+    filter: drop-shadow(2px 2px 4px rgba(0,0,0,0.5));
+}
+
+.shop-item-name {
+    color: var(--text-primary);
+    font-weight: bold;
+    margin-bottom: 8px;
+    font-size: 1.1rem;
+}
+
+.shop-item-description {
+    color: #aaa;
+    font-size: 0.8rem;
+    margin-bottom: 12px;
+    min-height: 40px;
+}
+
+.shop-item-price {
+    background: linear-gradient(45deg, #28a745, #20c997);
+    color: white;
+    padding: 8px 12px;
+    border-radius: 20px;
+    font-weight: bold;
+    font-size: 1rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    margin-bottom: 12px;
+}
+
+.shop-buy-btn {
+    background: linear-gradient(45deg, var(--primary-color), #ff8c00);
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 25px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    width: 100%;
+    font-size: 0.9rem;
+}
+
+.shop-buy-btn:hover:not(:disabled) {
+    background: linear-gradient(45deg, #ff8c00, #ffa500);
+    transform: scale(1.05);
+    box-shadow: 0 0 15px rgba(255, 107, 0, 0.6);
+}
+
+.shop-buy-btn:disabled {
+    background: #666;
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
+/* Informacje o graczu */
+.shop-player-info {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: rgba(0, 0, 0, 0.5);
+    padding: 15px 20px;
+    border-radius: 10px;
+    border: 1px solid rgba(255, 107, 0, 0.3);
+}
+
+.player-coins {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 1.2rem;
+    font-weight: bold;
+    color: #ffd700;
+}
+
+.coins-icon {
+    font-size: 1.5rem;
+}
+
+.backpack-status {
+    color: var(--text-primary);
+    font-weight: bold;
+}
+
+.backpack-status.full {
+    color: #dc3545;
+}
+
 .item-quantity {
     position: absolute;
     bottom: 2px;

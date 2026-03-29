@@ -1183,117 +1183,97 @@ app.post('/api/inventory/split', authenticateToken, async (req, res) => {
     // Pobierz dane postaci
     const { data: character, error: characterError } = await supabase
       .from('characters')
-      .select('*')
+      .select('id')
       .eq('profile_id', userId)
       .single();
 
-    if (fetchError || !char) throw new Error('Nie znaleziono postaci');
-
-    // Pobranie bieżących wartości
-    const currentHp = BigInt(char.hp || '100');
-    const currentMp = BigInt(char.mp || '100');
-    const currentStamina = BigInt(char.stamina || '100');
-    
-    // Pobranie do obliczeń Maksów
-    const currentStr = BigInt(char.strength || '1');
-    const currentInt = BigInt(char.intelligence || '1');
-    const bonusHp = BigInt(char.bonus_hp || '0');
-    const bonusMp = BigInt(char.bonus_mp || '0');
-    const bonusStamina = BigInt(char.bonus_stamina || '0');
-
-    // Kalkulacja obecnych Maksów (przed ewentualnym dodaniem odzyskanych statystyk)
-    const currentMaxHp = 100n + (currentStr / 20n) + bonusHp;
-    const currentMaxMp = 100n + (currentInt / 5n) + bonusMp;
-    const currentMaxStamina = 100n + bonusStamina;
-
-    // Detekcja statusu kar i szpitala
-    const deathPenaltyObj = char.last_death_penalty;
-    const isHospitalized = char.hospital_until || (deathPenaltyObj && deathPenaltyObj.hospital_end_ms);
-
-    // KRYTYCZNE ZABEZPIECZENIE: Zablokowanie fasolki, gdy jest bezużyteczna
-    if (currentHp >= currentMaxHp && currentMp >= currentMaxMp && currentStamina >= currentMaxStamina && !isHospitalized && !deathPenaltyObj) {
-        return res.status(400).json({ 
-            status: 'warning', 
-            message: 'Masz 100% zasobów i brak kar. Użycie Fasolki nic nie zmieni!' 
-        });
+    if (characterError || !character) {
+      return res.status(404).json({ error: 'Nie znaleziono postaci gracza' });
     }
 
-    if (!deathPenaltyObj) {
-      // Przypadek: Gracz jest po prostu ranny lub zmęczony (brak kar za śmierć)
-      // Odnawiamy tylko zasoby
-      const { error: updateError } = await supabase
-        .from('characters')
-        .update({
-          hp: currentMaxHp.toString(),
-          mp: currentMaxMp.toString(),
-          stamina: currentMaxStamina.toString(),
-          hospital_until: null,
-          last_calculation_time: new Date().toISOString()
-        })
-        .eq('profile_id', userId);
+    // Sprawdź limit plecaka (5 slotów)
+    const { data: backpackItems, error: backpackError } = await supabase
+      .from('inventory')
+      .select('id')
+      .eq('character_id', character.id)
+      .eq('equipped_slot', null);
 
-      if (updateError) throw updateError;
-      return res.json({ 
-        status: 'success', 
-        message: 'Odnawiasz siły! Zasoby zregenerowane do 100%.' 
+    if (backpackError) {
+      console.error('[Split] Błąd sprawdzania plecaka:', backpackError);
+      return res.status(500).json({ error: 'Błąd podczas sprawdzania plecaka' });
+    }
+
+    if (backpackItems.length >= 5) {
+      return res.status(400).json({ error: 'Brak miejsca w plecaku! Maksymalnie 5 slotów.' });
+    }
+
+    // Pobierz przedmiot do podzielenia
+    const { data: item, error: itemError } = await supabase
+      .from('inventory')
+      .select('*')
+      .eq('id', inventory_id)
+      .eq('character_id', character.id)
+      .single();
+
+    if (itemError || !item) {
+      return res.status(404).json({ error: 'Nie znaleziono przedmiotu' });
+    }
+
+    // Walidacje
+    if (item.equipped_slot !== null) {
+      return res.status(400).json({ error: 'Nie można dzielić założonych przedmiotów!' });
+    }
+
+    const currentQuantity = BigInt(item.quantity);
+    const splitAmount = BigInt(amount_to_split);
+
+    if (currentQuantity <= splitAmount) {
+      return res.status(400).json({ error: 'Nie można podzielić takiej ilości!' });
+    }
+
+    if (splitAmount <= 0n) {
+      return res.status(400).json({ error: 'Ilość do podzielenia musi być większa od 0!' });
+    }
+
+    // Atomowe operacje: odjęcie od oryginalnego i stworzenie nowego
+    const { error: updateError } = await supabase
+      .from('inventory')
+      .update({ quantity: (currentQuantity - splitAmount).toString() })
+      .eq('id', inventory_id);
+
+    if (updateError) {
+      console.error('[Split] Błąd aktualizacji oryginalnego przedmiotu:', updateError);
+      return res.status(500).json({ error: 'Błąd podczas aktualizacji oryginalnego przedmiotu' });
+    }
+
+    // Stwórz nowy rekord z podzieloną ilością
+    const { error: insertError } = await supabase
+      .from('inventory')
+      .insert({
+        character_id: character.id,
+        item_template_id: item.item_template_id,
+        quantity: splitAmount.toString(),
+        equipped_slot: null
       });
+
+    if (insertError) {
+      console.error('[Split] Błąd tworzenia nowego przedmiotu:', insertError);
+      // Rollback - przywróć oryginalną ilość
+      await supabase
+        .from('inventory')
+        .update({ quantity: item.quantity })
+        .eq('id', inventory_id);
+      return res.status(500).json({ error: 'Błąd podczas tworzenia nowego przedmiotu' });
     }
 
-    // Przypadek: Gracz ma kary do odzyskania
-    const strRecovery = BigInt(deathPenaltyObj.strength || '0');
-    const spdRecovery = BigInt(deathPenaltyObj.speed || '0');
-    const endRecovery = BigInt(deathPenaltyObj.endurance || '0');
-    const intRecovery = BigInt(deathPenaltyObj.intelligence || '0');
-    const menRecovery = BigInt(deathPenaltyObj.mental_strength || '0');
-
-    // Dodaj odzyskane statystyki do aktualnych
-    const currentSpd = BigInt(char.speed || '1');
-    const currentEnd = BigInt(char.endurance || '1');
-    const currentMen = BigInt(char.mental_strength || '1');
-
-    const newStr = currentStr + strRecovery;
-    const newSpd = currentSpd + spdRecovery;
-    const newEnd = currentEnd + endRecovery;
-    const newInt = currentInt + intRecovery;
-    const newMen = currentMen + menRecovery;
-
-    // Przelicz max_hp i max_mp na podstawie nowych statystyk
-    const max_hp = 100n + (newStr / 20n) + bonusHp;
-    const max_mp = 100n + (newInt / 5n) + bonusMp;
-    const max_stamina = 100n + bonusStamina;
-
-    // Zapisz do bazy
-    const { error: finalUpdateError } = await supabase
-      .from('characters')
-      .update({
-        hp: max_hp.toString(),
-        mp: max_mp.toString(),
-        stamina: max_stamina.toString(),
-        strength: newStr.toString(),
-        speed: newSpd.toString(),
-        endurance: newEnd.toString(),
-        intelligence: newInt.toString(),
-        mental_strength: newMen.toString(),
-        hospital_until: null,
-        last_calculation_time: new Date().toISOString(),
-        last_death_penalty: null
-      })
-      .eq('profile_id', userId);
-
-    if (finalUpdateError) throw finalUpdateError;
     res.json({ 
-      status: 'success', 
-      message: 'Odzyskano utracone statystyki i odnowiono zasoby do 100%.',
-      recovered: {
-        strength: strRecovery.toString(),
-        speed: spdRecovery.toString(),
-        endurance: endRecovery.toString(),
-        intelligence: intRecovery.toString(),
-        mental_strength: menRecovery.toString(),
-      }
+      success: true, 
+      message: 'Przedmiot został podzielony!' 
     });
+
   } catch (err) {
-    res.status(500).json({ status: 'error', message: err.message });
+    console.error('[Split] Błąd endpointu:', err.message);
+    res.status(500).json({ error: 'Błąd serwera podczas dzielenia przedmiotu' });
   }
 });
 
