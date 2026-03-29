@@ -665,19 +665,19 @@ body {
     min-width: 450px;
 }
 
-/* Układ Paper Doll - zwarty układ anatomiczny */
+/* Układ Paper Doll - perfekcyjnie symetryczny */
 .character-body {
     display: grid;
-    grid-template-columns: 80px 100px 80px; /* Środkowa kolumna szersza na główne elementy */
-    grid-template-rows: 80px 60px 80px 80px; /* 4 rzędy */
+    grid-template-columns: 80px 100px 80px; /* Środek szerszy */
+    grid-template-rows: 80px 60px 80px 80px; /* Rząd 2 jest niższy, bo to biżuteria */
     gap: 15px;
     justify-content: center;
     
-    /* Nowy, zwarty układ anatomiczny */
+    /* Biżuteria u góry, ciężki sprzęt na dole */
     grid-template-areas:
         "ear_l   head       ear_r"
-        ".       necklace   ."
-        "ring_l  chest      ring_r"
+        "ring_l  necklace   ring_r"
+        ".       chest      ."
         "hands   legs       feet";
 }
 
@@ -687,12 +687,12 @@ body {
     height: 55px;
     background: rgba(0, 0, 0, 0.4);
     border: 1px solid var(--goku-panel-border);
-    border-radius: 6px;
+    border-radius: 8px;
     display: flex;
     align-items: center;
     justify-content: center;
     color: var(--text-muted);
-    font-size: 0.7rem;
+    font-size: 0.65rem;
     font-weight: 600;
     text-align: center;
     transition: all var(--transition-fast);
@@ -709,7 +709,7 @@ body {
 .equipment-slot[data-slot="hands"] {
     width: 80px;
     height: 80px;
-    font-size: 0.8rem;
+    font-size: 0.75rem;
 }
 
 /* Efekt hover dla slotów wyposażenia */
