@@ -744,8 +744,30 @@ app.post('/api/inventory/consume', authenticateToken, async (req, res) => {
       }
     }
 
+    // Ochrona "Overheal" - sprawdź czy przedmiot cokolwiek zmieni
+    const originalHp = BigInt(character.hp || '100');
+    const originalMp = BigInt(character.mp || '100');
+    const originalStamina = BigInt(character.stamina || '100');
+    const originalBonusStamina = BigInt(character.bonus_stamina || '0');
+    
+    // Sprawdź czy przedmiot ma jakiekolwiek trwałe efekty (bonusy statystyk)
+    const hasPermanentEffects = effects.permanent_bonus || effects.bonus_stamina || 
+                               (effects.zenkai_resurrection === 'true' && originalHp <= 0n);
+    
+    // Jeśli zasoby nie zmieniły się i nie ma trwałych efektów, zablokuj akcję
+    if (currentHp === originalHp && 
+        currentMp === originalMp && 
+        currentStamina === originalStamina && 
+        newBonusStamina === originalBonusStamina && 
+        !hasPermanentEffects) {
+      return res.status(400).json({ 
+        status: 'warning', 
+        message: 'Twoje zasoby są już pełne! Szkoda marnować przedmiotu.' 
+      });
+    }
+
     // Atomowe usuwanie/zmniejszanie ilości przedmiotu
-    if (item.quantity > 1) {
+    if (Number(item.quantity) > 1) {
       const { error: updateError } = await supabase
         .from('inventory')
         .update({ quantity: item.quantity - 1 })
