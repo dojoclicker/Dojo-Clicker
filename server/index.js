@@ -470,8 +470,8 @@ app.post('/api/missions/start', authenticateToken, async (req, res) => {
 
     // Modyfikator nagród
     let rewardMultiplier = 100n;
-    if (lowestRatioPercent >= 200n && lowestRatioPercent < 500n) rewardMultiplier = 50n;
-    if (lowestRatioPercent >= 500n) rewardMultiplier = 10n;
+    if (lowestRatioPercent >= 400n && lowestRatioPercent < 800n) rewardMultiplier = 50n;
+    if (lowestRatioPercent >= 800n) rewardMultiplier = 10n;
 
     // Pobranie WSZYSTKICH statystyk i bonusów niezbędnych do wyliczenia Max HP/MP/Staminy w razie porażki
     const currentStr = BigInt(character.strength || '1');
