@@ -215,34 +215,47 @@
         <!-- Widok Sklepu -->
         <div id="shop-view" style="display: none;">
             <div class="shop-container">
-                <!-- Zakładki poziomów sklepu -->
-                <div class="shop-level-tabs">
-                    <button class="shop-tab active" data-level="1">Sklep Nowicjusza</button>
-                    <button class="shop-tab disabled" data-level="2" disabled>Sklep Poziom 2</button>
-                </div>
+                <!-- Lewa kolumna - sklep -->
+                <div class="shop-left-column">
+                    <!-- Zakładki poziomów sklepu -->
+                    <div class="shop-level-tabs">
+                        <button class="shop-tab active" data-level="1">Sklep Nowicjusza</button>
+                        <button class="shop-tab disabled" data-level="2" disabled>Sklep Poziom 2</button>
+                    </div>
 
-                <!-- Zakładki kategorii -->
-                <div class="shop-category-tabs">
-                    <button class="category-tab active" data-category="consumables">Przedmioty Używalne</button>
-                    <button class="category-tab" data-category="training">Sprzęt Treningowy</button>
-                    <button class="category-tab" data-category="equipment">Ekwipunek Zwykły</button>
-                </div>
+                    <!-- Zakładki kategorii -->
+                    <div class="shop-category-tabs">
+                        <button class="category-tab active" data-category="consumables">Przedmioty Używalne</button>
+                        <button class="category-tab" data-category="training">Sprzęt Treningowy</button>
+                        <button class="category-tab" data-category="equipment">Ekwipunek Zwykły</button>
+                    </div>
 
-                <!-- Kontent sklepu -->
-                <div class="shop-content">
-                    <div class="shop-items-grid" id="shop-items-grid">
-                        <!-- Przedmioty będą renderowane dynamicznie -->
+                    <!-- Kontent sklepu -->
+                    <div class="shop-content">
+                        <div class="shop-items-grid" id="shop-items-grid">
+                            <!-- Przedmioty będą renderowane dynamicznie -->
+                        </div>
                     </div>
                 </div>
 
-                <!-- Informacje o graczu -->
-                <div class="shop-player-info">
-                    <div class="player-coins">
-                        <span class="coins-icon">💰</span>
-                        <span id="shop-player-coins">0</span>
+                <!-- Prawa kolumna - plecak do sprzedaży -->
+                <div class="shop-right-column">
+                    <div class="shop-backpack-panel">
+                        <div class="shop-backpack-title">Twój Plecak do Sprzedaży</div>
+                        <div class="shop-backpack-grid" id="shop-backpack-grid">
+                            <!-- Sloty plecaka będą renderowane dynamicznie -->
+                        </div>
                     </div>
-                    <div class="backpack-status">
-                        Plecak: <span id="shop-backpack-count">0/5</span>
+
+                    <!-- Informacje o graczu -->
+                    <div class="shop-player-info">
+                        <div class="player-coins">
+                            <span class="coins-icon">💰</span>
+                            <span id="shop-coins">0</span>
+                        </div>
+                        <div class="backpack-status">
+                            Plecak: <span id="shop-backpack-count">0/5</span>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -1378,6 +1391,7 @@
         function initShop() {
             renderShopItems();
             updateShopPlayerInfo();
+            renderShopBackpack();
             
             // Event listenery dla zakładek
             document.querySelectorAll('.category-tab').forEach(tab => {
@@ -1407,6 +1421,54 @@
             
             if (items.length === 0) {
                 grid.innerHTML = '<div style="text-align: center; color: #666; grid-column: 1/-1;">Brak przedmiotów w tej kategorii</div>';
+            }
+        }
+
+        // Renderowanie plecaka do sprzedaży
+        function renderShopBackpack() {
+            const grid = document.getElementById('shop-backpack-grid');
+            const backpackItems = (window.inventoryData || []).filter(item => item.equipped_slot === null);
+            
+            grid.innerHTML = '';
+            
+            // Wypełnij puste sloty
+            for (let i = 0; i < 5; i++) {
+                const slot = document.createElement('div');
+                slot.className = 'shop-backpack-slot';
+                
+                if (i < backpackItems.length) {
+                    const item = backpackItems[i];
+                    const emoji = getItemEmoji(item.item_templates?.name || 'Przedmiot', item.item_templates?.category || 'unknown');
+                    
+                    slot.innerHTML = `
+                        <div class="item-emoji">${emoji}</div>
+                        ${item.quantity > 1 ? `<div class="item-quantity">${item.quantity}</div>` : ''}
+                        <div class="item-tooltip">
+                            ${createItemTooltip(item.item_templates)}
+                        </div>
+                    `;
+                    
+                    // Dodaj tooltipy sprzedaży dla sklepu
+                    const tooltip = slot.querySelector('.item-tooltip');
+                    if (tooltip && item.item_templates?.buy_price_coins) {
+                        const sellPrice = Math.floor(item.item_templates.buy_price_coins / 2);
+                        const totalSellPrice = sellPrice * item.quantity;
+                        tooltip.innerHTML += `<div style="color: #ff6b00; border-top: 1px solid #ff6b00; padding-top: 5px; margin-top: 5px;">
+                            <strong>Cena sprzedaży:</strong><br>
+                            💰 ${totalSellPrice} Monet<br>
+                            <small>(50% ceny zakupu)</small>
+                        </div>`;
+                    }
+                    
+                    // Sprzedaż przez double-click w sklepie
+                    slot.addEventListener('dblclick', function(e) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        sellItem(item.id);
+                    });
+                }
+                
+                grid.appendChild(slot);
             }
         }
 
@@ -1473,7 +1535,7 @@
                         'Content-Type': 'application/json'
                     },
                     body: JSON.stringify({
-                        item_id: item.id,
+                        template_id: item.id,
                         shop_level: currentShopLevel
                     })
                 });
@@ -1496,6 +1558,7 @@
                     await fetchCharacterData(); // Odśwież monety
                     updateShopPlayerInfo();
                     renderShopItems(); // Odśwież przyciski
+                    renderShopBackpack(); // Odśwież plecak
                 } else {
                     showWarningMessage(data.error || 'Błąd podczas kupna');
                 }
@@ -1503,6 +1566,44 @@
             } catch (error) {
                 console.error('[Shop] Błąd komunikacji z backendem:', error);
                 showWarningMessage('Wystąpił błąd podczas kupna');
+            }
+        }
+
+        // Sprzedaż przedmiotu
+        async function sellItem(inventoryId) {
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/shop/sell`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${localStorage.getItem('session_token')}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        inventory_id: inventoryId
+                    })
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    showWarningMessage(errorData.error || 'Błąd podczas sprzedaży');
+                    return;
+                }
+
+                const data = await response.json();
+                
+                if (data.success) {
+                    showSuccessMessage(`Sprzedano ${data.item.name} x${data.item.quantity} za ${data.item.total_sell_price} monet!`);
+                    await fetchInventory(); // Odśwież ekwipunek
+                    await fetchCharacterData(); // Odśwież monety
+                    updateShopPlayerInfo();
+                    renderShopBackpack(); // Odśwież plecak
+                } else {
+                    showWarningMessage(data.error || 'Błąd podczas sprzedaży');
+                }
+                
+            } catch (error) {
+                console.error('[Shop] Błąd komunikacji z backendem:', error);
+                showWarningMessage('Wystąpił błąd podczas sprzedaży');
             }
         }
 
@@ -1546,127 +1647,81 @@
         function createItemTooltip(template) {
             if (!template) return '';
             
-            const categoryNames = {
-                'consumable': 'Używalne',
-                'special_consumable': 'Przedmiot Specjalny',
-                'equipment': 'Ekwipunek'
-            };
+            let tooltipHTML = `<div class="tooltip-title">${template.name || 'Nieznany Przedmiot'}</div>`;
             
-            const slotNames = {
-                'head': 'Głowa',
-                'chest': 'Klatka piersiowa',
-                'legs': 'Nogi',
-                'feet': 'Stopy',
-                'hands': 'Dłonie',
-                'ear_l': 'Lewe ucho',
-                'ear_r': 'Prawe ucho',
-                'ring_l': 'Lewy pierścień',
-                'ring_r': 'Prawy pierścień',
-                'necklace': 'Naszyjnik'
-            };
+            // Kategoria
+            let categoryName = 'Przedmiot';
+            if (template.category === 'equipment') categoryName = 'Ekwipunek';
+            else if (template.category === 'consumable') categoryName = 'Używalne';
+            else if (template.category === 'special_consumable') categoryName = 'Przedmiot Specjalny';
             
-            const statNames = {
-                'strength': 'Siła',
-                'speed': 'Szybkość',
-                'endurance': 'Wytrzymałość',
-                'intelligence': 'Inteligencja',
-                'mental_strength': 'Siła Mentalna'
-            };
+            tooltipHTML += `<div style="text-align: center; color: var(--text-secondary); margin-bottom: 10px; font-size: 0.85rem;"><i>${categoryName}</i></div>`;
+
+            // Statystyki / Wymagania
+            const statNamesPL = { strength: 'Siła', speed: 'Szybkość', endurance: 'Wytrzymałość', intelligence: 'Inteligencja', mental_strength: 'Siła Mentalna' };
             
-            let tooltipHTML = `
-                <div class="item-tooltip">
-                    <h4>${template.name}</h4>
-                    <div class="item-category">${categoryNames[template.category] || template.category}</div>
-            `;
-            
-            // Jeśli to sprzęt (equipment)
-            if (template.category === 'equipment') {
-                // Wymagania statystyk
-                if (template.req_stats && Object.keys(template.req_stats).length > 0) {
-                    tooltipHTML += '<div class="item-stats"><strong>Wymagania:</strong>';
-                    for (const [stat, value] of Object.entries(template.req_stats)) {
-                        const statName = statNames[stat] || stat;
-                        tooltipHTML += `<div class="stat-row">
-                            <span class="stat-name">${statName}:</span>
-                            <span class="stat-value">${value}</span>
-                        </div>`;
-                    }
-                    tooltipHTML += '</div>';
+            if (template.req_stats && Object.keys(template.req_stats).length > 0) {
+                tooltipHTML += '<div style="margin-bottom: 5px;"><strong>Wymagania:</strong><br>';
+                for (const [stat, val] of Object.entries(template.req_stats)) {
+                    tooltipHTML += `<span style="font-size: 0.85rem;">${statNamesPL[stat] || stat}: ${val}</span><br>`;
                 }
-                
-                // Bonusy
-                if (template.bonuses && Object.keys(template.bonuses).length > 0) {
-                    tooltipHTML += '<div class="item-stats"><strong>Bonusy:</strong>';
-                    for (const [bonus, value] of Object.entries(template.bonuses)) {
-                        let bonusName = bonus;
-                        let valueClass = 'positive';
-                        
-                        // Tłumaczenie nazw bonusów
-                        if (bonus === 'bonus_hp') bonusName = 'Bonus HP';
-                        else if (bonus === 'bonus_mp') bonusName = 'Bonus MP';
-                        else if (bonus === 'defense') bonusName = 'Obrona';
-                        else if (bonus === 'attack_power') bonusName = 'Siła ataku';
-                        else if (bonus.startsWith('speed')) {
-                            bonusName = bonus.includes('penalty') ? 'Kara Szybkości' : 'Bonus Szybkości';
-                            valueClass = bonus.includes('penalty') ? 'negative' : 'positive';
-                        }
-                        
-                        tooltipHTML += `<div class="stat-row">
-                            <span class="stat-name">${bonusName}:</span>
-                            <span class="stat-value ${valueClass}">${value}</span>
-                        </div>`;
-                    }
-                    tooltipHTML += '</div>';
-                }
-                
-                // Informacja o slocie
-                if (template.slot) {
-                    const slotName = slotNames[template.slot] || template.slot;
-                    tooltipHTML += `<div class="item-slot-info">Wymagany slot: ${slotName}</div>`;
-                }
+                tooltipHTML += '</div>';
             }
-            
-            // Jeśli to przedmiot używalny
-            if (template.category === 'consumable' || template.category === 'special_consumable') {
-                if (template.consumable_effect) {
-                    tooltipHTML += '<div class="item-effect"><strong>Effekt:</strong>';
+
+            // Bonusy
+            if (template.bonuses && Object.keys(template.bonuses).length > 0) {
+                tooltipHTML += '<div style="margin-bottom: 5px;"><strong>Bonusy:</strong><br>';
+                for (const [bonus, val] of Object.entries(template.bonuses)) {
+                    let displayStat = bonus;
+                    if (bonus === 'training_bonus') displayStat = 'Bonus Treningowy';
+                    else if (bonus === 'bonus_hp') displayStat = 'Bonus HP';
+                    else if (bonus === 'bonus_mp') displayStat = 'Bonus MP';
+                    else if (bonus === 'attack_power') displayStat = 'Siła ataku';
+                    else if (bonus.includes('penalty')) displayStat = 'Kara';
                     
-                    // Parsowanie różnych typów efektów
-                    for (const [effect, value] of Object.entries(template.consumable_effect)) {
-                        if (effect === 'restore_hp') {
-                            tooltipHTML += `<div>Przywraca ${value} HP</div>`;
-                        } else if (effect === 'restore_mp') {
-                            tooltipHTML += `<div>Przywraca ${value} MP</div>`;
-                        } else if (effect === 'restore_stamina') {
-                            tooltipHTML += `<div>Przywraca ${value} Staminy</div>`;
-                        } else if (effect === 'zenkai_resurrection') {
-                            tooltipHTML += `<div>Wskrzeszenie po śmierci (Zenkai)</div>`;
-                        } else if (effect === 'permanent_bonus') {
-                            tooltipHTML += `<div>Trwały bonus statystyk:</div>`;
-                            for (const [stat, statValue] of Object.entries(value)) {
-                                const statName = statNames[stat] || stat;
-                                tooltipHTML += `<div style="margin-left: 10px;">+${statValue} ${statName}</div>`;
-                            }
-                        } else if (effect === 'temporary_buff') {
-                            tooltipHTML += `<div>Tymczasowy błogosławieństwo</div>`;
-                        } else if (effect === 'unlock_transformation') {
-                            tooltipHTML += `<div>Odblokowuje transformację</div>`;
-                        } else if (effect === 'restore_hp' && value === 'full') {
-                            tooltipHTML += `<div>Pełne odzyskanie HP</div>`;
-                        } else if (effect === 'restore_mp' && value === 'full') {
-                            tooltipHTML += `<div>Pełne odzyskanie MP</div>`;
-                        } else if (effect === 'restore_stamina' && value === 'full') {
-                            tooltipHTML += `<div>Pełne odzyskanie Staminy</div>`;
-                        } else {
-                            tooltipHTML += `<div>${effect}: ${JSON.stringify(value)}</div>`;
-                        }
-                    }
-                    
-                    tooltipHTML += '</div>';
+                    const valColor = bonus.includes('penalty') ? 'var(--error)' : 'var(--success)';
+                    tooltipHTML += `<span style="font-size: 0.85rem; color: ${valColor};">${displayStat}: ${val}</span><br>`;
                 }
+                tooltipHTML += '</div>';
             }
-            
-            tooltipHTML += '</div>';
+
+            // Efekty (Consumables)
+            if (template.consumable_effect && Object.keys(template.consumable_effect).length > 0) {
+                tooltipHTML += '<div style="margin-bottom: 5px;"><strong>Efekt:</strong><br>';
+                for (const [effect, val] of Object.entries(template.consumable_effect)) {
+                    let displayEffect = effect;
+                    if (effect === 'restore_hp') displayEffect = `Przywraca ${val} HP`;
+                    else if (effect === 'restore_hp_pct') displayEffect = `Przywraca ${val}% HP`;
+                    else if (effect === 'restore_mp') displayEffect = `Przywraca ${val} MP`;
+                    else if (effect === 'restore_stamina') displayEffect = `Przywraca ${val} Staminy`;
+                    else if (effect === 'bonus_stamina') displayEffect = `+${val} Max Staminy`;
+                    else if (effect === 'zenkai_resurrection') displayEffect = 'Wskrzeszenie z szpitala';
+                    else if (effect === 'permanent_bonus') displayEffect = 'Trwały bonus statystyk';
+                    else if (effect === 'temporary_buff') displayEffect = 'Tymczasowy błogosławieństwo';
+                    else if (effect === 'unlock_transformation') displayEffect = 'Odblokowanie transformacji';
+                    else displayEffect = `${effect}: ${val}`;
+                    
+                    tooltipHTML += `<span style="font-size: 0.85rem; color: var(--success);">${displayEffect}</span><br>`;
+                }
+                tooltipHTML += '</div>';
+            }
+
+            // Slot
+            if (template.slot) {
+                const slotNamesPL = { head: 'Głowa', chest: 'Tors', legs: 'Nogi', feet: 'Stopy', hands: 'Ręce', ear_l: 'L. Kolczyk', ear_r: 'P. Kolczyk', ring_l: 'L. Pierścień', ring_r: 'P. Pierścień', necklace: 'Naszyjnik' };
+                tooltipHTML += `<div style="margin-top: 10px; font-size: 0.85rem; color: var(--text-muted);">Wymagany slot: ${slotNamesPL[template.slot] || template.slot}</div>`;
+            }
+
+            // Cena sprzedaży (Tylko gdy otwarta jest zakładka sklepu)
+            if (localStorage.getItem('active_game_tab') === 'shop' && template.buy_price_coins) {
+                const sellPrice = Math.floor(Number(template.buy_price_coins) / 2);
+                tooltipHTML += `<div style="color: #ff6b00; border-top: 1px solid #ff6b00; padding-top: 5px; margin-top: 5px; text-align: center;">
+                    <strong>Cena sprzedaży:</strong><br>
+                    💰 ${sellPrice} Monet<br>
+                    <small style="color: var(--text-muted);">(50% ceny zakupu)</small>
+                </div>`;
+            }
+
             return tooltipHTML;
         }
         function getItemIcon(itemName) {

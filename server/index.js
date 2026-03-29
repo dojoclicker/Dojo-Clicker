@@ -1277,6 +1277,216 @@ app.post('/api/inventory/split', authenticateToken, async (req, res) => {
   }
 });
 
+// Endpoint kupowania przedmiotów ze sklepu
+app.post('/api/shop/buy', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { template_id, quantity = 1 } = req.body;
+
+    if (!template_id) {
+      return res.status(400).json({ error: 'Brak wymaganego parametru: template_id' });
+    }
+
+    // Pobierz dane postaci
+    const { data: character, error: characterError } = await supabase
+      .from('characters')
+      .select('id, coins')
+      .eq('profile_id', userId)
+      .single();
+
+    if (characterError || !character) {
+      return res.status(404).json({ error: 'Nie znaleziono postaci gracza' });
+    }
+
+    // Pobierz szablon przedmiotu z ceną
+    const { data: itemTemplate, error: templateError } = await supabase
+      .from('item_templates')
+      .select('*, buy_price_coins')
+      .eq('id', template_id)
+      .single();
+
+    if (templateError || !itemTemplate) {
+      return res.status(404).json({ error: 'Nie znaleziono przedmiotu w sklepie' });
+    }
+
+    if (itemTemplate.buy_price_coins === null) {
+      return res.status(400).json({ error: 'Ten przedmiot nie jest dostępny w sklepie' });
+    }
+
+    // Sprawdź, czy gracz ma wystarczająco monet
+    const itemPrice = BigInt(itemTemplate.buy_price_coins);
+    const totalCost = itemPrice * BigInt(quantity);
+    const playerCoins = BigInt(character.coins || '0');
+
+    if (playerCoins < totalCost) {
+      return res.status(400).json({ error: 'Nie masz wystarczająco monet!' });
+    }
+
+    // Sprawdź pojemność plecaka
+    const { data: backpackItems, error: backpackError } = await supabase
+      .from('inventory')
+      .select('id, item_template_id, quantity')
+      .eq('character_id', character.id)
+      .eq('equipped_slot', null);
+
+    if (backpackError) {
+      console.error('[Shop] Błąd sprawdzania plecaka:', backpackError);
+      return res.status(500).json({ error: 'Błąd podczas sprawdzania plecaka' });
+    }
+
+    // Sprawdź, czy przedmiot jest stackowalny i już istnieje
+    const existingItem = backpackItems.find(item => item.item_template_id === template_id);
+    const isStackable = itemTemplate.category === 'consumable' || itemTemplate.category === 'special_consumable';
+    
+    let currentBackpackSlots = backpackItems.length;
+    if (existingItem && isStackable) {
+      // Stackowanie nie zwiększa liczby slotów
+    } else if (!existingItem) {
+      // Nowy przedmiot zajmuje slot
+      currentBackpackSlots++;
+    }
+
+    if (currentBackpackSlots > 5) {
+      return res.status(400).json({ error: 'Brak miejsca w plecaku! Maksymalnie 5 slotów.' });
+    }
+
+    // Atomowe operacje: odjęcie monet i dodanie przedmiotu
+    const { error: coinError } = await supabase
+      .from('characters')
+      .update({ coins: (playerCoins - totalCost).toString() })
+      .eq('id', character.id);
+
+    if (coinError) {
+      console.error('[Shop] Błąd aktualizacji monet:', coinError);
+      return res.status(500).json({ error: 'Błąd podczas aktualizacji monet' });
+    }
+
+    if (existingItem && isStackable) {
+      // Stackowanie - aktualizuj ilość
+      const newQuantity = BigInt(existingItem.quantity) + BigInt(quantity);
+      const { error: updateError } = await supabase
+        .from('inventory')
+        .update({ quantity: newQuantity.toString() })
+        .eq('id', existingItem.id);
+
+      if (updateError) {
+        console.error('[Shop] Błąd stackowania przedmiotu:', updateError);
+        return res.status(500).json({ error: 'Błąd podczas stackowania przedmiotu' });
+      }
+    } else {
+      // Nowy przedmiot
+      const { error: insertError } = await supabase
+        .from('inventory')
+        .insert({
+          character_id: character.id,
+          item_template_id: template_id,
+          quantity: quantity,
+          equipped_slot: null
+        });
+
+      if (insertError) {
+        console.error('[Shop] Błąd dodawania przedmiotu:', insertError);
+        return res.status(500).json({ error: 'Błąd podczas dodawania przedmiotu' });
+      }
+    }
+
+    res.json({ 
+      success: true, 
+      message: `Kupiono ${itemTemplate.name} x${quantity}!`,
+      item: {
+        name: itemTemplate.name,
+        quantity: quantity,
+        total_cost: totalCost.toString()
+      }
+    });
+
+  } catch (err) {
+    console.error('[Shop] Błąd endpointu buy:', err.message);
+    res.status(500).json({ error: 'Błąd serwera podczas kupowania' });
+  }
+});
+
+// Endpoint sprzedawania przedmiotów
+app.post('/api/shop/sell', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { inventory_id } = req.body;
+
+    if (!inventory_id) {
+      return res.status(400).json({ error: 'Brak wymaganego parametru: inventory_id' });
+    }
+
+    // Pobierz dane postaci
+    const { data: character, error: characterError } = await supabase
+      .from('characters')
+      .select('id, coins')
+      .eq('profile_id', userId)
+      .single();
+
+    if (characterError || !character) {
+      return res.status(404).json({ error: 'Nie znaleziono postaci gracza' });
+    }
+
+    // Pobierz przedmiot z plecaka
+    const { data: item, error: itemError } = await supabase
+      .from('inventory')
+      .select('*, item_templates(*)')
+      .eq('id', inventory_id)
+      .eq('character_id', character.id)
+      .eq('equipped_slot', null)
+      .single();
+
+    if (itemError || !item) {
+      return res.status(404).json({ error: 'Nie znaleziono przedmiotu w plecaku' });
+    }
+
+    // Sprawdź cenę sprzedaży (50% ceny zakupu)
+    if (item.item_templates.buy_price_coins === null) {
+      return res.status(400).json({ error: 'Ten przedmiot nie ma wartości sprzedaży' });
+    }
+
+    const sellPrice = Math.floor(item.item_templates.buy_price_coins / 2);
+    const totalSellPrice = sellPrice * item.quantity;
+    const playerCoins = BigInt(character.coins || '0');
+
+    // Atomowe operacje: dodanie monet i usunięcie przedmiotu
+    const { error: coinError } = await supabase
+      .from('characters')
+      .update({ coins: (playerCoins + BigInt(totalSellPrice)).toString() })
+      .eq('id', character.id);
+
+    if (coinError) {
+      console.error('[Shop] Błąd aktualizacji monet przy sprzedaży:', coinError);
+      return res.status(500).json({ error: 'Błąd podczas aktualizacji monet' });
+    }
+
+    // Usuń cały stack
+    const { error: deleteError } = await supabase
+      .from('inventory')
+      .delete()
+      .eq('id', inventory_id);
+
+    if (deleteError) {
+      console.error('[Shop] Błąd usuwania przedmiotu:', deleteError);
+      return res.status(500).json({ error: 'Błąd podczas usuwania przedmiotu' });
+    }
+
+    res.json({ 
+      success: true, 
+      message: `Sprzedano ${item.item_templates.name} x${item.quantity} za ${totalSellPrice} monet!`,
+      item: {
+        name: item.item_templates.name,
+        quantity: item.quantity,
+        total_sell_price: totalSellPrice.toString()
+      }
+    });
+
+  } catch (err) {
+    console.error('[Shop] Błąd endpointu sell:', err.message);
+    res.status(500).json({ error: 'Błąd serwera podczas sprzedaży' });
+  }
+});
+
 // ==========================================
 // START SERWERA
 // ==========================================
