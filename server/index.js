@@ -764,6 +764,8 @@ app.post('/api/missions/start', authenticateToken, async (req, res) => {
     console.error('[Mission] Błąd podczas rozpoczynania misji:', err.message);
     res.status(500).json({ error: 'Błąd serwera podczas rozpoczynania misji' });
   }
+}); // <--- DODAJ TĘ LINIJKĘ (ZAMKNIĘCIE ENDPOINTU)
+
 // ENDPOINT TESTOWY: Magiczna Fasolka (Zenkai)
 // ==========================================
 app.post('/api/debug/zenkai', authenticateToken, async (req, res) => {
