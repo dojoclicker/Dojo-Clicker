@@ -813,11 +813,18 @@ app.post('/api/inventory/consume', authenticateToken, async (req, res) => {
         hp: currentHp.toString(),
         mp: currentMp.toString(),
         stamina: currentStamina.toString(),
-        bonus_stamina: newBonusStamina.toString()
+        bonus_stamina: newBonusStamina.toString(),
+        coins: character.coins.toString() // Add coins to character updates
       }
     });
 
   } catch (err) {
+    console.error('[Consume] Błąd endpointu:', err.message);
+    res.status(500).json({ error: 'Błąd serwera podczas konsumpcji przedmiotu' });
+  }
+});
+
+// Debug endpoint - losowe przedmioty testowe
 app.post('/api/debug/give-items', authenticateToken, async (req, res) => {
   try {
     const userId = req.user.id;
@@ -959,6 +966,51 @@ app.post('/api/debug/give-items', authenticateToken, async (req, res) => {
     res.status(500).json({ error: 'Błąd serwera podczas losowania przedmiotów testowych' });
   }
 });
+
+// Debug endpoint - czyszczenie plecaka
+app.post('/api/debug/clear-backpack', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    // Pobierz dane postaci aby uzyskać character_id
+    const { data: character, error: characterError } = await supabase
+      .from('characters')
+      .select('id')
+      .eq('profile_id', userId)
+      .single();
+
+    if (characterError || !character) {
+      return res.status(404).json({ error: 'Nie znaleziono postaci gracza' });
+    }
+
+    // Twarde usunięcie wszystkich przedmiotów z plecaka (equipped_slot IS NULL)
+    const { error: deleteError } = await supabase
+      .from('inventory')
+      .delete()
+      .eq('character_id', character.id)
+      .eq('equipped_slot', null);
+
+    if (deleteError) {
+      console.error('[Debug] Błąd czyszczenia plecaka:', deleteError);
+      return res.status(500).json({ error: 'Błąd podczas czyszczenia plecaka' });
+    }
+
+    console.log(`[Debug] Wyczyszczono plecak dla postaci ID: ${character.id}`);
+
+    res.json({ 
+      status: 'success',
+      message: 'Plecak został wyczyszczony!'
+    });
+
+  } catch (err) {
+    console.error('[Debug] Błąd czyszczenia plecaka:', err.message);
+    res.status(500).json({ error: 'Błąd serwera podczas czyszczenia plecaka' });
+  }
+});
+
+// Silnik Misji - Rozpoczęcie misji
+app.post('/api/missions/start', authenticateToken, async (req, res) => {
+  try {
     const { missionId } = req.body;
     const userId = req.user.id;
 

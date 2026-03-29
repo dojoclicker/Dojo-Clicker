@@ -1178,6 +1178,59 @@
             return slotTexts[slotType] || 'Slot';
         }
 
+        // Funkcja do pobierania emotikony dla przedmiotu
+        function getItemEmoji(itemName, category) {
+            // Słownik emotikon dla konkretnych przedmiotów
+            const itemEmojis = {
+                // Używalne
+                'Mięso': '🍖',
+                'Jagody': '🫐',
+                'Magiczna Fasolka': '🫘',
+                'Kapsułka Energii': '💊',
+                'Kropla Krwi Smoka': '🩸',
+                'Woda Źródlana': '💧',
+                'Eliksir Mocy': '🧪',
+                'Ziołowy Napar': '🍵',
+                'Energiczny Napój': '⚡',
+                'Odzyskujący Eliksir': '🧪',
+                
+                // Pasywne sprzęt
+                'Podstawowe Gi': '🥋',
+                'Ciężka Skorupa': '🐢',
+                'Wygodne Spodnie': '👖',
+                'Ciężkie Spodnie': '👖',
+                'Trampki': '👟',
+                'Obciążone Buty': '👟',
+                'Opaska Nowicjusza': '🪢',
+                'Ciężka Opaska': '🪢',
+                'Rękawice Treningowe': '🥊',
+                'Ciężkie Rękawice': '🥊',
+                'Kolczyk Umysłu': '✨',
+                'Naszyjnik Mocy': '📿',
+                'Pierścień Ducha': '💍',
+                'Rzemyk Harmonii': '📿',
+                'Pas Mistrza': '🎗️',
+                'Buty Szybkości': '👟',
+                'Hełm Ochronny': '⛑️',
+                'Zbroja Lekka': '🛡️',
+                'Zbroja Ciężka': '🛡️'
+            };
+
+            // Najpierw sprawdź dokładną nazwę
+            if (itemEmojis[itemName]) {
+                return itemEmojis[itemName];
+            }
+
+            // Jeśli nie znaleziono, użyj domyślnej emotikony wg kategorii
+            if (category === 'consumable' || category === 'special_consumable') {
+                return '🧪'; // Domyślna dla używalnych
+            } else if (category === 'equipment') {
+                return '🛡️'; // Domyślna dla sprzętu
+            }
+
+            return '📦'; // Ostateczna domyślna
+        }
+
         // Tworzenie karty przedmiotu
         function createItemCard(item) {
             const card = document.createElement('div');
@@ -1186,16 +1239,17 @@
             card.setAttribute('data-inventory-id', item.id);
             card.setAttribute('data-template-id', item.item_template_id);
             
-            // Placeholder ikony (pierwsza litera nazwy lub emotikona)
-            const icon = getItemIcon(item.item_templates?.name || 'Przedmiot');
-            
-            // Stwórz tooltip dynamiczny
-            const tooltip = createItemTooltip(item.item_templates);
+            // Emotikona jako ikona przedmiotu
+            const emoji = getItemEmoji(item.item_templates?.name || 'Przedmiot', item.item_templates?.category || 'unknown');
+            const itemName = item.item_templates?.name || 'Przedmiot';
+            const quantity = item.quantity || 1;
             
             card.innerHTML = `
-                <div class="item-icon">${icon}</div>
-                ${item.quantity > 1 ? `<div class="item-quantity">${item.quantity}</div>` : ''}
-                ${tooltip}
+                <div class="item-emoji">${emoji}</div>
+                ${quantity > 1 ? `<div class="item-quantity">${quantity}</div>` : ''}
+                <div class="item-tooltip">
+                    ${createItemTooltip(item.item_templates)}
+                </div>
             `;
             
             // Dodaj event listener dla dragstart
@@ -1566,6 +1620,20 @@
                         inventory_id: inventoryId
                     })
                 });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    
+                    // Sprawdź czy to warning (np. pełne zasoby)
+                    if (errorData.status === 'warning') {
+                        showWarningMessage(errorData.message);
+                        return;
+                    }
+                    
+                    // Inne błędy
+                    showWarningMessage(errorData.error || 'Błąd podczas używania przedmiotu');
+                    return;
+                }
 
                 const data = await response.json();
                 
