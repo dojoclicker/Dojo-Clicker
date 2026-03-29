@@ -1477,8 +1477,12 @@
             const card = document.createElement('div');
             card.className = 'shop-item-card';
             
-            const playerCoins = parseInt(document.getElementById('shop-player-coins').textContent);
-            const backpackCount = parseInt(document.getElementById('shop-backpack-count').textContent.split('/')[0]);
+            const coinsEl = document.getElementById('shop-coins');
+            const playerCoins = coinsEl ? parseInt(coinsEl.textContent) : 0;
+            
+            const backpackEl = document.getElementById('shop-backpack-count');
+            const backpackCount = backpackEl ? parseInt(backpackEl.textContent.split('/')[0]) : 0;
+            
             const canAfford = playerCoins >= item.price;
             const hasSpace = backpackCount < 5;
             
@@ -1508,19 +1512,24 @@
         function updateShopPlayerInfo() {
             const characterData = window.characterData;
             if (characterData) {
-                document.getElementById('shop-player-coins').textContent = characterData.coins || '0';
+                const coinsEl = document.getElementById('shop-coins');
+                if (coinsEl) {
+                    coinsEl.textContent = characterData.coins || '0';
+                }
                 
                 // Policz przedmioty w plecaku
                 const backpackItems = (window.inventoryData || []).filter(item => item.equipped_slot === null);
                 const backpackCount = backpackItems.length;
                 
                 const backpackStatus = document.getElementById('shop-backpack-count');
-                backpackStatus.textContent = `${backpackCount}/5`;
-                
-                if (backpackCount >= 5) {
-                    backpackStatus.parentElement.classList.add('full');
-                } else {
-                    backpackStatus.parentElement.classList.remove('full');
+                if (backpackStatus) {
+                    backpackStatus.textContent = `${backpackCount}/5`;
+                    
+                    if (backpackCount >= 5) {
+                        backpackStatus.parentElement.classList.add('full');
+                    } else {
+                        backpackStatus.parentElement.classList.remove('full');
+                    }
                 }
             }
         }
