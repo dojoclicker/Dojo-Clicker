@@ -413,6 +413,40 @@ app.get('/api/missions', authenticateToken, async (req, res) => {
   }
 });
 
+// Endpoint pobierający ekwipunek gracza
+app.get('/api/inventory', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    // Pobierz dane postaci aby uzyskać character_id
+    const { data: character, error: characterError } = await supabase
+      .from('characters')
+      .select('id')
+      .eq('profile_id', userId)
+      .single();
+
+    if (characterError || !character) {
+      return res.status(404).json({ error: 'Nie znaleziono postaci gracza' });
+    }
+
+    // Pobierz przedmioty z inventory z relacją do item_templates
+    const { data: inventory, error: inventoryError } = await supabase
+      .from('inventory')
+      .select('*, item_templates(*)')
+      .eq('character_id', character.id);
+
+    if (inventoryError) {
+      console.error('[Inventory] Błąd pobierania ekwipunku:', inventoryError.message);
+      return res.status(500).json({ error: 'Błąd serwera podczas pobierania ekwipunku' });
+    }
+
+    res.json(inventory || []);
+  } catch (err) {
+    console.error('[Inventory] Błąd endpointu:', err.message);
+    res.status(500).json({ error: 'Błąd serwera podczas pobierania ekwipunku' });
+  }
+});
+
 // Silnik Misji - Rozpoczęcie misji
 app.post('/api/missions/start', authenticateToken, async (req, res) => {
   try {

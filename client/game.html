@@ -1062,6 +1062,145 @@
             }
         }
 
+        // Pobieranie danych ekwipunku z API
+        async function fetchInventory() {
+            const sessionToken = localStorage.getItem('session_token');
+            
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/inventory`, {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${sessionToken}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                if (!response.ok) {
+                    if (response.status === 401 || response.status === 403) {
+                        localStorage.removeItem('session_token');
+                        window.location.href = 'index.html';
+                        return;
+                    }
+                    throw new Error(`Błąd HTTP: ${response.status}`);
+                }
+
+                const inventory = await response.json();
+                renderInventory(inventory);
+                
+            } catch (error) {
+                console.error('[Inventory] Błąd pobierania ekwipunku:', error);
+                showInventoryError('Nie udało się pobrać ekwipunku. Spróbuj odświeżyć stronę.');
+            }
+        }
+
+        // Renderowanie ekwipunku w interfejsie
+        function renderInventory(items) {
+            // Wyczyść zawartość wszystkich slotów, zostawiając domyślne napisy
+            clearAllSlots();
+            
+            if (!items || items.length === 0) {
+                console.log('[Inventory] Brak przedmiotów w ekwipunku');
+                return;
+            }
+
+            // Przeiteruj przez przedmioty i umieść je w odpowiednich slotach
+            items.forEach(item => {
+                const itemCard = createItemCard(item);
+                
+                if (item.equipped_slot) {
+                    // Przedmiot założony - znajdź slot wyposażenia
+                    const equipmentSlot = document.querySelector(`[data-slot="${item.equipped_slot}"]`);
+                    if (equipmentSlot) {
+                        equipmentSlot.innerHTML = '';
+                        equipmentSlot.appendChild(itemCard);
+                    }
+                } else {
+                    // Przedmiot w plecaku - znajdź pierwszy pusty slot
+                    const emptySlot = document.querySelector('.inventory-slot:empty');
+                    if (emptySlot) {
+                        emptySlot.appendChild(itemCard);
+                    }
+                }
+            });
+
+            console.log(`[Inventory] Wyrenderowano ${items.length} przedmiotów`);
+        }
+
+        // Czyszczenie wszystkich slotów
+        function clearAllSlots() {
+            // Wyczyść sloty wyposażenia, przywracając domyślne napisy
+            const equipmentSlots = document.querySelectorAll('.equipment-slot');
+            equipmentSlots.forEach(slot => {
+                const slotType = slot.getAttribute('data-slot');
+                const defaultText = getDefaultSlotText(slotType);
+                slot.innerHTML = defaultText;
+            });
+
+            // Wyczyść sloty plecaka
+            const inventorySlots = document.querySelectorAll('.inventory-slot');
+            inventorySlots.forEach(slot => {
+                slot.innerHTML = '';
+            });
+        }
+
+        // Pobieranie domyślnego tekstu dla slotu
+        function getDefaultSlotText(slotType) {
+            const slotTexts = {
+                'head': 'Głowa',
+                'chest': 'Tors',
+                'legs': 'Nogi',
+                'feet': 'Stopy',
+                'hands': 'Ręce',
+                'ear_l': 'L. Kolczyk',
+                'ear_r': 'P. Kolczyk',
+                'necklace': 'Naszyjnik',
+                'ring_l': 'L. Pierścień',
+                'ring_r': 'P. Pierścień'
+            };
+            return slotTexts[slotType] || 'Slot';
+        }
+
+        // Tworzenie karty przedmiotu
+        function createItemCard(item) {
+            const card = document.createElement('div');
+            card.className = 'item-card';
+            
+            // Placeholder ikony (pierwsza litera nazwy lub emotikona)
+            const icon = getItemIcon(item.item_templates?.name || 'Przedmiot');
+            
+            card.innerHTML = `
+                <div class="item-icon">${icon}</div>
+                ${item.quantity > 1 ? `<div class="item-quantity">${item.quantity}</div>` : ''}
+            `;
+            
+            return card;
+        }
+
+        // Pobieranie ikony przedmiotu
+        function getItemIcon(itemName) {
+            const name = itemName.toLowerCase();
+            
+            // Proste emotikony na podstawie nazwy
+            if (name.includes('miecz') || name.includes('sword')) return '⚔️';
+            if (name.includes('zbroja') || name.includes('armor')) return '🛡️';
+            if (name.includes('helm') || name.includes('hełm')) return '🪖';
+            if (name.includes('but') || name.includes('boot')) return '👢';
+            if (name.includes('rękaw') || name.includes('glove')) return '🧤';
+            if (name.includes('pierś') || name.includes('ring')) return '💍';
+            if (name.includes('naszyj') || name.includes('necklace')) return '📿';
+            if (name.includes('kolczy') || name.includes('earring')) return '🎧';
+            if (name.includes('mikstur') || name.includes('potion')) return '🧪';
+            if (name.includes('fasol') || name.includes('bean')) return '🫘';
+            
+            // Domyślnie - pierwsza litera nazwy
+            return itemName.charAt(0).toUpperCase();
+        }
+
+        // Wyświetlanie błędu ekwipunku
+        function showInventoryError(message) {
+            console.error('[Inventory] Error:', message);
+        }
+
         // Inicjalizacja aplikacji
         document.addEventListener('DOMContentLoaded', function() {
             // 1. Sprawdź autoryzację
@@ -1073,6 +1212,9 @@
 
             // 3. Pobierz misje
             fetchMissions();
+
+            // 4. Pobierz ekwipunek
+            fetchInventory();
 
             // 4. Event Listener dla przycisku Magicznej Fasolki
             document.getElementById('btn-use-senzu')?.addEventListener('click', async function() {
