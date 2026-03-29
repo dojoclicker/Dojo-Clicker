@@ -466,52 +466,83 @@ app.post('/api/debug/give-items', authenticateToken, async (req, res) => {
     // Zestaw testowy przedmiotów (wszystkie trafią do plecaka - equipped_slot: null)
     const testItems = [
       // Pasywne
-      { item_template_id: 1, quantity: 1, equipped_slot: null }, // Podstawowe Gi (chest)
-      { item_template_id: 2, quantity: 1, equipped_slot: null }, // Opaska Nowicjusza (head)
-      { item_template_id: 3, quantity: 1, equipped_slot: null }, // Wygodne Spodnie (legs)
-      { item_template_id: 4, quantity: 1, equipped_slot: null }, // Trampki (feet)
+      { name: 'Podstawowe Gi', quantity: 1, equipped_slot: null }, // chest
+      { name: 'Opaska Nowicjusza', quantity: 1, equipped_slot: null }, // head
+      { name: 'Wygodne Spodnie', quantity: 1, equipped_slot: null }, // legs
+      { name: 'Trampki', quantity: 1, equipped_slot: null }, // feet
       
       // Treningowe
-      { item_template_id: 5, quantity: 1, equipped_slot: null }, // Ciężka Skorupa (chest)
-      { item_template_id: 6, quantity: 1, equipped_slot: null }, // Ciężka Opaska (head)
-      { item_template_id: 7, quantity: 1, equipped_slot: null }, // Ciężkie Spodnie (legs)
-      { item_template_id: 8, quantity: 1, equipped_slot: null }, // Obciążone Buty (feet)
-      { item_template_id: 9, quantity: 1, equipped_slot: null }, // Ciężkie Rękawice (hands)
+      { name: 'Ciężka Skorupa', quantity: 1, equipped_slot: null }, // chest
+      { name: 'Ciężka Opaska', quantity: 1, equipped_slot: null }, // head
+      { name: 'Ciężkie Spodnie', quantity: 1, equipped_slot: null }, // legs
+      { name: 'Obciążone Buty', quantity: 1, equipped_slot: null }, // feet
+      { name: 'Ciężkie Rękawice', quantity: 1, equipped_slot: null }, // hands
       
       // Używalne
-      { item_template_id: 10, quantity: 5, equipped_slot: null }, // Mięso (5 sztuk)
-      { item_template_id: 11, quantity: 5, equipped_slot: null }, // Jagody (5 sztuk)
-      { item_template_id: 12, quantity: 1, equipped_slot: null }, // Magiczna Fasolka (1 sztuka)
+      { name: 'Mięso', quantity: 5, equipped_slot: null }, // stackowalny
+      { name: 'Jagody', quantity: 5, equipped_slot: null }, // stackowalny
+      { name: 'Magiczna Fasolka', quantity: 1, equipped_slot: null }, // używalny
     ];
 
     // Przetwarzanie każdego przedmiotu
     for (const item of testItems) {
+      // Najpierw pobierz ID szablonu po nazwie
+      const { data: template, error: templateError } = await supabase
+        .from('item_templates')
+        .select('id')
+        .eq('name', item.name)
+        .single();
+
+      if (templateError || !template) {
+        console.error(`[Debug] Nie znaleziono szablonu przedmiotu: ${item.name}`, templateError);
+        continue; // Pomiń ten przedmiot i idź dalej
+      }
+
+      const itemTemplateId = template.id;
+
       // Sprawdź czy gracz już ma taki przedmiot (dla stackowania)
       const { data: existingItem, error: existingError } = await supabase
         .from('inventory')
         .select('*')
         .eq('character_id', character.id)
-        .eq('item_template_id', item.item_template_id)
+        .eq('item_template_id', itemTemplateId)
         .eq('equipped_slot', null) // Tylko przedmioty w plecaku mogą się stackować
         .single();
 
-      if (existingItem && !existingError) {
+      if (existingError && existingError.code !== 'PGRST116') { // PGRST116 = nie znaleziono
+        console.error(`[Debug] Błąd sprawdzania istniejącego przedmiotu:`, existingError);
+        continue;
+      }
+
+      if (existingItem) {
         // Gracz już ma ten przedmiot - zaktualizuj ilość
         const newQuantity = Number(existingItem.quantity) + item.quantity;
-        await supabase
+        const { error: updateError } = await supabase
           .from('inventory')
           .update({ quantity: newQuantity })
           .eq('id', existingItem.id);
+
+        if (updateError) {
+          console.error(`[Debug] Błąd aktualizacji ilości przedmiotu ${item.name}:`, updateError);
+        } else {
+          console.log(`[Debug] Zaktualizowano ilość ${item.name}: ${existingItem.quantity} → ${newQuantity}`);
+        }
       } else {
         // Nowy przedmiot - dodaj do bazy
-        await supabase
+        const { error: insertError } = await supabase
           .from('inventory')
           .insert({
             character_id: character.id,
-            item_template_id: item.item_template_id,
+            item_template_id: itemTemplateId,
             quantity: item.quantity,
             equipped_slot: item.equipped_slot
           });
+
+        if (insertError) {
+          console.error(`[Debug] Błąd dodawania przedmiotu ${item.name}:`, insertError);
+        } else {
+          console.log(`[Debug] Dodano nowy przedmiot: ${item.name} (ID: ${itemTemplateId})`);
+        }
       }
     }
 

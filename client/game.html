@@ -1096,18 +1096,32 @@
 
         // Renderowanie ekwipunku w interfejsie
         function renderInventory(items) {
-            // Wyczyść zawartość wszystkich slotów, zostawiając domyślne napisy
-            clearAllSlots();
+            // Krok A: Złap wszystkie sloty i wyczyść je
+            const equipmentSlots = document.querySelectorAll('[data-slot]');
+            const inventorySlots = document.querySelectorAll('.inventory-slot');
+            
+            // Wyczyść sloty wyposażenia, zostawiając domyślne napisy
+            equipmentSlots.forEach(slot => {
+                const slotType = slot.getAttribute('data-slot');
+                const defaultText = getDefaultSlotText(slotType);
+                slot.innerHTML = `<span>${defaultText}</span>`;
+            });
+
+            // Wyczyść sloty plecaka
+            inventorySlots.forEach(slot => {
+                slot.innerHTML = '';
+            });
             
             if (!items || items.length === 0) {
                 console.log('[Inventory] Brak przedmiotów w ekwipunku');
                 return;
             }
 
-            // Przeiteruj przez przedmioty i umieść je w odpowiednich slotach
+            // Krok B: Przeiteruj przez przedmioty i stwórz karty
             items.forEach(item => {
                 const itemCard = createItemCard(item);
                 
+                // Krok C: Znajdź odpowiedni slot docelowy
                 if (item.equipped_slot) {
                     // Przedmiot założony - znajdź slot wyposażenia
                     const equipmentSlot = document.querySelector(`[data-slot="${item.equipped_slot}"]`);
@@ -1117,7 +1131,7 @@
                     }
                 } else {
                     // Przedmiot w plecaku - znajdź pierwszy pusty slot
-                    const emptySlot = document.querySelector('.inventory-slot:empty');
+                    const emptySlot = document.querySelector('.inventory-slot:not(:has(.item-card))');
                     if (emptySlot) {
                         emptySlot.appendChild(itemCard);
                     }
@@ -1165,6 +1179,9 @@
         function createItemCard(item) {
             const card = document.createElement('div');
             card.className = 'item-card';
+            card.setAttribute('draggable', 'true');
+            card.setAttribute('data-inventory-id', item.id);
+            card.setAttribute('data-template-id', item.item_template_id);
             
             // Placeholder ikony (pierwsza litera nazwy lub emotikona)
             const icon = getItemIcon(item.item_templates?.name || 'Przedmiot');
@@ -1173,6 +1190,14 @@
                 <div class="item-icon">${icon}</div>
                 ${item.quantity > 1 ? `<div class="item-quantity">${item.quantity}</div>` : ''}
             `;
+            
+            // Dodaj event listener dla dragstart
+            card.addEventListener('dragstart', function(e) {
+                e.dataTransfer.setData('inventory_id', item.id);
+                e.dataTransfer.setData('template_id', item.item_template_id);
+                e.dataTransfer.setData('item_name', item.item_templates?.name || 'Przedmiot');
+                console.log('Drag start:', item.item_templates?.name, '(ID:', item.id, ')');
+            });
             
             return card;
         }
@@ -1202,6 +1227,66 @@
             console.error('[Inventory] Error:', message);
         }
 
+        // Inicjalizacja mechaniki Drag & Drop
+        function initializeDragAndDrop() {
+            // Dodaj event listenery do wszystkich slotów wyposażenia
+            const equipmentSlots = document.querySelectorAll('[data-slot]');
+            equipmentSlots.forEach(slot => {
+                slot.addEventListener('dragover', function(e) {
+                    e.preventDefault(); // Pozwól na upuszczenie
+                    this.style.backgroundColor = 'rgba(255, 107, 0, 0.3)'; // Wizualny feedback
+                });
+                
+                slot.addEventListener('dragleave', function(e) {
+                    this.style.backgroundColor = ''; // Przywróć domyślny kolor
+                });
+                
+                slot.addEventListener('drop', function(e) {
+                    e.preventDefault();
+                    this.style.backgroundColor = ''; // Przywróć domyślny kolor
+                    
+                    const inventoryId = e.dataTransfer.getData('inventory_id');
+                    const templateId = e.dataTransfer.getData('template_id');
+                    const itemName = e.dataTransfer.getData('item_name');
+                    const slotName = this.getAttribute('data-slot');
+                    
+                    console.log('Próba przeniesienia przedmiotu:', itemName, '(ID:', inventoryId, ')', 'do slota:', slotName);
+                    
+                    // Na razie tylko logowanie - bez fetch do backendu
+                    // TODO: Implementacja swap_items w kolejnym kroku
+                });
+            });
+
+            // Dodaj event listenery do wszystkich slotów plecaka
+            const inventorySlots = document.querySelectorAll('.inventory-slot');
+            inventorySlots.forEach(slot => {
+                slot.addEventListener('dragover', function(e) {
+                    e.preventDefault(); // Pozwól na upuszczenie
+                    this.style.backgroundColor = 'rgba(255, 107, 0, 0.3)'; // Wizualny feedback
+                });
+                
+                slot.addEventListener('dragleave', function(e) {
+                    this.style.backgroundColor = ''; // Przywróć domyślny kolor
+                });
+                
+                slot.addEventListener('drop', function(e) {
+                    e.preventDefault();
+                    this.style.backgroundColor = ''; // Przywróć domyślny kolor
+                    
+                    const inventoryId = e.dataTransfer.getData('inventory_id');
+                    const templateId = e.dataTransfer.getData('template_id');
+                    const itemName = e.dataTransfer.getData('item_name');
+                    
+                    console.log('Próba przeniesienia przedmiotu:', itemName, '(ID:', inventoryId, ')', 'do plecaka');
+                    
+                    // Na razie tylko logowanie - bez fetch do backendu
+                    // TODO: Implementacja swap_items w kolejnym kroku
+                });
+            });
+
+            console.log('[Drag&Drop] Zainicjalizowano mechanikę Drag & Drop');
+        }
+
         // Inicjalizacja aplikacji
         document.addEventListener('DOMContentLoaded', function() {
             // 1. Sprawdź autoryzację
@@ -1216,6 +1301,11 @@
 
             // 4. Pobierz ekwipunek
             fetchInventory();
+
+            // 5. Zainicjalizuj Drag & Drop
+            setTimeout(() => {
+                initializeDragAndDrop();
+            }, 500); // Małe opóźnienie dla pewności, że elementy są w DOM
 
             // 4. Event Listener dla przycisku Magicznej Fasolki
             document.getElementById('btn-use-senzu')?.addEventListener('click', async function() {
