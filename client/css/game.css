@@ -665,24 +665,24 @@ body {
     min-width: 450px;
 }
 
-/* Układ Paper Doll - zróżnicowane rozmiary */
+/* Układ Paper Doll - rygorystyczna siatka anatomiczna */
 .character-body {
     display: grid;
-    grid-template-columns: 55px 80px 55px;
-    grid-template-rows: repeat(4, 80px);
-    gap: 12px;
-    justify-items: center;
-    align-items: center;
+    grid-template-columns: 80px 100px 80px; /* Środkowa kolumna nieco szersza */
+    grid-template-rows: 80px 60px 80px 80px 80px;
+    gap: 10px 15px;
+    justify-content: center;
     
-    /* Precyzyjne rozmieszczenie slotów anatomicznych */
+    /* Precyzyjny układ anatomiczny */
     grid-template-areas:
-        "ear_l head ear_r"
-        "necklace chest hands"
-        "ring_l legs ring_r"
-        ". feet .";
+        "ear_l   head       ear_r"
+        ".       necklace   ."
+        ".       chest      hands"
+        "ring_l  legs       ring_r"
+        ".       feet       .";
 }
 
-/* Sloty wyposażenia - domyślne (małe) */
+/* Sloty wyposażenia - domyślne (małe - biżuteria) */
 .equipment-slot {
     width: 55px;
     height: 55px;
@@ -693,12 +693,13 @@ body {
     align-items: center;
     justify-content: center;
     color: var(--text-muted);
-    font-size: 0.55rem;
+    font-size: 0.7rem;
     font-weight: 600;
     text-align: center;
     transition: all var(--transition-fast);
     cursor: pointer;
     position: relative;
+    place-self: center; /* Idealne wyśrodkowanie w komórce siatki */
 }
 
 /* Duże sloty - główny pancerz */
@@ -709,7 +710,7 @@ body {
 .equipment-slot[data-slot="hands"] {
     width: 80px;
     height: 80px;
-    font-size: 0.65rem;
+    font-size: 0.8rem;
 }
 
 /* Efekt hover dla slotów wyposażenia */
@@ -741,15 +742,15 @@ body {
     min-width: 500px;
 }
 
-/* Gęsta siatka plecaka - większe sloty */
+/* Siatka plecaka - uporządkowana */
 .inventory-grid {
     display: grid;
-    grid-template-columns: repeat(5, 80px);
-    gap: 15px;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 10px;
     justify-content: center;
 }
 
-/* Sloty plecaka - większe */
+/* Sloty plecaka - sztywne 80x80px */
 .inventory-slot {
     width: 80px;
     height: 80px;
@@ -818,15 +819,15 @@ body {
     }
     
     .character-body {
-        grid-template-columns: 50px 70px 50px;
-        grid-template-rows: repeat(4, 70px);
-        gap: 10px;
+        grid-template-columns: 70px 85px 70px;
+        grid-template-rows: 70px 50px 70px 70px 70px;
+        gap: 8px 12px;
     }
     
     .equipment-slot {
         width: 50px;
         height: 50px;
-        font-size: 0.5rem;
+        font-size: 0.6rem;
     }
     
     .equipment-slot[data-slot="head"],
@@ -836,12 +837,7 @@ body {
     .equipment-slot[data-slot="hands"] {
         width: 70px;
         height: 70px;
-        font-size: 0.6rem;
-    }
-    
-    .inventory-grid {
-        grid-template-columns: repeat(5, 70px);
-        gap: 12px;
+        font-size: 0.7rem;
     }
     
     .inventory-slot {
@@ -863,15 +859,15 @@ body {
     }
     
     .character-body {
-        grid-template-columns: 45px 60px 45px;
-        grid-template-rows: repeat(4, 60px);
-        gap: 8px;
+        grid-template-columns: 60px 70px 60px;
+        grid-template-rows: 60px 45px 60px 60px 60px;
+        gap: 6px 10px;
     }
     
     .equipment-slot {
         width: 45px;
         height: 45px;
-        font-size: 0.45rem;
+        font-size: 0.5rem;
     }
     
     .equipment-slot[data-slot="head"],
@@ -881,12 +877,7 @@ body {
     .equipment-slot[data-slot="hands"] {
         width: 60px;
         height: 60px;
-        font-size: 0.55rem;
-    }
-    
-    .inventory-grid {
-        grid-template-columns: repeat(4, 60px);
-        gap: 10px;
+        font-size: 0.6rem;
     }
     
     .inventory-slot {
