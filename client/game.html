@@ -636,7 +636,6 @@
                             <div>💰 Utrata monet: -${data.penalty.coins_lost}</div>
                             <div>🏥️ Czas w szpitalu: ${data.penalty.hospital_minutes} minut</div>
                             ${statsList.length > 0 ? `<div>📊 Utrata statystyk: ${statsList.join(', ')}</div>` : ''}
-                            <div style="font-size: 0.9rem; margin-top: 8px;">ℹ️ Utrata statystyk zapisana w profilu!</div>
                         </div>
                     `;
                     
@@ -969,6 +968,36 @@
             }, 3000);
         }
 
+        function showWarningMessage(message) {
+            const popup = document.createElement('div');
+            popup.style.position = 'fixed';
+            popup.style.top = '50%';
+            popup.style.left = '50%';
+            popup.style.transform = 'translate(-50%, -50%)';
+            popup.style.padding = '2rem';
+            popup.style.borderRadius = '12px';
+            popup.style.zIndex = '1000';
+            popup.style.boxShadow = '0 10px 30px rgba(0,0,0,0.5)';
+            popup.style.minWidth = '300px';
+            popup.style.textAlign = 'center';
+            popup.style.fontWeight = 'bold';
+            popup.style.backgroundColor = 'var(--warning, #f59e0b)';
+            popup.style.color = 'white';
+            popup.style.border = '2px solid var(--warning)';
+            
+            popup.innerHTML = `
+                <h3 style="margin: 0; font-size: 1.5rem;">⚠️ ${message}</h3>
+            `;
+            
+            document.body.appendChild(popup);
+            
+            setTimeout(() => {
+                if (popup.parentNode) {
+                    popup.parentNode.removeChild(popup);
+                }
+            }, 3000);
+        }
+
         // Główna funkcja aktywująca zakładkę (Wymaga bycia w Global Scope dla Szpitala!)
         function activateTab(tabName) {
             // Zapisz wybór w pamięci przeglądarki
@@ -1047,7 +1076,7 @@
                         fetchCharacterData(); // Odśwież dane postaci
                     } else if (data.status === 'warning') {
                         // Ostrzeżenie, gdy zasoby są pełne (żółty komunikat)
-                        showErrorMessage(`⚠️ ${data.message}`);
+                        showWarningMessage(data.message);
                     } else {
                         showErrorMessage(data.message || 'Nie udało się użyć Magicznej Fasolki');
                     }
