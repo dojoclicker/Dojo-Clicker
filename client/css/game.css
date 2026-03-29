@@ -815,8 +815,8 @@ body {
 
 .item-tooltip {
     position: absolute;
-    bottom: 100%;
-    margin-bottom: 15px;
+    top: 100%;
+    margin-top: 15px;
     left: 50%;
     transform: translateX(-50%);
     width: max-content;
@@ -839,11 +839,12 @@ body {
 .item-tooltip::after {
     content: '';
     position: absolute;
-    top: 100%;
+    bottom: 100%;
     left: 50%;
     transform: translateX(-50%);
-    border: 6px solid transparent;
-    border-top-color: var(--goku-accent);
+    border-width: 0 10px 10px 10px;
+    border-style: solid;
+    border-color: transparent transparent var(--goku-accent) transparent;
 }
 
 .item-tooltip h4 {
