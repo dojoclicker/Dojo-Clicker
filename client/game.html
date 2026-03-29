@@ -582,32 +582,36 @@
                         <h3 style="margin: 0; font-size: 1.5rem;">❌ ${data.message}</h3>
                     `;
                 } else if (data.result === 'hurt') {
-                    // Kara za pychę - wyraźnie czerwony
+                    // Generowanie listy utraconych statystyk dla zwykłej porażki
+                    let statsLostHtml = '';
+                    const statsLost = data.penalty?.stats_lost || {};
+                    const lostList = [];
+                    if (Number(statsLost.strength) > 0) lostList.push(`-${statsLost.strength} Siła`);
+                    if (Number(statsLost.speed) > 0) lostList.push(`-${statsLost.speed} Szybkość`);
+                    if (Number(statsLost.endurance) > 0) lostList.push(`-${statsLost.endurance} Wytrzymałość`);
+                    if (Number(statsLost.intelligence) > 0) lostList.push(`-${statsLost.intelligence} Inteligencja`);
+                    if (Number(statsLost.mental_strength) > 0) lostList.push(`-${statsLost.mental_strength} Siła Mentalna`);
+
+                    if (lostList.length > 0) {
+                        statsLostHtml = `<br>📊 Utrata statystyk: ${lostList.join(', ')}`;
+                    }
+
                     popup.style.backgroundColor = '#cc0000';
                     popup.style.color = 'white';
                     popup.style.border = '2px solid #cc0000';
                     
-                    // Formatowanie utraconych statystyk
-                    const statsLost = data.penalty?.stats_lost || {};
-                    const statsList = [];
-                    if (statsLost.strength && statsLost.strength !== '0') statsList.push(`-${statsLost.strength} Siła`);
-                    if (statsLost.speed && statsLost.speed !== '0') statsList.push(`-${statsLost.speed} Szybkość`);
-                    if (statsLost.endurance && statsLost.endurance !== '0') statsList.push(`-${statsLost.endurance} Wytrzymałość`);
-                    if (statsLost.intelligence && statsLost.intelligence !== '0') statsList.push(`-${statsLost.intelligence} Inteligencja`);
-                    if (statsLost.mental_strength && statsLost.mental_strength !== '0') statsList.push(`-${statsLost.mental_strength} Siła Mentalna`);
-                    
                     popup.innerHTML = `
-                        <h3 style="margin: 0 0 1rem 0; font-size: 1.5rem;">🩹 ${data.message}</h3>
-                        <div style="font-size: 1rem; margin-top: 0.5rem;">
-                            <div style="margin-bottom: 0.5rem;"><strong>Obrażenia:</strong></div>
-                            <div>❤️ HP: -${data.damage.hp}</div>
-                            <div>💙 MP: -${data.damage.mp}</div>
-                            <div>⚡ Stamina: -${data.damage.stamina}</div>
+                        <div style="color: white; font-weight: bold; margin-bottom: 10px;">
+                            🩹 ${data.message}
                         </div>
-                        <div style="font-size: 1rem; margin-top: 1rem;">
-                            <div style="margin-bottom: 0.5rem;"><strong>Kara:</strong></div>
-                            <div>💰 Utrata monet: -${data.penalty.coins_lost}</div>
-                            ${statsList.length > 0 ? `<div>📊 Utrata statystyk: ${statsList.join(', ')}</div>` : ''}
+                        <div style="text-align: left; background: rgba(0,0,0,0.2); padding: 10px; border-radius: 6px;">
+                            <strong>Obrażenia:</strong><br>
+                            ❤️ HP: -${data.damage.hp}<br>
+                            💙 MP: -${data.damage.mp}<br>
+                            ⚡ Stamina: -${data.damage.stamina}<br>
+                            <strong>Kara:</strong><br>
+                            💰 Utrata monet: -${data.penalty?.coins_lost || 0}
+                            ${statsLostHtml}
                         </div>
                     `;
                 } else if (data.result === 'death') {
@@ -1023,8 +1027,27 @@
                     const data = await response.json();
                     
                     if (data.status === 'success') {
-                        showSuccessMessage('Magiczna Fasolka użyta! Natychmiastowe leczenie!');
+                        let successMsg = 'Magiczna Fasolka użyta! Natychmiastowe leczenie!';
+                        
+                        // Dodanie info o odzyskanych statystykach
+                        if (data.recovered) {
+                            const recList = [];
+                            if (Number(data.recovered.strength) > 0) recList.push(`+${data.recovered.strength} Siła`);
+                            if (Number(data.recovered.speed) > 0) recList.push(`+${data.recovered.speed} Szybkość`);
+                            if (Number(data.recovered.endurance) > 0) recList.push(`+${data.recovered.endurance} Wytrz.`);
+                            if (Number(data.recovered.intelligence) > 0) recList.push(`+${data.recovered.intelligence} Int.`);
+                            if (Number(data.recovered.mental_strength) > 0) recList.push(`+${data.recovered.mental_strength} Siła Men.`);
+                            
+                            if (recList.length > 0) {
+                                successMsg += `<br>📈 Odzyskano: ${recList.join(', ')}`;
+                            }
+                        }
+                        
+                        showSuccessMessage(successMsg);
                         fetchCharacterData(); // Odśwież dane postaci
+                    } else if (data.status === 'warning') {
+                        // Ostrzeżenie, gdy zasoby są pełne (żółty komunikat)
+                        showErrorMessage(`⚠️ ${data.message}`);
                     } else {
                         showErrorMessage(data.message || 'Nie udało się użyć Magicznej Fasolki');
                     }

@@ -779,24 +779,66 @@ app.post('/api/debug/zenkai', authenticateToken, async (req, res) => {
 
     if (fetchError || !char) throw new Error('Nie znaleziono postaci');
 
-    // Odczytaj utracone statystyki z last_death_penalty
-    const deathPenalty = char.last_death_penalty;
-    if (!deathPenalty) {
-      return res.json({ status: 'success', message: 'Brak statystyk do odzyskania.' });
+    // Pobranie bieżących wartości
+    const currentHp = BigInt(char.hp || '100');
+    const currentMp = BigInt(char.mp || '100');
+    const currentStamina = BigInt(char.stamina || '100');
+    
+    // Pobranie do obliczeń Maksów
+    const currentStr = BigInt(char.strength || '1');
+    const currentInt = BigInt(char.intelligence || '1');
+    const bonusHp = BigInt(char.bonus_hp || '0');
+    const bonusMp = BigInt(char.bonus_mp || '0');
+    const bonusStamina = BigInt(char.bonus_stamina || '0');
+
+    // Kalkulacja obecnych Maksów (przed ewentualnym dodaniem odzyskanych statystyk)
+    const currentMaxHp = 100n + (currentStr / 20n) + bonusHp;
+    const currentMaxMp = 100n + (currentInt / 5n) + bonusMp;
+    const currentMaxStamina = 100n + bonusStamina;
+
+    // Detekcja statusu kar i szpitala
+    const deathPenaltyObj = char.last_death_penalty;
+    const isHospitalized = char.hospital_until || (deathPenaltyObj && deathPenaltyObj.hospital_end_ms);
+
+    // KRYTYCZNE ZABEZPIECZENIE: Zablokowanie fasolki, gdy jest bezużyteczna
+    if (currentHp >= currentMaxHp && currentMp >= currentMaxMp && currentStamina >= currentMaxStamina && !isHospitalized && !deathPenaltyObj) {
+        return res.status(400).json({ 
+            status: 'warning', 
+            message: 'Masz 100% zasobów i brak kar. Użycie Fasolki nic nie zmieni!' 
+        });
     }
 
-    // Konwertuj stringi na BigInt
-    const strRecovery = BigInt(deathPenalty.strength || '0');
-    const spdRecovery = BigInt(deathPenalty.speed || '0');
-    const endRecovery = BigInt(deathPenalty.endurance || '0');
-    const intRecovery = BigInt(deathPenalty.intelligence || '0');
-    const menRecovery = BigInt(deathPenalty.mental_strength || '0');
+    if (!deathPenaltyObj) {
+      // Przypadek: Gracz jest po prostu ranny lub zmęczony (brak kar za śmierć)
+      // Odnawiamy tylko zasoby
+      const { error: updateError } = await supabase
+        .from('characters')
+        .update({
+          hp: currentMaxHp.toString(),
+          mp: currentMaxMp.toString(),
+          stamina: currentMaxStamina.toString(),
+          hospital_until: null,
+          last_calculation_time: new Date().toISOString()
+        })
+        .eq('profile_id', userId);
+
+      if (updateError) throw updateError;
+      return res.json({ 
+        status: 'success', 
+        message: 'Odnawiasz siły! Zasoby zregenerowane do 100%.' 
+      });
+    }
+
+    // Przypadek: Gracz ma kary do odzyskania
+    const strRecovery = BigInt(deathPenaltyObj.strength || '0');
+    const spdRecovery = BigInt(deathPenaltyObj.speed || '0');
+    const endRecovery = BigInt(deathPenaltyObj.endurance || '0');
+    const intRecovery = BigInt(deathPenaltyObj.intelligence || '0');
+    const menRecovery = BigInt(deathPenaltyObj.mental_strength || '0');
 
     // Dodaj odzyskane statystyki do aktualnych
-    const currentStr = BigInt(char.strength || '1');
     const currentSpd = BigInt(char.speed || '1');
     const currentEnd = BigInt(char.endurance || '1');
-    const currentInt = BigInt(char.intelligence || '1');
     const currentMen = BigInt(char.mental_strength || '1');
 
     const newStr = currentStr + strRecovery;
@@ -806,16 +848,12 @@ app.post('/api/debug/zenkai', authenticateToken, async (req, res) => {
     const newMen = currentMen + menRecovery;
 
     // Przelicz max_hp i max_mp na podstawie nowych statystyk
-    const bonus_hp = BigInt(char.bonus_hp || '0');
-    const bonus_mp = BigInt(char.bonus_mp || '0');
-    const bonus_stamina = BigInt(char.bonus_stamina || '0');
-
-    const max_hp = 100n + (newStr / 20n) + bonus_hp;
-    const max_mp = 100n + (newInt / 5n) + bonus_mp;
-    const max_stamina = 100n + bonus_stamina;
+    const max_hp = 100n + (newStr / 20n) + bonusHp;
+    const max_mp = 100n + (newInt / 5n) + bonusMp;
+    const max_stamina = 100n + bonusStamina;
 
     // Zapisz do bazy
-    const { error: updateError } = await supabase
+    const { error: finalUpdateError } = await supabase
       .from('characters')
       .update({
         hp: max_hp.toString(),
@@ -832,7 +870,7 @@ app.post('/api/debug/zenkai', authenticateToken, async (req, res) => {
       })
       .eq('profile_id', userId);
 
-    if (updateError) throw updateError;
+    if (finalUpdateError) throw finalUpdateError;
     res.json({ 
       status: 'success', 
       message: 'Odzyskano utracone statystyki i odnowiono zasoby do 100%.',
