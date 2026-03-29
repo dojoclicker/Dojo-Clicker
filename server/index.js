@@ -1454,7 +1454,7 @@ app.post('/api/shop/sell', authenticateToken, async (req, res) => {
       .select('*, item_templates(*)')
       .eq('id', inventory_id)
       .eq('character_id', character.id)
-      .eq('equipped_slot', null)
+      .is('equipped_slot', null)
       .single();
 
     if (itemError || !item) {

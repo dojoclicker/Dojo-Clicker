@@ -1392,23 +1392,24 @@
 
                 // Przetwarzanie i segregacja szablonów
                 templates.forEach(template => {
-                    const item = {
+                    const shopItem = {
                         id: template.id,
                         name: template.name,
                         emoji: getItemEmoji(template.name, template.category),
-                        description: 'Cena: ' + template.buy_price_coins + ' monet',
+                        description: template.slot ? 'Wymagany slot: ' + template.slot : 'Przedmiot',
                         price: template.buy_price_coins
                     };
 
-                    // Logika segregacji
+                    const nameLow = template.name.toLowerCase();
+                    
                     if (template.category === 'consumable' || template.category === 'special_consumable') {
-                        shopData[1].consumables.push(item);
+                        shopData[1].consumables.push(shopItem);
                     } else if (template.category === 'equipment') {
-                        // Sprzęt treningowy - sprawdź nazwę
-                        if (template.name.includes('Ciężk') || template.name.includes('Obciążon') || template.name.includes('Trening')) {
-                            shopData[1].training.push(item);
+                        // Elastyczne sprawdzanie słów kluczowych dla sprzętu treningowego
+                        if (nameLow.includes('ciężk') || nameLow.includes('obciążon') || nameLow.includes('trening') || nameLow.includes('skorupa') || nameLow.includes('bandaże')) {
+                            shopData[1].training.push(shopItem);
                         } else {
-                            shopData[1].equipment.push(item);
+                            shopData[1].equipment.push(shopItem);
                         }
                     }
                 });
