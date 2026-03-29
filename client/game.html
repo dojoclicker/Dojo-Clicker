@@ -248,7 +248,7 @@
 
     <script>
         // Konfiguracja API - detekcja środowiska
-        const API_BASE_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
+        const API_BASE_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.protocol === 'file:'
             ? 'http://localhost:3000' 
             : 'https://dojo-clicker.onrender.com';
 
@@ -588,7 +588,7 @@
                     popup.style.border = '2px solid #cc0000';
                     
                     // Formatowanie utraconych statystyk
-                    const statsLost = data.penalty.stats_lost;
+                    const statsLost = data.penalty?.stats_lost || {};
                     const statsList = [];
                     if (statsLost.strength && statsLost.strength !== '0') statsList.push(`-${statsLost.strength} Siła`);
                     if (statsLost.speed && statsLost.speed !== '0') statsList.push(`-${statsLost.speed} Szybkość`);
