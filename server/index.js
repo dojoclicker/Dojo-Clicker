@@ -521,16 +521,20 @@ app.post('/api/missions/start', authenticateToken, async (req, res) => {
         const newCoins = currentCoins - coinsLost;
 
         // 2. Kara 2% do głównych statystyk
-        const calcStatLoss = (stat) => {
-            const loss = (stat * 2n) / 100n;
-            return loss > 0n ? loss : 0n;
+        const calcStatLoss = (stat, percent) => {
+            if (stat <= 10n) return 0n; // Próg Minimalny: brak kar dla statystyk <= 10
+            
+            let loss = (stat * BigInt(percent)) / 100n;
+            
+            if (loss === 0n) return 1n; // Gwarantowane Minimum: jeśli > 10, ucina minimum 1 pkt
+            return loss;
         };
 
-        const strLoss = calcStatLoss(currentStr);
-        const spdLoss = calcStatLoss(currentSpd);
-        const endLoss = calcStatLoss(currentEnd);
-        const intLoss = calcStatLoss(currentInt);
-        const menLoss = calcStatLoss(currentMen);
+        const strLoss = calcStatLoss(currentStr, 2);
+        const spdLoss = calcStatLoss(currentSpd, 2);
+        const endLoss = calcStatLoss(currentEnd, 2);
+        const intLoss = calcStatLoss(currentInt, 2);
+        const menLoss = calcStatLoss(currentMen, 2);
 
         const finalStr = maxBigInt(1n, currentStr - strLoss);
         const finalSpd = maxBigInt(1n, currentSpd - spdLoss);
@@ -604,16 +608,20 @@ app.post('/api/missions/start', authenticateToken, async (req, res) => {
         const newCoins = currentCoins - coinsLost;
         
         // 2. Kara 1% do głównych statystyk
-        const calcStatLoss = (stat) => {
-            const loss = (stat * 1n) / 100n;
-            return loss > 0n ? loss : 0n;
+        const calcStatLoss = (stat, percent) => {
+            if (stat <= 10n) return 0n; // Próg Minimalny: brak kar dla statystyk <= 10
+            
+            let loss = (stat * BigInt(percent)) / 100n;
+            
+            if (loss === 0n) return 1n; // Gwarantowane Minimum: jeśli > 10, ucina minimum 1 pkt
+            return loss;
         };
 
-        const strLoss = calcStatLoss(currentStr);
-        const spdLoss = calcStatLoss(currentSpd);
-        const endLoss = calcStatLoss(currentEnd);
-        const intLoss = calcStatLoss(currentInt);
-        const menLoss = calcStatLoss(currentMen);
+        const strLoss = calcStatLoss(currentStr, 1);
+        const spdLoss = calcStatLoss(currentSpd, 1);
+        const endLoss = calcStatLoss(currentEnd, 1);
+        const intLoss = calcStatLoss(currentInt, 1);
+        const menLoss = calcStatLoss(currentMen, 1);
 
         const finalStr = maxBigInt(1n, currentStr - strLoss);
         const finalSpd = maxBigInt(1n, currentSpd - spdLoss);
