@@ -1271,6 +1271,7 @@
             card.setAttribute('data-inventory-id', item.id);
             card.setAttribute('data-template-id', item.item_template_id);
             card.setAttribute('data-quantity', item.quantity || 1);
+            card.setAttribute('data-item-slot', item.item_templates?.slot || '');
             
             // Emotikona jako ikona przedmiotu
             const emoji = getItemEmoji(item.item_templates?.name || 'Przedmiot', item.item_templates?.category || 'unknown');
@@ -2089,32 +2090,37 @@
                 slot.addEventListener('drop', function(e) {
                     e.preventDefault();
                     this.style.backgroundColor = ''; // Przywróć domyślny kolor
-                    
                     const inventoryId = e.dataTransfer.getData('inventory_id');
-                    const templateId = e.dataTransfer.getData('template_id');
-                    const itemName = e.dataTransfer.getData('item_name');
-                    const itemSlot = e.dataTransfer.getData('item_slot');
-                    const itemCategory = e.dataTransfer.getData('item_category');
                     const sourceSlot = e.dataTransfer.getData('source_slot');
                     
-                    // Zabezpieczenie przed sortowaniem w plecaku
-                    if (sourceSlot === 'backpack') {
-                        console.log('Ignorowanie: Brak obsługi ręcznego sortowania plecaka w DB.');
-                        return;
+                    // Jeśli upuszczamy w plecaku, ale trafiliśmy w istniejącą kartę przedmiotu
+                    const droppedOnCard = e.target.closest('.item-card');
+                    
+                    if (droppedOnCard) {
+                        // Jeśli próbujemy zamienić miejscami w plecaku - blokujemy
+                        if (sourceSlot === 'backpack') {
+                            console.log('Ignorowanie: Brak obsługi ręcznego sortowania plecaka.');
+                            return;
+                        }
+                        
+                        // Jeśli ciągniemy z wyposażenia na przedmiot w plecaku (Próba zamiany)
+                        const targetItemSlot = droppedOnCard.dataset.itemSlot;
+                        
+                        if (sourceSlot !== targetItemSlot) {
+                            showWarningMessage("Nie możesz zamienić przedmiotów z różnych slotów!");
+                            return;
+                        }
+                        
+                        // Sloty pasują! Odwracamy logikę: każemy serwerowi ZAŁOŻYĆ przedmiot z plecaka,
+                        // co automatycznie i atomowo zdejmie trzymany przedmiot do plecaka.
+                        const targetInventoryId = droppedOnCard.dataset.inventoryId;
+                        performItemSwap(targetInventoryId, sourceSlot);
+                        return; // Kończymy, serwer zajmie się resztą
                     }
                     
-                    // Zabezpieczenie: Zamiana w tym samym miejscu
-                    const draggedElement = document.querySelector(`[data-inventory-id="${inventoryId}"]`);
-                    if (draggedElement && draggedElement.parentElement === this) {
-                        console.log('Anulowano: upuszczenie w tym samym miejscu (plecak)');
-                        return;
-                    }
-                    
-                    // Rozpoznanie celu dla frontendu
-                    const slotTarget = 'backpack'; // Dla plecaka zawsze 'backpack'
-                    
-                    // Wywołaj backend do zamiany przedmiotów
-                    performItemSwap(inventoryId, slotTarget);
+                    // Standardowe odłożenie na puste miejsce w plecaku
+                    if (sourceSlot === 'backpack') return; // blokada plecak->plecak
+                    performItemSwap(inventoryId, 'backpack');
                 });
             });
 

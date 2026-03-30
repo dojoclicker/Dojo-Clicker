@@ -502,6 +502,21 @@ app.post('/api/inventory/swap', authenticateToken, async (req, res) => {
       }
     }
 
+    // Sprawdzenie, czy slot docelowy jest zajęty (dla odpowiedniego komunikatu)
+    let wasOccupied = false;
+    if (slot_target !== 'backpack') {
+      const { data: existingItem } = await supabase
+        .from('inventory')
+        .select('id')
+        .eq('character_id', character.id)
+        .eq('equipped_slot', slot_target)
+        .maybeSingle();
+        
+      if (existingItem) {
+        wasOccupied = true;
+      }
+    }
+
     // Wywołaj funkcję RPC do zamiany przedmiotów
     const { data: swapResult, error: swapError } = await supabase
       .rpc('swap_items', {
@@ -548,9 +563,13 @@ app.post('/api/inventory/swap', authenticateToken, async (req, res) => {
     }
 
     // Kontekstowe komunikaty
-    let responseMessage = 'Przedmiot został założony / zamieniony!';
+    let responseMessage = '';
     if (slot_target === 'backpack') {
       responseMessage = 'Przedmiot schowany do plecaka.';
+    } else if (wasOccupied) {
+      responseMessage = 'Przedmioty zostały zamienione!';
+    } else {
+      responseMessage = 'Przedmiot został umieszczony!';
     }
 
     res.json({ 
