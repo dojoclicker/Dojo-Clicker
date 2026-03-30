@@ -69,8 +69,8 @@ const itemsData = [
         name: "Magiczna Fasolka",
         category: "consumable",
         slot: null,
-        buy_price_coins: "50000",
-        sell_price_coins: "25000",
+        buy_price_coins: "50",
+        sell_price_coins: "25",
         consumable_effect: { "hospital_exit_zenkai": true, "restore_hp_pct": 100, "restore_mp_pct": 100 },
         req_stats: null,
         bonuses: null
