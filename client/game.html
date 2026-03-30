@@ -1462,7 +1462,7 @@
                         shopData[1].consumables.push(shopItem);
                     } else if (template.category === 'equipment') {
                         // Elastyczne sprawdzanie słów kluczowych dla sprzętu treningowego
-                        if (nameLow.includes('ciężk') || nameLow.includes('obciążon') || nameLow.includes('trening') || nameLow.includes('skorupa') || nameLow.includes('bandaże')) {
+                        if (nameLow.includes('ciężk') || nameLow.includes('obciążon')) {
                             shopData[1].training.push(shopItem);
                         } else {
                             shopData[1].equipment.push(shopItem);
