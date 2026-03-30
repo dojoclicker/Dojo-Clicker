@@ -510,6 +510,7 @@ app.post('/api/inventory/swap', authenticateToken, async (req, res) => {
         .select('id')
         .eq('character_id', character.id)
         .eq('equipped_slot', slot_target)
+        .neq('id', item_id_1) // Nie bierzemy pod uwagę przedmiotu, który właśnie przenosimy
         .maybeSingle();
         
       if (existingItem) {
