@@ -966,37 +966,26 @@ body {
    ========================================== */
 
 .item-tooltip {
-    position: absolute;
-    top: 100%;
-    margin-top: 15px;
-    left: 50%;
-    transform: translateX(-50%);
+    position: fixed; /* Kluczowe: fixed pozwala wyjść poza strukturę grida! */
     width: max-content;
     max-width: 250px;
-    background: var(--goku-panel-bg);
-    border: 1px solid var(--goku-accent);
+    background: #0f172a !important; /* Twarde, całkowicie nieprzezroczyste tło */
+    border: 2px solid var(--goku-accent);
     border-radius: 8px;
     padding: 0.75rem;
     opacity: 0;
     visibility: hidden;
-    transition: all var(--transition-normal);
-    transition-delay: 0.4s;
-    z-index: 99999;
+    /* Animujemy tylko przezroczystość, żeby pozycja nie "pływała" za kursorem z opóźnieniem */
+    transition: opacity 0.15s ease, visibility 0.15s ease;
+    transition-delay: 0.2s; /* Lekkie opóźnienie przed pojawieniem się */
+    z-index: 999999;
     pointer-events: none;
-    box-shadow: var(--shadow-xl);
+    box-shadow: 0 10px 40px rgba(0,0,0,0.9);
     font-size: 0.85rem;
     line-height: 1.4;
-}
-
-.item-tooltip::after {
-    content: '';
-    position: absolute;
-    bottom: 100%;
-    left: 50%;
-    transform: translateX(-50%);
-    border-width: 0 10px 10px 10px;
-    border-style: solid;
-    border-color: transparent transparent var(--goku-accent) transparent;
+    top: 0;
+    left: 0;
+    transform: none;
 }
 
 .item-tooltip h4 {
@@ -1066,7 +1055,7 @@ body {
 .item-card:hover .item-tooltip {
     opacity: 1;
     visibility: visible;
-    transition-delay: 0.4s;
+    transition-delay: 0s;
 }
 
 /* Responsywność dla ekwipunku */
