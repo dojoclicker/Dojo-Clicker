@@ -313,6 +313,9 @@
         const API_BASE_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.protocol === 'file:'
             ? 'http://localhost:3000' 
             : 'https://dojo-clicker.onrender.com';
+        
+        // Globalna blokada akcji ekwipunku (Race Condition fix)
+        window.isInventoryActionLocked = false;
 
         // Sprawdzenie tokenu sesji przy starcie
         function checkAuthentication() {
@@ -1360,6 +1363,7 @@
             // Event listener dla dzielenia stosów (Shift+Click)
             card.addEventListener('click', function(e) {
                 if (e.shiftKey) {
+                    if (window.isInventoryActionLocked) return;
                     e.preventDefault();
                     e.stopPropagation();
                     
@@ -1587,6 +1591,9 @@
 
         // Kupowanie przedmiotu
         async function buyItem(item) {
+            if (window.isInventoryActionLocked) return;
+            window.isInventoryActionLocked = true;
+            
             try {
                 const response = await fetch(`${API_BASE_URL}/api/shop/buy`, {
                     method: 'POST',
@@ -1625,11 +1632,16 @@
             } catch (error) {
                 console.error('[Shop] Błąd komunikacji z backendem:', error);
                 showWarningMessage('Wystąpił błąd podczas kupna');
+            } finally {
+                window.isInventoryActionLocked = false;
             }
         }
 
         // Sprzedaż przedmiotu
         async function sellItem(inventoryId) {
+            if (window.isInventoryActionLocked) return;
+            window.isInventoryActionLocked = true;
+            
             try {
                 const response = await fetch(`${API_BASE_URL}/api/shop/sell`, {
                     method: 'POST',
@@ -1662,11 +1674,16 @@
             } catch (error) {
                 console.error('[Shop] Błąd komunikacji z backendem:', error);
                 showWarningMessage('Wystąpił błąd podczas sprzedaży');
+            } finally {
+                window.isInventoryActionLocked = false;
             }
         }
 
         // Funkcja do dzielenia przedmiotów
         async function splitItem(inventoryId, amount) {
+            if (window.isInventoryActionLocked) return;
+            window.isInventoryActionLocked = true;
+            
             try {
                 const response = await fetch(`${API_BASE_URL}/api/inventory/split`, {
                     method: 'POST',
@@ -1698,6 +1715,8 @@
             } catch (error) {
                 console.error('[Split] Błąd komunikacji z backendem:', error);
                 showWarningMessage('Wystąpił błąd podczas dzielenia przedmiotu');
+            } finally {
+                window.isInventoryActionLocked = false;
             }
         }
 
@@ -1979,6 +1998,9 @@
 
         // Wykonywanie konsumpcji przedmiotu z backendem
         async function consumeItem(inventoryId) {
+            if (window.isInventoryActionLocked) return;
+            window.isInventoryActionLocked = true;
+            
             try {
                 const response = await fetch(`${API_BASE_URL}/api/inventory/consume`, {
                     method: 'POST',
@@ -2020,11 +2042,16 @@
             } catch (error) {
                 console.error('[Consume] Błąd komunikacji z backendem:', error);
                 showWarningMessage('Wystąpił błąd podczas używania przedmiotu');
+            } finally {
+                window.isInventoryActionLocked = false;
             }
         }
 
         // Wykonywanie zamiany przedmiotów z backendem
         async function performItemSwap(inventoryId, slotTarget, backpackIndexTarget = null, targetItemId = null) {
+            if (window.isInventoryActionLocked) return;
+            window.isInventoryActionLocked = true;
+            
             try {
                 const response = await fetch(`${API_BASE_URL}/api/inventory/swap`, {
                     method: 'POST',
@@ -2055,6 +2082,8 @@
             } catch (error) {
                 console.error('[Swap] Błąd komunikacji z backendem:', error);
                 showWarningMessage('Wystąpił błąd podczas zamiany przedmiotów');
+            } finally {
+                window.isInventoryActionLocked = false;
             }
         }
 
