@@ -928,6 +928,9 @@
                 document.querySelector('#power-level').textContent = data.power_level;
                 document.querySelector('.current-form').textContent = `Forma: ${data.current_form}`;
                 document.querySelector('.coins').textContent = `💰 Monety: ${data.coins}`;
+                
+                // Zapisz monety globalnie dla sklepu
+                window.playerCurrentCoins = Number(data.coins);
 
                 // Aktualizacja pasków zasobów
                 updateResourceBar('hp', data.current_hp, data.max_hp);
@@ -1440,9 +1443,9 @@
 
                 // Przetwarzanie i segregacja szablonów
                 templates.forEach(template => {
+                    // Przekazuj pełny szablon, a nie okrojoną wersję
                     const shopItem = {
-                        id: template.id,
-                        name: template.name,
+                        ...template, // Przekaż wszystkie właściwości szablonu
                         emoji: getItemEmoji(template.name, template.category),
                         description: template.slot ? 'Wymagany slot: ' + template.slot : 'Przedmiot',
                         price: template.buy_price_coins
@@ -1524,9 +1527,6 @@
                 if (item) {
                     const card = createItemCard(item);
                     
-                    // Włącz mechanikę drag&drop dla sklepu (sortowanie plecaka)
-                    card.setAttribute('draggable', 'true');
-                    
                     // Nadpisz event podwójnego kliknięcia do sprzedaży
                     card.addEventListener('dblclick', function(e) {
                         e.preventDefault();
@@ -1546,20 +1546,11 @@
             const card = document.createElement('div');
             card.className = 'shop-item-card';
             
-            // Dodaj atrybut z danymi szablonu dla tooltipów
-            card.setAttribute('data-item-template', encodeURIComponent(JSON.stringify({
-                name: item.name,
-                category: item.category,
-                description: item.description,
-                consumable_effect: item.consumable_effect,
-                req_stats: item.req_stats,
-                bonuses: item.bonuses,
-                slot: item.slot,
-                buy_price_coins: item.price
-            })));
+            // Dodaj atrybut z pełnymi danymi szablonu dla tooltipów
+            card.setAttribute('data-item-template', encodeURIComponent(JSON.stringify(item)));
             
-            const coinsEl = document.getElementById('shop-coins');
-            const playerCoins = coinsEl ? parseInt(coinsEl.textContent) : 0;
+            // Użyj globalnej zmiennej z monetami zamiast nieistniejącego elementu DOM
+            const playerCoins = window.playerCurrentCoins || 0;
             
             const backpackEl = document.getElementById('shop-backpack-count');
             const backpackCount = backpackEl ? parseInt(backpackEl.textContent.split('/')[0]) : 0;
@@ -1693,7 +1684,7 @@
                 const data = await response.json();
                 
                 if (data.success) {
-                    showSuccessMessage('Podzielono przedmiot!');
+                    // Ciche odświeżenie bez wiadomości, aby uniknąć podwójnego kliknięcia
                     await fetchInventory();
                 } else {
                     showWarningMessage(data.error || 'Błąd podczas dzielenia przedmiotu');
@@ -2215,6 +2206,33 @@
                 });
             }
 
+            // Dodaj lewą kolumnę sklepu jako strefę sprzedaży (bez potwierdzenia)
+            const shopLeftColumn = document.querySelector('.shop-left-column');
+            if (shopLeftColumn) {
+                shopLeftColumn.addEventListener('dragover', function(e) {
+                    e.preventDefault();
+                    this.style.backgroundColor = 'rgba(255, 107, 0, 0.05)';
+                });
+                
+                shopLeftColumn.addEventListener('dragleave', function(e) {
+                    this.style.backgroundColor = '';
+                });
+                
+                shopLeftColumn.addEventListener('drop', function(e) {
+                    e.preventDefault();
+                    this.style.backgroundColor = '';
+                    
+                    const inventoryId = e.dataTransfer.getData('inventory_id');
+                    const sourceSlot = e.dataTransfer.getData('source_slot');
+                    
+                    // Sprawdź, czy przedmiot pochodzi z plecaka
+                    if (sourceSlot === 'backpack' && inventoryId) {
+                        // Natychmiastowa sprzedaż bez potwierdzenia
+                        sellItem(inventoryId);
+                    }
+                });
+            }
+
             console.log('[Drag&Drop] Zainicjalizowano mechanikę Drag & Drop');
         }
 
@@ -2245,43 +2263,19 @@
 
             // 4. Event Listener dla przycisku Magicznej Fasolki
             document.getElementById('btn-use-senzu')?.addEventListener('click', async function() {
-                try {
-                    const response = await fetch(`${API_BASE_URL}/api/debug/zenkai`, {
-                        method: 'POST',
-                        headers: {
-                            'Authorization': `Bearer ${localStorage.getItem('session_token')}`,
-                            'Content-Type': 'application/json'
-                        }
-                    });
-
-                    const data = await response.json();
-                    
-                    if (data.status === 'success') {
-                        let successMsg = 'Magiczna Fasolka użyta! Natychmiastowe leczenie!';
-                        
-                        // Dodanie info o odzyskanych statystykach
-                        if (data.recovered) {
-                            const recList = [];
-                            if (data.recovered.strength) recList.push(`+${data.recovered.strength} Siły`);
-                            if (data.recovered.speed) recList.push(`+${data.recovered.speed} Szybkości`);
-                            if (data.recovered.endurance) recList.push(`+${data.recovered.endurance} Wytrzymałości`);
-                            if (data.recovered.intelligence) recList.push(`+${data.recovered.intelligence} Inteligencji`);
-                            if (data.recovered.mental_strength) recList.push(`+${data.recovered.mental_strength} Siły Mentalnej`);
-                            
-                            if (recList.length > 0) {
-                                successMsg += `<br><small>Odzyskano: ${recList.join(', ')}</small>`;
-                            }
-                        }
-                        
-                        showSuccessMessage(successMsg);
-                        await fetchCharacterData(); // Odśwież dane postaci
-                    } else {
-                        showErrorMessage(data.message || 'Nie udało się użyć Magicznej Fasolki.');
-                    }
-                } catch (error) {
-                    console.error('[Zenkai] Błąd:', error);
-                    showErrorMessage('Wystąpił błąd podczas używania Magicznej Fasolki.');
+                // Przeszukaj inventory w poszukiwaniu Magicznej Fasolki
+                const magicBean = window.inventoryData?.find(item => 
+                    item.item_template_id === '00000000-0000-0000-0000-000000000006' && 
+                    item.equipped_slot === null
+                );
+                
+                if (!magicBean) {
+                    showWarningMessage('Nie masz Magicznej Fasolki w plecaku!');
+                    return;
                 }
+                
+                // Wywołaj standardową konsumpcję
+                consumeItem(magicBean.id);
             });
 
             // 3. ZARZĄDZANIE WIDOKAMI I PAMIĘĆ ZAKŁADKI (STATE PERSISTENCE)
@@ -2437,6 +2431,7 @@
                         // Ochrona przed krawędziami
                         if (x < 10) x = 10;
                         if (x + rect.width > window.innerWidth - 10) x = window.innerWidth - rect.width - 10;
+                        if (y < 10) y = 10; // Ochrona przed górną krawędzią
                         if (y + rect.height > window.innerHeight - 10) {
                             y = e.clientY - rect.height - 10;
                         }
