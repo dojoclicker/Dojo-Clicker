@@ -1139,6 +1139,34 @@
             }
         }
 
+        // Aktualizacja przycisku Magicznej Fasolki w Szpitalu
+        function updateMagicBeanButton(items) {
+            const button = document.getElementById('btn-use-senzu');
+            if (!button) return;
+            
+            // Zlicz Magiczne Fasolki w plecaku (equipped_slot === null)
+            const magicBeans = items.filter(item => 
+                item.item_template_id === '00000000-0000-0000-0000-000000000006' && 
+                item.equipped_slot === null
+            );
+            
+            const count = magicBeans.reduce((sum, item) => sum + parseInt(item.quantity || '1'), 0);
+            
+            if (count > 0) {
+                button.textContent = `Zjedz Magiczną Fasolkę (${count})`;
+                button.disabled = false;
+                button.style.backgroundColor = '#28a745';
+                button.style.cursor = 'pointer';
+                button.style.opacity = '1';
+            } else {
+                button.textContent = 'Zjedz Magiczną Fasolkę (0)';
+                button.disabled = true;
+                button.style.backgroundColor = '#6c757d';
+                button.style.cursor = 'not-allowed';
+                button.style.opacity = '0.6';
+            }
+        }
+
         // Renderowanie ekwipunku w interfejsie
         function renderInventory(items) {
             // Krok A: Złap wszystkie sloty i wyczyść je
@@ -1187,6 +1215,9 @@
             });
 
             console.log(`[Inventory] Wyrenderowano ${items.length} przedmiotów`);
+            
+            // Zaktualizuj przycisk Magicznej Fasolki w Szpitalu
+            updateMagicBeanButton(items);
             
             // Synchronizacja plecaka w sklepie
             if (typeof renderShopBackpack === 'function') {
@@ -1493,8 +1524,8 @@
                 if (item) {
                     const card = createItemCard(item);
                     
-                    // Zablokuj mechanikę drag&drop dla sklepu
-                    card.setAttribute('draggable', 'false');
+                    // Włącz mechanikę drag&drop dla sklepu (sortowanie plecaka)
+                    card.setAttribute('draggable', 'true');
                     
                     // Nadpisz event podwójnego kliknięcia do sprzedaży
                     card.addEventListener('dblclick', function(e) {
@@ -1514,6 +1545,18 @@
         function createShopItemCard(item) {
             const card = document.createElement('div');
             card.className = 'shop-item-card';
+            
+            // Dodaj atrybut z danymi szablonu dla tooltipów
+            card.setAttribute('data-item-template', encodeURIComponent(JSON.stringify({
+                name: item.name,
+                category: item.category,
+                description: item.description,
+                consumable_effect: item.consumable_effect,
+                req_stats: item.req_stats,
+                bonuses: item.bonuses,
+                slot: item.slot,
+                buy_price_coins: item.price
+            })));
             
             const coinsEl = document.getElementById('shop-coins');
             const playerCoins = coinsEl ? parseInt(coinsEl.textContent) : 0;
@@ -1675,6 +1718,12 @@
         else if (template.category === 'special_consumable') categoryName = 'Przedmiot Specjalny';
 
         tooltipHTML += `<div style="text-align: center; color: var(--text-secondary); margin-bottom: 10px; font-size: 0.85rem;"><i>${categoryName}</i></div>`;
+
+        // Specjalny przypadek dla Magicznej Fasolki
+        if (template.name === 'Magiczna Fasolka') {
+            tooltipHTML += '<div style="margin-bottom: 8px; font-size: 0.85rem; background: rgba(0,0,0,0.2); padding: 6px; border-radius: 6px;"><strong>Efekt poza szpitalem:</strong><br><span style="color: #67e8f9;">• Leczy 100% zasobów (HP, MP, Stamina)</span></div>';
+            tooltipHTML += '<div style="margin-bottom: 8px; font-size: 0.85rem; background: rgba(0,0,0,0.2); padding: 6px; border-radius: 6px;"><strong>Efekt w szpitalu:</strong><br><span style="color: #67e8f9;">• Leczy 100% zasobów, natychmiast zdejmuje karę czasu i przywraca statystyki utracone w wyniku ostatniej śmierci</span></div>';
+        }
 
         const statNamesPL = { strength: 'Siła', speed: 'Szybkość', endurance: 'Wytrzymałość', intelligence: 'Inteligencja', mental_strength: 'Siła Mentalna', bonus_hp: 'Max HP', bonus_mp: 'Max MP' };
 
@@ -2134,6 +2183,38 @@
                 });
             });
 
+            // Dodaj strefę sprzedaży w sklepie (drop zone dla plecaka)
+            const shopItemsGrid = document.getElementById('shop-items-grid');
+            if (shopItemsGrid) {
+                shopItemsGrid.addEventListener('dragover', function(e) {
+                    e.preventDefault();
+                    this.style.backgroundColor = 'rgba(255, 107, 0, 0.1)';
+                    this.style.border = '2px dashed #ff6b00';
+                });
+                
+                shopItemsGrid.addEventListener('dragleave', function(e) {
+                    this.style.backgroundColor = '';
+                    this.style.border = '';
+                });
+                
+                shopItemsGrid.addEventListener('drop', function(e) {
+                    e.preventDefault();
+                    this.style.backgroundColor = '';
+                    this.style.border = '';
+                    
+                    const inventoryId = e.dataTransfer.getData('inventory_id');
+                    const itemName = e.dataTransfer.getData('item_name');
+                    const sourceSlot = e.dataTransfer.getData('source_slot');
+                    
+                    // Sprawdź, czy przedmiot pochodzi z plecaka w sklepie
+                    if (sourceSlot === 'backpack' && inventoryId) {
+                        if (confirm(`Czy na pewno chcesz sprzedać "${itemName}"?`)) {
+                            sellItem(inventoryId);
+                        }
+                    }
+                });
+            }
+
             console.log('[Drag&Drop] Zainicjalizowano mechanikę Drag & Drop');
         }
 
@@ -2325,10 +2406,10 @@
                 
                 // Obsługa najechania myszką
                 document.body.addEventListener('mouseover', function(e) {
-                    const card = e.target.closest('.item-card');
+                    const card = e.target.closest('.item-card, .shop-item-card');
                     if (card) {
                         // Zabezpieczenie przed miganiem: ignoruj, jeśli tooltip już wyświetla tę kartę
-                        const cardId = card.dataset.inventoryId || card.dataset.templateId;
+                        const cardId = card.dataset.inventoryId || card.dataset.templateId || card.className;
                         if (globalTooltip.dataset.currentCard === cardId) return; 
                         
                         const templateData = card.getAttribute('data-item-template');
@@ -2367,7 +2448,7 @@
 
                 // Obsługa zjechania myszką - KRYTYCZNA POPRAWKA
                 document.body.addEventListener('mouseout', function(e) {
-                    const card = e.target.closest('.item-card');
+                    const card = e.target.closest('.item-card, .shop-item-card');
                     // Ukryj TYLKO wtedy, gdy kursor całkowicie opuścił kartę (a nie wędruje po jej wewnętrznych ikonach)
                     if (card && !card.contains(e.relatedTarget)) {
                         globalTooltip.style.opacity = '0';
