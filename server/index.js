@@ -505,8 +505,8 @@ app.post('/api/inventory/swap', authenticateToken, async (req, res) => {
     // Wywołaj funkcję RPC do zamiany przedmiotów
     const { data: swapResult, error: swapError } = await supabase
       .rpc('swap_items', {
-        p_item_1_id: item_1_id,
-        p_item_2_id: item_2_id || null,
+        p_character_id: character.id,
+        p_item_id_1: item_id_1,
         p_slot_target: slot_target
       });
 
@@ -548,12 +548,9 @@ app.post('/api/inventory/swap', authenticateToken, async (req, res) => {
     }
 
     // Kontekstowe komunikaty
-    let responseMessage = 'Przedmiot został założony!';
-    
+    let responseMessage = 'Przedmiot został założony / zamieniony!';
     if (slot_target === 'backpack') {
       responseMessage = 'Przedmiot schowany do plecaka.';
-    } else if (item_2_id) {
-      responseMessage = 'Przedmioty zostały zamienione!';
     }
 
     res.json({ 
