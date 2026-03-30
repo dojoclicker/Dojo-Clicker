@@ -634,13 +634,15 @@ app.post('/api/inventory/consume', authenticateToken, async (req, res) => {
     }
 
     // Oblicz obecne maksymalne zasoby
-    const currentStr = BigInt(character.strength || '1');
-    const currentInt = BigInt(character.intelligence || '1');
-    const currentEnd = BigInt(character.endurance || '1');
+    let currentStr = BigInt(character.strength || '1');
+    let currentInt = BigInt(character.intelligence || '1');
+    let currentEnd = BigInt(character.endurance || '1');
+    let currentSpd = BigInt(character.speed || '1');
+    let currentMen = BigInt(character.mental_strength || '1');
     const currentBonusStamina = BigInt(character.bonus_stamina || '0');
     
-    const maxHp = 100n + (currentStr / 20n);
-    const maxMp = 100n + (currentInt / 5n);
+    let maxHp = 100n + (currentStr / 20n) + BigInt(character.bonus_hp || '0');
+    let maxMp = 100n + (currentInt / 5n) + BigInt(character.bonus_mp || '0');
     const maxStamina = 100n + currentBonusStamina;
 
     // Pobierz obecne zasoby
@@ -695,93 +697,35 @@ app.post('/api/inventory/consume', authenticateToken, async (req, res) => {
         }
         effectMessages.push(`+${value} Max Staminy`);
       } else if (effect === 'hospital_exit_zenkai' || effect === 'zenkai_resurrection') {
-        // Logika wskrzeszenia z szpitala
+        // Zawsze leczy do pełna (poza szpitalem i w szpitalu):
+        currentHp = maxHp;
+        currentMp = maxMp;
+        currentStamina = maxStamina;
+        effectMessages.push('Odzyskano 100% zasobów');
+
+        // Dodatkowe efekty Szpitala:
         if (BigInt(character.hp || '0') <= 0n) {
-          // Odczytaj utracone statystyki z last_death_penalty
-          const penaltyData = character.last_death_penalty ? JSON.parse(character.last_death_penalty) : {};
-          
-          // Zadeklaruj zmienne do odzyskania statystyk
-          let recoveredStats = {};
-          let newStrength = BigInt(character.strength || '1');
-          let newSpeed = BigInt(character.speed || '1');
-          let newEndurance = BigInt(character.endurance || '1');
-          let newIntelligence = BigInt(character.intelligence || '1');
-          let newMentalStrength = BigInt(character.mental_strength || '1');
-          let newBonusHp = BigInt(character.bonus_hp || '0');
-          let newBonusMp = BigInt(character.bonus_mp || '0');
-          
-          // Odzyskaj statystyki bazowe
-          if (penaltyData.stats_lost) {
-            if (penaltyData.stats_lost.strength) {
-              newStrength += BigInt(penaltyData.stats_lost.strength);
-              recoveredStats.strength = penaltyData.stats_lost.strength;
+            if (character.last_death_penalty) {
+                const dp = character.last_death_penalty;
+                currentStr += BigInt(dp.strength || '0');
+                currentSpd += BigInt(dp.speed || '0');
+                currentEnd += BigInt(dp.endurance || '0');
+                currentInt += BigInt(dp.intelligence || '0');
+                currentMen += BigInt(dp.mental_strength || '0');
+
+                // Ponowne przeliczenie maksów po odzyskaniu statystyk
+                maxHp = 100n + (currentStr / 20n) + BigInt(character.bonus_hp || '0');
+                maxMp = 100n + (currentInt / 5n) + BigInt(character.bonus_mp || '0');
+                
+                // Leczmy jeszcze raz do nowych, wyższych limitów
+                currentHp = maxHp;
+                currentMp = maxMp;
+
+                effectMessages.push('Przebudzenie! Zwrócono utracone statystyki.');
+            } else {
+                effectMessages.push('Wskrzeszenie z zaświatów!');
             }
-            if (penaltyData.stats_lost.speed) {
-              newSpeed += BigInt(penaltyData.stats_lost.speed);
-              recoveredStats.speed = penaltyData.stats_lost.speed;
-            }
-            if (penaltyData.stats_lost.endurance) {
-              newEndurance += BigInt(penaltyData.stats_lost.endurance);
-              recoveredStats.endurance = penaltyData.stats_lost.endurance;
-            }
-            if (penaltyData.stats_lost.intelligence) {
-              newIntelligence += BigInt(penaltyData.stats_lost.intelligence);
-              recoveredStats.intelligence = penaltyData.stats_lost.intelligence;
-            }
-            if (penaltyData.stats_lost.mental_strength) {
-              newMentalStrength += BigInt(penaltyData.stats_lost.mental_strength);
-              recoveredStats.mental_strength = penaltyData.stats_lost.mental_strength;
-            }
-          }
-          
-          // Odzyskaj bonusy HP/MP jeśli były utracone
-          if (penaltyData.bonus_hp_lost) {
-            newBonusHp += BigInt(penaltyData.bonus_hp_lost);
-            recoveredStats.bonus_hp = penaltyData.bonus_hp_lost;
-          }
-          if (penaltyData.bonus_mp_lost) {
-            newBonusMp += BigInt(penaltyData.bonus_mp_lost);
-            recoveredStats.bonus_mp = penaltyData.bonus_mp_lost;
-          }
-          
-          // Przelicz na nowo maxHp i maxMp opierając się na odzyskanych statystykach
-          const newMaxHp = 100n + (newStrength / 20n) + newBonusHp;
-          const newMaxMp = 100n + (newIntelligence / 5n) + newBonusMp;
-          const newMaxStamina = 100n + BigInt(character.bonus_stamina || '0');
-          
-          // Ustaw pełne wyleczenie
-          currentHp = newMaxHp;
-          currentMp = newMaxMp;
-          currentStamina = newMaxStamina;
-          
-          // Przygotuj dane do aktualizacji bazy (czyszczenie statusu szpitala)
-          const updateData = {
-            hp: currentHp.toString(),
-            mp: currentMp.toString(),
-            stamina: currentStamina.toString(),
-            strength: newStrength.toString(),
-            speed: newSpeed.toString(),
-            endurance: newEndurance.toString(),
-            intelligence: newIntelligence.toString(),
-            mental_strength: newMentalStrength.toString(),
-            bonus_hp: newBonusHp.toString(),
-            bonus_mp: newBonusMp.toString(),
-            hospital_until: null,
-            last_death_penalty: null
-          };
-          
-          // Zaktualizuj postać w bazie
-          const { error: resurrectionError } = await supabase
-            .from('characters')
-            .update(updateData)
-            .eq('id', character.id);
-            
-          if (resurrectionError) {
-            console.error('[Consume] Błąd wskrzeszenia:', resurrectionError);
-            return res.status(500).json({ error: 'Błąd podczas wskrzeszenia' });
-          }
-          
-          effectMessages.push('Wskrzeszenie i odzyskanie statystyk!');
+            req.clearHospital = true; // Flaga pomocnicza do czyszczenia bazy
         }
       } else if (effect === 'restore_hp' && value === 'full') {
         currentHp = maxHp;
@@ -866,14 +810,26 @@ app.post('/api/inventory/consume', authenticateToken, async (req, res) => {
     }
 
     // Zaktualizuj postać z nowymi wartościami
-    const { error: updateError } = await supabase
-      .from('characters')
-      .update({
+    const updateData = {
         hp: currentHp.toString(),
         mp: currentMp.toString(),
         stamina: currentStamina.toString(),
-        bonus_stamina: newBonusStamina.toString()
-      })
+        bonus_stamina: newBonusStamina.toString(),
+        strength: currentStr.toString(),
+        speed: currentSpd.toString(),
+        endurance: currentEnd.toString(),
+        intelligence: currentInt.toString(),
+        mental_strength: currentMen.toString()
+    };
+
+    if (req.clearHospital) {
+        updateData.hospital_until = null;
+        updateData.last_death_penalty = null;
+    }
+
+    const { error: updateError } = await supabase
+      .from('characters')
+      .update(updateData)
       .eq('id', character.id);
 
     if (updateError) {
