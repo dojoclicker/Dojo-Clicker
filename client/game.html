@@ -2431,10 +2431,10 @@
                         // Ochrona przed krawędziami
                         if (x < 10) x = 10;
                         if (x + rect.width > window.innerWidth - 10) x = window.innerWidth - rect.width - 10;
-                        if (y < 10) y = 10; // Ochrona przed górną krawędzią
                         if (y + rect.height > window.innerHeight - 10) {
                             y = e.clientY - rect.height - 10;
                         }
+                        if (y < 10) y = 10; // Ochrona przed górną krawędzią - ostatnia warunek
                         
                         globalTooltip.style.left = x + 'px';
                         globalTooltip.style.top = y + 'px';
