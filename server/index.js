@@ -447,11 +447,10 @@ app.get('/api/inventory', authenticateToken, async (req, res) => {
   }
 });
 
-// Endpoint zamiany przedmiotów w ekwipunku
 app.post('/api/inventory/swap', authenticateToken, async (req, res) => {
   try {
     const userId = req.user.id;
-    const { item_id_1, slot_target } = req.body;
+    const { item_id_1, slot_target, backpack_index_target, item_id_2 } = req.body;
 
     if (!item_id_1 || !slot_target) {
       return res.status(400).json({ error: 'Brak wymaganych parametrów: item_id_1, slot_target' });
@@ -523,7 +522,9 @@ app.post('/api/inventory/swap', authenticateToken, async (req, res) => {
       .rpc('swap_items', {
         p_character_id: character.id,
         p_item_id_1: item_id_1,
-        p_slot_target: slot_target
+        p_slot_target: slot_target,
+        p_backpack_index_target: backpack_index_target || null,
+        p_item_id_2: item_id_2 || null
       });
 
     if (swapError) {
@@ -1211,7 +1212,7 @@ app.post('/api/inventory/split', authenticateToken, async (req, res) => {
     // Sprawdź limit plecaka (5 slotów)
     const { data: backpackItems, error: backpackError } = await supabase
       .from('inventory')
-      .select('id')
+      .select('id, backpack_index')
       .eq('character_id', character.id)
       .eq('equipped_slot', null);
 
@@ -1264,13 +1265,20 @@ app.post('/api/inventory/split', authenticateToken, async (req, res) => {
     }
 
     // Stwórz nowy rekord z podzieloną ilością
+    const occupiedIndexes = backpackItems.map(i => i.backpack_index);
+    let firstFreeIndex = 1;
+    while (occupiedIndexes.includes(firstFreeIndex)) {
+        firstFreeIndex++;
+    }
+    
     const { error: insertError } = await supabase
       .from('inventory')
       .insert({
         character_id: character.id,
         item_template_id: item.item_template_id,
         quantity: splitAmount.toString(),
-        equipped_slot: null
+        equipped_slot: null,
+        backpack_index: firstFreeIndex
       });
 
     if (insertError) {
@@ -1363,7 +1371,7 @@ app.post('/api/shop/buy', authenticateToken, async (req, res) => {
     // Sprawdź pojemność plecaka
     const { data: backpackItems, error: backpackError } = await supabase
       .from('inventory')
-      .select('id, item_template_id, quantity')
+      .select('id, item_template_id, quantity, backpack_index')
       .eq('character_id', character.id)
       .eq('equipped_slot', null);
 
@@ -1413,13 +1421,20 @@ app.post('/api/shop/buy', authenticateToken, async (req, res) => {
       }
     } else {
       // Nowy przedmiot
+      const occupiedIndexes = backpackItems.map(i => i.backpack_index);
+      let firstFreeIndex = 1;
+      while (occupiedIndexes.includes(firstFreeIndex)) {
+        firstFreeIndex++;
+      }
+      
       const { error: insertError } = await supabase
         .from('inventory')
         .insert({
           character_id: character.id,
           item_template_id: template_id,
           quantity: quantity,
-          equipped_slot: null
+          equipped_slot: null,
+          backpack_index: firstFreeIndex
         });
 
       if (insertError) {

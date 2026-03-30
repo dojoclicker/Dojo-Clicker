@@ -166,11 +166,11 @@
                     <h3 class="panel-title">Plecak</h3>
                     <div class="inventory-grid">
                         <!-- 5 slotów plecaka w jednym rzędzie -->
-                        <div class="inventory-slot"></div>
-                        <div class="inventory-slot"></div>
-                        <div class="inventory-slot"></div>
-                        <div class="inventory-slot"></div>
-                        <div class="inventory-slot"></div>
+                        <div class="inventory-slot" data-index="1"></div>
+                        <div class="inventory-slot" data-index="2"></div>
+                        <div class="inventory-slot" data-index="3"></div>
+                        <div class="inventory-slot" data-index="4"></div>
+                        <div class="inventory-slot" data-index="5"></div>
                     </div>
                 </div>
             </div>
@@ -1158,12 +1158,15 @@
                         slot.appendChild(card);
                     }
                 } else {
-                    // Przedmiot w plecaku - umieść w pierwszym wolnym slocie
-                    const emptySlot = document.querySelector('.inventory-panel .inventory-slot:empty');
-                    if (emptySlot) {
-                        const card = createItemCard(item);
-                        emptySlot.innerHTML = ''; // Kompletne wyczyszczenie slotu
-                        emptySlot.appendChild(card);
+                    // Przedmiot w plecaku - umieść w konkretnym slocie
+                    const targetIndex = item.backpack_index;
+                    if (targetIndex) {
+                        const slot = document.querySelector(`.inventory-panel .inventory-slot[data-index="${targetIndex}"]`);
+                        if (slot) {
+                            const card = createItemCard(item);
+                            slot.innerHTML = ''; 
+                            slot.appendChild(card);
+                        }
                     }
                 }
             });
@@ -1468,12 +1471,13 @@
             grid.innerHTML = '';
             
             // Wygeneruj 5 slotów inventory-slot (tak samo jak w widoku Ekwipunku)
-            for (let i = 0; i < 5; i++) {
+            for (let i = 1; i <= 5; i++) {
                 const slot = document.createElement('div');
                 slot.className = 'inventory-slot';
+                slot.setAttribute('data-index', i);
                 
-                if (i < backpackItems.length) {
-                    const item = backpackItems[i];
+                const item = backpackItems.find(b => b.backpack_index === i);
+                if (item) {
                     const card = createItemCard(item);
                     
                     // Zablokuj mechanikę drag&drop dla sklepu
@@ -1973,7 +1977,7 @@
         }
 
         // Wykonywanie zamiany przedmiotów z backendem
-        async function performItemSwap(inventoryId, slotTarget) {
+        async function performItemSwap(inventoryId, slotTarget, backpackIndexTarget = null, targetItemId = null) {
             try {
                 const response = await fetch(`${API_BASE_URL}/api/inventory/swap`, {
                     method: 'POST',
@@ -1983,7 +1987,9 @@
                     },
                     body: JSON.stringify({
                         item_id_1: inventoryId,
-                        slot_target: slotTarget
+                        slot_target: slotTarget,
+                        backpack_index_target: backpackIndexTarget ? parseInt(backpackIndexTarget) : null,
+                        item_id_2: targetItemId
                     })
                 });
 
@@ -2092,17 +2098,12 @@
                     this.style.backgroundColor = ''; // Przywróć domyślny kolor
                     const inventoryId = e.dataTransfer.getData('inventory_id');
                     const sourceSlot = e.dataTransfer.getData('source_slot');
+                    const targetIndex = this.getAttribute('data-index');
                     
                     // Jeśli upuszczamy w plecaku, ale trafiliśmy w istniejącą kartę przedmiotu
                     const droppedOnCard = e.target.closest('.item-card');
                     
                     if (droppedOnCard) {
-                        // Jeśli próbujemy zamienić miejscami w plecaku - blokujemy
-                        if (sourceSlot === 'backpack') {
-                            console.log('Ignorowanie: Brak obsługi ręcznego sortowania plecaka.');
-                            return;
-                        }
-                        
                         // Jeśli ciągniemy z wyposażenia na przedmiot w plecaku (Próba zamiany)
                         const targetItemSlot = droppedOnCard.dataset.itemSlot;
                         
@@ -2114,13 +2115,13 @@
                         // Sloty pasują! Odwracamy logikę: każemy serwerowi ZAŁOŻYĆ przedmiot z plecaka,
                         // co automatycznie i atomowo zdejmie trzymany przedmiot do plecaka.
                         const targetInventoryId = droppedOnCard.dataset.inventoryId;
-                        performItemSwap(targetInventoryId, sourceSlot);
+                        performItemSwap(targetInventoryId, sourceSlot, targetIndex, inventoryId);
                         return; // Kończymy, serwer zajmie się resztą
                     }
                     
                     // Standardowe odłożenie na puste miejsce w plecaku
                     if (sourceSlot === 'backpack') return; // blokada plecak->plecak
-                    performItemSwap(inventoryId, 'backpack');
+                    performItemSwap(inventoryId, 'backpack', targetIndex, null);
                 });
             });
 
