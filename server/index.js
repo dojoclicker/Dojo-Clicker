@@ -511,7 +511,7 @@ app.post('/api/inventory/swap', authenticateToken, async (req, res) => {
         .from('inventory')
         .select('*, item_templates(*)')
         .eq('character_id', character.id)
-        .eq('equipped_slot', null)
+        .is('equipped_slot', null)
         .eq('backpack_index', backpack_index_target)
         .neq('id', item_id_1) // Nie bierzemy pod uwagę przedmiotu, który właśnie przenosimy
         .maybeSingle();
@@ -657,7 +657,7 @@ app.post('/api/inventory/swap', authenticateToken, async (req, res) => {
       if (wasOccupied) {
         responseMessage = 'Przedmioty zostały zamienione miejscami.';
       } else {
-        responseMessage = 'Przedmiot przeniesiony.';
+        responseMessage = 'Przedmiot schowany do plecaka / przeniesiony.';
       }
     } else if (slot_target !== 'backpack') {
       if (wasOccupied) {
@@ -1350,7 +1350,7 @@ app.post('/api/inventory/split', authenticateToken, async (req, res) => {
       .from('inventory')
       .select('id, backpack_index')
       .eq('character_id', character.id)
-      .eq('equipped_slot', null);
+      .is('equipped_slot', null);
 
     if (backpackError) {
       console.error('[Split] Błąd sprawdzania plecaka:', backpackError);
@@ -1509,7 +1509,7 @@ app.post('/api/shop/buy', authenticateToken, async (req, res) => {
       .from('inventory')
       .select('id, item_template_id, quantity, backpack_index')
       .eq('character_id', character.id)
-      .eq('equipped_slot', null);
+      .is('equipped_slot', null);
 
     if (backpackError) {
       console.error('[Shop] Błąd sprawdzania plecaka:', backpackError);
