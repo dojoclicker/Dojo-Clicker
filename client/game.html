@@ -473,6 +473,30 @@
                 });
             }
 
+            // Śledzenie kursora dla tooltipa misji
+            card.addEventListener('mousemove', (e) => {
+                const tooltip = card.querySelector('.mission-tooltip');
+                if (tooltip) {
+                    const rect = tooltip.getBoundingClientRect();
+                    
+                    // Wycentruj w osi X względem kursora, w osi Y lekko poniżej
+                    let x = e.clientX - (rect.width / 2);
+                    let y = e.clientY + 20;
+                    
+                    // Ochrona przed wyjściem za krawędzie ekranu
+                    if (x < 10) x = 10;
+                    if (x + rect.width > window.innerWidth - 10) x = window.innerWidth - rect.width - 10;
+                    
+                    // Jeśli nie mieści się na dole, pokaż NAD kursorem
+                    if (y + rect.height > window.innerHeight - 10) {
+                        y = e.clientY - rect.height - 10;
+                    }
+                    
+                    tooltip.style.left = x + 'px';
+                    tooltip.style.top = y + 'px';
+                }
+            });
+
             return card;
         }
 
