@@ -1595,11 +1595,15 @@ app.post('/api/shop/buy', authenticateToken, async (req, res) => {
   }
 });
 
+function minBigInt(a, b) {
+  return a < b ? a : b;
+}
+
 // Endpoint sprzedawania przedmiotów
 app.post('/api/shop/sell', authenticateToken, async (req, res) => {
   try {
     const userId = req.user.id;
-    const { inventory_id } = req.body;
+    const { inventory_id, amount } = req.body;
 
     if (!inventory_id) {
       return res.status(400).json({ error: 'Brak wymaganego parametru: inventory_id' });
@@ -1635,13 +1639,19 @@ app.post('/api/shop/sell', authenticateToken, async (req, res) => {
     }
 
     const sellPrice = Math.floor(item.item_templates.buy_price_coins / 2);
-    const totalSellPrice = sellPrice * item.quantity;
+    
+    // Oblicz ilość do sprzedaży
+    const sellQuantity = (amount === 'all' || !amount) 
+      ? BigInt(item.quantity) 
+      : minBigInt(BigInt(amount), BigInt(item.quantity));
+    
+    const totalSellPrice = BigInt(sellPrice) * sellQuantity;
     const playerCoins = BigInt(character.coins || '0');
 
     // Atomowe operacje: dodanie monet i usunięcie przedmiotu
     const { error: coinError } = await supabase
       .from('characters')
-      .update({ coins: (playerCoins + BigInt(totalSellPrice)).toString() })
+      .update({ coins: (playerCoins + totalSellPrice).toString() })
       .eq('id', character.id);
 
     if (coinError) {
@@ -1649,23 +1659,33 @@ app.post('/api/shop/sell', authenticateToken, async (req, res) => {
       return res.status(500).json({ error: 'Błąd podczas aktualizacji monet' });
     }
 
-    // Usuń cały stack
-    const { error: deleteError } = await supabase
-      .from('inventory')
-      .delete()
-      .eq('id', inventory_id);
+    // Aktualizacja bazy: usuń całość lub zaktualizuj ilość
+    let updateError;
+    if (sellQuantity === BigInt(item.quantity)) {
+      // Usuń cały stack
+      ({ error: updateError } = await supabase
+        .from('inventory')
+        .delete()
+        .eq('id', inventory_id));
+    } else {
+      // Aktualizuj ilość
+      ({ error: updateError } = await supabase
+        .from('inventory')
+        .update({ quantity: (BigInt(item.quantity) - sellQuantity).toString() })
+        .eq('id', inventory_id));
+    }
 
-    if (deleteError) {
-      console.error('[Shop] Błąd usuwania przedmiotu:', deleteError);
-      return res.status(500).json({ error: 'Błąd podczas usuwania przedmiotu' });
+    if (updateError) {
+      console.error('[Shop] Błąd aktualizacji przedmiotu:', updateError);
+      return res.status(500).json({ error: 'Błąd podczas aktualizacji przedmiotu' });
     }
 
     res.json({ 
       success: true, 
-      message: `Sprzedano ${item.item_templates.name} x${item.quantity} za ${totalSellPrice} monet!`,
+      message: `Sprzedano ${item.item_templates.name} x${sellQuantity} za ${totalSellPrice} monet!`,
       item: {
         name: item.item_templates.name,
-        quantity: item.quantity,
+        quantity: sellQuantity.toString(),
         total_sell_price: totalSellPrice.toString()
       }
     });

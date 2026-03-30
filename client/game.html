@@ -1532,6 +1532,51 @@
                 slot.className = 'inventory-slot';
                 slot.setAttribute('data-index', i);
                 
+                // Dodaj event listenery Drag&Drop (skopiowane z initializeDragAndDrop)
+                slot.addEventListener('dragover', function(e) {
+                    if (window.isInventoryActionLocked) return;
+                    e.preventDefault(); // Pozwól na upuszczenie
+                    this.style.backgroundColor = 'rgba(255, 107, 0, 0.3)'; // Wizualny feedback
+                });
+                
+                slot.addEventListener('dragleave', function(e) {
+                    this.style.backgroundColor = ''; // Przywróć domyślny kolor
+                });
+                
+                slot.addEventListener('drop', function(e) {
+                    if (window.isInventoryActionLocked) return;
+                    e.preventDefault();
+                    this.style.backgroundColor = ''; // Przywróć domyślny kolor
+                    
+                    const inventoryId = e.dataTransfer.getData('inventory_id');
+                    const sourceSlot = e.dataTransfer.getData('source_slot');
+                    const targetIndex = this.getAttribute('data-index');
+                    
+                    // Jeśli upuszczamy na istniejącą kartę przedmiotu
+                    const droppedOnCard = e.target.closest('.item-card');
+                    if (droppedOnCard) {
+                        const targetInventoryId = droppedOnCard.dataset.inventoryId;
+                        const targetItemSlot = droppedOnCard.dataset.itemSlot;
+                        
+                        // Zabezpieczenie: jeśli zamieniamy sprzęt z ciała na sprzęt w plecaku
+                        if (sourceSlot !== 'null' && sourceSlot !== 'backpack' && sourceSlot !== '') {
+                            // Wtedy sloty MUSZĄ się zgadzać
+                            if (sourceSlot !== targetItemSlot) {
+                                showWarningMessage("Nie możesz zamienić z przedmiotem z innego slotu!");
+                                return;
+                            }
+                        }
+                        
+                        // Wykonanie atomowej zamiany (Scenariusz A w bazie - zadziała dla ciało<->plecak oraz plecak<->plecak)
+                        performItemSwap(inventoryId, 'backpack', targetIndex, targetInventoryId);
+                        return; 
+                    }
+                    
+                    // Standardowe odłożenie na puste miejsce w plecaku
+                    if (sourceSlot === 'backpack') return; // blokada plecak->plecak
+                    performItemSwap(inventoryId, 'backpack', targetIndex, null);
+                });
+                
                 const item = backpackItems.find(b => b.backpack_index === i);
                 if (item) {
                     const card = createItemCard(item);
@@ -1540,7 +1585,7 @@
                     card.addEventListener('dblclick', function(e) {
                         e.preventDefault();
                         e.stopPropagation();
-                        sellItem(item.id);
+                        sellItem(item.id, 1);
                     });
 
                     slot.appendChild(card);
@@ -1645,7 +1690,7 @@
         }
 
         // Sprzedaż przedmiotu
-        async function sellItem(inventoryId) {
+        async function sellItem(inventoryId, amount = 'all') {
             if (window.isInventoryActionLocked) return;
             window.isInventoryActionLocked = true;
             
@@ -1657,7 +1702,8 @@
                         'Content-Type': 'application/json'
                     },
                     body: JSON.stringify({
-                        inventory_id: inventoryId
+                        inventory_id: inventoryId,
+                        amount: amount
                     })
                 });
 
@@ -2241,7 +2287,7 @@
                     // Sprawdź, czy przedmiot pochodzi z plecaka w sklepie
                     if (sourceSlot === 'backpack' && inventoryId) {
                         if (confirm(`Czy na pewno chcesz sprzedać "${itemName}"?`)) {
-                            sellItem(inventoryId);
+                            sellItem(inventoryId, 'all');
                         }
                     }
                 });
@@ -2269,7 +2315,7 @@
                     // Sprawdź, czy przedmiot pochodzi z plecaka
                     if (sourceSlot === 'backpack' && inventoryId) {
                         // Natychmiastowa sprzedaż bez potwierdzenia
-                        sellItem(inventoryId);
+                        sellItem(inventoryId, 'all');
                     }
                 });
             }
