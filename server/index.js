@@ -503,7 +503,25 @@ app.post('/api/inventory/swap', authenticateToken, async (req, res) => {
 
     // Sprawdzenie, czy slot docelowy jest zajęty (dla odpowiedniego komunikatu)
     let wasOccupied = false;
-    if (slot_target !== 'backpack') {
+    let targetItem = null;
+    
+    // Jeśli przenosimy do plecaka, sprawdź czy istnieje przedmiot docelowy
+    if (slot_target === 'backpack' && backpack_index_target !== null && backpack_index_target !== undefined) {
+      const { data: existingBackpackItem } = await supabase
+        .from('inventory')
+        .select('*, item_templates(*)')
+        .eq('character_id', character.id)
+        .eq('equipped_slot', null)
+        .eq('backpack_index', backpack_index_target)
+        .neq('id', item_id_1) // Nie bierzemy pod uwagę przedmiotu, który właśnie przenosimy
+        .maybeSingle();
+        
+      if (existingBackpackItem) {
+        targetItem = existingBackpackItem;
+        wasOccupied = true;
+      }
+    } else if (slot_target !== 'backpack') {
+      // Sprawdzenie slotów ekwipunku
       const { data: existingItem } = await supabase
         .from('inventory')
         .select('id')
@@ -514,6 +532,75 @@ app.post('/api/inventory/swap', authenticateToken, async (req, res) => {
         
       if (existingItem) {
         wasOccupied = true;
+      }
+    }
+
+    // Sprawdź warunek łączenia (stackowania) dla przedmiotów w plecaku
+    if (targetItem && 
+        draggedItem.item_template_id === targetItem.item_template_id &&
+        (draggedItem.item_templates.category === 'consumable' || draggedItem.item_templates.category === 'special_consumable')) {
+      
+      // Logika łączenia przedmiotów
+      const totalQuantity = BigInt(draggedItem.quantity || '1') + BigInt(targetItem.quantity || '1');
+      
+      if (totalQuantity <= 99n) {
+        // Połącz przedmioty - zaktualizuj docelowy i usuń źródłowy
+        const { error: updateError } = await supabase
+          .from('inventory')
+          .update({ quantity: totalQuantity.toString() })
+          .eq('id', targetItem.id);
+          
+        if (updateError) {
+          console.error('[Inventory] Błąd aktualizacji ilości docelowej:', updateError);
+          return res.status(500).json({ error: 'Błąd podczas łączenia przedmiotów' });
+        }
+        
+        // Usuń przedmiot źródłowy
+        const { error: deleteError } = await supabase
+          .from('inventory')
+          .delete()
+          .eq('id', item_id_1);
+          
+        if (deleteError) {
+          console.error('[Inventory] Błąd usuwania przedmiotu źródłowego:', deleteError);
+          return res.status(500).json({ error: 'Błąd podczas łączenia przedmiotów' });
+        }
+        
+        return res.json({ 
+          success: true, 
+          message: 'Przedmioty zostały połączone.' 
+        });
+        
+      } else {
+        // Przenieś nadwyżkę do przedmiotu źródłowego
+        const overflow = totalQuantity - 99n;
+        
+        // Zaktualizuj docelowy do maksymalnej ilości
+        const { error: updateTargetError } = await supabase
+          .from('inventory')
+          .update({ quantity: '99' })
+          .eq('id', targetItem.id);
+          
+        if (updateTargetError) {
+          console.error('[Inventory] Błąd aktualizacji ilości docelowej:', updateTargetError);
+          return res.status(500).json({ error: 'Błąd podczas łączenia przedmiotów' });
+        }
+        
+        // Zaktualizuj źródłowy z nadwyżką
+        const { error: updateSourceError } = await supabase
+          .from('inventory')
+          .update({ quantity: overflow.toString() })
+          .eq('id', item_id_1);
+          
+        if (updateSourceError) {
+          console.error('[Inventory] Błąd aktualizacji ilości źródłowej:', updateSourceError);
+          return res.status(500).json({ error: 'Błąd podczas łączenia przedmiotów' });
+        }
+        
+        return res.json({ 
+          success: true, 
+          message: 'Przedmioty zostały połączone (osiągnięto maksymalną ilość).' 
+        });
       }
     }
 
@@ -567,11 +654,24 @@ app.post('/api/inventory/swap', authenticateToken, async (req, res) => {
     // Kontekstowe komunikaty
     let responseMessage = '';
     if (slot_target === 'backpack') {
-      responseMessage = 'Przedmiot schowany do plecaka.';
-    } else if (wasOccupied) {
-      responseMessage = 'Przedmioty zostały zamienione!';
+      if (wasOccupied) {
+        responseMessage = 'Przedmioty zostały zamienione miejscami.';
+      } else {
+        responseMessage = 'Przedmiot przeniesiony.';
+      }
+    } else if (slot_target !== 'backpack') {
+      if (wasOccupied) {
+        responseMessage = 'Przedmioty zostały zamienione miejscami.';
+      } else {
+        // Sprawdź czy to zakładanie czy zdejmowanie sprzętu
+        if (draggedItem.equipped_slot !== null) {
+          responseMessage = 'Sprzęt zdjęty.';
+        } else {
+          responseMessage = 'Sprzęt założony.';
+        }
+      }
     } else {
-      responseMessage = 'Przedmiot został umieszczony!';
+      responseMessage = 'Akcja wykonana pomyślnie.';
     }
 
     res.json({ 
