@@ -2285,7 +2285,7 @@
                     const sourceSlot = e.dataTransfer.getData('source_slot');
                     
                     // Sprawdź, czy przedmiot pochodzi z plecaka w sklepie
-                    if (sourceSlot === 'backpack' && inventoryId) {
+                    if (sourceSlot === 'null' && inventoryId) {
                         if (confirm(`Czy na pewno chcesz sprzedać "${itemName}"?`)) {
                             sellItem(inventoryId, 'all');
                         }
@@ -2313,7 +2313,7 @@
                     const sourceSlot = e.dataTransfer.getData('source_slot');
                     
                     // Sprawdź, czy przedmiot pochodzi z plecaka
-                    if (sourceSlot === 'backpack' && inventoryId) {
+                    if (sourceSlot === 'null' && inventoryId) {
                         // Natychmiastowa sprzedaż bez potwierdzenia
                         sellItem(inventoryId, 'all');
                     }
