@@ -931,6 +931,11 @@
                 
                 // Zapisz monety globalnie dla sklepu
                 window.playerCurrentCoins = Number(data.coins);
+                
+                // Wymuś odświeżenie przycisków w sklepie (Race condition fix)
+                if (typeof renderShopItems === 'function' && document.getElementById('shop-items-grid')) {
+                    renderShopItems();
+                }
 
                 // Aktualizacja pasków zasobów
                 updateResourceBar('hp', data.current_hp, data.max_hp);
@@ -1555,7 +1560,7 @@
             const backpackEl = document.getElementById('shop-backpack-count');
             const backpackCount = backpackEl ? parseInt(backpackEl.textContent.split('/')[0]) : 0;
             
-            const canAfford = playerCoins >= item.price;
+            const canAfford = playerCoins >= Number(item.price);
             const hasSpace = backpackCount < 5;
             
             card.innerHTML = `
