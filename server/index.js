@@ -1595,10 +1595,6 @@ app.post('/api/shop/buy', authenticateToken, async (req, res) => {
   }
 });
 
-function minBigInt(a, b) {
-  return a < b ? a : b;
-}
-
 // Endpoint sprzedawania przedmiotów
 app.post('/api/shop/sell', authenticateToken, async (req, res) => {
   try {
