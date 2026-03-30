@@ -477,20 +477,11 @@
             card.addEventListener('mousemove', (e) => {
                 const tooltip = card.querySelector('.mission-tooltip');
                 if (tooltip) {
-                    const rect = tooltip.getBoundingClientRect();
+                    const cardRect = card.getBoundingClientRect();
                     
-                    // Wycentruj w osi X względem kursora, w osi Y lekko poniżej
-                    let x = e.clientX - (rect.width / 2);
-                    let y = e.clientY + 20;
-                    
-                    // Ochrona przed wyjściem za krawędzie ekranu
-                    if (x < 10) x = 10;
-                    if (x + rect.width > window.innerWidth - 10) x = window.innerWidth - rect.width - 10;
-                    
-                    // Jeśli nie mieści się na dole, pokaż NAD kursorem
-                    if (y + rect.height > window.innerHeight - 10) {
-                        y = e.clientY - rect.height - 10;
-                    }
+                    // Pozycja myszy względem lewego górnego rogu KARTY
+                    let x = (e.clientX - cardRect.left) - (tooltip.offsetWidth / 2);
+                    let y = (e.clientY - cardRect.top) + 20;
                     
                     tooltip.style.left = x + 'px';
                     tooltip.style.top = y + 'px';
@@ -1705,6 +1696,7 @@
                     else if (bonus === 'bonus_hp') displayStat = 'Bonus HP';
                     else if (bonus === 'bonus_mp') displayStat = 'Bonus MP';
                     else if (bonus === 'attack_power') displayStat = 'Siła ataku';
+                    else if (bonus === 'speed_penalty') displayStat = 'Kara do Szybkości';
                     else if (bonus.includes('penalty')) displayStat = 'Kara';
                     
                     const valColor = bonus.includes('penalty') ? 'var(--error)' : 'var(--success)';
