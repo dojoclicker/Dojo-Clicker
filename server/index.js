@@ -1522,9 +1522,9 @@ app.post('/api/shop/buy', authenticateToken, async (req, res) => {
     
     let currentBackpackSlots = backpackItems.length;
     if (existingItem && isStackable) {
-      // Stackowanie nie zwiększa liczby slotów
-    } else if (!existingItem) {
-      // Nowy przedmiot zajmuje slot
+      // Stackowanie nie zwiększa liczby slotów (zmieści się do 99)
+    } else {
+      // Zawsze wymaga nowego slotu (całkiem nowy przedmiot LUB kolejny nieskładalny sprzęt)
       currentBackpackSlots++;
     }
 
