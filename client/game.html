@@ -1681,12 +1681,12 @@
         // 1. Wymagany Slot
         if (template.slot) {
             const slotNamesPL = { head: 'Głowa', chest: 'Tors', legs: 'Nogi', feet: 'Stopy', hands: 'Ręce', ear_l: 'L. Kolczyk', ear_r: 'P. Kolczyk', ring_l: 'L. Pierścień', ring_r: 'P. Pierścień', necklace: 'Naszyjnik', ear: 'Ucho', ring: 'Palec' };
-            tooltipHTML += `<div style="margin-bottom: 8px; font-size: 0.85rem; color: #cbd5e1; background: rgba(255,255,255,0.05); padding: 4px; border-radius: 4px;"><strong>Miejsce:</strong> ${slotNamesPL[template.slot] || template.slot}</div>`;
+            tooltipHTML += `<div style="margin-bottom: 8px; font-size: 0.85rem; color: #cbd5e1; background: rgba(255,255,255,0.05); padding: 4px; border-radius: 4px; text-align: center;"><strong>Miejsce:</strong> ${slotNamesPL[template.slot] || template.slot}</div>`;
         }
 
         // 2. Wymagania do założenia
         if (template.req_stats && Object.keys(template.req_stats).length > 0) {
-            tooltipHTML += '<div style="margin-bottom: 8px; font-size: 0.85rem;"><strong>Wymagania:</strong><br>';
+            tooltipHTML += '<div style="margin-bottom: 8px; font-size: 0.85rem; background: rgba(0,0,0,0.2); padding: 6px; border-radius: 6px;"><strong>Wymagania:</strong><br>';
             for (const [stat, val] of Object.entries(template.req_stats)) {
                 tooltipHTML += `<span style="color: #fca5a5;">• ${statNamesPL[stat] || stat}: ${val}</span><br>`;
             }
@@ -1697,9 +1697,9 @@
         if (template.bonuses && Object.keys(template.bonuses).length > 0) {
             const isTraining = template.bonuses.type === 'training';
             const bonusTitle = isTraining ? '<span style="color: #f59e0b;">Bonusy Treningowe:</span>' : '<span style="color: #4ade80;">Bonusy Pasywne:</span>';
-            const bonusSuffix = isTraining ? ' <small style="color: #94a3b8;">(za misję/trening)</small>' : '';
+            const bonusSuffix = isTraining ? ' <small style="color: #94a3b8;">(za misję/pracę)</small>' : '';
 
-            tooltipHTML += `<div style="margin-bottom: 8px; font-size: 0.85rem;"><strong>${bonusTitle}</strong><br>`;
+            tooltipHTML += `<div style="margin-bottom: 8px; font-size: 0.85rem; background: rgba(0,0,0,0.2); padding: 6px; border-radius: 6px;"><strong>${bonusTitle}</strong><br>`;
             for (const [bonus, val] of Object.entries(template.bonuses)) {
                 if (bonus === 'type') continue; // Ignorujemy flagę techniczną
                 const statName = statNamesPL[bonus] || bonus;
@@ -1710,7 +1710,7 @@
 
         // 4. Efekty konsumpcji (jeśli dotyczy)
         if (template.consumable_effect && Object.keys(template.consumable_effect).length > 0) {
-            tooltipHTML += '<div style="margin-bottom: 8px; font-size: 0.85rem;"><strong>Efekt użycia:</strong><br>';
+            tooltipHTML += '<div style="margin-bottom: 8px; font-size: 0.85rem; background: rgba(0,0,0,0.2); padding: 6px; border-radius: 6px;"><strong>Efekt użycia:</strong><br>';
             for (const [effect, val] of Object.entries(template.consumable_effect)) {
                 let displayEffect = effect;
                 if (effect === 'restore_hp') displayEffect = `Przywraca ${val} HP`;
@@ -1720,6 +1720,9 @@
                 else if (effect === 'zenkai_resurrection') displayEffect = 'Pełne wyleczenie (Wskrzeszenie)';
                 else if (effect === 'permanent_bonus') displayEffect = 'Trwały bonus statystyk';
                 else if (effect === 'unlock_transformation') displayEffect = 'Odblokowuje transformację';
+                else if (effect === 'temporary_buff') displayEffect = 'Tymczasowe błogosławieństwo';
+                else if (effect === 'restore_hp_pct') displayEffect = `Przywraca ${val}% HP`;
+                else if (effect === 'restore_mp_pct') displayEffect = `Przywraca ${val}% MP`;
                 tooltipHTML += `<span style="color: #67e8f9;">• ${displayEffect}</span><br>`;
             }
             tooltipHTML += '</div>';
@@ -1730,11 +1733,11 @@
             const buyPrice = template.buy_price_coins;
             const sellPrice = Math.floor(Number(buyPrice) / 2);
             tooltipHTML += `<div style="margin-top: 10px; border-top: 1px dashed rgba(255, 255, 255, 0.2); padding-top: 8px; font-size: 0.85rem;">
-                <div style="display: flex; justify-content: space-between; color: #fbbf24;">
-                    <span>Wartość (Kupno):</span> <strong>${buyPrice} 💰</strong>
+                <div style="display: flex; justify-content: space-between; color: #fbbf24; margin-bottom: 4px;">
+                    <span>Cena Kupna:</span> <strong>${buyPrice} 💰</strong>
                 </div>
                 <div style="display: flex; justify-content: space-between; color: #cbd5e1;">
-                    <span>Wartość (Sprzedaż):</span> <strong>${sellPrice} 💰</strong>
+                    <span>Cena Sprzedaży:</span> <strong>${sellPrice} 💰</strong>
                 </div>
             </div>`;
         }
