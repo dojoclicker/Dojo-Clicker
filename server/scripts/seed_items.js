@@ -315,9 +315,9 @@ async function seedItems() {
     try {
         console.log('🌱 Rozpoczynam aktualizację przedmiotów w bazie danych...');
         
-        console.log('🧹 Czyszczenie starych przedmiotów...');
-        const { error: deleteError } = await supabase.from('item_templates').delete().not('id', 'is', null);
-        if (deleteError) throw deleteError;
+    //    console.log('🧹 Czyszczenie starych przedmiotów...');
+    //    const { error: deleteError } = await supabase.from('item_templates').delete().not('id', 'is', null);
+    //    if (deleteError) throw deleteError;
         
         // Krok 1: Wgraj/zaktualizuj przedmioty za pomocą upsert
         console.log('📦 Aktualizowanie przedmiotów (upsert)...');
