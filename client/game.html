@@ -2294,6 +2294,72 @@
 
             // Odświeżanie danych postaci co 30 sekund
             setInterval(fetchCharacterData, 30000);
+
+            // ==========================================
+            // SYSTEM GLOBALNEGO TOOLTIPU (Follow-Cursor) - NAPRAWIONY
+            // ==========================================
+            const globalTooltip = document.getElementById('global-tooltip');
+
+            if (globalTooltip) {
+                // Twarde nadpisanie stylów, by uniezależnić się od CSS
+                globalTooltip.style.position = 'fixed';
+                globalTooltip.style.pointerEvents = 'none';
+                globalTooltip.style.zIndex = '999999';
+                globalTooltip.style.transition = 'opacity 0.15s ease';
+                
+                // Obsługa najechania myszką
+                document.body.addEventListener('mouseover', function(e) {
+                    const card = e.target.closest('.item-card');
+                    if (card) {
+                        // Zabezpieczenie przed miganiem: ignoruj, jeśli tooltip już wyświetla tę kartę
+                        const cardId = card.dataset.inventoryId || card.dataset.templateId;
+                        if (globalTooltip.dataset.currentCard === cardId) return; 
+                        
+                        const templateData = card.getAttribute('data-item-template');
+                        if (!templateData) return;
+                        
+                        try {
+                            const template = JSON.parse(decodeURIComponent(templateData));
+                            globalTooltip.innerHTML = createItemTooltip(template);
+                            globalTooltip.style.opacity = '1';
+                            globalTooltip.style.visibility = 'visible';
+                            globalTooltip.dataset.currentCard = cardId;
+                        } catch (err) {
+                            console.error('[Tooltip] Błąd odczytu danych:', err);
+                        }
+                    }
+                });
+
+                // Obsługa śledzenia kursora
+                document.body.addEventListener('mousemove', function(e) {
+                    if (globalTooltip.style.opacity === '1') {
+                        const rect = globalTooltip.getBoundingClientRect();
+                        let x = e.clientX - (rect.width / 2);
+                        let y = e.clientY + 20;
+                        
+                        // Ochrona przed krawędziami
+                        if (x < 10) x = 10;
+                        if (x + rect.width > window.innerWidth - 10) x = window.innerWidth - rect.width - 10;
+                        if (y + rect.height > window.innerHeight - 10) {
+                            y = e.clientY - rect.height - 10;
+                        }
+                        
+                        globalTooltip.style.left = x + 'px';
+                        globalTooltip.style.top = y + 'px';
+                    }
+                });
+
+                // Obsługa zjechania myszką - KRYTYCZNA POPRAWKA
+                document.body.addEventListener('mouseout', function(e) {
+                    const card = e.target.closest('.item-card');
+                    // Ukryj TYLKO wtedy, gdy kursor całkowicie opuścił kartę (a nie wędruje po jej wewnętrznych ikonach)
+                    if (card && !card.contains(e.relatedTarget)) {
+                        globalTooltip.style.opacity = '0';
+                        globalTooltip.style.visibility = 'hidden';
+                        globalTooltip.dataset.currentCard = '';
+                    }
+                });
+            }
         });
     </script>
 <div id="global-tooltip" class="item-tooltip"></div>
