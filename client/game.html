@@ -2037,6 +2037,12 @@
                     const sourceSlot = e.dataTransfer.getData('source_slot');
                     const targetSlot = this.getAttribute('data-slot');
                     
+                    // Zabezpieczenie: Czy to w ogóle jest ekwipunek?
+                    if (itemCategory !== 'equipment') {
+                        showWarningMessage('Na ciało możesz założyć tylko ekwipunek!');
+                        return;
+                    }
+                    
                     // Zabezpieczenie przed sortowaniem w plecaku
                     if (sourceSlot === 'backpack' && targetSlot === null) {
                         console.log('Ignorowanie: Brak obsługi ręcznego sortowania plecaka w DB.');
@@ -2100,23 +2106,24 @@
                     const sourceSlot = e.dataTransfer.getData('source_slot');
                     const targetIndex = this.getAttribute('data-index');
                     
-                    // Jeśli upuszczamy w plecaku, ale trafiliśmy w istniejącą kartę przedmiotu
+                    // Jeśli upuszczamy na istniejącą kartę przedmiotu
                     const droppedOnCard = e.target.closest('.item-card');
-                    
                     if (droppedOnCard) {
-                        // Jeśli ciągniemy z wyposażenia na przedmiot w plecaku (Próba zamiany)
+                        const targetInventoryId = droppedOnCard.dataset.inventoryId;
                         const targetItemSlot = droppedOnCard.dataset.itemSlot;
                         
-                        if (sourceSlot !== targetItemSlot) {
-                            showWarningMessage("Nie możesz zamienić przedmiotów z różnych slotów!");
-                            return;
+                        // Zabezpieczenie: jeśli zamieniamy sprzęt z ciała na sprzęt w plecaku
+                        if (sourceSlot !== 'null' && sourceSlot !== 'backpack' && sourceSlot !== '') {
+                            // Wtedy sloty MUSZĄ się zgadzać
+                            if (sourceSlot !== targetItemSlot) {
+                                showWarningMessage("Nie możesz zamienić z przedmiotem z innego slotu!");
+                                return;
+                            }
                         }
                         
-                        // Sloty pasują! Odwracamy logikę: każemy serwerowi ZAŁOŻYĆ przedmiot z plecaka,
-                        // co automatycznie i atomowo zdejmie trzymany przedmiot do plecaka.
-                        const targetInventoryId = droppedOnCard.dataset.inventoryId;
-                        performItemSwap(targetInventoryId, sourceSlot, targetIndex, inventoryId);
-                        return; // Kończymy, serwer zajmie się resztą
+                        // Wykonanie atomowej zamiany (Scenariusz A w bazie - zadziała dla ciało<->plecak oraz plecak<->plecak)
+                        performItemSwap(inventoryId, 'backpack', targetIndex, targetInventoryId);
+                        return; 
                     }
                     
                     // Standardowe odłożenie na puste miejsce w plecaku
