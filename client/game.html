@@ -1993,7 +1993,7 @@
                     // Sukces - odśwież dane
                     await fetchInventory();
                     await fetchCharacterData();
-                    showSuccessMessage('Przedmioty zostały zamienione!');
+                    showSuccessMessage(data.message);
                 } else {
                     // Błąd z backendu
                     showWarningMessage(data.error || 'Błąd podczas zamiany przedmiotów');
