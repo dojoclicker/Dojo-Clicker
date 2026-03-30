@@ -1754,7 +1754,7 @@
         }
 
         // 4. Efekty konsumpcji (jeśli dotyczy)
-        if (template.consumable_effect && Object.keys(template.consumable_effect).length > 0) {
+        if (template.consumable_effect && Object.keys(template.consumable_effect).length > 0 && template.name !== 'Magiczna Fasolka') {
             tooltipHTML += '<div style="margin-bottom: 8px; font-size: 0.85rem; background: rgba(0,0,0,0.2); padding: 6px; border-radius: 6px;"><strong>Efekt użycia:</strong><br>';
             for (const [effect, val] of Object.entries(template.consumable_effect)) {
                 let displayEffect = effect;
