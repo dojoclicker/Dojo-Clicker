@@ -1275,6 +1275,7 @@
             card.setAttribute('data-template-id', item.item_template_id);
             card.setAttribute('data-quantity', item.quantity || 1);
             card.setAttribute('data-item-slot', item.item_templates?.slot || '');
+            card.setAttribute('data-item-template', encodeURIComponent(JSON.stringify(item.item_templates)));
             
             // Emotikona jako ikona przedmiotu
             const emoji = getItemEmoji(item.item_templates?.name || 'Przedmiot', item.item_templates?.category || 'unknown');
@@ -1284,9 +1285,6 @@
             card.innerHTML = `
                 <div class="item-emoji">${emoji}</div>
                 ${quantity > 1 ? `<div class="item-quantity">${quantity}</div>` : ''}
-                <div class="item-tooltip">
-                    ${createItemTooltip(item.item_templates)}
-                </div>
             `;
             
             // Dodaj event listener dla dragstart
@@ -1350,30 +1348,6 @@
                     consumeItem(item.id);
                 } else {
                     showWarningMessage('Ten przedmiot nie jest używalny!');
-                }
-            });
-
-            // Śledzenie kursora przez Tooltip
-            card.addEventListener('mousemove', function(e) {
-                const tooltip = card.querySelector('.item-tooltip');
-                if (tooltip) {
-                    const rect = tooltip.getBoundingClientRect();
-                    
-                    // Wycentruj w osi X względem kursora, w osi Y lekko poniżej
-                    let x = e.clientX - (rect.width / 2);
-                    let y = e.clientY + 20;
-                    
-                    // Ochrona przed wyjściem za krawędzie ekranu
-                    if (x < 10) x = 10;
-                    if (x + rect.width > window.innerWidth - 10) x = window.innerWidth - rect.width - 10;
-                    
-                    // Jeśli nie mieści się na dole, pokaż NAD kursorem
-                    if (y + rect.height > window.innerHeight - 10) {
-                        y = e.clientY - rect.height - 10;
-                    }
-                    
-                    tooltip.style.left = x + 'px';
-                    tooltip.style.top = y + 'px';
                 }
             });
 
@@ -1513,19 +1487,7 @@
                         e.stopPropagation();
                         sellItem(item.id);
                     });
-                    
-                    // Dodaj tooltip sprzedaży dla sklepu
-                    const tooltip = card.querySelector('.item-tooltip');
-                    if (tooltip && item.item_templates?.buy_price_coins) {
-                        const sellPrice = Math.floor(item.item_templates.buy_price_coins / 2);
-                        const totalSellPrice = sellPrice * item.quantity;
-                        tooltip.innerHTML += `<div style="color: #ff6b00; border-top: 1px solid #ff6b00; padding-top: 5px; margin-top: 5px;">
-                            <strong>Cena sprzedaży:</strong><br>
-                            💰 ${totalSellPrice} Monet<br>
-                            <small>(50% ceny zakupu)</small>
-                        </div>`;
-                    }
-                    
+
                     slot.appendChild(card);
                 }
                 
@@ -2314,7 +2276,6 @@
                     }
                 });
 
-                // Zamknięcie po zjechaniu kursorem
                 plTooltip.addEventListener('mouseleave', () => {
                     plTooltip.style.display = 'none';
                 });
@@ -2331,9 +2292,10 @@
             setInterval(updateGameTime, 1000);
             updateGameTime(); // Pierwsza aktualizacja
 
-            // 7. Odświeżanie danych postaci co 30 sekund
+            // Odświeżanie danych postaci co 30 sekund
             setInterval(fetchCharacterData, 30000);
         });
     </script>
+<div id="global-tooltip" class="item-tooltip"></div>
 </body>
 </html>

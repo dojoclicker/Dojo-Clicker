@@ -1052,7 +1052,9 @@ body {
     font-size: 0.8rem;
 }
 
-.item-card:hover .item-tooltip {
+/* USUŃ TEN BLOK: Global tooltip system handles visibility via JavaScript */
+
+.item-tooltip.visible {
     opacity: 1;
     visibility: visible;
     transition-delay: 0s;
