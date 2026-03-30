@@ -16,10 +16,7 @@ const itemsData = [
         slot: null,
         buy_price_coins: "50",
         sell_price_coins: "25",
-        consumable_effect: {
-            "restore_hp": "30",
-            "restore_stamina": "10"
-        },
+        consumable_effect: { "restore_hp": "50" },
         req_stats: null,
         bonuses: null
     },
@@ -30,10 +27,7 @@ const itemsData = [
         slot: null,
         buy_price_coins: "50",
         sell_price_coins: "25",
-        consumable_effect: {
-            "restore_mp": "20",
-            "restore_stamina": "15"
-        },
+        consumable_effect: { "restore_mp": "50" },
         req_stats: null,
         bonuses: null
     },
@@ -44,11 +38,7 @@ const itemsData = [
         slot: null,
         buy_price_coins: "2500",
         sell_price_coins: "1250",
-        consumable_effect: {
-            "restore_hp": "100",
-            "restore_mp": "50",
-            "restore_stamina": "30"
-        },
+        consumable_effect: { "restore_hp_pct": 10 },
         req_stats: null,
         bonuses: null
     },
@@ -59,10 +49,7 @@ const itemsData = [
         slot: null,
         buy_price_coins: "2500",
         sell_price_coins: "1250",
-        consumable_effect: {
-            "restore_mp": "150",
-            "restore_hp": "25"
-        },
+        consumable_effect: { "restore_mp_pct": 10 },
         req_stats: null,
         bonuses: null
     },
@@ -73,9 +60,7 @@ const itemsData = [
         slot: null,
         buy_price_coins: null,
         sell_price_coins: "50",
-        consumable_effect: {
-            "restore_stamina": "50"
-        },
+        consumable_effect: { "restore_stamina": "10" },
         req_stats: null,
         bonuses: null
     },
@@ -86,9 +71,7 @@ const itemsData = [
         slot: null,
         buy_price_coins: "50000",
         sell_price_coins: "25000",
-        consumable_effect: {
-            "zenkai_resurrection": "true"
-        },
+        consumable_effect: { "hospital_exit_zenkai": true, "restore_hp_pct": 100, "restore_mp_pct": 100 },
         req_stats: null,
         bonuses: null
     },
@@ -99,11 +82,7 @@ const itemsData = [
         slot: null,
         buy_price_coins: null,
         sell_price_coins: "1000",
-        consumable_effect: {
-            "restore_hp": "full",
-            "restore_mp": "full",
-            "restore_stamina": "full"
-        },
+        consumable_effect: { "restore_stamina_pct": 100 },
         req_stats: null,
         bonuses: null
     },
@@ -116,15 +95,7 @@ const itemsData = [
         slot: null,
         buy_price_coins: null,
         sell_price_coins: "5000",
-        consumable_effect: {
-            "temporary_buff": {
-                "type": "holy_blessing",
-                "duration_minutes": "60",
-                "bonus_stats": {
-                    "all_stats": "10"
-                }
-            }
-        },
+        consumable_effect: { "bonus_stamina": "10" },
         req_stats: null,
         bonuses: null
     },
@@ -134,14 +105,8 @@ const itemsData = [
         category: "special_consumable",
         slot: null,
         buy_price_coins: null,
-        sell_price_coins: "10000",
-        consumable_effect: {
-            "permanent_bonus": {
-                "strength": "5",
-                "speed": "3",
-                "endurance": "4"
-            }
-        },
+        sell_price_coins: "50000",
+        consumable_effect: { "bonus_hp": "100" },
         req_stats: null,
         bonuses: null
     },
@@ -151,16 +116,8 @@ const itemsData = [
         category: "special_consumable",
         slot: null,
         buy_price_coins: null,
-        sell_price_coins: "50000",
-        consumable_effect: {
-            "permanent_bonus": {
-                "strength": "20",
-                "speed": "15",
-                "endurance": "18",
-                "intelligence": "10",
-                "mental_strength": "12"
-            }
-        },
+        sell_price_coins: "125000",
+        consumable_effect: { "bonus_mp": "100" },
         req_stats: null,
         bonuses: null
     },
@@ -170,10 +127,8 @@ const itemsData = [
         category: "special_consumable",
         slot: null,
         buy_price_coins: null,
-        sell_price_coins: "100000",
-        consumable_effect: {
-            "unlock_transformation": "super_saiyan"
-        },
+        sell_price_coins: "250000",
+        consumable_effect: { "unlock_form": "super" },
         req_stats: null,
         bonuses: null
     },
@@ -183,13 +138,8 @@ const itemsData = [
         category: "special_consumable",
         slot: null,
         buy_price_coins: null,
-        sell_price_coins: "7500",
-        consumable_effect: {
-            "permanent_bonus": {
-                "intelligence": "8",
-                "mental_strength": "12"
-            }
-        },
+        sell_price_coins: "25000",
+        consumable_effect: { "unlock_skill": "fala_uderzeniowa" },
         req_stats: null,
         bonuses: null
     },
@@ -199,18 +149,13 @@ const itemsData = [
         category: "special_consumable",
         slot: null,
         buy_price_coins: null,
-        sell_price_coins: "8000",
-        consumable_effect: {
-            "permanent_bonus": {
-                "speed": "15",
-                "endurance": "5"
-            }
-        },
+        sell_price_coins: "25000",
+        consumable_effect: { "unlock_skill": "powidok" },
         req_stats: null,
         bonuses: null
     },
 
-    // === EKWIPEUNEK (equipment) ===
+    // === EKWIPUNEK (equipment) ===
     
     // Klatka piersiowa (chest)
     {
@@ -220,28 +165,18 @@ const itemsData = [
         slot: "chest",
         buy_price_coins: "1500",
         sell_price_coins: "750",
-        req_stats: null,
-        bonuses: {
-            "bonus_hp": "20",
-            "defense": "5"
-        }
+        req_stats: { "strength": "50", "endurance": "50" },
+        bonuses: { "type": "passive", "bonus_hp": "100" }
     },
     {
         id: "00000000-0000-0000-0000-000000000015",
         name: "Ciężka Skorupa",
         category: "equipment",
         slot: "chest",
-        buy_price_coins: null,
-        sell_price_coins: "5000",
-        req_stats: {
-            "strength": "50",
-            "endurance": "40"
-        },
-        bonuses: {
-            "bonus_hp": "100",
-            "defense": "25",
-            "speed_penalty": "10"
-        }
+        buy_price_coins: "5000",
+        sell_price_coins: "2500",
+        req_stats: { "endurance": "200", "strength": "200" },
+        bonuses: { "type": "training", "bonus_hp": "1" }
     },
 
     // Głowa (head)
@@ -252,11 +187,8 @@ const itemsData = [
         slot: "head",
         buy_price_coins: "1500",
         sell_price_coins: "750",
-        req_stats: null,
-        bonuses: {
-            "bonus_hp": "10",
-            "defense": "3"
-        }
+        req_stats: { "strength": "50", "endurance": "50" },
+        bonuses: { "type": "passive", "bonus_mp": "100" }
     },
     {
         id: "00000000-0000-0000-0000-000000000017",
@@ -265,15 +197,8 @@ const itemsData = [
         slot: "head",
         buy_price_coins: "8000",
         sell_price_coins: "4000",
-        req_stats: {
-            "strength": "30",
-            "endurance": "25"
-        },
-        bonuses: {
-            "bonus_hp": "50",
-            "defense": "15",
-            "mental_strength": "5"
-        }
+        req_stats: { "endurance": "200", "strength": "200" },
+        bonuses: { "type": "training", "bonus_mp": "1" }
     },
 
     // Dłonie (hands)
@@ -282,47 +207,30 @@ const itemsData = [
         name: "Bandaże Treningowe",
         category: "equipment",
         slot: "hands",
-        buy_price_coins: null,
-        sell_price_coins: "300",
-        req_stats: null,
-        bonuses: {
-            "strength": "2",
-            "defense": "2"
-        }
+        buy_price_coins: "800",
+        sell_price_coins: "400",
+        req_stats: { "strength": "50" },
+        bonuses: { "type": "passive", "strength": "50" }
     },
     {
         id: "00000000-0000-0000-0000-000000000019",
         name: "Ciężkie Rękawice",
         category: "equipment",
         slot: "hands",
-        buy_price_coins: null,
-        sell_price_coins: "3000",
-        req_stats: {
-            "strength": "25",
-            "endurance": "20"
-        },
-        bonuses: {
-            "strength": "8",
-            "defense": "10",
-            "speed_penalty": "3"
-        }
+        buy_price_coins: "12000",
+        sell_price_coins: "6000",
+        req_stats: { "strength": "150" },
+        bonuses: { "type": "training", "strength": "10" }
     },
     {
         id: "00000000-0000-0000-0000-000000000020",
         name: "Ciężki Miecz",
         category: "equipment",
         slot: "hands",
-        buy_price_coins: null,
-        sell_price_coins: "4000",
-        req_stats: {
-            "strength": "80",
-            "endurance": "30"
-        },
-        bonuses: {
-            "attack_power": "25",
-            "strength": "15",
-            "speed_penalty": "15"
-        }
+        buy_price_coins: "20000",
+        sell_price_coins: "10000",
+        req_stats: { "strength": "100" },
+        bonuses: { "type": "training", "strength": "20" }
     },
 
     // Nogi (legs)
@@ -331,13 +239,10 @@ const itemsData = [
         name: "Wygodne Spodnie",
         category: "equipment",
         slot: "legs",
-        buy_price_coins: null,
+        buy_price_coins: "1000",
         sell_price_coins: "500",
-        req_stats: null,
-        bonuses: {
-            "bonus_hp": "15",
-            "speed": "3"
-        }
+        req_stats: { "endurance": "50" },
+        bonuses: { "type": "passive", "endurance": "50" }
     },
     {
         id: "00000000-0000-0000-0000-000000000022",
@@ -346,15 +251,8 @@ const itemsData = [
         slot: "legs",
         buy_price_coins: "15000",
         sell_price_coins: "7500",
-        req_stats: {
-            "strength": "40",
-            "endurance": "35"
-        },
-        bonuses: {
-            "bonus_hp": "80",
-            "defense": "20",
-            "speed_penalty": "8"
-        }
+        req_stats: { "endurance": "150" },
+        bonuses: { "type": "training", "endurance": "10" }
     },
 
     // Stopy (feet)
@@ -365,28 +263,18 @@ const itemsData = [
         slot: "feet",
         buy_price_coins: "800",
         sell_price_coins: "400",
-        req_stats: null,
-        bonuses: {
-            "speed": "5",
-            "endurance": "2"
-        }
+        req_stats: { "speed": "40" },
+        bonuses: { "type": "passive", "speed": "40" }
     },
     {
         id: "00000000-0000-0000-0000-000000000024",
         name: "Obciążone Buty",
         category: "equipment",
         slot: "feet",
-        buy_price_coins: null,
-        sell_price_coins: "2000",
-        req_stats: {
-            "strength": "20",
-            "endurance": "25"
-        },
-        bonuses: {
-            "endurance": "10",
-            "bonus_hp": "30",
-            "speed_penalty": "5"
-        }
+        buy_price_coins: "10000",
+        sell_price_coins: "5000",
+        req_stats: { "speed": "150" },
+        bonuses: { "type": "training", "speed": "10" }
     },
 
     // Biżuteria
@@ -395,51 +283,30 @@ const itemsData = [
         name: "Kolczyk Umysłu",
         category: "equipment",
         slot: "ear_l",
-        buy_price_coins: null,
-        sell_price_coins: "1500",
-        req_stats: {
-            "intelligence": "15",
-            "mental_strength": "12"
-        },
-        bonuses: {
-            "intelligence": "5",
-            "mental_strength": "8",
-            "mp_regeneration": "2"
-        }
+        buy_price_coins: "25000",
+        sell_price_coins: "12500",
+        req_stats: { "intelligence": "400" },
+        bonuses: { "type": "passive", "intelligence": "400" }
     },
     {
         id: "00000000-0000-0000-0000-000000000026",
         name: "Pierścień Ducha",
         category: "equipment",
         slot: "ring_l",
-        buy_price_coins: null,
-        sell_price_coins: "2000",
-        req_stats: {
-            "mental_strength": "18",
-            "intelligence": "10"
-        },
-        bonuses: {
-            "mental_strength": "6",
-            "intelligence": "4",
-            "bonus_mp": "25"
-        }
+        buy_price_coins: "30000",
+        sell_price_coins: "15000",
+        req_stats: { "mental_strength": "400" },
+        bonuses: { "type": "passive", "mental_strength": "400" }
     },
     {
         id: "00000000-0000-0000-0000-000000000027",
         name: "Rzemyk Harmonii",
         category: "equipment",
         slot: "necklace",
-        buy_price_coins: null,
-        sell_price_coins: "1200",
-        req_stats: {
-            "intelligence": "8",
-            "mental_strength": "10"
-        },
-        bonuses: {
-            "mental_strength": "4",
-            "intelligence": "3",
-            "ki_efficiency": "5"
-        }
+        buy_price_coins: "20000",
+        sell_price_coins: "10000",
+        req_stats: { "intelligence": "400", "mental_strength": "400" },
+        bonuses: { "type": "passive", "intelligence": "400", "mental_strength": "400" }
     }
 ];
 
