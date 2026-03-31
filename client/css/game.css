@@ -262,7 +262,13 @@ body {
     font-weight: 600;
 }
 
-.time-section {
+.time-container {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.time-display {
     color: var(--text-primary);
     font-weight: 600;
     font-size: 0.9rem;
@@ -270,6 +276,26 @@ body {
     background: rgba(255, 107, 0, 0.1);
     border-radius: 6px;
     border: 1px solid rgba(255, 107, 0, 0.3);
+}
+
+.blue-mini-btn {
+    background-color: var(--mp-bg); /* Ciemnoniebieski z motywu */
+    color: var(--text-primary);
+    border: 1px solid var(--mp-color); /* Jasnoniebieska ramka */
+    border-radius: 4px;
+    padding: 4px 8px;
+    font-size: 12px;
+    cursor: pointer;
+    transition: 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 24px;
+}
+
+.blue-mini-btn:hover {
+    background-color: var(--mp-color);
+    box-shadow: 0 0 8px var(--mp-color); /* Niebieska poświata, zero pomarańczowego */
 }
 
 /* Lewy Panel Boczny */
@@ -535,14 +561,6 @@ body {
 
 #top-panel-1.header-collapsed .header-buttons {
     justify-content: flex-end;
-}
-
-#top-panel-1.header-collapsed #toggle-header-btn {
-    position: absolute;
-    top: 5px;
-    right: 10px;
-    z-index: 10001;
-    pointer-events: auto;
 }
 
 /* ==========================================
