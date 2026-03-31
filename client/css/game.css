@@ -509,17 +509,18 @@ body {
         margin-top: 5px !important;
     }
 
-    /* 3. LEWY PANEL (KOMPAKTOWE STATYSTYKI) */
+    /* 3. Lewy Panel - nadpisanie odstępów z desktopu */
     aside#left-sidebar {
         position: relative !important;
         width: 100% !important;
         max-width: 100% !important;
-        padding: 10px 10px 30px 10px !important; /* Dolne 30px rezerwuje miejsce na guzik */
+        padding: 10px 10px 0 10px !important; /* Zero na dole, guzik sam dopełni przestrzeń */
         margin: 0 !important;
         border-right: none !important;
         border-bottom: 2px solid var(--goku-panel-border) !important;
         height: auto !important;
         min-height: unset !important;
+        gap: 6px !important; /* KRYTYCZNE: Zmniejszenie luki między monetami a paskami */
     }
 
     /* Ukrywanie detali, gdy zwinięty (zostają tylko paski i monety) */
@@ -529,13 +530,17 @@ body {
         display: none !important;
     }
 
-    /* Monety zawsze widoczne i wyśrodkowane nad paskami */
+    /* Monety - redukcja marginesów */
     aside#left-sidebar .coins {
         display: block !important;
         text-align: center !important;
         font-size:13px !important;
-        margin: 0 0 8px 0 !important;
+        margin: 0 !important;
+        padding-bottom: 2px !important;
         font-weight: bold !important;
+    }
+    aside#left-sidebar.stats-expanded .coins {
+        margin: 5px 0 !important;
     }
 
     /* Ekstremalnie cienkie paski zasobów */
@@ -550,13 +555,12 @@ body {
         margin-bottom: 2px !important;
     }
 
-    /* Zintegrowany guzik rozwijania na samym dole (bez ucinania) */
+    /* Zintegrowany guzik rozwijania - naturalne ułożenie na samym dole */
     #toggle-stats-details {
-        position: absolute !important;
-        bottom: 0 !important;
-        left: 0 !important;
-        width: 100% !important;
-        height: 25px !important;
+        position: relative !important; /* KONIEC z absolutnym ucinaniem pasków */
+        display: block !important;
+        width: calc(100% + 20px) !important;
+        height: 28px !important;
         background: rgba(249, 115, 22, 0.15) !important;
         border: none !important;
         border-top: 1px solid var(--goku-accent) !important;
@@ -564,9 +568,11 @@ body {
         font-size: 11px !important;
         font-weight: bold !important;
         text-transform: uppercase !important;
-        margin: 0 !important;
+        margin: 10px -10px 0 -10px !important; /* Rozciągnięcie na pełną szerokość do krawędzi */
         border-radius: 0 !important;
         cursor: pointer !important;
+        bottom: auto !important;
+        left: auto !important;
     }
 
     /* Jeśli rozwinięty, pozwalamy na wyświetlenie avatarów itp. */
