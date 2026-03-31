@@ -514,7 +514,7 @@ body {
         position: relative !important;
         width: 100% !important;
         max-width: 100% !important;
-        padding: 10px 10px 0 10px !important; /* Zero na dole, guzik sam dopełni przestrzeń */
+        padding: 15px 10px !important; /* Bezpieczny, standardowy padding */
         margin: 0 !important;
         border-right: none !important;
         border-bottom: 2px solid var(--goku-panel-border) !important;
@@ -555,24 +555,21 @@ body {
         margin-bottom: 2px !important;
     }
 
-    /* Zintegrowany guzik rozwijania - naturalne ułożenie na samym dole */
+    /* Zintegrowany guzik rozwijania - kuloodporny, statyczny */
     #toggle-stats-details {
-        position: relative !important; /* KONIEC z absolutnym ucinaniem pasków */
+        position: static !important; /* Koniec z nakładaniem się warstw */
         display: block !important;
-        width: calc(100% + 20px) !important;
-        height: 28px !important;
-        background: rgba(249, 115, 22, 0.15) !important;
-        border: none !important;
-        border-top: 1px solid var(--goku-accent) !important;
+        width: 100% !important;
+        height: 36px !important; /* Wyższy, wygodniejszy do kliknięcia na telefonie */
+        margin: 15px 0 0 0 !important; /* Zwykły, bezpieczny margines od góry */
+        background: rgba(249, 115, 22, 0.1) !important;
+        border: 1px solid var(--goku-accent) !important;
+        border-radius: 6px !important; /* Przywracamy zaokrąglenie */
         color: var(--goku-accent) !important;
         font-size: 11px !important;
         font-weight: bold !important;
         text-transform: uppercase !important;
-        margin: 10px -10px 0 -10px !important; /* Rozciągnięcie na pełną szerokość do krawędzi */
-        border-radius: 0 !important;
         cursor: pointer !important;
-        bottom: auto !important;
-        left: auto !important;
     }
 
     /* Jeśli rozwinięty, pozwalamy na wyświetlenie avatarów itp. */
@@ -664,6 +661,23 @@ body {
     }
     #hospital-countdown {
         font-size: 2.5rem !important;
+    }
+
+    /* Zabezpieczenie zakładek Sklepu przed rozpychaniem */
+    .shop-level-tabs, .shop-category-tabs {
+        display: flex !important;
+        flex-wrap: wrap !important;
+        justify-content: center !important;
+        gap: 8px !important;
+        width: 100% !important;
+    }
+    .shop-tab, .category-tab {
+        flex: 1 1 40% !important; /* Pozwala na ułożenie 2 elementów w rzędzie */
+        text-align: center !important;
+        padding: 8px 4px !important;
+        font-size: 11px !important;
+        white-space: normal !important; /* Zezwala na przełamanie tekstu do nowej linii */
+        height: auto !important;
     }
 }
 
