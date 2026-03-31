@@ -1074,6 +1074,22 @@
             }
         }
 
+        function getDefaultSlotText(slotId) {
+            const slotNames = {
+                'head': 'Głowa',
+                'chest': 'Tors',
+                'legs': 'Nogi',
+                'feet': 'Stopy',
+                'hands': 'Dłonie',
+                'ear_l': 'L. Kolczyk',
+                'ear_r': 'P. Kolczyk',
+                'ring_l': 'L. Pierścień',
+                'ring_r': 'P. Pierścień',
+                'necklace': 'Naszyjnik'
+            };
+            return slotNames[slotId] || '';
+        }
+
         // Renderowanie ekwipunku w interfejsie
         function renderInventory(items) {
             // Krok A: Złap wszystkie sloty i wyczyść je
