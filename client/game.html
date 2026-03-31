@@ -1208,7 +1208,6 @@
             card.setAttribute('draggable', 'true');
             card.setAttribute('data-inventory-id', item.id);
             card.setAttribute('data-template-id', item.item_template_id);
-            card.setAttribute('data-quantity', item.quantity || 1);
             card.setAttribute('data-item-slot', item.item_templates?.slot || '');
             card.setAttribute('data-item-template', encodeURIComponent(JSON.stringify(item.item_templates)));
             
@@ -1783,25 +1782,6 @@
                 </div>
             `;
 
-            // Dodaj animację CSS jeśli nie istnieje
-            if (!document.querySelector('#success-animation-style')) {
-                const style = document.createElement('style');
-                style.id = 'success-animation-style';
-                style.textContent = `
-                    @keyframes slideIn {
-                        from {
-                            transform: translateX(100%);
-                            opacity: 0;
-                        }
-                        to {
-                            transform: translateX(0);
-                            opacity: 1;
-                        }
-                    }
-                `;
-                document.head.appendChild(style);
-            }
-
             // Dodaj event do zamknięcia
             successDiv.addEventListener('click', function() {
                 successDiv.style.animation = 'slideIn 0.2s ease-out reverse';
@@ -1864,25 +1844,6 @@
                     <span>${message}</span>
                 </div>
             `;
-
-            // Dodaj animację CSS jeśli nie istnieje
-            if (!document.querySelector('#warning-animation-style')) {
-                const style = document.createElement('style');
-                style.id = 'warning-animation-style';
-                style.textContent = `
-                    @keyframes slideIn {
-                        from {
-                            transform: translateX(100%);
-                            opacity: 0;
-                        }
-                        to {
-                            transform: translateX(0);
-                            opacity: 1;
-                        }
-                    }
-                `;
-                document.head.appendChild(style);
-            }
 
             // Dodaj event do zamknięcia
             warningDiv.addEventListener('click', function() {
