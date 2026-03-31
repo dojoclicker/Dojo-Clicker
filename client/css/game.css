@@ -487,6 +487,7 @@ body {
         margin-bottom: 15px;
         box-shadow: none !important;
         z-index: 1 !important;
+        padding: 5px 10px 35px 10px !important; /* Miejsce na przycisk na dole */
     }
 
     /* Default hidden elements in stats panel */
@@ -494,9 +495,33 @@ body {
     aside#left-sidebar .player-info,
     aside#left-sidebar .player-name,
     aside#left-sidebar .current-form,
-    aside#left-sidebar .coins,
     aside#left-sidebar .character-stats {
         display: none !important;
+    }
+
+    /* Currency display and resource bars are always visible */
+    aside#left-sidebar .coins,
+    aside#left-sidebar .resource-bars {
+        display: block !important;
+    }
+
+    /* Compact resource bars */
+    aside#left-sidebar .resource-bar {
+        margin-bottom: 4px !important;
+    }
+    
+    aside#left-sidebar .bar-container {
+        height: 12px !important;
+    }
+    
+    aside#left-sidebar .resource-header {
+        font-size: 8px !important;
+        margin-bottom: 2px !important;
+    }
+    
+    aside#left-sidebar .resource-name,
+    aside#left-sidebar .resource-value {
+        font-size: 8px !important;
     }
 
     /* Expanded state shows hidden elements */
@@ -504,27 +529,38 @@ body {
     aside#left-sidebar.stats-expanded .player-info,
     aside#left-sidebar.stats-expanded .player-name,
     aside#left-sidebar.stats-expanded .current-form,
-    aside#left-sidebar.stats-expanded .coins,
     aside#left-sidebar.stats-expanded .character-stats {
         display: block !important;
     }
 
-    /* Mobile-only button styling */
-    .mobile-only-btn {
+    /* Mobile-only button styling - redesigned as bottom footer */
+    #toggle-stats-details {
+        position: absolute !important;
+        bottom: 0 !important;
+        left: 0 !important;
         width: 100% !important;
-        margin-top: 10px !important;
-        background: none !important;
-        border: 1px solid var(--goku-accent) !important;
+        height: 30px !important;
+        background: rgba(249, 115, 22, 0.2) !important;
+        border: none !important;
+        border-top: 1px solid var(--goku-accent) !important;
         color: var(--goku-accent) !important;
-        border-radius: 4px !important;
-        padding: 5px !important;
-        font-size: 12px !important;
+        font-size: 11px !important;
+        font-weight: bold !important;
+        text-transform: uppercase !important;
         cursor: pointer !important;
-        transition: 0.2s !important;
+        border-radius: 0 !important;
+        backdrop-filter: blur(4px) !important;
+        -webkit-backdrop-filter: blur(4px) !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        transition: all 0.2s !important;
     }
 
-    .mobile-only-btn:hover {
-        background: var(--goku-accent) !important;
+    #toggle-stats-details:hover {
+        background: rgba(249, 115, 22, 0.3) !important;
         color: white !important;
     }
 
