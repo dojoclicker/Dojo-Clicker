@@ -461,70 +461,93 @@ body {
 }
 
 @media (max-width: 768px) {
-    body {
-        grid-template-columns: 1fr;
-        grid-template-areas: 
-            "header"
-            "nav"
-            "main";
+    /* Globalna ochrona przed ucinaniem ekranu */
+    html, body {
+        overflow-x: hidden !important;
+        width: 100% !important;
+        max-width: 100vw !important;
     }
-    
-    #left-sidebar {
-        position: fixed;
-        left: -100%;
-        top: 0;
-        width: 280px;
-        height: 100%;
-        z-index: 10005;
-        background: var(--goku-bg-primary);
-        transition: left 0.3s ease;
-        box-shadow: 2px 0 10px rgba(0,0,0,0.5);
-        overflow-y: auto;
-        display: block !important;
-    }
-    
-    #left-sidebar.active {
-        left: 0;
-    }
-    
-    .mobile-close-btn {
-        display: block !important;
-    }
-    
-    .mobile-only {
+
+    /* Wymuszenie układu pionowego dla głównego kontenera */
+    /* Zależnie od nazwy klasy/ID owijającego #left-panel i #main-panel */
+    body, .game-container, .main-container {
         display: flex !important;
+        flex-direction: column !important;
     }
-    
+
+    /* Lewy Panel (Statystyki) - Pełna szerokość na górze */
+    aside#left-sidebar {
+        position: relative !important;
+        left: 0 !important;
+        top: 0 !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        height: auto !important;
+        min-height: unset !important;
+        margin-bottom: 15px;
+        box-shadow: none !important;
+        z-index: 1 !important;
+    }
+
+    /* Główny Panel (Misje, Sklep, Ekwipunek) */
+    main#main-workspace {
+        position: relative !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        margin-left: 0 !important;
+        padding: 10px !important;
+        box-sizing: border-box !important;
+    }
+
+    /* Górny Panel 1 (Header) - Zawijanie przycisków */
     #top-panel-1 {
-        padding: 0.75rem 1rem;
+        flex-wrap: wrap !important;
+        height: auto !important;
+        padding: 10px !important;
+        justify-content: center !important;
+        gap: 10px;
     }
-    
+    .header-buttons {
+        flex-wrap: wrap !important;
+        justify-content: center !important;
+    }
+
+    /* Górny Panel 2 (Nawigacja) - Czas ląduje niżej */
     #top-panel-2 {
-        padding: 0.5rem 1rem;
+        flex-wrap: wrap !important;
+        height: auto !important;
+        padding: 10px !important;
     }
-    
-    #main-workspace {
-        padding: 1rem;
+    .nav-section {
+        flex-wrap: wrap !important;
+        justify-content: center !important;
     }
-    
-    /* Główne kontenery zajmują 100% szerokości */
-    .missions-grid,
-    .equipment-container,
-    .shop-container {
-        width: 100%;
-        padding: 0.5rem;
+    .time-container {
+        width: 100% !important;
+        justify-content: center !important;
+        margin-top: 10px !important;
     }
-    
-    .missions-grid {
-        grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-        gap: 0.75rem;
-        padding-bottom: 200px;
+
+    /* Naprawa obciętych elementów (Ekwipunek, Sklep, Misje) */
+    .mission-card, 
+    .equipment-panel, 
+    .inventory-panel, 
+    .hospital-panel {
+        width: 100% !important;
+        min-width: 0 !important; /* Likwidacja sztywnej szerokości */
+        box-sizing: border-box !important;
+        margin-left: 0 !important;
+        margin-right: 0 !important;
     }
-    
-    .mission-card {
-        width: 140px;
-        height: 180px;
-        padding: 0.75rem;
+
+    .equipment-container, 
+    .shop-container, 
+    .hospital-container {
+        display: flex !important;
+        flex-direction: column !important; /* Układa plecak pod wyposażeniem */
+        align-items: center !important;
+        width: 100% !important;
+        gap: 20px !important;
     }
 }
 
