@@ -471,6 +471,31 @@ body {
     overflow: hidden;
 }
 
+/* Stan zwiniętego headera */
+#top-panel-1.header-collapsed {
+    padding: 0.25rem 1rem;
+    background: transparent;
+    border-bottom: none;
+    max-height: 40px;
+    transition: all var(--transition-normal) ease;
+}
+
+#top-panel-1.header-collapsed .logo-section,
+#top-panel-1.header-collapsed #home-btn,
+#top-panel-1.header-collapsed #logout-btn {
+    display: none;
+}
+
+#top-panel-1.header-collapsed .header-buttons {
+    justify-content: flex-end;
+}
+
+#top-panel-1.header-collapsed #toggle-header-btn {
+    position: absolute;
+    top: 0.5rem;
+    right: 1rem;
+}
+
 /* ==========================================
    WIDOKI I ZAKŁADKI
    ========================================== */

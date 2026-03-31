@@ -15,6 +15,7 @@
         <div class="header-buttons">
             <button class="btn-header" id="home-btn">Strona Główna</button>
             <button class="btn-header" id="logout-btn">Wyloguj</button>
+            <button class="btn-header" id="toggle-header-btn" title="Zwiń/Rozwiń panel">🔼</button>
         </div>
     </header>
 
@@ -2218,6 +2219,9 @@
             const workspace = document.getElementById('main-workspace');
             
             workspace.addEventListener('scroll', function() {
+                // ZABEZPIECZENIE 0: Nie ukrywaj headera, jeśli jest ręcznie zwinięty
+                if (document.getElementById('top-panel-1').classList.contains('header-collapsed')) return;
+                
                 // ZABEZPIECZENIE 1: Jeśli treść ledwo wystaje poza ekran, w ogóle nie ukrywaj headera.
                 // Zapobiega to pętli, w której ukrycie headera likwiduje pasek scrolla.
                 if (this.scrollHeight - this.clientHeight < 200) {
@@ -2360,6 +2364,28 @@
                     }
                 });
             }
+
+            // 7. Obsługa zwijania headera
+            const toggleHeaderBtn = document.getElementById('toggle-header-btn');
+            const headerPanel = document.getElementById('top-panel-1');
+            
+            // Odczytaj stan z localStorage przy starcie
+            const headerCollapsed = localStorage.getItem('header_collapsed');
+            if (headerCollapsed === 'true') {
+                headerPanel.classList.add('header-collapsed');
+                toggleHeaderBtn.textContent = '🔽';
+            }
+            
+            // EventListener dla przycisku toggle
+            toggleHeaderBtn.addEventListener('click', function() {
+                const isCollapsed = headerPanel.classList.toggle('header-collapsed');
+                
+                // Zapisz stan w localStorage
+                localStorage.setItem('header_collapsed', isCollapsed.toString());
+                
+                // Zmień ikonę przycisku
+                this.textContent = isCollapsed ? '🔽' : '🔼';
+            });
         });
     </script>
 <div id="global-tooltip" class="item-tooltip"></div>
