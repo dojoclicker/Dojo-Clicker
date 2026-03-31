@@ -505,6 +505,18 @@ body {
         display: block !important;
     }
 
+    /* Force currency display visibility */
+    aside#left-sidebar .coins {
+        display: flex !important;
+        justify-content: center !important;
+        align-items: center !important;
+        margin: 8px 0 !important;
+        padding: 5px 0 !important;
+        font-size: 14px !important;
+        opacity: 1 !important;
+        visibility: visible !important;
+    }
+
     /* Compact resource bars */
     aside#left-sidebar .resource-bar {
         margin-bottom: 4px !important;
@@ -533,23 +545,22 @@ body {
         display: block !important;
     }
 
-    /* Mobile-only button styling - relative positioning */
+    /* Mobile-only button styling - integrated with bottom edge */
     #toggle-stats-details {
         position: relative !important;
         display: block !important;
-        width: 100% !important;
+        width: calc(100% + 20px) !important; /* Rozciągnięcie na pełną szerokość */
         height: 30px !important;
-        margin-top: 10px !important;
-        bottom: auto !important;
-        left: auto !important;
+        margin: 15px -10px -10px -10px !important; /* Ujemne marginesy przyklejają guzik do krawędzi i dołu */
         background: rgba(249, 115, 22, 0.15) !important;
-        border: 1px solid var(--goku-accent) !important;
+        border: none !important;
+        border-top: 1px solid var(--goku-accent) !important; /* Cienka linia oddzielająca od reszty panelu */
         color: var(--goku-accent) !important;
         font-size: 11px !important;
         font-weight: bold !important;
         text-transform: uppercase !important;
         cursor: pointer !important;
-        border-radius: 4px !important;
+        border-radius: 0 0 6px 6px !important; /* Zaokrąglenie dopasowane tylko do dolnych rogów panelu */
     }
 
     /* Główny Panel (Misje, Sklep, Ekwipunek) */
