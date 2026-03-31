@@ -1244,7 +1244,7 @@
                     e.preventDefault();
                     e.stopPropagation();
                     
-                    const quantity = parseInt(card.getAttribute('data-quantity'));
+                    const quantity = parseInt(item.quantity || 1);
                     
                     if (quantity > 1) {
                         const amount = prompt('Ile sztuk chcesz oddzielić?', '1');
