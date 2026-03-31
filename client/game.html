@@ -10,7 +10,7 @@
     <!-- Górny Panel 1 - Header -->
     <header id="top-panel-1">
         <div class="logo-section">
-            <div class="game-logo">⚡ Dojo-Clicker</div>
+            <div class="game-logo"><span class="desktop-txt">⚡ Dojo-Clicker</span><span class="mobile-txt">⚡ DC</span></div>
         </div>
         <div class="header-buttons">
             <button class="btn-header" id="home-btn">Strona Główna</button>
@@ -117,6 +117,8 @@
                 </div>
             </div>
         </div>
+
+        <button id="toggle-stats-details" class="mobile-only-btn">Szczegóły postaci 🔽</button>
 
     </aside>
 
@@ -2386,6 +2388,19 @@
                 // Zmień ikonę przycisku
                 this.textContent = isCollapsed ? '🔽' : '🔼';
             });
+
+            // 8. Obsługa zwijania panelu statystyk na mobile
+            const toggleStatsBtn = document.getElementById('toggle-stats-details');
+            const leftSidebar = document.getElementById('left-sidebar');
+            
+            if (toggleStatsBtn) {
+                toggleStatsBtn.addEventListener('click', function() {
+                    const isExpanded = leftSidebar.classList.toggle('stats-expanded');
+                    
+                    // Zmień tekst przycisku
+                    this.textContent = isExpanded ? 'Zwiń 🔼' : 'Szczegóły postaci 🔽';
+                });
+            }
         });
     </script>
 <div id="global-tooltip" class="item-tooltip"></div>

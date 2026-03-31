@@ -489,6 +489,45 @@ body {
         z-index: 1 !important;
     }
 
+    /* Default hidden elements in stats panel */
+    aside#left-sidebar .avatar-placeholder,
+    aside#left-sidebar .player-info,
+    aside#left-sidebar .player-name,
+    aside#left-sidebar .current-form,
+    aside#left-sidebar .coins,
+    aside#left-sidebar .character-stats {
+        display: none !important;
+    }
+
+    /* Expanded state shows hidden elements */
+    aside#left-sidebar.stats-expanded .avatar-placeholder,
+    aside#left-sidebar.stats-expanded .player-info,
+    aside#left-sidebar.stats-expanded .player-name,
+    aside#left-sidebar.stats-expanded .current-form,
+    aside#left-sidebar.stats-expanded .coins,
+    aside#left-sidebar.stats-expanded .character-stats {
+        display: block !important;
+    }
+
+    /* Mobile-only button styling */
+    .mobile-only-btn {
+        width: 100% !important;
+        margin-top: 10px !important;
+        background: none !important;
+        border: 1px solid var(--goku-accent) !important;
+        color: var(--goku-accent) !important;
+        border-radius: 4px !important;
+        padding: 5px !important;
+        font-size: 12px !important;
+        cursor: pointer !important;
+        transition: 0.2s !important;
+    }
+
+    .mobile-only-btn:hover {
+        background: var(--goku-accent) !important;
+        color: white !important;
+    }
+
     /* Główny Panel (Misje, Sklep, Ekwipunek) */
     main#main-workspace {
         position: relative !important;
@@ -501,15 +540,36 @@ body {
 
     /* Górny Panel 1 (Header) - Zawijanie przycisków */
     #top-panel-1 {
+        display: flex !important;
+        justify-content: space-between !important;
+        align-items: center !important;
         flex-wrap: wrap !important;
         height: auto !important;
-        padding: 10px !important;
-        justify-content: center !important;
+        padding: 5px 15px !important;
         gap: 10px;
     }
+    .logo-section {
+        flex: 1 !important;
+        text-align: left !important;
+    }
     .header-buttons {
+        display: flex !important;
+        gap: 5px !important;
+        flex: none !important;
         flex-wrap: wrap !important;
         justify-content: center !important;
+    }
+    .btn-header {
+        padding: 4px 8px !important;
+        font-size: 11px !important;
+    }
+    
+    /* Logo text switching */
+    .desktop-txt {
+        display: none !important;
+    }
+    .mobile-txt {
+        display: inline !important;
     }
 
     /* Górny Panel 2 (Nawigacja) - Czas ląduje niżej */
@@ -547,7 +607,24 @@ body {
         flex-direction: column !important; /* Układa plecak pod wyposażeniem */
         align-items: center !important;
         width: 100% !important;
+        max-width: 100% !important;
         gap: 20px !important;
+        margin: 0 auto !important;
+    }
+
+    .equipment-panel, 
+    .inventory-panel {
+        width: 100% !important;
+        max-width: 100% !important;
+        min-width: 0 !important;
+        margin: 0 auto !important;
+    }
+
+    .inventory-grid {
+        margin: 0 auto !important;
+        justify-content: center !important;
+        width: 100% !important;
+        max-width: 100% !important;
     }
 }
 
