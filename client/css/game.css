@@ -584,8 +584,10 @@ body {
     main#main-workspace {
         padding: 10px !important;
         width: 100% !important;
-        max-width: 100% !important;
+        max-width: 100vw !important; /* Sztywny limit szerokości ekranu */
+        overflow-x: hidden !important; /* KRYTYCZNE: Odcina wszystko co rozpycha ekran */
         flex-grow: 1 !important;
+        box-sizing: border-box !important;
     }
 
     /* Reset kontenerów - zdejmujemy wymuszanie szerokości i ustawiamy w pionie */
@@ -663,27 +665,39 @@ body {
         font-size: 2.5rem !important;
     }
 
-    /* Zabezpieczenie zakładek Sklepu przed rozpychaniem */
-    .shop-level-tabs, .shop-category-tabs {
-        display: flex !important;
-        flex-wrap: wrap !important;
-        justify-content: center !important;
+    /* Twarda siatka dla zakładek sklepu */
+    .shop-level-tabs {
+        display: grid !important;
+        grid-template-columns: 1fr 1fr !important; /* Zawsze dwie równe kolumny */
         gap: 8px !important;
         width: 100% !important;
+        box-sizing: border-box !important;
     }
-    .shop-tab, .category-tab {
-        flex: 1 1 40% !important; /* Pozwala na ułożenie 2 elementów w rzędzie */
-        text-align: center !important;
-        padding: 8px 4px !important;
-        font-size: 11px !important;
-        white-space: normal !important; /* Zezwala na przełamanie tekstu do nowej linii */
-        height: auto !important;
+    
+    .shop-category-tabs {
+        display: grid !important;
+        grid-template-columns: 1fr 1fr !important; /* Zawsze dwie równe kolumny */
+        gap: 8px !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
+    }
+    
+    /* Trzecia zakładka (Ekwipunek Zwykły) zostaje wyśrodkowana na całą szerokość pod spodem */
+    .shop-category-tabs .category-tab:nth-child(3) {
+        grid-column: 1 / -1 !important;
     }
 
-    /* NAPRAWA ROZPYCHANIA EKRANU W SKLEPIE */
-    .shop-container {
-        padding: 10px !important;
-        gap: 15px !important;
+    .shop-tab, 
+    .category-tab {
+        width: 100% !important;
+        margin: 0 !important;
+        padding: 8px 4px !important;
+        font-size: 11px !important;
+        text-align: center !important;
+        white-space: normal !important;
+        word-wrap: break-word !important; /* Zmusza długie słowa do łamania się wpół */
+        height: 100% !important;
+        min-width: 0 !important; /* Ochrona przed blowoutem kontenera */
     }
 
     .shop-left-column, 
