@@ -487,7 +487,7 @@ body {
         margin-bottom: 15px;
         box-shadow: none !important;
         z-index: 1 !important;
-        padding: 5px 10px 35px 10px !important; /* Miejsce na przycisk na dole */
+        padding: 10px !important; /* Standardowy padding */
     }
 
     /* Default hidden elements in stats panel */
@@ -533,35 +533,23 @@ body {
         display: block !important;
     }
 
-    /* Mobile-only button styling - redesigned as bottom footer */
+    /* Mobile-only button styling - relative positioning */
     #toggle-stats-details {
-        position: absolute !important;
-        bottom: 0 !important;
-        left: 0 !important;
+        position: relative !important;
+        display: block !important;
         width: 100% !important;
         height: 30px !important;
-        background: rgba(249, 115, 22, 0.2) !important;
-        border: none !important;
-        border-top: 1px solid var(--goku-accent) !important;
+        margin-top: 10px !important;
+        bottom: auto !important;
+        left: auto !important;
+        background: rgba(249, 115, 22, 0.15) !important;
+        border: 1px solid var(--goku-accent) !important;
         color: var(--goku-accent) !important;
         font-size: 11px !important;
         font-weight: bold !important;
         text-transform: uppercase !important;
         cursor: pointer !important;
-        border-radius: 0 !important;
-        backdrop-filter: blur(4px) !important;
-        -webkit-backdrop-filter: blur(4px) !important;
-        margin: 0 !important;
-        padding: 0 !important;
-        display: flex !important;
-        align-items: center !important;
-        justify-content: center !important;
-        transition: all 0.2s !important;
-    }
-
-    #toggle-stats-details:hover {
-        background: rgba(249, 115, 22, 0.3) !important;
-        color: white !important;
+        border-radius: 4px !important;
     }
 
     /* Główny Panel (Misje, Sklep, Ekwipunek) */
