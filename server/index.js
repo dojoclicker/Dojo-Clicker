@@ -1634,14 +1634,14 @@ app.post('/api/shop/sell', authenticateToken, async (req, res) => {
       return res.status(400).json({ error: 'Ten przedmiot nie ma wartości sprzedaży' });
     }
 
-    const sellPrice = Math.floor(item.item_templates.buy_price_coins / 2);
+    const sellPrice = BigInt(item.item_templates.buy_price_coins) / 2n;
     
     // Oblicz ilość do sprzedaży
     const sellQuantity = (amount === 'all' || !amount) 
       ? BigInt(item.quantity) 
       : minBigInt(BigInt(amount), BigInt(item.quantity));
     
-    const totalSellPrice = BigInt(sellPrice) * sellQuantity;
+    const totalSellPrice = sellPrice * sellQuantity;
     const playerCoins = BigInt(character.coins || '0');
 
     // Atomowe operacje: dodanie monet i usunięcie przedmiotu
