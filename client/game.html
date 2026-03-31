@@ -247,58 +247,6 @@
         </div>
     </main>
 
-<style>
-        .nuke-help-btn {
-            background-color: #ff6b00;
-            color: #ffffff;
-            border: 2px solid #ffffff;
-            border-radius: 50%;
-            width: 22px;
-            height: 22px;
-            font-size: 14px;
-            font-weight: 900;
-            cursor: pointer;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            box-shadow: 0 0 8px rgba(255, 107, 0, 0.8);
-            transition: all 0.2s ease;
-            padding: 0;
-            line-height: 1;
-            font-family: sans-serif;
-            flex-shrink: 0;
-        }
-        .nuke-help-btn:hover {
-            transform: scale(1.15);
-            box-shadow: 0 0 15px #ff6b00;
-            background-color: #ffffff;
-            color: #ff6b00;
-            border-color: #ff6b00;
-        }
-        .nuke-floating-tooltip {
-            position: fixed;
-            width: 260px;
-            background-color: #0f172a;
-            border: 2px solid #ff6b00;
-            border-radius: 8px;
-            padding: 15px;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.9);
-            z-index: 999999;
-            text-align: center;
-            display: none; /* Zabezpieczenie przed miganiem */
-        }
-        .nuke-floating-tooltip::before {
-            content: '';
-            position: absolute;
-            top: 50%;
-            left: -10px;
-            transform: translateY(-50%);
-            border-width: 10px 10px 10px 0;
-            border-style: solid;
-            border-color: transparent #ff6b00 transparent transparent;
-        }
-    </style>
-
     <div id="pl-tooltip" class="nuke-floating-tooltip">
         <strong style="color: #ff6b00; font-size: 1.1rem;">Jak wyliczany jest Poziom Mocy?</strong>
         <hr style="border-color: #334155; margin: 10px 0;">
@@ -523,6 +471,38 @@
             }
         }
 
+        // Uniwersalna funkcja tworzenia popupów
+        function showCustomPopup(title, message, buttonText = 'Zrozumiałem') {
+            const popup = document.createElement('div');
+            popup.style.position = 'fixed';
+            popup.style.top = '50%';
+            popup.style.left = '50%';
+            popup.style.transform = 'translate(-50%, -50%)';
+            popup.style.padding = '2rem';
+            popup.style.borderRadius = '12px';
+            popup.style.zIndex = '10000';
+            popup.style.boxShadow = '0 10px 30px rgba(0,0,0,0.5)';
+            popup.style.minWidth = '300px';
+            popup.style.textAlign = 'center';
+            popup.style.fontWeight = 'bold';
+            popup.style.backgroundColor = 'var(--goku-panel-bg)';
+            popup.style.color = 'white';
+            popup.style.border = '2px solid var(--goku-panel-border)';
+            
+            popup.innerHTML = `
+                <h3 style="margin: 0; font-size: 1.5rem;">${title}</h3>
+                <p style="margin: 1rem 0 0 0; font-size: 1rem;">${message}</p>
+            `;
+            
+            document.body.appendChild(popup);
+            
+            setTimeout(() => {
+                if (popup.parentNode) {
+                    popup.parentNode.removeChild(popup);
+                }
+            }, 3500);
+        }
+
         // Rozpoczęcie misji
         async function startMission(missionId) {
             const sessionToken = localStorage.getItem('session_token');
@@ -546,35 +526,7 @@
                     const errorData = await response.json();
                     const errorMessage = errorData.message || 'Nie udało się rozpocząć misji. Spróbuj ponownie.';
                     
-                    // Popup błędu
-                    const errorPopup = document.createElement('div');
-                    errorPopup.style.position = 'fixed';
-                    errorPopup.style.top = '50%';
-                    errorPopup.style.left = '50%';
-                    errorPopup.style.transform = 'translate(-50%, -50%)';
-                    errorPopup.style.padding = '2rem';
-                    errorPopup.style.borderRadius = '12px';
-                    errorPopup.style.zIndex = '1000';
-                    errorPopup.style.boxShadow = '0 10px 30px rgba(0,0,0,0.5)';
-                    errorPopup.style.minWidth = '300px';
-                    errorPopup.style.textAlign = 'center';
-                    errorPopup.style.fontWeight = 'bold';
-                    errorPopup.style.backgroundColor = 'var(--error, #ef4444)';
-                    errorPopup.style.color = 'white';
-                    errorPopup.style.border = '2px solid var(--error)';
-                    
-                    errorPopup.innerHTML = `
-                        <h3 style="margin: 0; font-size: 1.5rem;">❌ Błąd</h3>
-                        <p style="margin: 1rem 0 0 0; font-size: 1rem;">${errorMessage}</p>
-                    `;
-                    
-                    document.body.appendChild(errorPopup);
-                    
-                    setTimeout(() => {
-                        if (errorPopup.parentNode) {
-                            errorPopup.parentNode.removeChild(errorPopup);
-                        }
-                    }, 3500);
+                    showCustomPopup('❌ Błąd', errorMessage);
                     return;
                 }
 
@@ -584,35 +536,7 @@
                 if (data.status === 'error') {
                     const errorMessage = data.message || 'Nie udało się rozpocząć misji. Spróbuj ponownie.';
                     
-                    // Popup błędu
-                    const errorPopup = document.createElement('div');
-                    errorPopup.style.position = 'fixed';
-                    errorPopup.style.top = '50%';
-                    errorPopup.style.left = '50%';
-                    errorPopup.style.transform = 'translate(-50%, -50%)';
-                    errorPopup.style.padding = '2rem';
-                    errorPopup.style.borderRadius = '12px';
-                    errorPopup.style.zIndex = '1000';
-                    errorPopup.style.boxShadow = '0 10px 30px rgba(0,0,0,0.5)';
-                    errorPopup.style.minWidth = '300px';
-                    errorPopup.style.textAlign = 'center';
-                    errorPopup.style.fontWeight = 'bold';
-                    errorPopup.style.backgroundColor = 'var(--error, #ef4444)';
-                    errorPopup.style.color = 'white';
-                    errorPopup.style.border = '2px solid var(--error)';
-                    
-                    errorPopup.innerHTML = `
-                        <h3 style="margin: 0; font-size: 1.5rem;">❌ Błąd</h3>
-                        <p style="margin: 1rem 0 0 0; font-size: 1rem;">${errorMessage}</p>
-                    `;
-                    
-                    document.body.appendChild(errorPopup);
-                    
-                    setTimeout(() => {
-                        if (errorPopup.parentNode) {
-                            errorPopup.parentNode.removeChild(errorPopup);
-                        }
-                    }, 3500);
+                    showCustomPopup('❌ Błąd', errorMessage);
                     return;
                 }
                 
@@ -748,35 +672,7 @@
             } catch (error) {
                 console.error('[Missions] Błąd podczas rozpoczynania misji:', error);
                 
-                // Popup błędu
-                const errorPopup = document.createElement('div');
-                errorPopup.style.position = 'fixed';
-                errorPopup.style.top = '50%';
-                errorPopup.style.left = '50%';
-                errorPopup.style.transform = 'translate(-50%, -50%)';
-                errorPopup.style.padding = '2rem';
-                errorPopup.style.borderRadius = '12px';
-                errorPopup.style.zIndex = '1000';
-                errorPopup.style.boxShadow = '0 10px 30px rgba(0,0,0,0.5)';
-                errorPopup.style.minWidth = '300px';
-                errorPopup.style.textAlign = 'center';
-                errorPopup.style.fontWeight = 'bold';
-                errorPopup.style.backgroundColor = 'var(--error, #ef4444)';
-                errorPopup.style.color = 'white';
-                errorPopup.style.border = '2px solid var(--error)';
-                
-                errorPopup.innerHTML = `
-                    <h3 style="margin: 0; font-size: 1.5rem;">❌ Błąd serwera</h3>
-                    <p style="margin: 1rem 0 0 0; font-size: 1rem;">Nie udało się rozpocząć misji. Spróbuj ponownie.</p>
-                `;
-                
-                document.body.appendChild(errorPopup);
-                
-                setTimeout(() => {
-                    if (errorPopup.parentNode) {
-                        errorPopup.parentNode.removeChild(errorPopup);
-                    }
-                }, 3500);
+                showCustomPopup('❌ Błąd serwera', 'Nie udało się rozpocząć misji. Spróbuj ponownie.');
             }
         }
 
@@ -1234,40 +1130,6 @@
             if (typeof renderShopBackpack === 'function') {
                 renderShopBackpack();
             }
-        }
-
-        // Czyszczenie wszystkich slotów
-        function clearAllSlots() {
-            // Wyczyść sloty wyposażenia, przywracając domyślne napisy
-            const equipmentSlots = document.querySelectorAll('.equipment-slot');
-            equipmentSlots.forEach(slot => {
-                const slotType = slot.getAttribute('data-slot');
-                const defaultText = getDefaultSlotText(slotType);
-                slot.innerHTML = defaultText;
-            });
-
-            // Wyczyść sloty plecaka
-            const inventorySlots = document.querySelectorAll('.inventory-slot');
-            inventorySlots.forEach(slot => {
-                slot.innerHTML = '';
-            });
-        }
-
-        // Pobieranie domyślnego tekstu dla slotu
-        function getDefaultSlotText(slotType) {
-            const slotTexts = {
-                'head': 'Głowa',
-                'chest': 'Tors',
-                'legs': 'Nogi',
-                'feet': 'Stopy',
-                'hands': 'Ręce',
-                'ear_l': 'L. Kolczyk',
-                'ear_r': 'P. Kolczyk',
-                'necklace': 'Naszyjnik',
-                'ring_l': 'L. Pierścień',
-                'ring_r': 'P. Pierścień'
-            };
-            return slotTexts[slotType] || 'Slot';
         }
 
         // Funkcja do pobierania emotikony dla przedmiotu
@@ -1861,24 +1723,6 @@
 
         return tooltipHTML;
     }
-        function getItemIcon(itemName) {
-            const name = itemName.toLowerCase();
-            
-            // Proste emotikony na podstawie nazwy
-            if (name.includes('miecz') || name.includes('sword')) return '⚔️';
-            if (name.includes('zbroja') || name.includes('armor')) return '🛡️';
-            if (name.includes('helm') || name.includes('hełm')) return '🪖';
-            if (name.includes('but') || name.includes('boot')) return '👢';
-            if (name.includes('rękaw') || name.includes('glove')) return '🧤';
-            if (name.includes('pierś') || name.includes('ring')) return '💍';
-            if (name.includes('naszyj') || name.includes('necklace')) return '📿';
-            if (name.includes('kolczy') || name.includes('earring')) return '🎧';
-            if (name.includes('mikstur') || name.includes('potion')) return '🧪';
-            if (name.includes('fasol') || name.includes('bean')) return '🫘';
-            
-            // Domyślnie - pierwsza litera nazwy
-            return itemName.charAt(0).toUpperCase();
-        }
 
         // Wyświetlanie błędu ekwipunku
         function showInventoryError(message) {

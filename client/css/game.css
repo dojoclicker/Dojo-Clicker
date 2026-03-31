@@ -1052,14 +1052,6 @@ body {
     font-size: 0.8rem;
 }
 
-/* USUŃ TEN BLOK: Global tooltip system handles visibility via JavaScript */
-
-.item-tooltip.visible {
-    opacity: 1;
-    visibility: visible;
-    transition-delay: 0s;
-}
-
 /* Responsywność dla ekwipunku */
 @media (max-width: 1024px) {
     .equipment-container {
@@ -1178,4 +1170,58 @@ body {
         min-width: 200px;
         padding: 0.75rem;
     }
+}
+
+/* Przycisk pomocy i tooltip */
+.nuke-help-btn {
+    background-color: #ff6b00;
+    color: #ffffff;
+    border: 2px solid #ffffff;
+    border-radius: 50%;
+    width: 22px;
+    height: 22px;
+    font-size: 14px;
+    font-weight: 900;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 0 8px rgba(255, 107, 0, 0.8);
+    transition: all 0.2s ease;
+    padding: 0;
+    line-height: 1;
+    font-family: sans-serif;
+    flex-shrink: 0;
+}
+
+.nuke-help-btn:hover {
+    transform: scale(1.15);
+    box-shadow: 0 0 15px #ff6b00;
+    background-color: #ffffff;
+    color: #ff6b00;
+    border-color: #ff6b00;
+}
+
+.nuke-floating-tooltip {
+    position: fixed;
+    width: 260px;
+    background-color: #0f172a;
+    border: 2px solid #ff6b00;
+    border-radius: 8px;
+    padding: 15px;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.9);
+    z-index: 999999;
+    text-align: center;
+    display: none; /* Zabezpieczenie przed miganiem */
+}
+
+.nuke-floating-tooltip::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: -10px;
+    transform: translateY(-50%);
+    border-width: 10px 10px 10px 0;
+    border-style: solid;
+    border-color: transparent #ff6b00 transparent transparent;
 }
