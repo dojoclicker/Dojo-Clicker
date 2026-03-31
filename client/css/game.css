@@ -679,6 +679,43 @@ body {
         white-space: normal !important; /* Zezwala na przełamanie tekstu do nowej linii */
         height: auto !important;
     }
+
+    /* NAPRAWA ROZPYCHANIA EKRANU W SKLEPIE */
+    .shop-container {
+        padding: 10px !important;
+        gap: 15px !important;
+    }
+
+    .shop-left-column, 
+    .shop-right-column {
+        width: 100% !important;
+        max-width: 100% !important;
+        flex: none !important; /* Nadpisuje flex: 0 0 65% z desktopu */
+        padding: 15px 10px !important;
+        box-sizing: border-box !important;
+        min-width: 0 !important;
+        margin: 0 !important;
+    }
+
+    /* Zawijanie zakładek sklepu do nowych linijek */
+    .shop-level-tabs, 
+    .shop-category-tabs {
+        display: flex !important;
+        flex-wrap: wrap !important;
+        justify-content: center !important;
+        gap: 8px !important;
+        width: 100% !important;
+    }
+
+    .shop-tab, 
+    .category-tab {
+        flex: 1 1 auto !important; /* Pozwala kafelkom rosnąć i kurczyć się proporcjonalnie */
+        padding: 8px 4px !important;
+        font-size: 11px !important;
+        white-space: normal !important; /* ZEZWALA NA ZŁAMANIE TEKSTU */
+        text-align: center !important;
+        height: auto !important;
+    }
 }
 
 /* Mobile-only elements - hidden on desktop */
