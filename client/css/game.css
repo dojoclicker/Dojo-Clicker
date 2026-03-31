@@ -444,7 +444,29 @@ body {
     }
     
     #left-sidebar {
-        display: none;
+        position: fixed;
+        left: -100%;
+        top: 0;
+        width: 280px;
+        height: 100%;
+        z-index: 10005;
+        background: var(--goku-bg-primary);
+        transition: left 0.3s ease;
+        box-shadow: 2px 0 10px rgba(0,0,0,0.5);
+        overflow-y: auto;
+        display: block !important;
+    }
+    
+    #left-sidebar.active {
+        left: 0;
+    }
+    
+    .mobile-close-btn {
+        display: block !important;
+    }
+    
+    .mobile-only {
+        display: flex !important;
     }
     
     #top-panel-1 {
@@ -458,6 +480,31 @@ body {
     #main-workspace {
         padding: 1rem;
     }
+    
+    /* Główne kontenery zajmują 100% szerokości */
+    .missions-grid,
+    .equipment-container,
+    .shop-container {
+        width: 100%;
+        padding: 0.5rem;
+    }
+    
+    .missions-grid {
+        grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+        gap: 0.75rem;
+        padding-bottom: 200px;
+    }
+    
+    .mission-card {
+        width: 140px;
+        height: 180px;
+        padding: 0.75rem;
+    }
+}
+
+/* Mobile-only elements - hidden on desktop */
+.mobile-only {
+    display: none;
 }
 
 /* Stany ukrywania headera */
@@ -492,8 +539,10 @@ body {
 
 #top-panel-1.header-collapsed #toggle-header-btn {
     position: absolute;
-    top: 0.5rem;
-    right: 1rem;
+    top: 5px;
+    right: 10px;
+    z-index: 10001;
+    pointer-events: auto;
 }
 
 /* ==========================================
