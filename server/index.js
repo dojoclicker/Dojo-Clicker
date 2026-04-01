@@ -126,7 +126,10 @@ async function getFullCharacterStats(userId) {
         speed: baseStats.speed.toString(),
         endurance: baseStats.endurance.toString(),
         intelligence: baseStats.intelligence.toString(),
-        mental_strength: baseStats.mental_strength.toString()
+        mental_strength: baseStats.mental_strength.toString(),
+        bonus_hp: baseStats.bonus_hp.toString(),
+        bonus_mp: baseStats.bonus_mp.toString(),
+        bonus_stamina: baseStats.bonus_stamina.toString()
       },
       equipStats: {
         strength: equipBonuses.strength.toString(),
@@ -1040,7 +1043,7 @@ app.post('/api/inventory/consume', authenticateToken, async (req, res) => {
         mp: currentMp.toString(),
         stamina: currentStamina.toString(),
         bonus_stamina: newBonusStamina.toString(),
-        coins: character.coins.toString() // Add coins to character updates
+        coins: (character.coins || '0').toString() // Add coins to character updates
       }
     });
 
