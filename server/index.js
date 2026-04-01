@@ -772,23 +772,64 @@ app.post('/api/missions/start', authenticateToken, async (req, res) => {
 
       const isDead = newHp <= 0n;
 
-      if (isDead) {
+          if (isDead) {
+            // Wyliczenie % kary na podstawie Poziomu Mocy (Hubris System)
+            const pl = BigInt(fullStats.powerLevel);
+            let deathPenaltyPct = 2n;
+            if (pl > 10000000n) deathPenaltyPct = 10n;
+            else if (pl > 1000000n) deathPenaltyPct = 8n;
+            else if (pl > 100000n) deathPenaltyPct = 6n;
+            else if (pl > 10000n) deathPenaltyPct = 4n;
 
-        const hospitalMinutes = Math.min(120, 5 + Math.floor(Math.pow(Number(BigInt(fullStats.powerLevel)), 0.25)));
-        const exactEndMs = Date.now() + hospitalMinutes * 60000;
-        const hospitalUntilUTC = new Date(exactEndMs).toISOString();
+            // 1. Utrata 10% obecnych Monet (min 1 moneta straty, chyba że ma 0)
+            const currentCoinsBeforeLoss = BigInt(character.coins || '0');
+            const deathCoinsLost = currentCoinsBeforeLoss > 0n ? maxBigInt(1n, (currentCoinsBeforeLoss * 10n) / 100n) : 0n;
+            const deathNewCoins = currentCoinsBeforeLoss - deathCoinsLost;
 
-        statsLostLog.hospital_end_ms = exactEndMs.toString();
+            // 2. Utrata procentowa ze WSZYSTKICH 5 statystyk bazowych
+            const deathStrLoss = (currentStr * deathPenaltyPct) / 100n;
+            const deathSpdLoss = (currentSpd * deathPenaltyPct) / 100n;
+            const deathEndLoss = (currentEnd * deathPenaltyPct) / 100n;
+            const deathIntLoss = (currentInt * deathPenaltyPct) / 100n;
+            const deathMenLoss = (currentMen * deathPenaltyPct) / 100n;
 
-        await supabase.from('characters').update({
-            hp: '0', mp: '0', stamina: newStamina.toString(), coins: newCoins.toString(),
-            strength: finalStr.toString(), speed: finalSpd.toString(), endurance: finalEnd.toString(),
-            intelligence: finalInt.toString(), mental_strength: finalMen.toString(),
-            last_death_penalty: statsLostLog, hospital_until: hospitalUntilUTC, current_form: 'Stan Podstawowy' 
-        }).eq('profile_id', userId);
+            const deathFinalStr = maxBigInt(1n, currentStr - deathStrLoss);
+            const deathFinalSpd = maxBigInt(1n, currentSpd - deathSpdLoss);
+            const deathFinalEnd = maxBigInt(1n, currentEnd - deathEndLoss);
+            const deathFinalInt = maxBigInt(1n, currentInt - deathIntLoss);
+            const deathFinalMen = maxBigInt(1n, currentMen - deathMenLoss);
 
-        return res.json({ result: 'death', message: `KRYTYCZNA PORAŻKA! Szpital na ${hospitalMinutes} min.`, penalty: { coins_lost: coinsLost.toString(), hospital_minutes: hospitalMinutes, stats_lost: statsLostLog, hospital_until: hospitalUntilUTC } });
-      } else {
+            const hospitalMinutes = Math.min(120, 5 + Math.floor(Math.pow(Number(pl), 0.25)));
+            const exactEndMs = Date.now() + hospitalMinutes * 60000;
+            const hospitalUntilUTC = new Date(exactEndMs).toISOString();
+
+            const deathStatsLostLog = {
+                strength: deathStrLoss.toString(),
+                speed: deathSpdLoss.toString(),
+                endurance: deathEndLoss.toString(),
+                intelligence: deathIntLoss.toString(),
+                mental_strength: deathMenLoss.toString(),
+                hospital_end_ms: exactEndMs.toString()
+            };
+
+            await supabase.from('characters').update({
+                hp: '0', mp: '0', stamina: newStamina.toString(), coins: deathNewCoins.toString(),
+                strength: deathFinalStr.toString(), speed: deathFinalSpd.toString(), endurance: deathFinalEnd.toString(),
+                intelligence: deathFinalInt.toString(), mental_strength: deathFinalMen.toString(),
+                last_death_penalty: deathStatsLostLog, hospital_until: hospitalUntilUTC, current_form: 'Stan Podstawowy'
+            }).eq('profile_id', userId);
+
+            return res.json({ 
+              result: 'death', 
+              message: `KRYTYCZNA PORAŻKA! Szpital na ${hospitalMinutes} min.`, 
+              penalty: { 
+                coins_lost: deathCoinsLost.toString(), 
+                hospital_minutes: hospitalMinutes, 
+                stats_lost: deathStatsLostLog, 
+                hospital_until: hospitalUntilUTC 
+              } 
+            });
+          } else {
         await supabase.from('characters').update({
             hp: newHp.toString(), mp: newMp.toString(), stamina: newStamina.toString(), coins: newCoins.toString(),
             strength: finalStr.toString(), speed: finalSpd.toString(), endurance: finalEnd.toString(),
