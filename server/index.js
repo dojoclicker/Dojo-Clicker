@@ -19,6 +19,129 @@ const minBigInt = (a, b) => (a < b ? a : b);
 const maxBigInt = (a, b) => (a > b ? a : b);
 
 // ==========================================
+// SILNIK STATYSTYK ZE SPRZĘTU - FAZA 1
+// ==========================================
+
+// Reużywalna funkcja pobierająca pełne statystyki postaci z bonusami z ekwipunku
+async function getFullCharacterStats(userId) {
+  try {
+    // 1. Pobierz profil i postać gracza
+    const { data: profile, error: profileError } = await supabase
+      .from('profiles')
+      .select('username')
+      .eq('id', userId)
+      .single();
+
+    if (profileError || !profile) {
+      throw new Error('Nie znaleziono profilu gracza');
+    }
+
+    const { data: character, error: characterError } = await supabase
+      .from('characters')
+      .select('*')
+      .eq('profile_id', userId)
+      .single();
+
+    if (characterError || !character) {
+      throw new Error('Nie znaleziono postaci gracza');
+    }
+
+    // 2. Pobierz założony ekwipunek
+    const { data: equippedItems, error: equipmentError } = await supabase
+      .from('inventory')
+      .select('*, item_templates(*)')
+      .eq('character_id', character.id)
+      .not('equipped_slot', 'is', null);
+
+    if (equipmentError) {
+      console.error('[Stats] Błąd pobierania ekwipunku:', equipmentError);
+      equippedItems = []; // Kontynuuj bez ekwipunku w przypadku błędu
+    }
+
+    // 3. Oblicz bonusy pasywne z sprzętu
+    const equipBonuses = {
+      strength: 0n,
+      speed: 0n,
+      endurance: 0n,
+      intelligence: 0n,
+      mental_strength: 0n,
+      bonus_hp: 0n,
+      bonus_mp: 0n
+    };
+
+    // Iteruj przez założony sprzęt i sumuj bonusy pasywne
+    equippedItems.forEach(item => {
+      if (item.item_templates && item.item_templates.bonuses) {
+        const bonuses = item.item_templates.bonuses;
+        
+        // Sprawdź czy to bonus pasywny
+        if (bonuses.type === 'passive' || bonuses.type === undefined) {
+          // Dodaj bonusy do statystyk (rzutowanie Stringów na BigInt)
+          if (bonuses.strength) equipBonuses.strength += BigInt(bonuses.strength);
+          if (bonuses.speed) equipBonuses.speed += BigInt(bonuses.speed);
+          if (bonuses.endurance) equipBonuses.endurance += BigInt(bonuses.endurance);
+          if (bonuses.intelligence) equipBonuses.intelligence += BigInt(bonuses.intelligence);
+          if (bonuses.mental_strength) equipBonuses.mental_strength += BigInt(bonuses.mental_strength);
+          if (bonuses.bonus_hp) equipBonuses.bonus_hp += BigInt(bonuses.bonus_hp);
+          if (bonuses.bonus_mp) equipBonuses.bonus_mp += BigInt(bonuses.bonus_mp);
+        }
+      }
+    });
+
+    // 4. Konwersja bazowych statystyk na BigInt
+    const baseStats = {
+      strength: BigInt(character.strength || '1'),
+      speed: BigInt(character.speed || '1'),
+      endurance: BigInt(character.endurance || '1'),
+      intelligence: BigInt(character.intelligence || '1'),
+      mental_strength: BigInt(character.mental_strength || '1'),
+      bonus_hp: BigInt(character.bonus_hp || '0'),
+      bonus_mp: BigInt(character.bonus_mp || '0'),
+      bonus_stamina: BigInt(character.bonus_stamina || '0')
+    };
+
+    // 5. Oblicz max_hp, max_mp, max_stamina z uwzględnieniem bonusów z ekwipunku
+    const max_hp = 100n + (baseStats.strength / 20n) + baseStats.bonus_hp + equipBonuses.bonus_hp;
+    const max_mp = 100n + (baseStats.intelligence / 5n) + baseStats.bonus_mp + equipBonuses.bonus_mp;
+    const max_stamina = 100n + baseStats.bonus_stamina; // Stamina nie otrzymuje bonusów od sprzętu
+
+    // 6. KRYTYCZNE: Oblicz powerLevel IGNORUJĄC equipBonuses (tylko baza + trwałe bonusy)
+    const stats_sum = baseStats.strength + baseStats.speed + baseStats.endurance + baseStats.intelligence + baseStats.mental_strength;
+    const powerLevel = stats_sum + baseStats.bonus_hp + (baseStats.bonus_mp * 2n) + (baseStats.bonus_stamina * 5n);
+
+    // 7. Zwróć pełny obiekt statystyk
+    return {
+      character,
+      profile,
+      powerLevel,
+      max_hp,
+      max_mp,
+      max_stamina,
+      baseStats: {
+        strength: baseStats.strength.toString(),
+        speed: baseStats.speed.toString(),
+        endurance: baseStats.endurance.toString(),
+        intelligence: baseStats.intelligence.toString(),
+        mental_strength: baseStats.mental_strength.toString()
+      },
+      equipStats: {
+        strength: equipBonuses.strength.toString(),
+        speed: equipBonuses.speed.toString(),
+        endurance: equipBonuses.endurance.toString(),
+        intelligence: equipBonuses.intelligence.toString(),
+        mental_strength: equipBonuses.mental_strength.toString(),
+        bonus_hp: equipBonuses.bonus_hp.toString(),
+        bonus_mp: equipBonuses.bonus_mp.toString()
+      }
+    };
+
+  } catch (err) {
+    console.error('[Stats] Błąd w getFullCharacterStats:', err.message);
+    throw err;
+  }
+}
+
+// ==========================================
 // BUFOR RAM - GLOBALNY STAN SERWERA
 // ==========================================
 // Przechowujemy stan gry w pamięci Node.js, by chronić limity Supabase
@@ -188,41 +311,9 @@ app.get('/api/character', authenticateToken, async (req, res) => {
   try {
     const userId = req.user.id;
 
-    // Pobranie danych profilu i postaci
-    const { data: profile, error: profileError } = await supabase
-      .from('profiles')
-      .select('username')
-      .eq('id', userId)
-      .single();
-
-    if (profileError || !profile) {
-      return res.status(404).json({ error: 'Nie znaleziono profilu gracza' });
-    }
-
-    const { data: character, error: characterError } = await supabase
-      .from('characters')
-      .select('*')
-      .eq('profile_id', userId)
-      .single();
-
-    if (characterError || !character) {
-      return res.status(404).json({ error: 'Nie znaleziono postaci gracza' });
-    }
-
-    // Konwersja stringów na BigInt dla obliczeń
-    const strength = BigInt(character.strength || '1');
-    const speed = BigInt(character.speed || '1');
-    const endurance = BigInt(character.endurance || '1');
-    const intelligence = BigInt(character.intelligence || '1');
-    const mental_strength = BigInt(character.mental_strength || '1');
-    const bonus_hp = BigInt(character.bonus_hp || '0');
-    const bonus_mp = BigInt(character.bonus_mp || '0');
-    const bonus_stamina = BigInt(character.bonus_stamina || '0');
-
-    // Obliczenia Max HP/MP/Stamina (Balans: +1 Max HP za każde 20 pkt Siły)
-    const max_hp = 100n + (strength / 20n) + bonus_hp;
-    const max_mp = 100n + (intelligence / 5n) + bonus_mp;
-    const max_stamina = 100n + bonus_stamina;
+    // Wywołaj nową funkcję pomocniczą
+    const fullStats = await getFullCharacterStats(userId);
+    const { character, profile, powerLevel, max_hp, max_mp, max_stamina, baseStats, equipStats } = fullStats;
 
     // ==========================================
     // LENIWA EWALUACJA (LAZY EVALUATION) - ZUNIFIKOWANY TICK 60s
@@ -314,7 +405,7 @@ app.get('/api/character', authenticateToken, async (req, res) => {
     }
 
     // ==========================================
-    // 2. PASYWNA REGENERACJA (Zależna od 60s ticków)
+    // 2. PASYWNA REGENERACJA (Zależna od 60s ticków) - z wykorzystaniem finalnych statystyk
     // ==========================================
     if (ticks60s > 0n || !character.last_calculation_time) {
       if (isHospitalized) {
@@ -322,10 +413,14 @@ app.get('/api/character', authenticateToken, async (req, res) => {
         dbUpdateNeeded = false;
       } else {
         // GRACZ ZDROWY (LUB WŁAŚNIE WYSZEDŁ) - Pełna regeneracja za obliczony czas
+        // Użyj finalnych statystyk uwzględniających sprzęt do obliczeń regeneracji
+        const finalEndurance = BigInt(baseStats.endurance) + BigInt(equipStats.endurance || '0');
+        const finalMentalStrength = BigInt(baseStats.mental_strength) + BigInt(equipStats.mental_strength || '0');
+        
         const staminaGain = ticks60s * 1n;
-        const enduranceBonus = BigInt(Math.floor(Math.sqrt(Number(endurance)) / 10));
+        const enduranceBonus = BigInt(Math.floor(Math.sqrt(Number(finalEndurance)) / 10));
         const hpGain = ticks60s * (1n + enduranceBonus);
-        const mentalBonus = BigInt(Math.floor(Math.sqrt(Number(mental_strength)) / 5));
+        const mentalBonus = BigInt(Math.floor(Math.sqrt(Number(finalMentalStrength)) / 5));
         const mpGain = ticks60s * (2n + mentalBonus);
 
         current_stamina = minBigInt(max_stamina, current_stamina + staminaGain);
@@ -348,14 +443,7 @@ app.get('/api/character', authenticateToken, async (req, res) => {
         .eq('profile_id', userId);
     }
 
-    // Obliczenie całkowitego Poziomu Mocy (Eliminacja podwójnego liczenia statystyk)
-    const stats_sum = strength + speed + endurance + intelligence + mental_strength;
-    
-    // Zliczamy WYŁĄCZNIE trwałe bonusy z rzadkich eliksirów (ignorując bazowe zasoby i pasywny ekwipunek).
-    // Wagi balansu: 1 HP = 1 PL, 1 MP = 2 PL (elitarne obrażenia), 1 Stamina = 5 PL.
-    const powerLevel = stats_sum + bonus_hp + (bonus_mp * 2n) + (bonus_stamina * 5n);
-
-    // Przygotowanie obiektu odpowiedzi z poprawnymi kluczami!
+    // Przygotowanie obiektu odpowiedzi z poprawnymi kluczami i dodaniem equip_stats
     const characterData = {
       username: profile.username,
       power_level: powerLevel.toString(),
@@ -370,13 +458,8 @@ app.get('/api/character', authenticateToken, async (req, res) => {
       max_mp: max_mp.toString(),
       max_stamina: max_stamina.toString(),
       
-      stats: {
-        strength: character.strength || '1',
-        speed: character.speed || '1',
-        endurance: character.endurance || '1',
-        intelligence: character.intelligence || '1',
-        mental_strength: character.mental_strength || '1'
-      },
+      stats: baseStats, // Bazowe statystyki
+      equip_stats: equipStats, // Bonusy pasywne z sprzętu
       
       completed_missions: character.completed_missions || [],
       // Zawsze wysyłamy na frontend twardy i poprawny czas wygenerowany z absolutnych milisekund:

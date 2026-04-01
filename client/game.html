@@ -871,12 +871,38 @@
                     if (graphicEl) graphicEl.style.borderColor = '#166534'; // Zielona ramka grafiki
                 }
 
-                // Aktualizacja statystyk postaci
-                document.getElementById('stat-strength').textContent = data.stats.strength;
-                document.getElementById('stat-speed').textContent = data.stats.speed;
-                document.getElementById('stat-endurance').textContent = data.stats.endurance;
-                document.getElementById('stat-intelligence').textContent = data.stats.intelligence;
-                document.getElementById('stat-mental_strength').textContent = data.stats.mental_strength;
+                // Aktualizacja statystyk postaci z bonusami z ekwipunku
+                const updateStatDisplay = (statId, baseValue, equipBonus) => {
+                    const baseNum = parseInt(baseValue);
+                    const bonusNum = parseInt(equipBonus);
+                    const element = document.getElementById(statId);
+                    
+                    if (bonusNum > 0) {
+                        // Wyświetl w formacie [Baza] (+[Bonus]) w kolorze zielonym
+                        element.textContent = `${baseNum} (+${bonusNum})`;
+                        element.style.color = 'var(--success, #22c55e)';
+                    } else {
+                        // Wyświetl tylko bazową wartość w domyślnym kolorze
+                        element.textContent = baseNum;
+                        element.style.color = 'var(--text-primary)';
+                    }
+                };
+
+                // Zaktualizuj 5 głównych statystyk z uwzględnieniem bonusów
+                if (data.equip_stats) {
+                    updateStatDisplay('stat-strength', data.stats.strength, data.equip_stats.strength);
+                    updateStatDisplay('stat-speed', data.stats.speed, data.equip_stats.speed);
+                    updateStatDisplay('stat-endurance', data.stats.endurance, data.equip_stats.endurance);
+                    updateStatDisplay('stat-intelligence', data.stats.intelligence, data.equip_stats.intelligence);
+                    updateStatDisplay('stat-mental_strength', data.stats.mental_strength, data.equip_stats.mental_strength);
+                } else {
+                    // Fallback - stare zachowanie jeśli equip_stats nie istnieje
+                    document.getElementById('stat-strength').textContent = data.stats.strength;
+                    document.getElementById('stat-speed').textContent = data.stats.speed;
+                    document.getElementById('stat-endurance').textContent = data.stats.endurance;
+                    document.getElementById('stat-intelligence').textContent = data.stats.intelligence;
+                    document.getElementById('stat-mental_strength').textContent = data.stats.mental_strength;
+                }
 
                 // Zapisz progres misji i odśwież interfejs misji
                 window.playerCompletedMissions = data.completed_missions;
@@ -1340,15 +1366,14 @@
                         price: template.buy_price_coins
                     };
 
-                    const nameLow = template.name.toLowerCase();
-                    
                     if (template.category === 'consumable' || template.category === 'special_consumable') {
                         shopData[1].consumables.push(shopItem);
                     } else if (template.category === 'equipment') {
-                        // Elastyczne sprawdzanie słów kluczowych dla sprzętu treningowego
-                        if (nameLow.includes('ciężk') || nameLow.includes('obciążon')) {
+                        // Dynamiczne filtrowanie na podstawie danych z bazy
+                        if (template.bonuses && template.bonuses.type === 'training') {
                             shopData[1].training.push(shopItem);
                         } else {
+                            // Domyślny sprzęt (type === 'passive' lub brak typu)
                             shopData[1].equipment.push(shopItem);
                         }
                     }
