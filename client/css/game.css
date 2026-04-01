@@ -888,24 +888,27 @@ body {
     body { display: flex !important; flex-direction: column !important; min-height: 100vh !important; }
 
     /* 2. HEADERY I NAWIGACJA */
-    #top-panel-1 { display: flex !important; justify-content: space-between !important; align-items: center !important; padding: 10px 15px !important; height: auto !important; width: 100% !important; box-sizing: border-box !important; }
+    #top-panel-1 { display: flex !important; justify-content: space-between !important; align-items: center !important; padding: 8px 10px !important; height: auto !important; width: 100% !important; box-sizing: border-box !important; flex-shrink: 0 !important; }
     .desktop-txt { display: none !important; }
     .mobile-txt { display: inline !important; }
     .header-buttons { display: flex !important; gap: 5px !important; flex: none !important; }
-    .btn-header { padding: 6px 10px !important; font-size: 11px !important; }
+    .btn-header { padding: 6px 8px !important; font-size: 11px !important; }
     
-    #top-panel-2 { padding: 8px 10px !important; width: 100% !important; box-sizing: border-box !important; }
-    .nav-section { display: flex !important; flex-wrap: nowrap !important; justify-content: flex-start !important; overflow-x: auto !important; width: 100% !important; padding-bottom: 5px !important; -webkit-overflow-scrolling: touch; gap: 8px !important; }
-    .nav-btn { min-width: 75px !important; padding: 5px !important; flex-shrink: 0 !important; }
-    .time-container { width: 100% !important; justify-content: center !important; margin-top: 8px !important; }
+    #top-panel-2 { display: flex !important; flex-direction: column !important; padding: 8px 5px !important; width: 100% !important; box-sizing: border-box !important; flex-shrink: 0 !important; }
+    .nav-section { display: flex !important; flex-wrap: nowrap !important; justify-content: flex-start !important; overflow-x: auto !important; width: 100% !important; padding-bottom: 5px !important; -webkit-overflow-scrolling: touch; gap: 5px !important; }
+    .nav-btn { min-width: 65px !important; padding: 4px !important; flex-shrink: 0 !important; }
+    .nav-text { font-size: 10px !important; }
+    
+    .time-container { display: flex !important; width: 100% !important; justify-content: center !important; align-items: center !important; gap: 5px !important; margin-top: 5px !important; }
+    .time-display { font-size: 11px !important; padding: 4px 8px !important; flex-grow: 1 !important; text-align: center !important; margin: 0 !important; }
+    .blue-mini-btn { height: 26px !important; padding: 0 12px !important; font-size: 11px !important; flex-shrink: 0 !important; margin: 0 !important; }
 
     /* 3. LEWY PANEL (Kompaktowy) */
-    aside#left-sidebar { position: relative !important; width: 100% !important; max-width: 100% !important; padding: 15px 15px !important; margin: 0 !important; border-right: none !important; border-bottom: 2px solid var(--goku-panel-border) !important; height: auto !important; min-height: unset !important; gap: 8px !important; box-sizing: border-box !important; }
+    aside#left-sidebar { flex-shrink: 0 !important; position: relative !important; width: 100% !important; max-width: 100% !important; padding: 12px 10px !important; margin: 0 !important; border-right: none !important; border-bottom: 2px solid var(--goku-panel-border) !important; height: auto !important; min-height: unset !important; gap: 8px !important; box-sizing: border-box !important; }
     
     aside#left-sidebar:not(.stats-expanded) .avatar-placeholder, 
     aside#left-sidebar:not(.stats-expanded) .player-info > *:not(.coins), 
-    aside#left-sidebar:not(.stats-expanded) .character-stats,
-    aside#left-sidebar:not(.stats-expanded) .current-form { display: none !important; }
+    aside#left-sidebar:not(.stats-expanded) .character-stats { display: none !important; }
     
     aside#left-sidebar .coins { display: block !important; text-align: center !important; font-size: 14px !important; margin: 0 !important; font-weight: bold !important; }
     aside#left-sidebar.stats-expanded .coins { margin: 10px 0 !important; }
@@ -914,10 +917,9 @@ body {
     aside#left-sidebar .bar-container { height: 12px !important; }
     aside#left-sidebar .resource-header { font-size: 11px !important; margin-bottom: 2px !important; }
     
-    #toggle-stats-details { display: block !important; position: static !important; width: 100% !important; height: 36px !important; margin: 10px 0 0 0 !important; background: rgba(249, 115, 22, 0.1) !important; border: 1px solid var(--goku-accent) !important; border-radius: 6px !important; color: var(--goku-accent) !important; font-size: 11px !important; font-weight: bold !important; text-transform: uppercase !important; cursor: pointer !important; }
+    #toggle-stats-details { position: static !important; display: block !important; width: 100% !important; height: 32px !important; margin: 10px 0 0 0 !important; background: rgba(249, 115, 22, 0.1) !important; border: 1px solid var(--goku-accent) !important; border-radius: 6px !important; color: var(--goku-accent) !important; font-size: 11px !important; font-weight: bold !important; text-transform: uppercase !important; cursor: pointer !important; }
     
     aside#left-sidebar.stats-expanded .player-info > * { display: block !important; }
-    aside#left-sidebar.stats-expanded .current-form { display: block !important; }
 
     /* 4. GŁÓWNY OBSZAR ROBOCZY */
     main#main-workspace { padding: 10px !important; width: 100% !important; max-width: 100% !important; overflow-x: hidden !important; flex-grow: 1 !important; box-sizing: border-box !important; display: block !important; }
