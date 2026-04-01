@@ -697,11 +697,27 @@ app.post('/api/missions/start', authenticateToken, async (req, res) => {
     const currentSpd = BigInt(fullStats.baseStats.speed);
     const currentEnd = BigInt(fullStats.baseStats.endurance);
 
+    // KROK 4.7.2: Kary za Potęgę (Diminishing Returns) - nowy algorytm "Najsłabsze Ogniwo"
     let rewardMultiplier = 100n;
-    if (lowestRatioPercent >= 400n && lowestRatioPercent < 800n) rewardMultiplier = 50n;
-    if (lowestRatioPercent >= 800n) rewardMultiplier = 10n;
-
-    if (currentStr < 15n || currentSpd < 15n || currentEnd < 15n) rewardMultiplier = 100n;
+    let boredomInjuryChance = 20n; // domyślnie 20% szansy na rany z nudów
+    
+    // Wylicz próg dla Najsłabszego Ogniwa
+    const reqStat = reqStats.strength ? BigInt(reqStats.strength) : (reqStats.speed ? BigInt(reqStats.speed) : BigInt(reqStats.endurance || '1'));
+    
+    if (lowestRatioPercent >= (reqStat * 8n) + 100n) {
+        // Duża kara
+        rewardMultiplier = 10n;
+        boredomInjuryChance = 0n;
+    } else if (lowestRatioPercent >= (reqStat * 4n) + 40n) {
+        // Średnia kara
+        rewardMultiplier = 50n;
+        boredomInjuryChance = 5n;
+    } else if (lowestRatioPercent >= (reqStat * 2n) + 15n) {
+        // Mała kara
+        rewardMultiplier = 75n;
+        boredomInjuryChance = 10n;
+    }
+    // Brak kary - pozostaje 100% i 20% szansy na rany z nudów
 
     const currentInt = BigInt(fullStats.baseStats.intelligence);
     const currentMen = BigInt(fullStats.baseStats.mental_strength);
@@ -710,43 +726,69 @@ app.post('/api/missions/start', authenticateToken, async (req, res) => {
     const roll = Math.random() * 100;
 
     if (roll > Number(successChance)) {
+      // KROK 4.7.1: Kara za Pychę (Porażka w misji < 100% szans)
       const maxHp = BigInt(fullStats.max_hp);
       const maxMp = BigInt(fullStats.max_mp);
       const maxStamina = BigInt(fullStats.max_stamina);
+      
+      // Obrażenia HP/MP/Staminy: 5% + (100% - szansa_na_sukces)
       const damagePercent = 5n + (100n - successChance);
 
       let newHp = maxBigInt(0n, BigInt(character.hp || '100') - ((maxHp * damagePercent) / 100n));
       let newMp = maxBigInt(0n, BigInt(character.mp || '100') - ((maxMp * damagePercent) / 100n));
       newStamina = maxBigInt(0n, newStamina - ((maxStamina * damagePercent) / 100n));
 
-      // WSPÓLNA LOGIKA KAR (Diminishing Returns)
-      const isDead = newHp <= 0n;
-      const statPenaltyPercent = isDead ? 2n : 1n; // 2% za śmierć, 1% za rany
-      const coinsPenaltyPercent = isDead ? 10n : 5n; // 10% za śmierć, 5% za rany
+      // Utrata statystyk i monet w zależności od szansy na sukces
+      let penaltyMultiplier = 2n; // domyślnie 2x
+      if (successChance >= 40n && successChance <= 79n) {
+          penaltyMultiplier = 3n; // Średnia kara
+      } else if (successChance <= 39n) {
+          penaltyMultiplier = 4n; // Duża kara
+      }
+      
+      // Losowe obrażenia w statystyki fizyczne (tylko Siła, Szybkość, Wytrzymałość)
+      const physicalStats = [
+          { name: 'strength', current: currentStr },
+          { name: 'speed', current: currentSpd },
+          { name: 'endurance', current: currentEnd }
+      ];
+      
+      // Losowo wybieramy statystyki fizyczne do obrażeń
+      const shuffledStats = physicalStats.sort(() => 0.5 - Math.random());
+      const selectedStats = shuffledStats.slice(0, Math.floor(Math.random() * 3) + 1); // 1-3 statystyki
+      
+      let strLoss = 0n, spdLoss = 0n, endLoss = 0n;
+      
+      selectedStats.forEach(stat => {
+          const baseReward = maxBigInt(1n, BigInt(mission.reward_stats?.min || '1'));
+          const loss = maxBigInt(1n, (baseReward * penaltyMultiplier) / 3n); // podzielone na 3 statystyki
+          
+          if (stat.name === 'strength') strLoss = loss;
+          else if (stat.name === 'speed') spdLoss = loss;
+          else if (stat.name === 'endurance') endLoss = loss;
+      });
+      
+      // Utrata monet
+      const baseCoinsReward = maxBigInt(1n, BigInt(mission.reward_coins_min || '1'));
+      const coinsLost = maxBigInt(0n, (baseCoinsReward * penaltyMultiplier));
+      const newCoins = maxBigInt(0n, BigInt(character.coins || '0') - coinsLost);
 
-      const coinsLost = (BigInt(character.coins || '0') * coinsPenaltyPercent) / 100n;
-      const newCoins = BigInt(character.coins || '0') - coinsLost;
-
-      const calcStatLoss = (stat, percent) => stat <= 10n ? 0n : maxBigInt(1n, (stat * percent) / 100n);
-      const strLoss = calcStatLoss(currentStr, statPenaltyPercent); 
-      const spdLoss = calcStatLoss(currentSpd, statPenaltyPercent);
-      const endLoss = calcStatLoss(currentEnd, statPenaltyPercent); 
-      const intLoss = calcStatLoss(currentInt, statPenaltyPercent);
-      const menLoss = calcStatLoss(currentMen, statPenaltyPercent);
-
-      const finalStr = maxBigInt(1n, currentStr - strLoss); 
+      const finalStr = maxBigInt(1n, currentStr - strLoss);
       const finalSpd = maxBigInt(1n, currentSpd - spdLoss);
-      const finalEnd = maxBigInt(1n, currentEnd - endLoss); 
-      const finalInt = maxBigInt(1n, currentInt - intLoss);
-      const finalMen = maxBigInt(1n, currentMen - menLoss);
+      const finalEnd = maxBigInt(1n, currentEnd - endLoss);
+      const finalInt = currentInt; // Inteligencja nie jest tracona przy porażce
+      const finalMen = currentMen; // Siła Mentalna nie jest tracona przy porażce
 
-      const statsLostLog = { 
-          strength: strLoss.toString(), speed: spdLoss.toString(), 
-          endurance: endLoss.toString(), intelligence: intLoss.toString(), 
-          mental_strength: menLoss.toString() 
+      const statsLostLog = {
+          strength: strLoss.toString(), speed: spdLoss.toString(),
+          endurance: endLoss.toString(), intelligence: '0',
+          mental_strength: '0'
       };
 
+      const isDead = newHp <= 0n;
+
       if (isDead) {
+
         const hospitalMinutes = Math.min(120, 5 + Math.floor(Math.pow(Number(BigInt(fullStats.powerLevel)), 0.25)));
         const exactEndMs = Date.now() + hospitalMinutes * 60000;
         const hospitalUntilUTC = new Date(exactEndMs).toISOString();
@@ -803,10 +845,12 @@ app.post('/api/missions/start', authenticateToken, async (req, res) => {
         if (lowestStat === 'strength') gainStr += rem; else if (lowestStat === 'speed') gainSpd += rem; else gainEnd += rem;
     }
 
+    // Sprzęt treningowy nie nalicza bonusów w przypadku porażki
     let trainGainStr = 0n; let trainGainSpd = 0n; let trainGainEnd = 0n;
     let trainGainBonusHp = 0n; let trainGainBonusMp = 0n;
     
-    if (fullStats.trainingStats) {
+    // Tylko przy sukcesie naliczamy bonusy treningowe
+    if (fullStats.trainingStats && roll <= Number(successChance)) {
         if (BigInt(fullStats.trainingStats.strength || '0') > 0n) trainGainStr = maxBigInt(1n, (BigInt(fullStats.trainingStats.strength) * rewardMultiplier) / 100n);
         if (BigInt(fullStats.trainingStats.speed || '0') > 0n) trainGainSpd = maxBigInt(1n, (BigInt(fullStats.trainingStats.speed) * rewardMultiplier) / 100n);
         if (BigInt(fullStats.trainingStats.endurance || '0') > 0n) trainGainEnd = maxBigInt(1n, (BigInt(fullStats.trainingStats.endurance) * rewardMultiplier) / 100n);
@@ -823,8 +867,25 @@ app.post('/api/missions/start', authenticateToken, async (req, res) => {
     let completedMissions = character.completed_missions || [];
     if (!completedMissions.includes(missionId)) completedMissions.push(missionId);
 
+    // KROK 4.7.2: Sprawdzenie "Ran z nudów" po sukcesie
+    let finalHp = BigInt(character.hp || '100');
+    let finalMp = BigInt(character.mp || '100');
+    let finalStamina = newStamina;
+    
+    if (roll <= Number(successChance) && Math.random() * 100 < Number(boredomInjuryChance)) {
+        // Rany z nudów - utrata 10% Max HP, ale nie poniżej 1 HP
+        const boredomDamage = maxBigInt(1n, (maxHp * 10n) / 100n);
+        finalHp = maxBigInt(1n, BigInt(character.hp || '100') - boredomDamage);
+        finalStamina = newStamina; // stamina już odjęta wcześniej
+    } else {
+        finalHp = BigInt(character.hp || '100');
+        finalMp = BigInt(character.mp || '100');
+        finalStamina = newStamina;
+    }
+
     await supabase.from('characters').update({
-        coins: newCoins.toString(), strength: newStr.toString(), speed: newSpd.toString(), endurance: newEnd.toString(), stamina: newStamina.toString(), 
+        coins: newCoins.toString(), strength: newStr.toString(), speed: newSpd.toString(), endurance: newEnd.toString(), 
+        hp: finalHp.toString(), mp: finalMp.toString(), stamina: finalStamina.toString(),
         bonus_hp: newBonusHp.toString(), bonus_mp: newBonusMp.toString(),
         completed_missions: completedMissions
       }).eq('profile_id', userId);
