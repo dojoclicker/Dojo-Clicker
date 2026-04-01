@@ -709,15 +709,12 @@ app.post('/api/inventory/swap', authenticateToken, async (req, res) => {
       return res.status(500).json({ error: 'Błąd podczas zamiany przedmiotów' });
     }
 
-    // Przelicz maksymalne HP/MP/Staminę po zamianie
-    const currentStr = BigInt(character.strength || '1');
-    const currentInt = BigInt(character.intelligence || '1');
-    const currentEnd = BigInt(character.endurance || '1');
-    const currentBonusStamina = BigInt(character.bonus_stamina || '0');
+    // Przelicz maksymalne HP/MP/Staminę po zamianie używając zsumowanych statystyk (Baza + Sprzęt)
+    const fullStats = await getFullCharacterStats(userId);
     
-    const newMaxHp = 100n + (currentStr / 20n) + BigInt(character.bonus_hp || '0');
-    const newMaxMp = 100n + (currentInt / 5n) + BigInt(character.bonus_mp || '0');
-    const newMaxStamina = 100n + currentBonusStamina;
+    const newMaxHp = BigInt(fullStats.max_hp);
+    const newMaxMp = BigInt(fullStats.max_mp);
+    const newMaxStamina = BigInt(fullStats.max_stamina);
 
     const currentHp = BigInt(character.hp || '100');
     const currentMp = BigInt(character.mp || '100');
