@@ -659,8 +659,9 @@ app.post('/api/missions/start', authenticateToken, async (req, res) => {
     if (BigInt(character.stamina ?? '0') < BigInt(mission.stamina_cost)) return res.status(400).json({ status: 'error', message: 'Nie masz staminy!' });
 
     const reqStats = mission.req_stats || {};
-    let lowestRatioPercent = 500n; 
-    let successChance = 100n;
+    let lowestRatioPercent = 5000n; // Duża wartość startowa dla DR
+    let totalCappedRatio = 0n; // Do średniej szansy
+    let reqCount = 0n;
 
     const effectiveStr = BigInt(fullStats.baseStats.strength) + BigInt(fullStats.equipStats.strength || '0');
     const effectiveSpd = BigInt(fullStats.baseStats.speed) + BigInt(fullStats.equipStats.speed || '0');
@@ -674,12 +675,23 @@ app.post('/api/missions/start', authenticateToken, async (req, res) => {
         if (stat === 'endurance') playerStat = effectiveEnd;
         
         const reqStat = BigInt(reqStats[stat]);
-        const ratio = (playerStat * 100n) / reqStat;
-        lowestRatioPercent = minBigInt(lowestRatioPercent, ratio);
+        const rawRatio = (playerStat * 100n) / reqStat;
+        
+        // 1. Zabezpieczenie dla kar (Diminishing Returns)
+        if (rawRatio < lowestRatioPercent) {
+            lowestRatioPercent = rawRatio;
+        }
+        
+        // 2. Realna szansa na sukces (każda statystyka max 100% udziału)
+        totalCappedRatio += minBigInt(100n, rawRatio);
+        reqCount += 1n;
       }
-    }); // <-- TO TUTAJ WINDSURF ZEPSUŁ NAWIASY
+    });
 
-    successChance = minBigInt(100n, lowestRatioPercent);
+    if (lowestRatioPercent === 5000n) lowestRatioPercent = 100n;
+    
+    // Średnia szansa na sukces
+    let successChance = reqCount > 0n ? (totalCappedRatio / reqCount) : 100n;
 
     const currentStr = BigInt(fullStats.baseStats.strength);
     const currentSpd = BigInt(fullStats.baseStats.speed);

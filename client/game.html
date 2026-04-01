@@ -375,22 +375,29 @@
     return `${formattedName} (${d.chance_pct}%)`;
 }).join(', ') : 'Brak';
 
-            // Wylicz Szansę na Sukces (Logika BigInt z Ekwipunkiem)
-            let lowestRatio = 500n;
+            // Wylicz Szansę na Sukces (Średnia wagowa statystyk)
+            let totalCappedRatio = 0n;
+            let reqCount = 0n;
+            
             if (window.playerCurrentStats) {
                 ['strength', 'speed', 'endurance'].forEach(key => {
                     if (reqs[key] && Number(reqs[key]) > 0) {
                         const baseStat = BigInt(window.playerCurrentStats[key] || '1');
                         const equipBonus = BigInt((window.playerEquipStats && window.playerEquipStats[key]) ? window.playerEquipStats[key] : '0');
-                        const pStat = baseStat + equipBonus; // Efektywna statystyka (Baza + Sprzęt)
+                        const pStat = baseStat + equipBonus; 
                         
                         const rStat = BigInt(reqs[key]);
-                        const ratio = (pStat * 100n) / rStat;
-                        if (ratio < lowestRatio) lowestRatio = ratio;
+                        const rawRatio = (pStat * 100n) / rStat;
+                        
+                        // Limitujemy pojedynczy wkład do 100%
+                        const cappedRatio = rawRatio > 100n ? 100n : rawRatio;
+                        totalCappedRatio += cappedRatio;
+                        reqCount += 1n;
                     }
                 });
             }
-            const chanceNum = Math.min(100, Number(lowestRatio));
+            
+            const chanceNum = reqCount > 0n ? Number(totalCappedRatio / reqCount) : 100;
 
             // Ustal kolor procentów
             let chanceColor = '#ef4444'; // Czerwony (0-60)
