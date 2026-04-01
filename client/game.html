@@ -1938,7 +1938,7 @@
                 });
             });
 
-            // Dodaj strefę sprzedaży w sklepie (drop zone dla plecaka)
+            // Dodaj strefę sprzedaży w sklepie (drop zone dla plecaka) - SIATKA
             const shopItemsGrid = document.getElementById('shop-items-grid');
             if (shopItemsGrid) {
                 shopItemsGrid.addEventListener('dragover', function(e) {
@@ -1954,6 +1954,7 @@
                 
                 shopItemsGrid.addEventListener('drop', function(e) {
                     e.preventDefault();
+                    e.stopPropagation(); // KRYTYCZNE: Zatrzymuje bąbelkowanie do lewej kolumny
                     this.style.backgroundColor = '';
                     this.style.border = '';
                     
@@ -1961,7 +1962,6 @@
                     const itemName = e.dataTransfer.getData('item_name');
                     const sourceSlot = e.dataTransfer.getData('source_slot');
                     
-                    // Sprawdź, czy przedmiot pochodzi z plecaka w sklepie
                     if (sourceSlot === 'null' && inventoryId) {
                         if (confirm(`Czy na pewno chcesz sprzedać "${itemName}"?`)) {
                             sellItem(inventoryId, 'all');
@@ -1970,7 +1970,7 @@
                 });
             }
 
-            // Dodaj lewą kolumnę sklepu jako strefę sprzedaży (bez potwierdzenia)
+            // Dodaj strefę sprzedaży w sklepie (drop zone dla plecaka) - TŁO KOLUMNY
             const shopLeftColumn = document.querySelector('.shop-left-column');
             if (shopLeftColumn) {
                 shopLeftColumn.addEventListener('dragover', function(e) {
@@ -1984,15 +1984,17 @@
                 
                 shopLeftColumn.addEventListener('drop', function(e) {
                     e.preventDefault();
+                    e.stopPropagation(); // KRYTYCZNE: Zatrzymuje propagację
                     this.style.backgroundColor = '';
                     
                     const inventoryId = e.dataTransfer.getData('inventory_id');
+                    const itemName = e.dataTransfer.getData('item_name');
                     const sourceSlot = e.dataTransfer.getData('source_slot');
                     
-                    // Sprawdź, czy przedmiot pochodzi z plecaka
                     if (sourceSlot === 'null' && inventoryId) {
-                        // Natychmiastowa sprzedaż bez potwierdzenia
-                        sellItem(inventoryId, 'all');
+                        if (confirm(`Czy na pewno chcesz sprzedać "${itemName}"?`)) {
+                            sellItem(inventoryId, 'all');
+                        }
                     }
                 });
             }
