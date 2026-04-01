@@ -3,124 +3,34 @@
 
 :root {
     /* Kolory bazowe motywu Son Goku */
-    --goku-bg-primary: #0a0f1d;          /* Główny kolor tła - bardzo Ciemny, zgaszony granat */
-    --goku-accent: #ff6b00;              /* Główny kolor akcentów - intensywny pomarańcz */
-    --goku-accent-hover: #ff8533;        /* Akcent na hover */
-    --goku-panel-bg: #161e31;            /* Panele i kontenery - półprzezroczysty, jaśniejszy granat */
-    --goku-panel-border: #2a3448;        /* Obramowanie paneli */
+    --goku-bg-primary: #0a0f1d;
+    --goku-accent: #ff6b00;
+    --goku-accent-hover: #ff8533;
+    --goku-panel-bg: #161e31;
+    --goku-panel-border: #2a3448;
     
     /* Kolory zasobów */
-    --hp-color: #dc2626;                 /* HP - czerwony */
-    --hp-bg: #7f1d1d;                    /* HP tło */
-    --mp-color: #2563eb;                 /* MP - niebieski */
-    --mp-bg: #1e3a8a;                    /* MP tło */
-    --stamina-color: #84cc16;            /* Stamina - żółto-zielony */
-    --stamina-bg: #365314;               /* Stamina tło */
+    --hp-color: #dc2626;
+    --hp-bg: #7f1d1d;
+    --mp-color: #2563eb;
+    --mp-bg: #1e3a8a;
+    --stamina-color: #84cc16;
+    --stamina-bg: #365314;
     
     /* Teksty */
-    --text-primary: #f1f5f9;              /* Główny tekst - biały */
-    --text-secondary: #94a3b8;           /* Tekst drugorzędny - szary */
-    --text-muted: #64748b;               /* Wyciszony tekst - ciemny szary */
+    --text-primary: #f1f5f9;
+    --text-secondary: #94a3b8;
+    --text-muted: #64748b;
     
     /* Statusy */
-    --success: #22c55e;                  /* Sukces - zielony */
-    --warning: #f59e0b;                  /* Ostrzeżenie - pomarańczowy */
-    --error: #ef4444;                    /* Błąd - czerwony */
+    --success: #22c55e;
+    --warning: #f59e0b;
+    --error: #ef4444;
     
     /* Przejścia */
-    --transition-fast: 0.3s ease;        /* Szybkie przejścia */
-    --transition-normal: 0.5s ease;      /* Normalne przejścia */
+    --transition-fast: 0.3s ease;
+    --transition-normal: 0.5s ease;
 }
-
-/* Naprawa napisu w nagłówku na komputerach */
-.desktop-txt { display: inline; }
-.mobile-txt { display: none; }
-
-/* Stany przycisków */
-.disabled {
-    pointer-events: none !important;
-    filter: grayscale(100%) !important;
-    opacity: 0.5 !important;
-    cursor: not-allowed !important;
-}
-
-/* Twarda blokada zakładek w Szpitalu */
-.tab-disabled {
-    pointer-events: none !important;
-    filter: grayscale(100%) brightness(0.5);
-    opacity: 0.5;
-    cursor: not-allowed;
-    position: relative;
-}
-
-/* Ukrycie przycisku statystyk na komputerach */
-#toggle-stats-details {
-    display: none;
-}
-
-/* Nowy układ Szpitala */
-#hospital-view {
-    display: none;
-    justify-content: center;
-    align-items: flex-start;
-    padding-top: 2rem;
-}
-
-.hospital-container {
-    display: flex; 
-    flex-direction: row; 
-    gap: 20px;
-    padding: 20px;
-    align-items: stretch;
-    width: 100%;
-    max-width: 1000px; /* Centruje i zapobiega rozciąganiu na cały ekran */
-    margin: 0 auto;
-}
-
-/* Panel Lewy - Grafika */
-.hospital-panel-left {
-    flex: 1; 
-    background: var(--goku-panel-bg);
-    border: 2px solid var(--goku-panel-border);
-    border-radius: 12px;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    padding: 20px;
-}
-
-/* Duża, klimatyczna ilustracja */
-.hospital-big-graphic {
-    width: 100%;
-    height: 100%;
-    min-height: 350px;
-    background: radial-gradient(circle, #2a1111 0%, #0a0f1d 100%);
-    border: 3px solid #dc2626; /* Dynamicznie zmieniane przez JS */
-    border-radius: 8px;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    box-shadow: inset 0 0 50px rgba(0,0,0,0.8);
-    transition: border-color 0.3s;
-}
-
-/* Panel Prawy - Informacje i Akcje */
-.hospital-panel-right {
-    flex: 1; 
-    min-width: 350px; /* Zapobiega zwężaniu tekstu */
-    background: var(--goku-panel-bg);
-    border: 2px solid var(--goku-panel-border);
-    border-radius: 12px;
-    padding: 20px;
-    text-align: center;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-}
-
-/* Kolory licznika */
-.text-hospital-danger { color: #ef4444 !important; text-shadow: 0 0 10px rgba(239, 68, 68, 0.5); }
-.text-hospital-success { color: #22c55e !important; text-shadow: 0 0 10px rgba(34, 197, 94, 0.5); }
 
 /* Reset i base */
 * {
@@ -149,6 +59,12 @@ body {
     min-height: 100vh;
 }
 
+/* Twarde ukrycie dopisków mobilnych na komputerze */
+.desktop-txt { display: inline; }
+.mobile-txt { display: none; }
+.mobile-only, .mobile-only-btn { display: none; }
+#toggle-stats-details { display: none; }
+
 /* Header - Górny Panel 1 */
 #top-panel-1 {
     grid-area: header;
@@ -158,8 +74,6 @@ body {
     padding: 1rem 2rem;
     background: linear-gradient(135deg, var(--goku-panel-bg) 0%, rgba(22, 30, 49, 0.8) 100%);
     border-bottom: 2px solid var(--goku-accent);
-    
-    /* NOWE WŁAŚCIWOŚCI: */
     max-height: 100px;
     transition: all var(--transition-normal) ease;
     z-index: 50;
@@ -198,8 +112,32 @@ body {
 .btn-header:hover {
     background: var(--goku-accent-hover);
     transform: translateY(-2px);
-    box-shadow: var(--shadow-lg);
+    box-shadow: 0 4px 12px rgba(255, 107, 0, 0.3);
 }
+
+/* Stany ukrywania headera */
+.header-hidden {
+    transform: translateY(-100%);
+    opacity: 0;
+    max-height: 0 !important;
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
+    border-bottom: none !important;
+    overflow: hidden;
+}
+
+#top-panel-1.header-collapsed {
+    padding: 0.25rem 1rem;
+    background: transparent;
+    border-bottom: none;
+    max-height: 40px;
+    transition: all var(--transition-normal) ease;
+}
+
+#top-panel-1.header-collapsed .logo-section,
+#top-panel-1.header-collapsed #home-btn,
+#top-panel-1.header-collapsed #logout-btn { display: none; }
+#top-panel-1.header-collapsed .header-buttons { justify-content: flex-end; }
 
 /* Nawigacja - Górny Panel 2 */
 #top-panel-2 {
@@ -213,7 +151,7 @@ body {
     padding: 0.75rem 2rem;
     background: var(--goku-panel-bg);
     border-bottom: 1px solid var(--goku-panel-border);
-    box-shadow: var(--shadow-lg);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.5);
 }
 
 .nav-section {
@@ -221,13 +159,10 @@ body {
     gap: 0.5rem;
     overflow-x: auto;
     white-space: nowrap;
-    scrollbar-width: none; /* Firefox */
-    -ms-overflow-style: none; /* IE/Edge */
+    scrollbar-width: none;
+    -ms-overflow-style: none;
 }
-
-.nav-section::-webkit-scrollbar {
-    display: none; /* Chrome/Safari */
-}
+.nav-section::-webkit-scrollbar { display: none; }
 
 .nav-btn {
     display: flex;
@@ -288,9 +223,9 @@ body {
 }
 
 .blue-mini-btn {
-    background-color: var(--mp-bg); /* Ciemnoniebieski z motywu */
+    background-color: var(--mp-bg);
     color: var(--text-primary);
-    border: 1px solid var(--mp-color); /* Jasnoniebieska ramka */
+    border: 1px solid var(--mp-color);
     border-radius: 4px;
     padding: 4px 8px;
     font-size: 12px;
@@ -304,7 +239,7 @@ body {
 
 .blue-mini-btn:hover {
     background-color: var(--mp-color);
-    box-shadow: 0 0 8px var(--mp-color); /* Niebieska poświata, zero pomarańczowego */
+    box-shadow: 0 0 8px var(--mp-color);
 }
 
 /* Lewy Panel Boczny */
@@ -320,34 +255,11 @@ body {
     gap: 1.5rem;
 }
 
-.player-info {
-    text-align: center;
-}
-
-.player-name {
-    font-size: 1.2rem;
-    font-weight: bold;
-    color: var(--goku-accent);
-    margin-bottom: 0.5rem;
-}
-
-.power-level {
-    font-size: 1rem;
-    color: var(--text-secondary);
-    margin-bottom: 0.25rem;
-}
-
-.current-form {
-    font-size: 0.9rem;
-    color: var(--text-muted);
-    margin-bottom: 0.5rem;
-}
-
-.coins {
-    font-size: 1rem;
-    color: var(--warning);
-    font-weight: 600;
-}
+.player-info { text-align: center; }
+.player-name { font-size: 1.2rem; font-weight: bold; color: var(--goku-accent); margin-bottom: 0.5rem; }
+.power-level { font-size: 1rem; color: var(--text-secondary); margin-bottom: 0.25rem; }
+.current-form { font-size: 0.9rem; color: var(--text-muted); margin-bottom: 0.5rem; }
+.coins { font-size: 1rem; color: var(--warning); font-weight: 600; }
 
 .avatar-placeholder {
     width: 200px;
@@ -363,33 +275,11 @@ body {
     font-size: 0.9rem;
 }
 
-.resource-bars {
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
-}
-
-.resource-bar {
-    display: flex;
-    flex-direction: column;
-    gap: 0.25rem;
-}
-
-.resource-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    font-size: 0.8rem;
-    font-weight: 600;
-}
-
-.resource-name {
-    color: var(--text-secondary);
-}
-
-.resource-value {
-    color: var(--text-primary);
-}
+.resource-bars { display: flex; flex-direction: column; gap: 1rem; }
+.resource-bar { display: flex; flex-direction: column; gap: 0.25rem; }
+.resource-header { display: flex; justify-content: space-between; align-items: center; font-size: 0.8rem; font-weight: 600; }
+.resource-name { color: var(--text-secondary); }
+.resource-value { color: var(--text-primary); }
 
 .bar-container {
     width: 100%;
@@ -411,10 +301,7 @@ body {
 .bar-fill::after {
     content: '';
     position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
+    top: 0; left: 0; right: 0; bottom: 0;
     background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.2) 50%, transparent 100%);
     animation: shimmer 2s infinite;
 }
@@ -443,297 +330,28 @@ body {
     align-items: center;
     text-align: center;
     width: 100%;
-    min-height: 60vh; /* Wymusza trzymanie się w pionowym środku strony */
+    min-height: 60vh;
     padding: 4rem 2rem;
 }
 
-.welcome-title {
-    font-size: 2rem;
-    color: var(--text-primary);
-    margin-bottom: 1rem;
-}
-
-.welcome-subtitle {
-    font-size: 1.2rem;
-    color: var(--text-secondary);
-}
-
-/* Responsywność */
-@media (max-width: 1024px) {
-    body {
-        grid-template-columns: 250px 1fr;
-    }
-    
-    #left-sidebar {
-        width: 250px;
-    }
-}
-
-@media (max-width: 768px) {
-    /* 1. GLOBALNY RESET MOBILNY */
-    html, body {
-        overflow-x: hidden !important;
-        width: 100% !important;
-    }
-    body {
-        display: flex !important;
-        flex-direction: column !important;
-    }
-
-    /* 2. HEADERY I NAWIGACJA */
-    #top-panel-1 {
-        display: flex !important;
-        justify-content: space-between !important;
-        align-items: center !important;
-        padding:5px 15px !important;
-        height: auto !important;
-    }
-    .desktop-txt { display: none !important; }
-    .mobile-txt { display: inline !important; }
-    
-    .header-buttons {
-        display: flex !important;
-        gap: 5px !important;
-        flex: none !important;
-    }
-    .btn-header {
-        padding:4px 8px !important;
-        font-size: 11px !important;
-    }
-
-    #top-panel-2 {
-        padding: 8px 10px !important;
-        flex-wrap: wrap !important;
-        justify-content: center !important;
-        gap: 8px !important;
-        height: auto !important;
-    }
-    .nav-section {
-        flex-wrap: wrap !important;
-        justify-content: center !important;
-    }
-    .time-container {
-        width: 100% !important;
-        justify-content: center !important;
-        margin-top: 5px !important;
-    }
-
-    /* 3. Lewy Panel - nadpisanie odstępów z desktopu */
-    aside#left-sidebar {
-        position: relative !important;
-        width: 100% !important;
-        max-width: 100% !important;
-        padding: 15px 10px !important; /* Bezpieczny, standardowy padding */
-        margin: 0 !important;
-        border-right: none !important;
-        border-bottom: 2px solid var(--goku-panel-border) !important;
-        height: auto !important;
-        min-height: unset !important;
-        gap: 6px !important; /* KRYTYCZNE: Zmniejszenie luki między monetami a paskami */
-    }
-
-    /* Ukrywanie detali, gdy zwinięty (zostają tylko paski i monety) */
-    aside#left-sidebar:not(.stats-expanded) .avatar-placeholder,
-    aside#left-sidebar:not(.stats-expanded) .player-info > *:not(.coins),
-    aside#left-sidebar:not(.stats-expanded) .character-stats {
-        display: none !important;
-    }
-
-    /* Monety - redukcja marginesów */
-    aside#left-sidebar .coins {
-        display: block !important;
-        text-align: center !important;
-        font-size:13px !important;
-        margin: 0 !important;
-        padding-bottom: 2px !important;
-        font-weight: bold !important;
-    }
-    aside#left-sidebar.stats-expanded .coins {
-        margin: 5px 0 !important;
-    }
-
-    /* Ekstremalnie cienkie paski zasobów */
-    aside#left-sidebar .resource-bars {
-        gap: 4px !important;
-    }
-    aside#left-sidebar .bar-container {
-        height: 10px !important;
-    }
-    aside#left-sidebar .resource-header {
-        font-size: 10px !important;
-        margin-bottom: 2px !important;
-    }
-
-    /* Zintegrowany guzik rozwijania - kuloodporny, statyczny */
-    #toggle-stats-details {
-        position: static !important; /* Koniec z nakładaniem się warstw */
-        display: block !important;
-        width: 100% !important;
-        height: 36px !important; /* Wyższy, wygodniejszy do kliknięcia na telefonie */
-        margin: 15px 0 0 0 !important; /* Zwykły, bezpieczny margines od góry */
-        background: rgba(249, 115, 22, 0.1) !important;
-        border: 1px solid var(--goku-accent) !important;
-        border-radius: 6px !important; /* Przywracamy zaokrąglenie */
-        color: var(--goku-accent) !important;
-        font-size: 11px !important;
-        font-weight: bold !important;
-        text-transform: uppercase !important;
-        cursor: pointer !important;
-    }
-
-    /* Jeśli rozwinięty, pozwalamy na wyświetlenie avatarów itp. */
-    aside#left-sidebar.stats-expanded .player-info > * {
-        display: block !important;
-    }
-    aside#left-sidebar.stats-expanded .coins {
-        margin: 10px 0 !important;
-    }
-
-    /* 4. UJEDNOLICENIE GŁÓWNYCH ZAKŁADEK (Misje, Ekwipunek, Sklep, Szpital) */
-    main#main-workspace {
-        padding: 10px !important;
-        width: 100% !important;
-        max-width: 100vw !important; /* Sztywny limit szerokości ekranu */
-        overflow-x: hidden !important; /* KRYTYCZNE: Odcina wszystko co rozpycha ekran */
-        flex-grow: 1 !important;
-        box-sizing: border-box !important;
-    }
-
-    /* Reset kontenerów - zdejmujemy wymuszanie szerokości i ustawiamy w pionie */
-    .equipment-container,
-    .shop-container,
-    .hospital-container {
-        display: flex !important;
-        flex-direction: column !important;
-        align-items: center !important;
-        width: 100% !important;
-        max-width: 100% !important;
-        padding: 0 !important;
-        margin: 0 !important;
-        gap: 15px !important;
-    }
-
-    /* Pudełka wewnątrz paneli */
-    .equipment-panel,
-    .inventory-panel,
-    .shop-left-column,
-    .shop-right-column,
-    .hospital-panel-left,
-    .hospital-panel-right {
-        width: 100% !important;
-        min-width: 0 !important;
-        padding: 15px 10px !important;
-        margin: 0 !important;
-    }
-
-    /* Gridy (Misje i Sklep) */
-    .missions-grid {
-        display: grid !important;
-        grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)) !important;
-        gap: 10px !important;
-        padding: 0 0 50px 0 !important;
-    }
-    .mission-card {
-        width: 100% !important;
-        height: auto !important;
-        min-height: 180px !important;
-        padding: 10px !important;
-    }
-    .shop-items-grid {
-        display: grid !important;
-        grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)) !important;
-        gap: 10px !important;
-    }
-    .shop-item-card {
-        height: auto !important;
-        min-height: 160px !important;
-    }
-
-    /* Gridy (Ekwipunek / Plecak) */
-    .inventory-grid,
-    .shop-backpack-grid {
-        display: flex !important;
-        flex-wrap: wrap !important;
-        justify-content: center !important;
-        gap: 8px !important;
-    }
-    .character-body {
-        grid-template-columns: 60px 75px 60px !important;
-        grid-template-rows: 60px 45px 60px 60px !important;
-        gap: 8px !important;
-    }
-
-    /* Szpital specjalnie dla mobilki */
-    .hospital-big-graphic {
-        min-height: 200px !important;
-    }
-    .hospital-panel-right h2 {
-        font-size: 1.2rem !important;
-    }
-    #hospital-countdown {
-        font-size: 2.5rem !important;
-    }
-
-/* Mobile-only elements - hidden on desktop */
-.mobile-only, .mobile-only-btn {
-    display: none;
-}
-
-/* Stany ukrywania headera */
-.header-hidden {
-    transform: translateY(-100%);
-    opacity: 0;
-    max-height: 0 !important;
-    padding-top: 0 !important;
-    padding-bottom: 0 !important;
-    border-bottom: none !important;
-    overflow: hidden;
-}
-
-/* Stan zwiniętego headera */
-#top-panel-1.header-collapsed {
-    padding: 0.25rem 1rem;
-    background: transparent;
-    border-bottom: none;
-    max-height: 40px;
-    transition: all var(--transition-normal) ease;
-}
-
-#top-panel-1.header-collapsed .logo-section,
-#top-panel-1.header-collapsed #home-btn,
-#top-panel-1.header-collapsed #logout-btn {
-    display: none;
-}
-
-#top-panel-1.header-collapsed .header-buttons {
-    justify-content: flex-end;
-}
-
-/* ==========================================
-   WIDOKI I ZAKŁADKI
-   ========================================== */
+.welcome-title { font-size: 2rem; color: var(--text-primary); margin-bottom: 1rem; }
+.welcome-subtitle { font-size: 1.2rem; color: var(--text-secondary); }
 
 /* Kontenery widoków */
-[id$="-view"] {
-    width: 100%;
-    height: 100%;
-}
+[id$="-view"] { width: 100%; height: 100%; }
 
-/* ==========================================
-   WIDOK MISJI
-   ========================================== */
-
+/* WIDOK MISJI */
 .missions-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
     gap: 1.5rem;
     padding: 1rem;
     width: 100%;
-    padding-bottom: 300px;
+    padding-bottom: 50px;
 }
 
 .mission-card {
-    width: 200px;
+    width: 100%;
     height: 250px;
     background: var(--goku-panel-bg);
     border: 2px solid var(--goku-panel-border);
@@ -752,43 +370,17 @@ body {
 .mission-card:hover {
     transform: scale(1.05);
     border-color: var(--goku-accent);
-    box-shadow: var(--shadow-xl);
+    box-shadow: 0 4px 12px rgba(255, 107, 0, 0.3);
     z-index: 10;
 }
 
-.mission-icon {
-    font-size: 3rem;
-    margin-bottom: 0.5rem;
-    filter: drop-shadow(2px 2px 4px rgba(0, 0, 0, 0.3));
-}
-
-.mission-title {
-    font-size: 1rem;
-    font-weight: 600;
-    color: var(--text-primary);
-    text-align: center;
-    margin-bottom: 0.5rem;
-    line-height: 1.2;
-}
-
-.mission-cost {
-    font-size: 0.9rem;
-    color: var(--goku-accent);
-    font-weight: 600;
-    background: rgba(255, 107, 0, 0.1);
-    padding: 0.25rem 0.75rem;
-    border-radius: 6px;
-    border: 1px solid rgba(255, 107, 0, 0.3);
-}
-
-/* ==========================================
-   SYSTEM TOOLTIPÓW
-   ========================================== */
+.mission-icon { font-size: 3rem; margin-bottom: 0.5rem; filter: drop-shadow(2px 2px 4px rgba(0, 0, 0, 0.3)); }
+.mission-title { font-size: 1rem; font-weight: 600; color: var(--text-primary); text-align: center; margin-bottom: 0.5rem; line-height: 1.2; }
+.mission-cost { font-size: 0.9rem; color: var(--goku-accent); font-weight: 600; background: rgba(255, 107, 0, 0.1); padding: 0.25rem 0.75rem; border-radius: 6px; border: 1px solid rgba(255, 107, 0, 0.3); }
 
 .mission-tooltip {
     position: absolute;
-    top: 0;
-    left: 0;
+    top: 0; left: 0;
     transform: none;
     margin: 0;
     z-index: 1000;
@@ -796,72 +388,81 @@ body {
     visibility: hidden;
     pointer-events: none;
     transition: opacity var(--transition-fast), visibility var(--transition-fast);
-    transition-delay: 0s;
     background: linear-gradient(135deg, var(--goku-panel-bg) 0%, rgba(22, 30, 49, 0.95) 100%);
     border: 2px solid var(--goku-accent);
     border-radius: 8px;
     padding: 1rem;
     min-width: 280px;
-    box-shadow: var(--shadow-xl);
+    box-shadow: 0 10px 40px rgba(0,0,0,0.9);
 }
 
-.mission-card:hover .mission-tooltip {
-    opacity: 1;
-    visibility: visible;
-    transition-delay: 0.4s;
-}
+.mission-card:hover .mission-tooltip { opacity: 1; visibility: visible; }
+.mission-card.locked { filter: grayscale(100%); opacity: 0.5; cursor: not-allowed; transform: none !important; box-shadow: none !important; border-color: var(--goku-panel-border) !important; }
+.mission-card.locked .mission-tooltip { display: none; }
+.tooltip-title { font-size: 1.1rem; font-weight: bold; color: var(--goku-accent); margin-bottom: 0.75rem; text-align: center; border-bottom: 1px solid rgba(255, 107, 0, 0.3); padding-bottom: 0.5rem; }
 
-/* Style dla zablokowanych misji */
-.mission-card.locked {
-    filter: grayscale(100%);
-    opacity: 0.5;
-    cursor: not-allowed;
-    transform: none !important;
-    box-shadow: none !important;
-    border-color: var(--goku-panel-border) !important;
-}
-
-.mission-card.locked .mission-tooltip {
+/* WIDOK SZPITALA */
+#hospital-view {
     display: none;
+    justify-content: center;
+    align-items: flex-start;
+    padding-top: 2rem;
 }
 
-.tooltip-title {
-    font-size: 1.1rem;
-    font-weight: bold;
-    color: var(--goku-accent);
-    margin-bottom: 0.75rem;
-    text-align: center;
-    border-bottom: 1px solid rgba(255, 107, 0, 0.3);
-    padding-bottom: 0.5rem;
+.hospital-container {
+    display: flex; 
+    flex-direction: row; 
+    gap: 20px;
+    padding: 20px;
+    align-items: stretch;
+    width: 100%;
+    max-width: 1000px;
+    margin: 0 auto;
 }
 
-.tooltip-section {
+.hospital-panel-left {
+    flex: 1; 
+    background: var(--goku-panel-bg);
+    border: 2px solid var(--goku-panel-border);
+    border-radius: 12px;
     display: flex;
-    justify-content: space-between;
+    justify-content: center;
     align-items: center;
-    margin-bottom: 0.5rem;
-    gap: 0.5rem;
+    padding: 20px;
 }
 
-.tooltip-label {
-    font-size: 0.9rem;
-    color: var(--text-secondary);
-    font-weight: 600;
-    flex-shrink: 0;
+.hospital-big-graphic {
+    width: 100%;
+    height: 100%;
+    min-height: 350px;
+    background: radial-gradient(circle, #2a1111 0%, #0a0f1d 100%);
+    border: 3px solid #dc2626;
+    border-radius: 8px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    box-shadow: inset 0 0 50px rgba(0,0,0,0.8);
+    transition: border-color 0.3s;
 }
 
-.tooltip-value {
-    font-size: 0.9rem;
-    color: var(--text-primary);
-    text-align: right;
-    font-weight: 500;
+.hospital-panel-right {
+    flex: 1; 
+    min-width: 350px; 
+    background: var(--goku-panel-bg);
+    border: 2px solid var(--goku-panel-border);
+    border-radius: 12px;
+    padding: 20px;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
 }
 
-/* ==========================================
-   WIDOK EKWIPUNKU I PLECAKA
-   ========================================== */
+.text-hospital-danger { color: #ef4444 !important; text-shadow: 0 0 10px rgba(239, 68, 68, 0.5); }
+.text-hospital-success { color: #22c55e !important; text-shadow: 0 0 10px rgba(34, 197, 94, 0.5); }
+.disabled, .tab-disabled { pointer-events: none !important; filter: grayscale(100%) brightness(0.5); opacity: 0.5; cursor: not-allowed; position: relative; }
 
-/* Główny kontener ekwipunku */
+/* WIDOK EKWIPUNKU */
 .equipment-container {
     display: flex;
     gap: 2rem;
@@ -881,7 +482,6 @@ body {
     text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
 }
 
-/* Panel Wyposażenia - Lewy */
 .equipment-panel {
     background: var(--goku-panel-bg);
     border: 2px solid var(--goku-panel-border);
@@ -890,15 +490,12 @@ body {
     min-width: 450px;
 }
 
-/* Układ Paper Doll - perfekcyjnie symetryczny */
 .character-body {
     display: grid;
-    grid-template-columns: 80px 100px 80px; /* Środek szerszy */
-    grid-template-rows: 80px 60px 80px 80px; /* Rząd 2 jest niższy, bo to biżuteria */
+    grid-template-columns: 80px 100px 80px; 
+    grid-template-rows: 80px 60px 80px 80px;
     gap: 15px;
     justify-content: center;
-    
-    /* Biżuteria u góry, ciężki sprzęt na dole */
     grid-template-areas:
         "ear_l   head       ear_r"
         "ring_l  necklace   ring_r"
@@ -906,7 +503,6 @@ body {
         "hands   legs       feet";
 }
 
-/* Sloty wyposażenia - domyślne (małe - biżuteria) */
 .equipment-slot {
     width: 55px;
     height: 55px;
@@ -923,10 +519,9 @@ body {
     transition: all var(--transition-fast);
     cursor: pointer;
     position: relative;
-    place-self: center; /* Idealne wyśrodkowanie w komórce siatki */
+    place-self: center;
 }
 
-/* Duże sloty - główny pancerz */
 .equipment-slot[data-slot="head"],
 .equipment-slot[data-slot="chest"],
 .equipment-slot[data-slot="legs"],
@@ -937,7 +532,6 @@ body {
     font-size: 0.75rem;
 }
 
-/* Efekt hover dla slotów wyposażenia */
 .equipment-slot:hover {
     background: rgba(0, 0, 0, 0.6);
     border-color: var(--goku-accent);
@@ -945,7 +539,6 @@ body {
     transform: scale(1.05);
 }
 
-/* Przypisanie slotów do grid areas */
 .equipment-slot[data-slot="ear_l"] { grid-area: ear_l; }
 .equipment-slot[data-slot="ear_r"] { grid-area: ear_r; }
 .equipment-slot[data-slot="head"] { grid-area: head; }
@@ -957,7 +550,6 @@ body {
 .equipment-slot[data-slot="legs"] { grid-area: legs; }
 .equipment-slot[data-slot="feet"] { grid-area: feet; }
 
-/* Panel Plecaka - Prawy */
 .inventory-panel {
     background: var(--goku-panel-bg);
     border: 2px solid var(--goku-panel-border);
@@ -966,7 +558,6 @@ body {
     min-width: 500px;
 }
 
-/* Siatka plecaka - estetyczny rząd */
 .inventory-grid {
     display: grid;
     grid-template-columns: repeat(5, 80px);
@@ -974,7 +565,6 @@ body {
     justify-content: center;
 }
 
-/* Sloty plecaka - sztywne 80x80px */
 .inventory-slot {
     width: 80px;
     height: 80px;
@@ -986,7 +576,6 @@ body {
     position: relative;
 }
 
-/* Efekt hover dla slotów plecaka */
 .inventory-slot:hover {
     background: rgba(0, 0, 0, 0.6);
     border-color: var(--goku-accent);
@@ -994,7 +583,6 @@ body {
     transform: scale(1.05);
 }
 
-/* Karta przedmiotu (dla przyszłego użycia) */
 .item-card {
     width: 100%;
     height: 100%;
@@ -1015,11 +603,6 @@ body {
     transform: scale(1.02);
 }
 
-.item-icon {
-    font-size: 1.5rem;
-    filter: drop-shadow(1px 1px 2px rgba(0, 0, 0, 0.5));
-}
-
 .item-emoji {
     font-size: 2rem;
     line-height: 1;
@@ -1030,7 +613,17 @@ body {
     filter: drop-shadow(1px 1px 2px rgba(0,0,0,0.3));
 }
 
-/* === SKLEP === */
+.item-quantity {
+    position: absolute;
+    bottom: 2px;
+    right: 4px;
+    font-size: 0.8rem;
+    font-weight: bold;
+    color: white;
+    text-shadow: 1px 1px 2px black;
+}
+
+/* WIDOK SKLEPU */
 .shop-container {
     display: flex;
     gap: 2rem;
@@ -1186,96 +779,28 @@ body {
     justify-content: center;
 }
 
-/* ==========================================
-   SYSTEM TOOLTIPÓW DLA PRZEDMIOTÓW
-   ========================================== */
-
+/* SYSTEM TOOLTIPÓW */
 .item-tooltip {
-    position: fixed; /* Kluczowe: fixed pozwala wyjść poza strukturę grida! */
+    position: fixed;
     width: max-content;
     max-width: 250px;
-    background: #0f172a !important; /* Twarde, całkowicie nieprzezroczyste tło */
+    background: #0f172a !important;
     border: 2px solid var(--goku-accent);
     border-radius: 8px;
     padding: 0.75rem;
     opacity: 0;
     visibility: hidden;
-    /* Animujemy tylko przezroczystość, żeby pozycja nie "pływała" za kursorem z opóźnieniem */
     transition: opacity 0.15s ease, visibility 0.15s ease;
-    transition-delay: 0.2s; /* Lekkie opóźnienie przed pojawieniem się */
+    transition-delay: 0.2s;
     z-index: 999999;
     pointer-events: none;
     box-shadow: 0 10px 40px rgba(0,0,0,0.9);
     font-size: 0.85rem;
     line-height: 1.4;
-    top: 0;
-    left: 0;
+    top: 0; left: 0;
     transform: none;
 }
 
-.item-tooltip .item-slot-info {
-    text-align: center;
-    color: var(--text-secondary);
-    font-size: 0.75rem;
-    margin-bottom: 0.5rem;
-    font-style: italic;
-}
-
-.item-tooltip .item-category {
-    text-align: center;
-    color: var(--text-secondary);
-    font-size: 0.75rem;
-    margin-bottom: 0.5rem;
-    font-style: italic;
-}
-
-.item-tooltip .item-stats {
-    margin: 0.5rem 0;
-}
-
-.item-tooltip .stat-row {
-    display: flex;
-    justify-content: space-between;
-    margin: 0.25rem 0;
-    padding: 0.2rem 0;
-}
-
-.item-tooltip .stat-name {
-    color: var(--text-secondary);
-    font-weight: 500;
-}
-
-.item-tooltip .stat-value {
-    color: var(--text-primary);
-    font-weight: bold;
-}
-
-.item-tooltip .stat-value.positive {
-    color: #4ade80;
-}
-
-.item-tooltip .stat-value.negative {
-    color: #f87171;
-}
-
-.item-tooltip .item-effect {
-    margin: 0.5rem 0;
-    padding: 0.5rem;
-    background: rgba(255, 107, 0, 0.1);
-    border-radius: 4px;
-    border-left: 3px solid var(--goku-accent);
-}
-
-.item-tooltip .item-slot-info {
-    text-align: center;
-    margin-top: 0.5rem;
-    padding-top: 0.5rem;
-    border-top: 1px solid rgba(255, 107, 0, 0.3);
-    color: var(--text-secondary);
-    font-size: 0.8rem;
-}
-
-/* Mobile-only elements - hidden on desktop */
 .nuke-help-btn {
     background-color: #ff6b00;
     color: #ffffff;
@@ -1315,7 +840,7 @@ body {
     box-shadow: 0 10px 40px rgba(0,0,0,0.9);
     z-index: 999999;
     text-align: center;
-    display: none; /* Zabezpieczenie przed miganiem */
+    display: none;
 }
 
 .nuke-floating-tooltip::before {
@@ -1327,18 +852,6 @@ body {
     border-width: 10px 10px 10px 0;
     border-style: solid;
     border-color: transparent #ff6b00 transparent transparent;
-}
-
-/* Animacja powiadomień */
-@keyframes slideIn {
-    from {
-        transform: translateX(100%);
-        opacity: 0;
-    }
-    to {
-        transform: translateX(0);
-        opacity: 1;
-    }
 }
 
 /* ==========================================
@@ -1361,6 +874,9 @@ body {
     .equipment-slot[data-slot="hands"] { width: 70px; height: 70px; font-size: 0.7rem; }
     .inventory-slot { width: 70px; height: 70px; }
     .inventory-grid { grid-template-columns: repeat(5, 70px); }
+    
+    .shop-container { flex-direction: column; align-items: center; }
+    .shop-left-column, .shop-right-column { width: 100%; min-width: 100%; }
 }
 
 /* ==========================================
@@ -1379,7 +895,6 @@ body {
     .btn-header { padding: 6px 10px !important; font-size: 11px !important; }
     
     #top-panel-2 { padding: 8px 10px !important; width: 100% !important; box-sizing: border-box !important; }
-    /* Naprawa uciętych zakładek na górze - można je przesuwać palcem w prawo/lewo! */
     .nav-section { display: flex !important; flex-wrap: nowrap !important; justify-content: flex-start !important; overflow-x: auto !important; width: 100% !important; padding-bottom: 5px !important; -webkit-overflow-scrolling: touch; gap: 8px !important; }
     .nav-btn { min-width: 75px !important; padding: 5px !important; flex-shrink: 0 !important; }
     .time-container { width: 100% !important; justify-content: center !important; margin-top: 8px !important; }
@@ -1389,7 +904,8 @@ body {
     
     aside#left-sidebar:not(.stats-expanded) .avatar-placeholder, 
     aside#left-sidebar:not(.stats-expanded) .player-info > *:not(.coins), 
-    aside#left-sidebar:not(.stats-expanded) .character-stats { display: none !important; }
+    aside#left-sidebar:not(.stats-expanded) .character-stats,
+    aside#left-sidebar:not(.stats-expanded) .current-form { display: none !important; }
     
     aside#left-sidebar .coins { display: block !important; text-align: center !important; font-size: 14px !important; margin: 0 !important; font-weight: bold !important; }
     aside#left-sidebar.stats-expanded .coins { margin: 10px 0 !important; }
@@ -1398,10 +914,10 @@ body {
     aside#left-sidebar .bar-container { height: 12px !important; }
     aside#left-sidebar .resource-header { font-size: 11px !important; margin-bottom: 2px !important; }
     
-    /* Guzik zawsze idealnie na dole panelu */
-    #toggle-stats-details { position: static !important; display: block !important; width: 100% !important; height: 36px !important; margin: 10px 0 0 0 !important; background: rgba(249, 115, 22, 0.1) !important; border: 1px solid var(--goku-accent) !important; border-radius: 6px !important; color: var(--goku-accent) !important; font-size: 11px !important; font-weight: bold !important; text-transform: uppercase !important; cursor: pointer !important; }
+    #toggle-stats-details { display: block !important; position: static !important; width: 100% !important; height: 36px !important; margin: 10px 0 0 0 !important; background: rgba(249, 115, 22, 0.1) !important; border: 1px solid var(--goku-accent) !important; border-radius: 6px !important; color: var(--goku-accent) !important; font-size: 11px !important; font-weight: bold !important; text-transform: uppercase !important; cursor: pointer !important; }
     
     aside#left-sidebar.stats-expanded .player-info > * { display: block !important; }
+    aside#left-sidebar.stats-expanded .current-form { display: block !important; }
 
     /* 4. GŁÓWNY OBSZAR ROBOCZY */
     main#main-workspace { padding: 10px !important; width: 100% !important; max-width: 100% !important; overflow-x: hidden !important; flex-grow: 1 !important; box-sizing: border-box !important; display: block !important; }
@@ -1413,7 +929,7 @@ body {
     .missions-grid { display: grid !important; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)) !important; gap: 10px !important; padding: 0 0 50px 0 !important; width: 100% !important; box-sizing: border-box !important; }
     .mission-card { width: 100% !important; height: auto !important; min-height: 180px !important; padding: 10px !important; box-sizing: border-box !important; }
     
-    .inventory-grid, .shop-backpack-grid { display: flex !important; flex-wrap: wrap !important; justify-content: center !important; gap: 8px !important; width: 100% !important; }
+    .inventory-grid, .shop-backpack-grid { display: flex !important; flex-wrap: wrap !important; justify-content: center !important; gap: 8px !important; width: 100% !important; box-sizing: border-box !important; }
     .character-body { grid-template-columns: 60px 75px 60px !important; grid-template-rows: 60px 45px 60px 60px !important; gap: 8px !important; justify-content: center !important; }
     
     .hospital-big-graphic { min-height: 200px !important; }
@@ -1426,10 +942,8 @@ body {
     
     .shop-level-tabs, .shop-category-tabs { display: flex !important; flex-wrap: wrap !important; gap: 6px !important; width: 100% !important; box-sizing: border-box !important; justify-content: center !important; }
     
-    /* Elastyczne zakładki z łamaniem tekstu */
     .shop-tab, .category-tab { flex: 1 1 calc(50% - 6px) !important; margin: 0 !important; padding: 8px 4px !important; font-size: 11px !important; text-align: center !important; white-space: normal !important; word-wrap: break-word !important; word-break: break-word !important; height: auto !important; min-height: 35px !important; min-width: 0 !important; }
-    
-    /* Ostatnia zakładka w sklepie zajmuje całą szerokość na dole */
     .shop-category-tabs .category-tab:nth-child(3) { flex: 1 1 100% !important; }
-}
+    
+    .shop-item-name, .shop-item-description { word-wrap: break-word !important; overflow-wrap: break-word !important; word-break: break-word !important; hyphens: auto !important; max-width: 100% !important; white-space: normal !important; }
 }
