@@ -3,7 +3,7 @@
 
 :root {
     /* Kolory bazowe motywu Son Goku */
-    --goku-bg-primary: #0a0f1d;          /* Główny kolor tła - bardzo ciemny, zgaszony granat */
+    --goku-bg-primary: #0a0f1d;          /* Główny kolor tła - bardzo Ciemny, zgaszony granat */
     --goku-accent: #ff6b00;              /* Główny kolor akcentów - intensywny pomarańcz */
     --goku-accent-hover: #ff8533;        /* Akcent na hover */
     --goku-panel-bg: #161e31;            /* Panele i kontenery - półprzezroczysty, jaśniejszy granat */
@@ -31,6 +31,10 @@
     --transition-fast: 0.3s ease;        /* Szybkie przejścia */
     --transition-normal: 0.5s ease;      /* Normalne przejścia */
 }
+
+/* Naprawa napisu w nagłówku na komputerach */
+.desktop-txt { display: inline; }
+.mobile-txt { display: none; }
 
 /* Stany przycisków */
 .disabled {
@@ -669,84 +673,6 @@ body {
     #hospital-countdown {
         font-size: 2.5rem !important;
     }
-
-    /* Twarda siatka dla zakładek sklepu */
-    .shop-level-tabs {
-        display: grid !important;
-        grid-template-columns: 1fr 1fr !important; /* Zawsze dwie równe kolumny */
-        gap: 8px !important;
-        width: 100% !important;
-        box-sizing: border-box !important;
-    }
-    
-    .shop-category-tabs {
-        display: grid !important;
-        grid-template-columns: 1fr 1fr !important; /* Zawsze dwie równe kolumny */
-        gap: 8px !important;
-        width: 100% !important;
-        box-sizing: border-box !important;
-    }
-    
-    /* Trzecia zakładka (Ekwipunek Zwykły) zostaje wyśrodkowana na całą szerokość pod spodem */
-    .shop-category-tabs .category-tab:nth-child(3) {
-        grid-column: 1 / -1 !important;
-    }
-
-    .shop-tab, 
-    .category-tab {
-        width: 100% !important;
-        margin: 0 !important;
-        padding: 8px 4px !important;
-        font-size: 11px !important;
-        text-align: center !important;
-        white-space: normal !important;
-        word-wrap: break-word !important; /* Zmusza długie słowa do łamania się wpół */
-        height: 100% !important;
-        min-width: 0 !important; /* Ochrona przed blowoutem kontenera */
-    }
-
-    .shop-left-column, 
-    .shop-right-column {
-        width: 100% !important;
-        max-width: 100% !important;
-        flex: none !important; /* Nadpisuje flex: 0 0 65% z desktopu */
-        padding: 15px 10px !important;
-        box-sizing: border-box !important;
-        min-width: 0 !important;
-        margin: 0 !important;
-    }
-
-    /* Twarde łamanie tekstów, by zapobiec rozpychaniu kontenerów */
-    .shop-item-name, 
-    .shop-item-description, 
-    .shop-tab, 
-    .category-tab {
-        word-wrap: break-word !important;
-        overflow-wrap: break-word !important;
-        hyphens: auto !important;
-        max-width: 100% !important;
-    }
-
-    /* Zawijanie zakładek sklepu do nowych linijek */
-    .shop-level-tabs, 
-    .shop-category-tabs {
-        display: flex !important;
-        flex-wrap: wrap !important;
-        justify-content: center !important;
-        gap: 8px !important;
-        width: 100% !important;
-    }
-
-    .shop-tab, 
-    .category-tab {
-        flex: 1 1 auto !important; /* Pozwala kafelkom rosnąć i kurczyć się proporcjonalnie */
-        padding: 8px 4px !important;
-        font-size: 11px !important;
-        white-space: normal !important; /* ZEZWALA NA ZŁAMANIE TEKSTU */
-        text-align: center !important;
-        height: auto !important;
-    }
-}
 
 /* Mobile-only elements - hidden on desktop */
 .mobile-only, .mobile-only-btn {
@@ -1467,7 +1393,7 @@ body {
     aside#left-sidebar.stats-expanded .player-info > * { display: block !important; }
 
     /* 4. GŁÓWNY OBSZAR ROBOCZY */
-    main#main-workspace { padding: 10px !important; width: 100% !important; max-width: 100% !important; overflow-x: hidden !important; overflow-y: auto !important; flex-grow: 1 !important; box-sizing: border-box !important; }
+    main#main-workspace { padding: 10px !important; width: 100% !important; max-width: 100% !important; overflow-x: hidden !important; overflow-y: visible !important; flex-grow: 1 !important; box-sizing: border-box !important; }
     .equipment-container, .shop-container, .hospital-container { display: flex !important; flex-direction: column !important; align-items: center !important; width: 100% !important; max-width: 100% !important; padding: 0 !important; margin: 0 !important; gap: 15px !important; }
     .equipment-panel, .inventory-panel, .shop-left-column, .shop-right-column, .hospital-panel-left, .hospital-panel-right { width: 100% !important; min-width: 0 !important; padding: 15px 10px !important; margin: 0 !important; box-sizing: border-box !important; flex: none !important; }
     .missions-grid { display: grid !important; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)) !important; gap: 10px !important; padding: 0 0 50px 0 !important; }
