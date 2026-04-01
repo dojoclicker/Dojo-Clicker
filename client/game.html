@@ -839,10 +839,13 @@
                     renderShopItems();
                 }
 
-                // Aktualizacja pasków zasobów
-                updateResourceBar('hp', data.current_hp, data.max_hp);
-                updateResourceBar('mp', data.current_mp, data.max_mp);
-                updateResourceBar('stamina', data.current_stamina, data.max_stamina);
+                // Aktualizacja pasków zasobów z bonusami z ekwipunku
+                const hpBonus = data.equip_stats?.bonus_hp || '0';
+                const mpBonus = data.equip_stats?.bonus_mp || '0';
+                
+                updateResourceBar('hp', data.current_hp, data.max_hp, hpBonus);
+                updateResourceBar('mp', data.current_mp, data.max_mp, mpBonus);
+                updateResourceBar('stamina', data.current_stamina, data.max_stamina, '0');
 
                 // SZPITAL LOGIC: Sprawdzenie czy gracz jest w szpitalu
                 const currentHp = parseInt(data.current_hp);
@@ -917,7 +920,7 @@
         }
 
         // Aktualizacja pojedynczego paska zasobów
-        function updateResourceBar(resourceType, current, max) {
+        function updateResourceBar(resourceType, current, max, equipBonus = '0') {
             // Konwersja stringów na BigInt dla obliczeń
             const currentBigInt = BigInt(current);
             const maxBigInt = BigInt(max);
@@ -932,8 +935,12 @@
             const valueElement = barContainer.querySelector('.resource-value');
             const fillElement = barContainer.querySelector('.bar-fill');
 
-            // Aktualizacja tekstu
-            valueElement.textContent = `${current} / ${max}`;
+            // Aktualizacja tekstu z uwzględnieniem bonusów z ekwipunku
+            if (BigInt(equipBonus) > 0n) {
+                valueElement.innerHTML = `<span style="color: var(--success, #22c55e);" title="Bonus ze sprzętu: +${equipBonus}">${current} / ${max}</span>`;
+            } else {
+                valueElement.textContent = `${current} / ${max}`;
+            }
             
             // Aktualizacja szerokości paska
             fillElement.style.width = `${Math.max(0, Math.min(100, percentage))}%`;
