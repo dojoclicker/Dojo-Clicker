@@ -959,9 +959,10 @@ body {
 [data-tooltip]::after {
     content: attr(data-tooltip); /* Wyciąga tekst z atrybutu HTML */
     position: absolute;
-    bottom: 125%; /* Nad elementem */
-    left: 50%;
-    transform: translateX(-50%);
+    bottom: auto;        /* Usuwamy pozycjonowanie pionowe nad elementem */
+    top: 50%;            /* Wyśrodkowanie pionowe względem statystyki */
+    transform: translateY(-50%); /* Korekta wyśrodkowania pionowego */
+    left: 105%;          /* Pojawia się po prawej stronie elementu (lekki odstęp 5%) */
     
     /* Wygląd - Mały, zgrabny, czytelny, pasujący do stylu */
     background: rgba(10, 10, 15, 0.95); /* Ciemne tło, lekkie prześwitywanie */
