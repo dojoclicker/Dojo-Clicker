@@ -484,37 +484,78 @@
             }
         }
 
-        // UNIWERSALNY SYSTEM POWIADOMIEŃ
+        // UNIWERSALNY SYSTEM POWIADOMIEŃ (Toasty w prawym górnym rogu)
         function showNotification(title, message, type = 'info', duration = 3500) {
+            // 1. Znajdź lub stwórz globalny kontener na powiadomienia
+            let container = document.getElementById('notification-container');
+            if (!container) {
+                container = document.createElement('div');
+                container.id = 'notification-container';
+                container.style.cssText = `
+                    position: fixed; top: 20px; right: 20px;
+                    display: flex; flex-direction: column; gap: 10px;
+                    z-index: 10000; pointer-events: none;
+                    max-width: 350px; width: 100%;
+                `;
+                document.body.appendChild(container);
+            }
+
+            // 2. Stwórz sam popup
             const popup = document.createElement('div');
+            popup.style.pointerEvents = 'auto'; // Pozwala na kliknięcie w powiadomienie
             
-            // Kolory i ikony w zależności od typu
+            // Kolory i ikony
             let bgColor = 'var(--goku-panel-bg)';
             let borderColor = 'var(--goku-panel-border)';
             let icon = 'ℹ️';
             
-            if (type === 'success') { bgColor = 'var(--success, #22c55e)'; borderColor = bgColor; icon = '✅'; }
-            else if (type === 'warning') { bgColor = 'var(--warning, #f59e0b)'; borderColor = bgColor; icon = '⚠️'; }
-            else if (type === 'error') { bgColor = '#cc0000'; borderColor = bgColor; icon = '❌'; }
-            else if (type === 'death') { bgColor = '#8b0000'; borderColor = bgColor; icon = '🏥'; }
+            if (type === 'success') { bgColor = 'var(--success, #22c55e)'; borderColor = '#15803d'; icon = '✅'; }
+            else if (type === 'warning') { bgColor = 'var(--warning, #f59e0b)'; borderColor = '#b45309'; icon = '⚠️'; }
+            else if (type === 'error') { bgColor = '#cc0000'; borderColor = '#990000'; icon = '❌'; }
+            else if (type === 'death') { bgColor = '#8b0000'; borderColor = '#5c0000'; icon = '🏥'; }
 
+            // Nowoczesny, kompaktowy design z animacją wjazdu
             popup.style.cssText = `
-                position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
-                padding: 2rem; border-radius: 12px; z-index: 10000;
-                box-shadow: 0 10px 30px rgba(0,0,0,0.6); min-width: 300px;
-                text-align: center; font-weight: bold; color: white;
-                background-color: ${bgColor}; border: 2px solid ${borderColor};
-                animation: fade-in 0.2s ease-out;
+                padding: 1rem; border-radius: 8px;
+                box-shadow: 0 6px 16px rgba(0,0,0,0.6);
+                color: white; background-color: ${bgColor}; 
+                border-left: 6px solid ${borderColor};
+                cursor: pointer; text-align: left;
+                transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.3s ease;
+                transform: translateX(120%);
+                opacity: 0;
             `;
             
-            // Renderowanie treści (Wspiera HTML w wiadomości)
+            // Renderowanie treści (Kompaktowe)
             popup.innerHTML = `
-                <h3 style="margin: 0 0 1rem 0; font-size: 1.5rem;">${icon} ${title}</h3>
-                <div style="font-size: 1.1rem; line-height: 1.4;">${message}</div>
+                <div style="display: flex; align-items: center; gap: 10px; margin-bottom: ${message ? '6px' : '0'};">
+                    <span style="font-size: 1.4rem; line-height: 1;">${icon}</span>
+                    <h3 style="margin: 0; font-size: 1.1rem; text-shadow: 1px 1px 2px rgba(0,0,0,0.3);">${title}</h3>
+                </div>
+                ${message ? `<div style="font-size: 0.95rem; line-height: 1.4; padding-left: 32px; color: #f8fafc;">${message}</div>` : ''}
             `;
             
-            document.body.appendChild(popup);
-            setTimeout(() => { if (popup.parentNode) popup.parentNode.removeChild(popup); }, duration);
+            // Dodaj do kontenera i aktywuj animację
+            container.appendChild(popup);
+            requestAnimationFrame(() => {
+                popup.style.transform = 'translateX(0)';
+                popup.style.opacity = '1';
+            });
+
+            // Funkcja zamykająca powiadomienie
+            const closePopup = () => {
+                popup.style.transform = 'translateX(120%)';
+                popup.style.opacity = '0';
+                setTimeout(() => { if (popup.parentNode) popup.remove(); }, 300);
+            };
+
+            // Zamknięcie po kliknięciu
+            popup.addEventListener('click', closePopup);
+            
+            // Automatyczne zniknięcie
+            setTimeout(() => {
+                if (popup.parentNode) closePopup();
+            }, duration);
         }
 
         // Klasyczne wrappery dla wstecznej kompatybilności starego kodu
