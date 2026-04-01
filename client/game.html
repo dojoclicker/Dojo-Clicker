@@ -455,21 +455,6 @@
             return card;
         }
 
-        // Pobieranie ikony dla misji (prosta heurystyka)
-        function getMissionIcon(missionName) {
-            const name = missionName.toLowerCase();
-            if (name.includes('las') || name.includes('trening')) return '🌲';
-            if (name.includes('miasto') || name.includes('ulica')) return '🏙️';
-            if (name.includes('góra') || name.includes('skała')) return '⛰️';
-            if (name.includes('woda') || name.includes('jezioro')) return '💧';
-            if (name.includes('walka') || name.includes('trening')) return '⚔️';
-            if (name.includes('medytacja') || name.includes('świątynia')) return '🧘';
-            if (name.includes('szpital') || name.includes('leczenie')) return '🏥';
-            if (name.includes('sklep') || name.includes('zakupy')) return '🛒';
-            if (name.includes('praca') || name.includes('zadanie')) return '💼';
-            return '📋'; // Domyślna ikona
-        }
-
         // Wyświetlanie błędu misji
         function showMissionsError(message) {
             const missionsGrid = document.querySelector('.missions-grid');
@@ -601,135 +586,90 @@
                     return;
                 }
                 
-                // Stwórz popup
-                const popup = document.createElement('div');
-                popup.style.position = 'fixed';
-                popup.style.top = '50%';
-                popup.style.left = '50%';
-                popup.style.transform = 'translate(-50%, -50%)';
-                popup.style.padding = '2rem';
-                popup.style.borderRadius = '12px';
-                popup.style.zIndex = '1000';
-                popup.style.boxShadow = '0 10px 30px rgba(0,0,0,0.5)';
-                popup.style.minWidth = '300px';
-                popup.style.textAlign = 'center';
-                popup.style.fontWeight = 'bold';
-                
-                if (data.result === 'success') {
-                    let bgColor = 'var(--success, #22c55e)';
-                    let penaltyText = '';
+                let notifType = 'info';
+                let notifTitle = '';
+                let notifMsg = '';
+                let duration = 4000; // Dłuższy czas, by gracz zdążył przeczytać statystyki
 
+                if (data.result === 'success') {
+                    notifType = 'success';
+                    notifTitle = data.message;
+                    
+                    let penaltyText = '';
                     if (data.multiplier === 50) {
-                        bgColor = 'var(--warning, #f59e0b)';
-                        penaltyText = '<div style="font-size: 0.8rem; margin-top: 8px; font-weight: normal;">⚠️ Kara za wysokie statystyki: Zyski obniżone o 50%</div>';
+                        notifType = 'warning';
+                        penaltyText = '<div style="font-size: 0.85rem; margin-top: 6px; color: #fcd34d;">⚠️ Zyski obniżone o 50% (Za potężne statystyki)</div>';
                     } else if (data.multiplier === 10) {
-                        bgColor = '#f97316';
-                        penaltyText = '<div style="font-size: 0.8rem; margin-top: 8px; font-weight: normal;">⚠️ Kara za potężne statystyki: Zyski obniżone o 90%</div>';
+                        notifType = 'warning';
+                        penaltyText = '<div style="font-size: 0.85rem; margin-top: 6px; color: #fca5a5;">⚠️ Zyski obniżone o 90% (Za potężne statystyki)</div>';
                     }
 
-                    popup.style.backgroundColor = bgColor;
-                    popup.style.color = 'white';
-                    popup.style.border = `2px solid ${bgColor}`;
-                    
                     const tg = data.rewards.training_gains;
                     const hasTrainingGains = tg && (Number(tg.strength) > 0 || Number(tg.speed) > 0 || Number(tg.endurance) > 0);
-                    
-                    popup.innerHTML = `
-                        <h3 style="margin: 0 0 1rem 0; font-size: 1.5rem;">✅ ${data.message}</h3>
-                        <div style="font-size: 1.1rem; margin-bottom: 0.5rem;">💰 Monety: +${data.rewards.coins}</div>
-                        <div style="font-size: 1.1rem;">📊 +${data.rewards.gains.strength} Siła, +${data.rewards.gains.speed} Szybkość, +${data.rewards.gains.endurance} Wytrzymałość</div>
-                        ${hasTrainingGains ? `<div style="font-size: 1rem; margin-top: 8px; color: #fbbf24;">🏋️ Bonusy Treningowe: +${tg.strength} Siła, +${tg.speed} Szybkość, +${tg.endurance} Wytrzymałość</div>` : ''}
+
+                    notifMsg = `
+                        <div style="margin-bottom: 4px;">💰 Monety: <b style="color:#fbbf24;">+${data.rewards.coins}</b></div>
+                        <div style="margin-bottom: 4px;">📊 <b style="color:#4ade80;">+${data.rewards.gains.strength}</b> Siła, <b style="color:#4ade80;">+${data.rewards.gains.speed}</b> Szybkość, <b style="color:#4ade80;">+${data.rewards.gains.endurance}</b> Wytrz.</div>
+                        ${hasTrainingGains ? `<div style="font-size: 0.85rem; margin-top: 6px; color: #fbbf24; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 6px;">🏋️ Trening: +${tg.strength} Siła, +${tg.speed} Szybk., +${tg.endurance} Wytrz.</div>` : ''}
                         ${penaltyText}
                     `;
                 } else if (data.result === 'failure') {
-                    // Zwykła porażka - żółty/pomarańczowy
-                    popup.style.backgroundColor = 'var(--warning, #f59e0b)';
-                    popup.style.color = 'white';
-                    popup.style.border = '2px solid var(--warning)';
-                    
-                    popup.innerHTML = `
-                        <h3 style="margin: 0; font-size: 1.5rem;">❌ ${data.message}</h3>
-                    `;
+                    notifType = 'warning';
+                    notifTitle = 'Porażka';
+                    notifMsg = data.message;
                 } else if (data.result === 'hurt') {
-                    // Generowanie listy utraconych statystyk dla zwykłej porażki
+                    notifType = 'error';
+                    notifTitle = 'Rany w walce!';
+                    
                     let statsLostHtml = '';
                     const statsLost = data.penalty?.stats_lost || {};
                     const lostList = [];
                     if (Number(statsLost.strength) > 0) lostList.push(`-${statsLost.strength} Siła`);
-                    if (Number(statsLost.speed) > 0) lostList.push(`-${statsLost.speed} Szybkość`);
-                    if (Number(statsLost.endurance) > 0) lostList.push(`-${statsLost.endurance} Wytrzymałość`);
-                    if (Number(statsLost.intelligence) > 0) lostList.push(`-${statsLost.intelligence} Inteligencja`);
-                    if (Number(statsLost.mental_strength) > 0) lostList.push(`-${statsLost.mental_strength} Siła Mentalna`);
+                    if (Number(statsLost.speed) > 0) lostList.push(`-${statsLost.speed} Szybk.`);
+                    if (Number(statsLost.endurance) > 0) lostList.push(`-${statsLost.endurance} Wytrz.`);
+                    if (Number(statsLost.intelligence) > 0) lostList.push(`-${statsLost.intelligence} Int.`);
+                    if (Number(statsLost.mental_strength) > 0) lostList.push(`-${statsLost.mental_strength} Ment.`);
 
                     if (lostList.length > 0) {
-                        statsLostHtml = `<br>📊 Utrata statystyk: ${lostList.join(', ')}`;
+                        statsLostHtml = `<div style="margin-top: 4px;">📊 Utrata: ${lostList.join(', ')}</div>`;
                     }
 
-                    popup.style.backgroundColor = '#cc0000';
-                    popup.style.color = 'white';
-                    popup.style.border = '2px solid #cc0000';
-                    
-                    popup.innerHTML = `
-                        <div style="color: white; font-weight: bold; margin-bottom: 10px;">
-                            🩹 ${data.message}
-                        </div>
-                        <div style="text-align: left; background: rgba(0,0,0,0.2); padding: 10px; border-radius: 6px;">
-                            <strong>Obrażenia:</strong><br>
-                            ❤️ HP: -${data.damage.hp}<br>
-                            💙 MP: -${data.damage.mp}<br>
-                            ⚡ Stamina: -${data.damage.stamina}<br>
-                            <strong>Kara:</strong><br>
-                            💰 Utrata monet: -${data.penalty?.coins_lost || 0}
+                    notifMsg = `
+                        <div style="font-size: 0.85rem; margin-bottom: 6px;">${data.message}</div>
+                        <div style="background: rgba(0,0,0,0.25); padding: 8px; border-radius: 6px; font-size: 0.85rem;">
+                            <div style="color:#fca5a5;">❤️ -${data.damage.hp} HP | 💙 -${data.damage.mp} MP | ⚡ -${data.damage.stamina} Sta</div>
+                            <div style="color:#fbbf24; margin-top:4px;">💰 Utrata monet: -${data.penalty?.coins_lost || 0}</div>
                             ${statsLostHtml}
                         </div>
                     `;
+                    duration = 5000; // Porażkę wyświetlamy nieco dłużej
                 } else if (data.result === 'death') {
-                    // Śmierć - krwawo czerwony
-                    popup.style.backgroundColor = '#8b0000';
-                    popup.style.color = 'white';
-                    popup.style.border = '2px solid #8b0000';
+                    notifType = 'death';
+                    notifTitle = 'Krytyczna Porażka!';
                     
-                    // Formatowanie utraconych statystyk
                     const statsLost = data.penalty.stats_lost;
                     const statsList = [];
                     if (statsLost.strength && statsLost.strength !== '0') statsList.push(`-${statsLost.strength} Siła`);
-                    if (statsLost.speed && statsLost.speed !== '0') statsList.push(`-${statsLost.speed} Szybkość`);
-                    if (statsLost.endurance && statsLost.endurance !== '0') statsList.push(`-${statsLost.endurance} Wytrzymałość`);
-                    if (statsLost.intelligence && statsLost.intelligence !== '0') statsList.push(`-${statsLost.intelligence} Inteligencja`);
-                    if (statsLost.mental_strength && statsLost.mental_strength !== '0') statsList.push(`-${statsLost.mental_strength} Siła Mentalna`);
+                    if (statsLost.speed && statsLost.speed !== '0') statsList.push(`-${statsLost.speed} Szybk.`);
+                    if (statsLost.endurance && statsLost.endurance !== '0') statsList.push(`-${statsLost.endurance} Wytrz.`);
+                    if (statsLost.intelligence && statsLost.intelligence !== '0') statsList.push(`-${statsLost.intelligence} Int.`);
+                    if (statsLost.mental_strength && statsLost.mental_strength !== '0') statsList.push(`-${statsLost.mental_strength} Ment.`);
                     
-                    popup.innerHTML = `
-                        <h3 style="margin: 0 0 1rem 0; font-size: 1.5rem; font-weight: bold;">🏥 ${data.message}</h3>
-                        <div style="font-size: 1rem; margin-top: 0.5rem; font-weight: bold;">
-                            <div style="margin-bottom: 0.5rem;"><strong>Kary:</strong></div>
-                            <div>💰 Utrata monet: -${data.penalty.coins_lost}</div>
-                            <div>🏥️ Czas w szpitalu: ${data.penalty.hospital_minutes} minut</div>
-                            ${statsList.length > 0 ? `<div>📊 Utrata statystyk: ${statsList.join(', ')}</div>` : ''}
+                    notifMsg = `
+                        <div style="font-size: 0.85rem; margin-bottom: 6px;">${data.message}</div>
+                        <div style="background: rgba(0,0,0,0.3); padding: 8px; border-radius: 6px; font-size: 0.85rem;">
+                            <div style="color:#fbbf24;">💰 Utrata monet: -${data.penalty.coins_lost}</div>
+                            <div style="color:#fca5a5; margin-top:4px;">🏥 Czas w szpitalu: ${data.penalty.hospital_minutes} min</div>
+                            ${statsList.length > 0 ? `<div style="margin-top:4px;">📊 Utrata statystyk: ${statsList.join(', ')}</div>` : ''}
                         </div>
                     `;
+                    duration = 6000;
                     
-                    // Pokaż popup śmierci, odśwież dane postaci i wymuś przełączenie na szpital
-                    setTimeout(() => {
-                        fetchCharacterData(); // To automatycznie przełączy na widok szpitala
-                    }, 1000);
-                } else {
-                    popup.style.backgroundColor = 'var(--warning, #f59e0b)';
-                    popup.style.color = 'white';
-                    popup.style.border = '2px solid var(--warning)';
-                    
-                    popup.innerHTML = `
-                        <h3 style="margin: 0; font-size: 1.5rem;">⚠️ ${data.message || 'Wystąpił błąd'}</h3>
-                    `;
+                    setTimeout(() => { fetchCharacterData(); }, 1000);
                 }
-                
-                document.body.appendChild(popup);
-                
-                // Usuń popup po 3.5 sekundy
-                setTimeout(() => {
-                    if (popup.parentNode) {
-                        popup.parentNode.removeChild(popup);
-                    }
-                }, 3500);
+
+                // Wyświetl ujednolicone powiadomienie
+                showNotification(notifTitle, notifMsg, notifType, duration);
                 
                 // Odśwież dane postaci
                 await fetchCharacterData();
