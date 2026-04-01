@@ -744,27 +744,14 @@ app.post('/api/missions/start', authenticateToken, async (req, res) => {
           penaltyMultiplier = 4n; // Duża kara
       }
       
-      // Losowe obrażenia w statystyki fizyczne (tylko Siła, Szybkość, Wytrzymałość)
-      const physicalStats = [
-          { name: 'strength', current: currentStr },
-          { name: 'speed', current: currentSpd },
-          { name: 'endurance', current: currentEnd }
-      ];
+      // Obliczanie utraty statystyk fizycznych (dzielone równo na 3)
+      const baseReward = maxBigInt(1n, BigInt(mission.reward_stats?.min || '1'));
+      const totalStatLoss = baseReward * penaltyMultiplier;
+      const lossPerStat = maxBigInt(1n, totalStatLoss / 3n);
       
-      // Losowo wybieramy statystyki fizyczne do obrażeń
-      const shuffledStats = physicalStats.sort(() => 0.5 - Math.random());
-      const selectedStats = shuffledStats.slice(0, Math.floor(Math.random() * 3) + 1); // 1-3 statystyki
-      
-      let strLoss = 0n, spdLoss = 0n, endLoss = 0n;
-      
-      selectedStats.forEach(stat => {
-          const baseReward = maxBigInt(1n, BigInt(mission.reward_stats?.min || '1'));
-          const loss = maxBigInt(1n, (baseReward * penaltyMultiplier) / 3n); // podzielone na 3 statystyki
-          
-          if (stat.name === 'strength') strLoss = loss;
-          else if (stat.name === 'speed') spdLoss = loss;
-          else if (stat.name === 'endurance') endLoss = loss;
-      });
+      const strLoss = lossPerStat;
+      const spdLoss = lossPerStat;
+      const endLoss = lossPerStat;
       
       // Utrata monet
       const baseCoinsReward = maxBigInt(1n, BigInt(mission.reward_coins_min || '1'));
@@ -865,16 +852,16 @@ app.post('/api/missions/start', authenticateToken, async (req, res) => {
     let completedMissions = character.completed_missions || [];
     if (!completedMissions.includes(missionId)) completedMissions.push(missionId);
 
-    // KROK 4.7.2: Sprawdzenie "Ran z nudów" po sukcesie
+    // KROK 4.7.2: Sprawdzenie Wydarzenia Losowego po sukcesie
     let finalHp = BigInt(character.hp || '100');
     let finalMp = BigInt(character.mp || '100');
     let finalStamina = newStamina;
+    let appliedBoredomDamage = 0n;
     
     if (roll <= Number(successChance) && Math.random() * 100 < Number(boredomInjuryChance)) {
-        // Rany z nudów - utrata 10% Max HP, ale nie poniżej 1 HP
-        const boredomDamage = maxBigInt(1n, (maxHp * 10n) / 100n);
-        finalHp = maxBigInt(1n, BigInt(character.hp || '100') - boredomDamage);
-        finalStamina = newStamina; // stamina już odjęta wcześniej
+        appliedBoredomDamage = maxBigInt(1n, (maxHp * 10n) / 100n);
+        finalHp = maxBigInt(1n, BigInt(character.hp || '100') - appliedBoredomDamage);
+        finalStamina = newStamina;
     } else {
         finalHp = BigInt(character.hp || '100');
         finalMp = BigInt(character.mp || '100');
@@ -892,6 +879,7 @@ app.post('/api/missions/start', authenticateToken, async (req, res) => {
       result: 'success', message: 'Sukces!', multiplier: Number(rewardMultiplier),
       rewards: { 
         coins: finalCoins.toString(), stats_gained: finalStats.toString(),
+        boredom_damage: appliedBoredomDamage.toString(),
         gains: { strength: gainStr.toString(), speed: gainSpd.toString(), endurance: gainEnd.toString() },
         training_gains: { 
             strength: trainGainStr.toString(), speed: trainGainSpd.toString(), endurance: trainGainEnd.toString(),
