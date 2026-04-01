@@ -74,6 +74,17 @@ async function getFullCharacterStats(userId) {
       strength: [], speed: [], endurance: [], intelligence: [], mental_strength: [], bonus_hp: [], bonus_mp: []
     };
 
+    // Obiekt zbierający bonusy treningowe
+    const trainingBonuses = {
+      strength: 0n,
+      speed: 0n,
+      endurance: 0n,
+      intelligence: 0n,
+      mental_strength: 0n,
+      bonus_hp: 0n,
+      bonus_mp: 0n
+    };
+
     // Iteruj przez założony sprzęt i sumuj bonusy pasywne
     equippedItems.forEach(item => {
       if (item.item_templates && item.item_templates.bonuses) {
@@ -111,16 +122,16 @@ async function getFullCharacterStats(userId) {
             equipBreakdown.bonus_mp.push(`${item.item_templates.name}: +${bonuses.bonus_mp}`);
           }
         }
-      }
-    });
 
-    // 4. Konwersja bazowych statystyk na BigInt
-    const baseStats = {
-      strength: BigInt(character.strength || '1'),
-      speed: BigInt(character.speed || '1'),
-      endurance: BigInt(character.endurance || '1'),
-      intelligence: BigInt(character.intelligence || '1'),
-      mental_strength: BigInt(character.mental_strength || '1'),
+        if (bonuses.type === 'training') {
+          if (bonuses.strength) trainingBonuses.strength += BigInt(bonuses.strength);
+          if (bonuses.speed) trainingBonuses.speed += BigInt(bonuses.speed);
+          if (bonuses.endurance) trainingBonuses.endurance += BigInt(bonuses.endurance);
+          if (bonuses.intelligence) trainingBonuses.intelligence += BigInt(bonuses.intelligence);
+          if (bonuses.mental_strength) trainingBonuses.mental_strength += BigInt(bonuses.mental_strength);
+          if (bonuses.bonus_hp) trainingBonuses.bonus_hp += BigInt(bonuses.bonus_hp);
+          if (bonuses.bonus_mp) trainingBonuses.bonus_mp += BigInt(bonuses.bonus_mp);
+        }
       bonus_hp: BigInt(character.bonus_hp || '0'),
       bonus_mp: BigInt(character.bonus_mp || '0'),
       bonus_stamina: BigInt(character.bonus_stamina || '0')
@@ -166,6 +177,15 @@ async function getFullCharacterStats(userId) {
         bonus_hp: equipBonuses.bonus_hp.toString(),
         bonus_mp: equipBonuses.bonus_mp.toString(),
         breakdown: equipBreakdown
+      },
+      trainingStats: {
+        strength: trainingBonuses.strength.toString(),
+        speed: trainingBonuses.speed.toString(),
+        endurance: trainingBonuses.endurance.toString(),
+        intelligence: trainingBonuses.intelligence.toString(),
+        mental_strength: trainingBonuses.mental_strength.toString(),
+        bonus_hp: trainingBonuses.bonus_hp.toString(),
+        bonus_mp: trainingBonuses.bonus_mp.toString()
       }
     };
 
@@ -1084,15 +1104,8 @@ app.post('/api/missions/start', authenticateToken, async (req, res) => {
     const userId = req.user.id;
 
     // 1. POBRANIE DANYCH
-    const { data: character, error: characterError } = await supabase
-      .from('characters')
-      .select('*')
-      .eq('profile_id', userId)
-      .single();
-
-    if (characterError || !character) {
-      return res.status(404).json({ error: 'Nie znaleziono postaci gracza' });
-    }
+    const fullStats = await getFullCharacterStats(userId);
+    const character = fullStats.character;
 
     const { data: mission, error: missionError } = await supabase
       .from('missions')
@@ -1112,27 +1125,18 @@ app.post('/api/missions/start', authenticateToken, async (req, res) => {
 
     if (BigInt(character.stamina ?? '0') < BigInt(mission.stamina_cost)) {
       return res.status(400).json({ 
-        status: 'error', 
-        message: 'Brak Staminy! Odpocznij lub użyj odpowiedniego przedmiotu.' 
-      });
-    }
 
-    // 2. WYLICZENIE SZANSY I KARY (DIMINISHING RETURNS)
-    let lowestRatioPercent = 500n;
-    const reqStats = mission.req_stats ? mission.req_stats : {};
+        // Dodaj wyliczenie efektywnych statystyk
+        const effectiveStr = BigInt(fullStats.baseStats.strength) + BigInt(fullStats.equipStats.strength || '0');
+        const effectiveSpd = BigInt(fullStats.baseStats.speed) + BigInt(fullStats.equipStats.speed || '0');
+        const effectiveEnd = BigInt(fullStats.baseStats.endurance) + BigInt(fullStats.equipStats.endurance || '0');
 
-    ['strength', 'speed', 'endurance'].forEach(stat => {
-      if (reqStats[stat] && reqStats[stat] > 0) {
-        const playerStat = BigInt(character[stat] || '1');
-        const reqStat = BigInt(reqStats[stat]);
-        const ratio = (playerStat * 100n) / reqStat;
-        lowestRatioPercent = minBigInt(lowestRatioPercent, ratio);
-      }
-    });
-
-    const successChance = minBigInt(100n, lowestRatioPercent);
-
-    // Modyfikator nagród
+        ['strength', 'speed', 'endurance'].forEach(stat => {
+          if (reqStats[stat] && reqStats[stat] > 0) {
+            let playerStat = 1n;
+            if (stat === 'strength') playerStat = effectiveStr;
+            if (stat === 'speed') playerStat = effectiveSpd;
+            if (stat === 'endurance') playerStat = effectiveEnd;
     let rewardMultiplier = 100n;
     if (lowestRatioPercent >= 400n && lowestRatioPercent < 800n) rewardMultiplier = 50n;
     if (lowestRatioPercent >= 800n) rewardMultiplier = 10n;
