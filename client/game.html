@@ -886,12 +886,12 @@
                         element.style.color = 'var(--success, #22c55e)';
 
                         const breakdownText = `Baza: ${baseNum}\nBonus: +${bonusNum}\n\nŹródła:\n` + breakdownArray.join('\n');
-                        element.setAttribute('title', breakdownText);
+                        element.setAttribute('data-tooltip', breakdownText);
                         element.style.cursor = 'help';
                     } else {
                         element.textContent = baseNum;
                         element.style.color = 'var(--text-primary)';
-                        element.removeAttribute('title');
+                        element.removeAttribute('data-tooltip');
                         element.style.cursor = 'default';
                     }
                 };
@@ -944,7 +944,8 @@
             if (BigInt(equipBonus) > 0n) {
                 const baseMax = BigInt(max) - BigInt(equipBonus);
                 const breakdownText = `Baza: ${baseMax}\nBonus: +${equipBonus}\n\nŹródła:\n` + breakdown.join('\n');
-                valueElement.innerHTML = `<span style="color: var(--success, #22c55e); cursor: help;" title="${breakdownText}">${current} / ${max}</span>`;
+                // Używamy customowego atrybutu data-tooltip
+                valueElement.innerHTML = `<span style="color: var(--success, #22c55e);" data-tooltip="${breakdownText}">${current} / ${max}</span>`;
             } else {
                 valueElement.textContent = `${current} / ${max}`;
             }
