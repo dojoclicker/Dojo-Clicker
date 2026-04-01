@@ -722,11 +722,12 @@ app.post('/api/missions/start', authenticateToken, async (req, res) => {
     let newStamina = BigInt(character.stamina || '0') - BigInt(mission.stamina_cost);
     const roll = Math.random() * 100;
 
+    const maxHp = BigInt(fullStats.max_hp);
+    const maxMp = BigInt(fullStats.max_mp);
+    const maxStamina = BigInt(fullStats.max_stamina);
+
     if (roll > Number(successChance)) {
       // KROK 4.7.1: Kara za Pychę (Porażka w misji < 100% szans)
-      const maxHp = BigInt(fullStats.max_hp);
-      const maxMp = BigInt(fullStats.max_mp);
-      const maxStamina = BigInt(fullStats.max_stamina);
       
       // Obrażenia HP/MP/Staminy: 5% + (100% - szansa_na_sukces)
       const damagePercent = 5n + (100n - successChance);
