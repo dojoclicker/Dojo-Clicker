@@ -2355,8 +2355,10 @@
                 // Obsługa najechania myszką
                 document.body.addEventListener('mouseover', function(e) {
                     const card = e.target.closest('.item-card, .shop-item-card');
+                    const simpleTooltip = e.target.closest('[data-tooltip]'); // Dodano detekcję statystyk
+                    
                     if (card) {
-                        // Zabezpieczenie przed miganiem: ignoruj, jeśli tooltip już wyświetla tę kartę
+                        // Zabezpieczenie przed miganiem dla kart
                         const cardId = card.dataset.inventoryId || card.dataset.templateId || card.className;
                         if (globalTooltip.dataset.currentCard === cardId) return; 
                         
@@ -2372,6 +2374,18 @@
                         } catch (err) {
                             console.error('[Tooltip] Błąd odczytu danych:', err);
                         }
+                    } else if (simpleTooltip) {
+                        // Nowa logika dla prostych tooltipów statystyk
+                        const text = simpleTooltip.getAttribute('data-tooltip');
+                        if (!text) return;
+                        
+                        if (globalTooltip.dataset.currentCard === text) return;
+                        
+                        // Renderowanie prostego tekstu w spójnym, ładnym layoucie
+                        globalTooltip.innerHTML = `<div style="white-space: pre-wrap; font-size: 0.85rem; padding: 4px; color: var(--text-primary, #e2e8f0);">${text}</div>`;
+                        globalTooltip.style.opacity = '1';
+                        globalTooltip.style.visibility = 'visible';
+                        globalTooltip.dataset.currentCard = text;
                     }
                 });
 
@@ -2398,8 +2412,14 @@
                 // Obsługa zjechania myszką - KRYTYCZNA POPRAWKA
                 document.body.addEventListener('mouseout', function(e) {
                     const card = e.target.closest('.item-card, .shop-item-card');
-                    // Ukryj TYLKO wtedy, gdy kursor całkowicie opuścił kartę (a nie wędruje po jej wewnętrznych ikonach)
+                    const simpleTooltip = e.target.closest('[data-tooltip]');
+                    
                     if (card && !card.contains(e.relatedTarget)) {
+                        globalTooltip.style.opacity = '0';
+                        globalTooltip.style.visibility = 'hidden';
+                        globalTooltip.dataset.currentCard = '';
+                    } else if (simpleTooltip && !simpleTooltip.contains(e.relatedTarget)) {
+                        // Zrzucanie tooltipa po zjechaniu ze statystyki
                         globalTooltip.style.opacity = '0';
                         globalTooltip.style.visibility = 'hidden';
                         globalTooltip.dataset.currentCard = '';
