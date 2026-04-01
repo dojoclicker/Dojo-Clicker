@@ -1369,65 +1369,67 @@ body {
 @media (max-width: 768px) {
     /* 1. GLOBALNY RESET */
     html, body { overflow-x: hidden !important; width: 100% !important; max-width: 100% !important; margin: 0 !important; padding: 0 !important; }
-    body { display: flex !important; flex-direction: column !important; }
+    body { display: flex !important; flex-direction: column !important; min-height: 100vh !important; }
 
     /* 2. HEADERY I NAWIGACJA */
-    #top-panel-1 { display: flex !important; justify-content: space-between !important; align-items: center !important; padding: 5px 15px !important; height: auto !important; }
+    #top-panel-1 { display: flex !important; justify-content: space-between !important; align-items: center !important; padding: 10px 15px !important; height: auto !important; width: 100% !important; box-sizing: border-box !important; }
     .desktop-txt { display: none !important; }
     .mobile-txt { display: inline !important; }
     .header-buttons { display: flex !important; gap: 5px !important; flex: none !important; }
-    .btn-header { padding: 4px 8px !important; font-size: 11px !important; }
-    #top-panel-2 { padding: 8px 10px !important; flex-wrap: wrap !important; justify-content: center !important; gap: 8px !important; height: auto !important; }
-    .nav-section { flex-wrap: wrap !important; justify-content: center !important; }
-    .time-container { width: 100% !important; justify-content: center !important; margin-top: 5px !important; }
+    .btn-header { padding: 6px 10px !important; font-size: 11px !important; }
+    
+    #top-panel-2 { padding: 8px 10px !important; width: 100% !important; box-sizing: border-box !important; }
+    /* Naprawa uciętych zakładek na górze - można je przesuwać palcem w prawo/lewo! */
+    .nav-section { display: flex !important; flex-wrap: nowrap !important; justify-content: flex-start !important; overflow-x: auto !important; width: 100% !important; padding-bottom: 5px !important; -webkit-overflow-scrolling: touch; gap: 8px !important; }
+    .nav-btn { min-width: 75px !important; padding: 5px !important; flex-shrink: 0 !important; }
+    .time-container { width: 100% !important; justify-content: center !important; margin-top: 8px !important; }
 
     /* 3. LEWY PANEL (Kompaktowy) */
-    aside#left-sidebar { position: relative !important; width: 100% !important; max-width: 100% !important; padding: 15px 10px !important; margin: 0 !important; border-right: none !important; border-bottom: 2px solid var(--goku-panel-border) !important; height: auto !important; min-height: unset !important; gap: 6px !important; }
-    aside#left-sidebar:not(.stats-expanded) .avatar-placeholder, aside#left-sidebar:not(.stats-expanded) .player-info > *:not(.coins), aside#left-sidebar:not(.stats-expanded) .character-stats { display: none !important; }
-    aside#left-sidebar .coins { display: block !important; text-align: center !important; font-size:13px !important; margin: 0 !important; padding-bottom: 2px !important; font-weight: bold !important; }
-    aside#left-sidebar.stats-expanded .coins { margin: 5px 0 !important; }
-    aside#left-sidebar .resource-bars { gap: 4px !important; }
-    aside#left-sidebar .bar-container { height: 10px !important; }
-    aside#left-sidebar .resource-header { font-size: 10px !important; margin-bottom: 2px !important; }
-    #toggle-stats-details { position: static !important; display: block !important; width: 100% !important; height: 36px !important; margin: 15px 0 0 0 !important; background: rgba(249, 115, 22, 0.1) !important; border: 1px solid var(--goku-accent) !important; border-radius: 6px !important; color: var(--goku-accent) !important; font-size: 11px !important; font-weight: bold !important; text-transform: uppercase !important; cursor: pointer !important; }
+    aside#left-sidebar { position: relative !important; width: 100% !important; max-width: 100% !important; padding: 15px 15px !important; margin: 0 !important; border-right: none !important; border-bottom: 2px solid var(--goku-panel-border) !important; height: auto !important; min-height: unset !important; gap: 8px !important; box-sizing: border-box !important; }
+    
+    aside#left-sidebar:not(.stats-expanded) .avatar-placeholder, 
+    aside#left-sidebar:not(.stats-expanded) .player-info > *:not(.coins), 
+    aside#left-sidebar:not(.stats-expanded) .character-stats { display: none !important; }
+    
+    aside#left-sidebar .coins { display: block !important; text-align: center !important; font-size: 14px !important; margin: 0 !important; font-weight: bold !important; }
+    aside#left-sidebar.stats-expanded .coins { margin: 10px 0 !important; }
+    
+    aside#left-sidebar .resource-bars { gap: 6px !important; width: 100% !important; }
+    aside#left-sidebar .bar-container { height: 12px !important; }
+    aside#left-sidebar .resource-header { font-size: 11px !important; margin-bottom: 2px !important; }
+    
+    /* Guzik zawsze idealnie na dole panelu */
+    #toggle-stats-details { position: static !important; display: block !important; width: 100% !important; height: 36px !important; margin: 10px 0 0 0 !important; background: rgba(249, 115, 22, 0.1) !important; border: 1px solid var(--goku-accent) !important; border-radius: 6px !important; color: var(--goku-accent) !important; font-size: 11px !important; font-weight: bold !important; text-transform: uppercase !important; cursor: pointer !important; }
+    
     aside#left-sidebar.stats-expanded .player-info > * { display: block !important; }
 
     /* 4. GŁÓWNY OBSZAR ROBOCZY */
-    main#main-workspace { padding: 10px !important; width: 100% !important; max-width: 100% !important; overflow-x: hidden !important; overflow-y: visible !important; flex-grow: 1 !important; box-sizing: border-box !important; }
-    .equipment-container, .shop-container, .hospital-container { display: flex !important; flex-direction: column !important; align-items: center !important; width: 100% !important; max-width: 100% !important; padding: 0 !important; margin: 0 !important; gap: 15px !important; }
-    .equipment-panel, .inventory-panel, .shop-left-column, .shop-right-column, .hospital-panel-left, .hospital-panel-right { width: 100% !important; min-width: 0 !important; padding: 15px 10px !important; margin: 0 !important; box-sizing: border-box !important; flex: none !important; }
-    .missions-grid { display: grid !important; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)) !important; gap: 10px !important; padding: 0 0 50px 0 !important; }
-    .mission-card { width: 100% !important; height: auto !important; min-height: 180px !important; padding: 10px !important; }
-    .inventory-grid, .shop-backpack-grid { display: flex !important; flex-wrap: wrap !important; justify-content: center !important; gap: 8px !important; }
-    .character-body { grid-template-columns: 60px 75px 60px !important; grid-template-rows: 60px 45px 60px 60px !important; gap: 8px !important; }
+    main#main-workspace { padding: 10px !important; width: 100% !important; max-width: 100% !important; overflow-x: hidden !important; flex-grow: 1 !important; box-sizing: border-box !important; display: block !important; }
+    
+    .equipment-container, .shop-container, .hospital-container { display: flex !important; flex-direction: column !important; align-items: center !important; width: 100% !important; max-width: 100% !important; padding: 0 !important; margin: 0 !important; gap: 15px !important; box-sizing: border-box !important; }
+    
+    .equipment-panel, .inventory-panel, .shop-left-column, .shop-right-column, .hospital-panel-left, .hospital-panel-right { width: 100% !important; max-width: 100% !important; min-width: 0 !important; padding: 15px 10px !important; margin: 0 !important; box-sizing: border-box !important; flex: none !important; }
+    
+    .missions-grid { display: grid !important; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)) !important; gap: 10px !important; padding: 0 0 50px 0 !important; width: 100% !important; box-sizing: border-box !important; }
+    .mission-card { width: 100% !important; height: auto !important; min-height: 180px !important; padding: 10px !important; box-sizing: border-box !important; }
+    
+    .inventory-grid, .shop-backpack-grid { display: flex !important; flex-wrap: wrap !important; justify-content: center !important; gap: 8px !important; width: 100% !important; }
+    .character-body { grid-template-columns: 60px 75px 60px !important; grid-template-rows: 60px 45px 60px 60px !important; gap: 8px !important; justify-content: center !important; }
+    
     .hospital-big-graphic { min-height: 200px !important; }
     .hospital-panel-right h2 { font-size: 1.2rem !important; }
     #hospital-countdown { font-size: 2.5rem !important; }
 
     /* 5. SKLEP - BEZPIECZNE ZAKŁADKI (FLEXBOX) */
-    .shop-level-tabs, .shop-category-tabs { 
-        display: flex !important; 
-        flex-wrap: wrap !important; 
-        gap: 8px !important; 
-        width: 100% !important; 
-        box-sizing: border-box !important; 
-    }
+    .shop-items-grid { display: grid !important; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)) !important; gap: 10px !important; width: 100% !important; box-sizing: border-box !important; }
+    .shop-item-card { height: auto !important; min-height: 140px !important; width: 100% !important; box-sizing: border-box !important; }
     
-    .shop-tab, .category-tab { 
-        flex: 1 1 calc(50% - 8px) !important; 
-        margin: 0 !important; 
-        padding: 8px 4px !important; 
-        font-size: 11px !important; 
-        text-align: center !important; 
-        white-space: normal !important; 
-        word-wrap: break-word !important; 
-        word-break: break-word !important; 
-        height: auto !important; 
-        min-height: 30px !important; 
-        min-width: 0 !important; 
-    }
+    .shop-level-tabs, .shop-category-tabs { display: flex !important; flex-wrap: wrap !important; gap: 6px !important; width: 100% !important; box-sizing: border-box !important; justify-content: center !important; }
     
-    .shop-category-tabs .category-tab:nth-child(3) { 
-        flex: 1 1 100% !important; 
-    }
+    /* Elastyczne zakładki z łamaniem tekstu */
+    .shop-tab, .category-tab { flex: 1 1 calc(50% - 6px) !important; margin: 0 !important; padding: 8px 4px !important; font-size: 11px !important; text-align: center !important; white-space: normal !important; word-wrap: break-word !important; word-break: break-word !important; height: auto !important; min-height: 35px !important; min-width: 0 !important; }
+    
+    /* Ostatnia zakładka w sklepie zajmuje całą szerokość na dole */
+    .shop-category-tabs .category-tab:nth-child(3) { flex: 1 1 100% !important; }
+}
 }
