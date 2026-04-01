@@ -375,12 +375,15 @@
     return `${formattedName} (${d.chance_pct}%)`;
 }).join(', ') : 'Brak';
 
-            // Wylicz Szansę na Sukces (Logika BigInt)
+            // Wylicz Szansę na Sukces (Logika BigInt z Ekwipunkiem)
             let lowestRatio = 500n;
             if (window.playerCurrentStats) {
                 ['strength', 'speed', 'endurance'].forEach(key => {
                     if (reqs[key] && Number(reqs[key]) > 0) {
-                        const pStat = BigInt(window.playerCurrentStats[key] || '1');
+                        const baseStat = BigInt(window.playerCurrentStats[key] || '1');
+                        const equipBonus = BigInt((window.playerEquipStats && window.playerEquipStats[key]) ? window.playerEquipStats[key] : '0');
+                        const pStat = baseStat + equipBonus; // Efektywna statystyka (Baza + Sprzęt)
+                        
                         const rStat = BigInt(reqs[key]);
                         const ratio = (pStat * 100n) / rStat;
                         if (ratio < lowestRatio) lowestRatio = ratio;
@@ -915,6 +918,7 @@
                 // Zapisz progres misji i odśwież interfejs misji
                 window.playerCompletedMissions = data.completed_missions;
                 window.playerCurrentStats = data.stats;
+                window.playerEquipStats = data.equip_stats || {}; // <-- NOWE: Zapisujemy sprzęt
                 if (window.allMissions) renderMissions(window.allMissions);
 
                 console.log('[UI] Dane postaci załadowane pomyślnie:', data);
