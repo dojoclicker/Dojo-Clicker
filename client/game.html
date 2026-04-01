@@ -598,10 +598,10 @@
                     let penaltyText = '';
                     if (data.multiplier === 50) {
                         notifType = 'warning';
-                        penaltyText = '<div style="font-size: 0.85rem; margin-top: 6px; color: #fcd34d;">⚠️ Zyski obniżone o 50% (Za potężne statystyki)</div>';
+                        penaltyText = '<div style="font-size: 0.85rem; margin-top: 6px; color: #ffffff; font-weight: bold;">⚠️ Zyski obniżone o 50% (Za potężne statystyki)</div>';
                     } else if (data.multiplier === 10) {
                         notifType = 'warning';
-                        penaltyText = '<div style="font-size: 0.85rem; margin-top: 6px; color: #fca5a5;">⚠️ Zyski obniżone o 90% (Za potężne statystyki)</div>';
+                        penaltyText = '<div style="font-size: 0.85rem; margin-top: 6px; color: #ffffff; font-weight: bold;">⚠️ Zyski obniżone o 90% (Za potężne statystyki)</div>';
                     }
 
                     const tg = data.rewards.training_gains;
@@ -616,9 +616,9 @@
                     const hasTrainingGains = trainingTextList.length > 0;
 
                     notifMsg = `
-                        <div style="margin-bottom: 4px;">💰 Monety: <b style="color:#fbbf24;">+${data.rewards.coins}</b></div>
+                        <div style="margin-bottom: 4px;">💰 Monety: <b style="color:#ffffff;">+${data.rewards.coins}</b></div>
                         <div style="margin-bottom: 4px;">📊 <b style="color:#ffffff;">+${data.rewards.gains.strength}</b> Siła, <b style="color:#ffffff;">+${data.rewards.gains.speed}</b> Szybkość, <b style="color:#ffffff;">+${data.rewards.gains.endurance}</b> Wytrz.</div>
-                        ${hasTrainingGains ? `<div style="font-size: 0.85rem; margin-top: 6px; color: #fbbf24; border-top: 1px dashed rgba(255,255,255,0.15); padding-top: 6px; font-weight: bold;">🏋️ Trening: ${trainingTextList.join(', ')}</div>` : ''}
+                        ${hasTrainingGains ? `<div style="font-size: 0.85rem; margin-top: 6px; color: #ffffff; border-top: 1px dashed rgba(255,255,255,0.3); padding-top: 6px; font-weight: bold;">🏋️ Trening: ${trainingTextList.join(', ')}</div>` : ''}
                         ${penaltyText}
                     `;
                 } else if (data.result === 'failure') {
