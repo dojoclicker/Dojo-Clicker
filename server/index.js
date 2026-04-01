@@ -132,6 +132,14 @@ async function getFullCharacterStats(userId) {
           if (bonuses.bonus_hp) trainingBonuses.bonus_hp += BigInt(bonuses.bonus_hp);
           if (bonuses.bonus_mp) trainingBonuses.bonus_mp += BigInt(bonuses.bonus_mp);
         }
+    
+    // 4. Konwersja bazowych statystyk na BigInt
+    const baseStats = {
+      strength: BigInt(character.strength || '1'),
+      speed: BigInt(character.speed || '1'),
+      endurance: BigInt(character.endurance || '1'),
+      intelligence: BigInt(character.intelligence || '1'),
+      mental_strength: BigInt(character.mental_strength || '1'),
       bonus_hp: BigInt(character.bonus_hp || '0'),
       bonus_mp: BigInt(character.bonus_mp || '0'),
       bonus_stamina: BigInt(character.bonus_stamina || '0')
