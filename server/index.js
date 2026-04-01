@@ -570,7 +570,7 @@ app.post('/api/inventory/consume', authenticateToken, async (req, res) => {
         newBonusStamina = currentBonusStamina + BigInt(value);
         if (newBonusStamina > 900n) return res.status(400).json({ error: 'Osiągnięto limit (900)!' });
         effectMessages.push(`+${value} Max Staminy`);
-      } else if (effect === 'hospital_exit_zenkai' || effect === 'zenkai_resurrection' || effect === 'zenkai') {
+      } else if (effect === 'hospital_exit_recovery' || effect === 'full_resurrection') {
         currentHp = maxHp; currentMp = maxMp; currentStamina = maxStamina; effectMessages.push('Odzyskano 100% zasobów');
         if (BigInt(character.hp || '0') <= 0n) {
             if (character.last_death_penalty) {
@@ -610,7 +610,7 @@ app.post('/api/inventory/consume', authenticateToken, async (req, res) => {
     const originalMp = BigInt(character.mp ?? '100');
     const originalStamina = BigInt(character.stamina ?? '100');
     const originalBonusStamina = BigInt(character.bonus_stamina ?? '0');
-    const hasPermanentEffects = effects.permanent_bonus || effects.bonus_stamina || ((effects.hospital_exit_zenkai || effects.zenkai_resurrection || effects.zenkai) && originalHp <= 0n);
+    const hasPermanentEffects = effects.permanent_bonus || effects.bonus_stamina || ((effects.hospital_exit_recovery || effects.full_resurrection) && originalHp <= 0n);
     
     if (currentHp === originalHp && currentMp === originalMp && currentStamina === originalStamina && newBonusStamina === originalBonusStamina && !hasPermanentEffects) {
       return res.status(400).json({ status: 'warning', message: 'Zasoby są pełne.' });
