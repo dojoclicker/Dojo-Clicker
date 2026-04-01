@@ -484,37 +484,44 @@
             }
         }
 
-        // Uniwersalna funkcja tworzenia popupów
-        function showCustomPopup(title, message, buttonText = 'Zrozumiałem') {
+        // UNIWERSALNY SYSTEM POWIADOMIEŃ
+        function showNotification(title, message, type = 'info', duration = 3500) {
             const popup = document.createElement('div');
-            popup.style.position = 'fixed';
-            popup.style.top = '50%';
-            popup.style.left = '50%';
-            popup.style.transform = 'translate(-50%, -50%)';
-            popup.style.padding = '2rem';
-            popup.style.borderRadius = '12px';
-            popup.style.zIndex = '10000';
-            popup.style.boxShadow = '0 10px 30px rgba(0,0,0,0.5)';
-            popup.style.minWidth = '300px';
-            popup.style.textAlign = 'center';
-            popup.style.fontWeight = 'bold';
-            popup.style.backgroundColor = 'var(--goku-panel-bg)';
-            popup.style.color = 'white';
-            popup.style.border = '2px solid var(--goku-panel-border)';
             
+            // Kolory i ikony w zależności od typu
+            let bgColor = 'var(--goku-panel-bg)';
+            let borderColor = 'var(--goku-panel-border)';
+            let icon = 'ℹ️';
+            
+            if (type === 'success') { bgColor = 'var(--success, #22c55e)'; borderColor = bgColor; icon = '✅'; }
+            else if (type === 'warning') { bgColor = 'var(--warning, #f59e0b)'; borderColor = bgColor; icon = '⚠️'; }
+            else if (type === 'error') { bgColor = '#cc0000'; borderColor = bgColor; icon = '❌'; }
+            else if (type === 'death') { bgColor = '#8b0000'; borderColor = bgColor; icon = '🏥'; }
+
+            popup.style.cssText = `
+                position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+                padding: 2rem; border-radius: 12px; z-index: 10000;
+                box-shadow: 0 10px 30px rgba(0,0,0,0.6); min-width: 300px;
+                text-align: center; font-weight: bold; color: white;
+                background-color: ${bgColor}; border: 2px solid ${borderColor};
+                animation: fade-in 0.2s ease-out;
+            `;
+            
+            // Renderowanie treści (Wspiera HTML w wiadomości)
             popup.innerHTML = `
-                <h3 style="margin: 0; font-size: 1.5rem;">${title}</h3>
-                <p style="margin: 1rem 0 0 0; font-size: 1rem;">${message}</p>
+                <h3 style="margin: 0 0 1rem 0; font-size: 1.5rem;">${icon} ${title}</h3>
+                <div style="font-size: 1.1rem; line-height: 1.4;">${message}</div>
             `;
             
             document.body.appendChild(popup);
-            
-            setTimeout(() => {
-                if (popup.parentNode) {
-                    popup.parentNode.removeChild(popup);
-                }
-            }, 3500);
+            setTimeout(() => { if (popup.parentNode) popup.parentNode.removeChild(popup); }, duration);
         }
+
+        // Klasyczne wrappery dla wstecznej kompatybilności starego kodu
+        const showCustomPopup = (title, msg) => showNotification(title, msg, 'info');
+        const showErrorMessage = (msg) => showNotification('Błąd', msg, 'error');
+        const showSuccessMessage = (msg) => showNotification('Sukces', msg, 'success');
+        const showWarningMessage = (msg) => showNotification('Uwaga', msg, 'warning');
 
         // Rozpoczęcie misji
         async function startMission(missionId) {
@@ -967,78 +974,6 @@
             
             // Aktualizacja szerokości paska
             fillElement.style.width = `${Math.max(0, Math.min(100, percentage))}%`;
-        }
-
-        // Wyświetlanie komunikatów o błędach
-        function showErrorMessage(message) {
-            const welcomePlaceholder = document.querySelector('.welcome-placeholder');
-            if (welcomePlaceholder) {
-                welcomePlaceholder.innerHTML = `
-                    <h1 class="welcome-title" style="color: var(--error);">⚠️ Błąd</h1>
-                    <p class="welcome-subtitle">${message}</p>
-                    <button onclick="location.reload()" class="btn-header" style="margin-top: 1rem;">Odśwież stronę</button>
-                `;
-            }
-        }
-
-        function showSuccessMessage(message) {
-            const popup = document.createElement('div');
-            popup.style.position = 'fixed';
-            popup.style.top = '50%';
-            popup.style.left = '50%';
-            popup.style.transform = 'translate(-50%, -50%)';
-            popup.style.padding = '2rem';
-            popup.style.borderRadius = '12px';
-            popup.style.zIndex = '1000';
-            popup.style.boxShadow = '0 10px 30px rgba(0,0,0,0.5)';
-            popup.style.minWidth = '300px';
-            popup.style.textAlign = 'center';
-            popup.style.fontWeight = 'bold';
-            popup.style.backgroundColor = 'var(--success, #22c55e)';
-            popup.style.color = 'white';
-            popup.style.border = '2px solid var(--success)';
-            
-            popup.innerHTML = `
-                <h3 style="margin: 0; font-size: 1.5rem;">✅ ${message}</h3>
-            `;
-            
-            document.body.appendChild(popup);
-            
-            setTimeout(() => {
-                if (popup.parentNode) {
-                    popup.parentNode.removeChild(popup);
-                }
-            }, 3000);
-        }
-
-        function showWarningMessage(message) {
-            const popup = document.createElement('div');
-            popup.style.position = 'fixed';
-            popup.style.top = '50%';
-            popup.style.left = '50%';
-            popup.style.transform = 'translate(-50%, -50%)';
-            popup.style.padding = '2rem';
-            popup.style.borderRadius = '12px';
-            popup.style.zIndex = '1000';
-            popup.style.boxShadow = '0 10px 30px rgba(0,0,0,0.5)';
-            popup.style.minWidth = '300px';
-            popup.style.textAlign = 'center';
-            popup.style.fontWeight = 'bold';
-            popup.style.backgroundColor = 'var(--warning, #f59e0b)';
-            popup.style.color = 'white';
-            popup.style.border = '2px solid var(--warning)';
-            
-            popup.innerHTML = `
-                <h3 style="margin: 0; font-size: 1.5rem;">⚠️ ${message}</h3>
-            `;
-            
-            document.body.appendChild(popup);
-            
-            setTimeout(() => {
-                if (popup.parentNode) {
-                    popup.parentNode.removeChild(popup);
-                }
-            }, 3000);
         }
 
         // Główna funkcja aktywująca zakładkę (Wymaga bycia w Global Scope dla Szpitala!)
@@ -1800,132 +1735,6 @@
         // Wyświetlanie błędu ekwipunku
         function showInventoryError(message) {
             console.error('[Inventory] Error:', message);
-        }
-
-        // Wyświetlanie komunikatu sukcesu
-        function showSuccessMessage(message) {
-            // Sprawdź czy istnieje kontener na komunikaty
-            let messageContainer = document.getElementById('message-container');
-            if (!messageContainer) {
-                messageContainer = document.createElement('div');
-                messageContainer.id = 'message-container';
-                messageContainer.style.cssText = `
-                    position: fixed;
-                    top: 20px;
-                    right: 20px;
-                    z-index: 9999;
-                    max-width: 300px;
-                `;
-                document.body.appendChild(messageContainer);
-            }
-
-            const successDiv = document.createElement('div');
-            successDiv.style.cssText = `
-                background: linear-gradient(135deg, #10b981, #059669);
-                color: white;
-                padding: 12px 16px;
-                border-radius: 8px;
-                margin-bottom: 10px;
-                box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
-                border-left: 4px solid #10b981;
-                font-weight: 500;
-                animation: slideIn 0.3s ease-out;
-                cursor: pointer;
-                transition: all 0.2s ease;
-            `;
-            successDiv.innerHTML = `
-                <div style="display: flex; align-items: center; gap: 8px;">
-                    <span style="font-size: 18px;">✅</span>
-                    <span>${message}</span>
-                </div>
-            `;
-
-            // Dodaj event do zamknięcia
-            successDiv.addEventListener('click', function() {
-                successDiv.style.animation = 'slideIn 0.2s ease-out reverse';
-                setTimeout(() => {
-                    if (successDiv.parentNode) {
-                        successDiv.parentNode.removeChild(successDiv);
-                    }
-                }, 200);
-            });
-
-            messageContainer.appendChild(successDiv);
-
-            // Automatyczne usunięcie po 3 sekundach
-            setTimeout(() => {
-                if (successDiv.parentNode) {
-                    successDiv.style.animation = 'slideIn 0.2s ease-out reverse';
-                    setTimeout(() => {
-                        if (successDiv.parentNode) {
-                            successDiv.parentNode.removeChild(successDiv);
-                        }
-                    }, 200);
-                }
-            }, 3000);
-        }
-
-        // Wyświetlanie komunikatu ostrzegawczego
-        function showWarningMessage(message) {
-            // Sprawdź czy istnieje kontener na komunikaty
-            let messageContainer = document.getElementById('message-container');
-            if (!messageContainer) {
-                messageContainer = document.createElement('div');
-                messageContainer.id = 'message-container';
-                messageContainer.style.cssText = `
-                    position: fixed;
-                    top: 20px;
-                    right: 20px;
-                    z-index: 9999;
-                    max-width: 300px;
-                `;
-                document.body.appendChild(messageContainer);
-            }
-
-            const warningDiv = document.createElement('div');
-            warningDiv.style.cssText = `
-                background: linear-gradient(135deg, #f59e0b, #d97706);
-                color: white;
-                padding: 12px 16px;
-                border-radius: 8px;
-                margin-bottom: 10px;
-                box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
-                border-left: 4px solid #f59e0b;
-                font-weight: 500;
-                animation: slideIn 0.3s ease-out;
-                cursor: pointer;
-                transition: all 0.2s ease;
-            `;
-            warningDiv.innerHTML = `
-                <div style="display: flex; align-items: center; gap: 8px;">
-                    <span style="font-size: 18px;">⚠️</span>
-                    <span>${message}</span>
-                </div>
-            `;
-
-            // Dodaj event do zamknięcia
-            warningDiv.addEventListener('click', function() {
-                warningDiv.style.animation = 'slideIn 0.2s ease-out reverse';
-                setTimeout(() => {
-                    if (warningDiv.parentNode) {
-                        warningDiv.parentNode.removeChild(warningDiv);
-                    }
-                }, 200);
-            });
-
-            messageContainer.appendChild(warningDiv);
-
-            // Automatyczne usunięcie po 4 sekundach
-            setTimeout(() => {
-                if (warningDiv.parentNode) {
-                    warningDiv.style.animation = 'slideIn 0.2s ease-out reverse';
-                    setTimeout(() => {
-                        if (warningDiv.parentNode) {
-                            warningDiv.parentNode.removeChild(warningDiv);
-                        }
-                    }, 200);
-                }
-            }, 4000);
         }
 
         // Wykonywanie konsumpcji przedmiotu z backendem

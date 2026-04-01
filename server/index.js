@@ -719,50 +719,56 @@ app.post('/api/missions/start', authenticateToken, async (req, res) => {
       let newMp = maxBigInt(0n, BigInt(character.mp || '100') - ((maxMp * damagePercent) / 100n));
       newStamina = maxBigInt(0n, newStamina - ((maxStamina * damagePercent) / 100n));
 
-      if (newHp <= 0n) {
-        const coinsLost = (BigInt(character.coins || '0') * 10n) / 100n;
-        const newCoins = BigInt(character.coins || '0') - coinsLost;
+      // WSPÓLNA LOGIKA KAR (Diminishing Returns)
+      const isDead = newHp <= 0n;
+      const statPenaltyPercent = isDead ? 2n : 1n; // 2% za śmierć, 1% za rany
+      const coinsPenaltyPercent = isDead ? 10n : 5n; // 10% za śmierć, 5% za rany
 
-        const calcStatLoss = (stat, percent) => stat <= 10n ? 0n : maxBigInt(1n, (stat * BigInt(percent)) / 100n);
-        const strLoss = calcStatLoss(currentStr, 2); const spdLoss = calcStatLoss(currentSpd, 2);
-        const endLoss = calcStatLoss(currentEnd, 2); const intLoss = calcStatLoss(currentInt, 2);
-        const menLoss = calcStatLoss(currentMen, 2);
+      const coinsLost = (BigInt(character.coins || '0') * coinsPenaltyPercent) / 100n;
+      const newCoins = BigInt(character.coins || '0') - coinsLost;
 
-        const finalStr = maxBigInt(1n, currentStr - strLoss); const finalSpd = maxBigInt(1n, currentSpd - spdLoss);
-        const finalEnd = maxBigInt(1n, currentEnd - endLoss); const finalInt = maxBigInt(1n, currentInt - intLoss);
-        const finalMen = maxBigInt(1n, currentMen - menLoss);
+      const calcStatLoss = (stat, percent) => stat <= 10n ? 0n : maxBigInt(1n, (stat * percent) / 100n);
+      const strLoss = calcStatLoss(currentStr, statPenaltyPercent); 
+      const spdLoss = calcStatLoss(currentSpd, statPenaltyPercent);
+      const endLoss = calcStatLoss(currentEnd, statPenaltyPercent); 
+      const intLoss = calcStatLoss(currentInt, statPenaltyPercent);
+      const menLoss = calcStatLoss(currentMen, statPenaltyPercent);
 
+      const finalStr = maxBigInt(1n, currentStr - strLoss); 
+      const finalSpd = maxBigInt(1n, currentSpd - spdLoss);
+      const finalEnd = maxBigInt(1n, currentEnd - endLoss); 
+      const finalInt = maxBigInt(1n, currentInt - intLoss);
+      const finalMen = maxBigInt(1n, currentMen - menLoss);
+
+      const statsLostLog = { 
+          strength: strLoss.toString(), speed: spdLoss.toString(), 
+          endurance: endLoss.toString(), intelligence: intLoss.toString(), 
+          mental_strength: menLoss.toString() 
+      };
+
+      if (isDead) {
         const hospitalMinutes = Math.min(120, 5 + Math.floor(Math.pow(Number(BigInt(fullStats.powerLevel)), 0.25)));
         const exactEndMs = Date.now() + hospitalMinutes * 60000;
         const hospitalUntilUTC = new Date(exactEndMs).toISOString();
 
-        const deathPenalty = { strength: strLoss.toString(), speed: spdLoss.toString(), endurance: endLoss.toString(), intelligence: intLoss.toString(), mental_strength: menLoss.toString(), hospital_end_ms: exactEndMs.toString() };
+        statsLostLog.hospital_end_ms = exactEndMs.toString();
 
         await supabase.from('characters').update({
             hp: '0', mp: '0', stamina: newStamina.toString(), coins: newCoins.toString(),
             strength: finalStr.toString(), speed: finalSpd.toString(), endurance: finalEnd.toString(),
             intelligence: finalInt.toString(), mental_strength: finalMen.toString(),
-            last_death_penalty: deathPenalty, hospital_until: hospitalUntilUTC, current_form: 'Stan Podstawowy' 
+            last_death_penalty: statsLostLog, hospital_until: hospitalUntilUTC, current_form: 'Stan Podstawowy' 
         }).eq('profile_id', userId);
 
-        return res.json({ result: 'death', message: `KRYTYCZNA PORAŻKA! Szpital na ${hospitalMinutes} min.`, penalty: { coins_lost: coinsLost.toString(), hospital_minutes: hospitalMinutes, stats_lost: deathPenalty, hospital_until: hospitalUntilUTC } });
+        return res.json({ result: 'death', message: `KRYTYCZNA PORAŻKA! Szpital na ${hospitalMinutes} min.`, penalty: { coins_lost: coinsLost.toString(), hospital_minutes: hospitalMinutes, stats_lost: statsLostLog, hospital_until: hospitalUntilUTC } });
       } else {
-        const coinsLost = (BigInt(character.coins || '0') * 5n) / 100n;
-        const newCoins = BigInt(character.coins || '0') - coinsLost;
-        
-        const calcStatLoss = (stat, percent) => stat <= 10n ? 0n : maxBigInt(1n, (stat * BigInt(percent)) / 100n);
-        const strLoss = calcStatLoss(currentStr, 1); const spdLoss = calcStatLoss(currentSpd, 1);
-        const endLoss = calcStatLoss(currentEnd, 1); const intLoss = calcStatLoss(currentInt, 1);
-        const menLoss = calcStatLoss(currentMen, 1);
-
         await supabase.from('characters').update({
             hp: newHp.toString(), mp: newMp.toString(), stamina: newStamina.toString(), coins: newCoins.toString(),
-            strength: maxBigInt(1n, currentStr - strLoss).toString(), speed: maxBigInt(1n, currentSpd - spdLoss).toString(),
-            endurance: maxBigInt(1n, currentEnd - endLoss).toString(), intelligence: maxBigInt(1n, currentInt - intLoss).toString(),
-            mental_strength: maxBigInt(1n, currentMen - menLoss).toString()
+            strength: finalStr.toString(), speed: finalSpd.toString(), endurance: finalEnd.toString(),
+            intelligence: finalInt.toString(), mental_strength: finalMen.toString()
         }).eq('profile_id', userId);
 
-        return res.json({ result: 'hurt', message: `PORAŻKA! Obrażenia: ${damagePercent}%`, damage: { hp: ((maxHp * damagePercent) / 100n).toString() }, penalty: { coins_lost: coinsLost.toString(), stats_lost: { strength: strLoss.toString() } } });
+        return res.json({ result: 'hurt', message: `PORAŻKA! Obrażenia: ${damagePercent}%`, damage: { hp: ((maxHp * damagePercent) / 100n).toString(), mp: ((maxMp * damagePercent) / 100n).toString(), stamina: ((maxStamina * damagePercent) / 100n).toString() }, penalty: { coins_lost: coinsLost.toString(), stats_lost: statsLostLog } });
       }
     }
 
