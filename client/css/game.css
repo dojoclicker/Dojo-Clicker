@@ -711,6 +711,17 @@ body {
         margin: 0 !important;
     }
 
+    /* Twarde łamanie tekstów, by zapobiec rozpychaniu kontenerów */
+    .shop-item-name, 
+    .shop-item-description, 
+    .shop-tab, 
+    .category-tab {
+        word-wrap: break-word !important;
+        overflow-wrap: break-word !important;
+        hyphens: auto !important;
+        max-width: 100% !important;
+    }
+
     /* Zawijanie zakładek sklepu do nowych linijek */
     .shop-level-tabs, 
     .shop-category-tabs {
