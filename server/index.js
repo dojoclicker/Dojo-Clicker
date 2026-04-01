@@ -101,8 +101,12 @@ async function getFullCharacterStats(userId) {
     };
 
     // 5. Oblicz max_hp, max_mp, max_stamina z uwzględnieniem bonusów z ekwipunku
-    const max_hp = 100n + (baseStats.strength / 20n) + baseStats.bonus_hp + equipBonuses.bonus_hp;
-    const max_mp = 100n + (baseStats.intelligence / 5n) + baseStats.bonus_mp + equipBonuses.bonus_mp;
+    // Użyj CAŁKOWITYCH statystyk (baza + sprzęt) do wyliczenia limitów
+    const totalStr = baseStats.strength + equipBonuses.strength;
+    const totalInt = baseStats.intelligence + equipBonuses.intelligence;
+    
+    const max_hp = 100n + (totalStr / 20n) + baseStats.bonus_hp + equipBonuses.bonus_hp;
+    const max_mp = 100n + (totalInt / 5n) + baseStats.bonus_mp + equipBonuses.bonus_mp;
     const max_stamina = 100n + baseStats.bonus_stamina; // Stamina nie otrzymuje bonusów od sprzętu
 
     // 6. KRYTYCZNE: Oblicz powerLevel IGNORUJĄC equipBonuses (tylko baza + trwałe bonusy)
@@ -816,23 +820,24 @@ app.post('/api/inventory/consume', authenticateToken, async (req, res) => {
       return res.status(400).json({ error: 'Zdejmij przedmiot przed użyciem!' });
     }
 
-    // Oblicz obecne maksymalne zasoby
-    let currentStr = BigInt(character.strength || '1');
-    let currentInt = BigInt(character.intelligence || '1');
-    let currentEnd = BigInt(character.endurance || '1');
-    let currentSpd = BigInt(character.speed || '1');
-    let currentMen = BigInt(character.mental_strength || '1');
-    const currentBonusStamina = BigInt(character.bonus_stamina || '0');
-    
-    let maxHp = 100n + (currentStr / 20n) + BigInt(character.bonus_hp || '0');
-    let maxMp = 100n + (currentInt / 5n) + BigInt(character.bonus_mp || '0');
-    const maxStamina = 100n + currentBonusStamina;
+    // Pobierz pełne statystyki z bonusami z ekwipunku zamiast liczyć ręcznie
+    const fullStats = await getFullCharacterStats(userId);
+    const maxHp = BigInt(fullStats.max_hp);
+    const maxMp = BigInt(fullStats.max_mp);
+    const maxStamina = BigInt(fullStats.max_stamina);
 
+    // Użyj czystych statystyk bazowych do weryfikacji overheal i kar szpitalnych
+    let currentStr = BigInt(fullStats.baseStats.strength);
+    let currentInt = BigInt(fullStats.baseStats.intelligence);
+    let currentEnd = BigInt(fullStats.baseStats.endurance);
+    let currentSpd = BigInt(fullStats.baseStats.speed);
+    let currentMen = BigInt(fullStats.baseStats.mental_strength);
+    
     // Pobierz obecne zasoby
     let currentHp = BigInt(character.hp || '100');
     let currentMp = BigInt(character.mp || '100');
     let currentStamina = BigInt(character.stamina || '100');
-    let newBonusStamina = currentBonusStamina;
+    let newBonusStamina = BigInt(fullStats.baseStats.bonus_stamina);
 
     // Przetwarzaj efekty konsumpcji
     const effects = item.item_templates.consumable_effect;
@@ -896,9 +901,12 @@ app.post('/api/inventory/consume', authenticateToken, async (req, res) => {
                 currentInt += BigInt(dp.intelligence || '0');
                 currentMen += BigInt(dp.mental_strength || '0');
 
-                // Ponowne przeliczenie maksów po odzyskaniu statystyk
-                maxHp = 100n + (currentStr / 20n) + BigInt(character.bonus_hp || '0');
-                maxMp = 100n + (currentInt / 5n) + BigInt(character.bonus_mp || '0');
+                // Ponowne przeliczenie maksów po odzyskaniu statystyk - UŻJĄC CAŁKOWITE STATYSTYKI
+                const totalStrAfterRevive = currentStr + BigInt(fullStats.equipStats.strength || '0');
+                const totalIntAfterRevive = currentInt + BigInt(fullStats.equipStats.intelligence || '0');
+                
+                maxHp = 100n + (totalStrAfterRevive / 20n) + BigInt(fullStats.baseStats.bonus_hp) + BigInt(fullStats.equipStats.bonus_hp || '0');
+                maxMp = 100n + (totalIntAfterRevive / 5n) + BigInt(fullStats.baseStats.bonus_mp) + BigInt(fullStats.equipStats.bonus_mp || '0');
                 
                 // Leczmy jeszcze raz do nowych, wyższych limitów
                 currentHp = maxHp;
