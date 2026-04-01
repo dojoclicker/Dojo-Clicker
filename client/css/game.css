@@ -49,6 +49,11 @@
     position: relative;
 }
 
+/* Ukrycie przycisku statystyk na komputerach */
+#toggle-stats-details {
+    display: none;
+}
+
 /* Nowy układ Szpitala */
 #hospital-view {
     display: none;
@@ -1437,7 +1442,7 @@ body {
    ========================================== */
 @media (max-width: 768px) {
     /* 1. GLOBALNY RESET */
-    html, body { overflow-x: hidden !important; width: 100% !important; max-width: 100vw !important; }
+    html, body { overflow-x: hidden !important; width: 100% !important; max-width: 100% !important; margin: 0 !important; padding: 0 !important; }
     body { display: flex !important; flex-direction: column !important; }
 
     /* 2. HEADERY I NAWIGACJA */
@@ -1462,7 +1467,7 @@ body {
     aside#left-sidebar.stats-expanded .player-info > * { display: block !important; }
 
     /* 4. GŁÓWNY OBSZAR ROBOCZY */
-    main#main-workspace { padding: 10px !important; width: 100% !important; max-width: 100vw !important; overflow-x: hidden !important; flex-grow: 1 !important; box-sizing: border-box !important; }
+    main#main-workspace { padding: 10px !important; width: 100% !important; max-width: 100% !important; overflow-x: hidden !important; flex-grow: 1 !important; box-sizing: border-box !important; }
     .equipment-container, .shop-container, .hospital-container { display: flex !important; flex-direction: column !important; align-items: center !important; width: 100% !important; max-width: 100% !important; padding: 0 !important; margin: 0 !important; gap: 15px !important; }
     .equipment-panel, .inventory-panel, .shop-left-column, .shop-right-column, .hospital-panel-left, .hospital-panel-right { width: 100% !important; min-width: 0 !important; padding: 15px 10px !important; margin: 0 !important; box-sizing: border-box !important; flex: none !important; }
     .missions-grid { display: grid !important; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)) !important; gap: 10px !important; padding: 0 0 50px 0 !important; }
@@ -1478,6 +1483,6 @@ body {
     .shop-item-card { height: auto !important; min-height: 160px !important; }
     .shop-level-tabs, .shop-category-tabs { display: grid !important; grid-template-columns: 1fr 1fr !important; gap: 8px !important; width: 100% !important; box-sizing: border-box !important; }
     .shop-category-tabs .category-tab:nth-child(3) { grid-column: 1 / -1 !important; }
-    .shop-tab, .category-tab { width: 100% !important; margin: 0 !important; padding: 8px 4px !important; font-size: 11px !important; text-align: center !important; white-space: normal !important; word-wrap: break-word !important; height: 100% !important; min-width: 0 !important; }
-    .shop-item-name, .shop-item-description { word-wrap: break-word !important; overflow-wrap: break-word !important; hyphens: auto !important; max-width: 100% !important; }
+    .shop-tab, .category-tab { width: 100% !important; margin: 0 !important; padding: 8px 4px !important; font-size: 11px !important; text-align: center !important; white-space: normal !important; word-wrap: break-word !important; word-break: break-word !important; height: 100% !important; min-width: 0 !important; }
+    .shop-item-name, .shop-item-description { word-wrap: break-word !important; overflow-wrap: break-word !important; word-break: break-word !important; hyphens: auto !important; max-width: 100% !important; white-space: normal !important; }
 }
