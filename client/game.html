@@ -621,12 +621,17 @@
                     const boredomDmg = data.rewards.boredom_damage ? BigInt(data.rewards.boredom_damage) : 0n;
                     const boredomHtml = boredomDmg > 0n ? `<div style="font-size: 0.85rem; margin-top: 6px; color: #fca5a5; font-weight: bold;">🩸 Wydarzenie losowe: -${boredomDmg.toString()} HP</div>` : '';
 
+                    // NOWY KOD - Mapowanie dropów z backendu
+                    const drops = data.rewards.dropped_items || [];
+                    const dropsHtml = drops.map(d => `<div style="font-size: 0.85rem; margin-top: 6px; color: #4ade80; font-weight: bold;">🎁 Zdobyto przedmiot: ${d.name} (x${d.quantity})</div>`).join('');
+
                     notifMsg = `
                         <div style="margin-bottom: 4px;">💰 Monety: <b style="color:#ffffff;">+${data.rewards.coins}</b></div>
                         <div style="margin-bottom: 4px;">📊 <b style="color:#ffffff;">+${data.rewards.gains.strength}</b> Siła, <b style="color:#ffffff;">+${data.rewards.gains.speed}</b> Szybkość, <b style="color:#ffffff;">+${data.rewards.gains.endurance}</b> Wytrz.</div>
                         ${hasTrainingGains ? `<div style="font-size: 0.85rem; margin-top: 6px; color: #ffffff; border-top: 1px dashed rgba(255,255,255,0.3); padding-top: 6px; font-weight: bold;">🏋️ Trening: ${trainingTextList.join(', ')}</div>` : ''}
                         ${penaltyText}
                         ${boredomHtml}
+                        ${dropsHtml}
                     `;
                 } else if (data.result === 'failure') {
                     notifType = 'warning';
@@ -688,6 +693,7 @@
                 
                 // Odśwież dane postaci
                 await fetchCharacterData();
+                await fetchInventory(); // <--- WYMUSZONE ODŚWIEŻENIE PLECACA
                 
             } catch (error) {
                 console.error('[Missions] Błąd podczas rozpoczynania misji:', error);

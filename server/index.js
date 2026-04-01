@@ -909,6 +909,90 @@ app.post('/api/missions/start', authenticateToken, async (req, res) => {
         finalStamina = newStamina;
     }
 
+    // === SYSTEM DROPÓW W MISJACH (KROK 4.8) ===
+    let droppedItems = [];
+    if (mission.drop_table && mission.drop_table.length > 0 && roll <= Number(successChance)) {
+        // Obliczenie dynamicznego plecaka wg wzoru z GDD
+        const minPhysicalStat = minBigInt(currentStr, minBigInt(currentSpd, currentEnd));
+        let maxBackpackSlots = 5 + Number(minPhysicalStat / 10000n);
+        if (maxBackpackSlots > 50) maxBackpackSlots = 50;
+
+        // Pobranie aktualnego plecaka gracza
+        const { data: currentInventory } = await supabase
+            .from('inventory')
+            .select('*, item_templates(*)')
+            .eq('character_id', character.id)
+            .is('equipped_slot', null);
+
+        const backpackItems = currentInventory || [];
+
+        for (const drop of mission.drop_table) {
+            const dropRoll = Math.floor(Math.random() * 100) + 1;
+            
+            if (dropRoll <= drop.chance_pct) {
+                // Pobranie danych przedmiotu
+                const { data: itemTemplate } = await supabase
+                    .from('item_templates')
+                    .select('*')
+                    .eq('id', drop.item_id)
+                    .single();
+
+                if (!itemTemplate) continue;
+
+                // Twarda Zasada Anty-Klonowania
+                if (itemTemplate.category === 'special_consumable') {
+                    const hasInBackpack = backpackItems.some(i => i.item_template_id === itemTemplate.id);
+                    
+                    let alreadyUnlocked = false;
+                    const effect = itemTemplate.consumable_effect || {};
+                    const unlockedForms = character.unlocked_forms || [];
+                    const unlockedSkills = character.unlocked_skills || [];
+
+                    if (effect.unlock_form && unlockedForms.includes(effect.unlock_form)) alreadyUnlocked = true;
+                    if (effect.unlock_skill && unlockedSkills.includes(effect.unlock_skill)) alreadyUnlocked = true;
+
+                    if (hasInBackpack || alreadyUnlocked) {
+                        continue; // Drop przepada na zawsze
+                    }
+                }
+
+                // Logika dodawania do plecaka
+                const isStackable = itemTemplate.category === 'consumable' || itemTemplate.category === 'special_consumable';
+                const existingStack = backpackItems.find(i => i.item_template_id === itemTemplate.id && BigInt(i.quantity) < 99n);
+
+                if (isStackable && existingStack) {
+                    // Dodaj do istniejącego stosu
+                    await supabase.from('inventory')
+                        .update({ quantity: (BigInt(existingStack.quantity) + 1n).toString() })
+                        .eq('id', existingStack.id);
+                        
+                    droppedItems.push({ name: itemTemplate.name, quantity: 1 });
+                    existingStack.quantity = (BigInt(existingStack.quantity) + 1n).toString();
+                } else {
+                    // Szukaj wolnego slota (do wyliczonego limitu)
+                    const occupiedIndexes = backpackItems.map(i => i.backpack_index);
+                    let freeIdx = 1;
+                    while (occupiedIndexes.includes(freeIdx)) freeIdx++;
+
+                    if (freeIdx <= maxBackpackSlots) {
+                        const newItem = {
+                            character_id: character.id,
+                            item_template_id: itemTemplate.id,
+                            quantity: '1',
+                            equipped_slot: null,
+                            backpack_index: freeIdx
+                        };
+                        await supabase.from('inventory').insert(newItem);
+                        droppedItems.push({ name: itemTemplate.name, quantity: 1 });
+                        backpackItems.push(newItem); 
+                    }
+                    // Jeśli freeIdx > maxBackpackSlots, nagroda po prostu przepada
+                }
+            }
+        }
+    }
+    // ==========================================
+
     await supabase.from('characters').update({
         coins: newCoins.toString(), strength: newStr.toString(), speed: newSpd.toString(), endurance: newEnd.toString(), 
         hp: finalHp.toString(), mp: finalMp.toString(), stamina: finalStamina.toString(),
@@ -921,6 +1005,7 @@ app.post('/api/missions/start', authenticateToken, async (req, res) => {
       rewards: { 
         coins: finalCoins.toString(), stats_gained: finalStats.toString(),
         boredom_damage: appliedBoredomDamage.toString(),
+        dropped_items: droppedItems, 
         gains: { strength: gainStr.toString(), speed: gainSpd.toString(), endurance: gainEnd.toString() },
         training_gains: { 
             strength: trainGainStr.toString(), speed: trainGainSpd.toString(), endurance: trainGainEnd.toString(),
