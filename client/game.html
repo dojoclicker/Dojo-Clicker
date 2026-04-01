@@ -843,9 +843,9 @@
                 const hpBonus = data.equip_stats?.bonus_hp || '0';
                 const mpBonus = data.equip_stats?.bonus_mp || '0';
                 
-                updateResourceBar('hp', data.current_hp, data.max_hp, hpBonus);
-                updateResourceBar('mp', data.current_mp, data.max_mp, mpBonus);
-                updateResourceBar('stamina', data.current_stamina, data.max_stamina, '0');
+                updateResourceBar('hp', data.current_hp, data.max_hp, hpBonus, data.equip_stats?.breakdown?.bonus_hp || []);
+                updateResourceBar('mp', data.current_mp, data.max_mp, mpBonus, data.equip_stats?.breakdown?.bonus_mp || []);
+                updateResourceBar('stamina', data.current_stamina, data.max_stamina, '0', []);
 
                 // SZPITAL LOGIC: Sprawdzenie czy gracz jest w szpitalu
                 const currentHp = parseInt(data.current_hp);
@@ -875,29 +875,34 @@
                 }
 
                 // Aktualizacja statystyk postaci z bonusami z ekwipunku
-                const updateStatDisplay = (statId, baseValue, equipBonus) => {
+                const updateStatDisplay = (statId, baseValue, equipBonus, breakdownArray = []) => {
                     const baseNum = parseInt(baseValue);
                     const bonusNum = parseInt(equipBonus);
                     const element = document.getElementById(statId);
-                    
+
                     if (bonusNum > 0) {
-                        // Wyświetl w formacie [Baza] (+[Bonus]) w kolorze zielonym
-                        element.textContent = `${baseNum} (+${bonusNum})`;
+                        const sum = baseNum + bonusNum;
+                        element.textContent = sum;
                         element.style.color = 'var(--success, #22c55e)';
+
+                        const breakdownText = `Baza: ${baseNum}\nBonus: +${bonusNum}\n\nŹródła:\n` + breakdownArray.join('\n');
+                        element.setAttribute('title', breakdownText);
+                        element.style.cursor = 'help';
                     } else {
-                        // Wyświetl tylko bazową wartość w domyślnym kolorze
                         element.textContent = baseNum;
                         element.style.color = 'var(--text-primary)';
+                        element.removeAttribute('title');
+                        element.style.cursor = 'default';
                     }
                 };
 
                 // Zaktualizuj 5 głównych statystyk z uwzględnieniem bonusów
                 if (data.equip_stats) {
-                    updateStatDisplay('stat-strength', data.stats.strength, data.equip_stats.strength);
-                    updateStatDisplay('stat-speed', data.stats.speed, data.equip_stats.speed);
-                    updateStatDisplay('stat-endurance', data.stats.endurance, data.equip_stats.endurance);
-                    updateStatDisplay('stat-intelligence', data.stats.intelligence, data.equip_stats.intelligence);
-                    updateStatDisplay('stat-mental_strength', data.stats.mental_strength, data.equip_stats.mental_strength);
+                    updateStatDisplay('stat-strength', data.stats.strength, data.equip_stats.strength, data.equip_stats.breakdown?.strength || []);
+                    updateStatDisplay('stat-speed', data.stats.speed, data.equip_stats.speed, data.equip_stats.breakdown?.speed || []);
+                    updateStatDisplay('stat-endurance', data.stats.endurance, data.equip_stats.endurance, data.equip_stats.breakdown?.endurance || []);
+                    updateStatDisplay('stat-intelligence', data.stats.intelligence, data.equip_stats.intelligence, data.equip_stats.breakdown?.intelligence || []);
+                    updateStatDisplay('stat-mental_strength', data.stats.mental_strength, data.equip_stats.mental_strength, data.equip_stats.breakdown?.mental_strength || []);
                 } else {
                     // Fallback - stare zachowanie jeśli equip_stats nie istnieje
                     document.getElementById('stat-strength').textContent = data.stats.strength;
@@ -920,7 +925,7 @@
         }
 
         // Aktualizacja pojedynczego paska zasobów
-        function updateResourceBar(resourceType, current, max, equipBonus = '0') {
+        function updateResourceBar(resourceType, current, max, equipBonus = '0', breakdown = []) {
             // Konwersja stringów na BigInt dla obliczeń
             const currentBigInt = BigInt(current);
             const maxBigInt = BigInt(max);
@@ -937,7 +942,9 @@
 
             // Aktualizacja tekstu z uwzględnieniem bonusów z ekwipunku
             if (BigInt(equipBonus) > 0n) {
-                valueElement.innerHTML = `<span style="color: var(--success, #22c55e);" title="Bonus ze sprzętu: +${equipBonus}">${current} / ${max}</span>`;
+                const baseMax = BigInt(max) - BigInt(equipBonus);
+                const breakdownText = `Baza: ${baseMax}\nBonus: +${equipBonus}\n\nŹródła:\n` + breakdown.join('\n');
+                valueElement.innerHTML = `<span style="color: var(--success, #22c55e); cursor: help;" title="${breakdownText}">${current} / ${max}</span>`;
             } else {
                 valueElement.textContent = `${current} / ${max}`;
             }

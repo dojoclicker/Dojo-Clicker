@@ -69,6 +69,11 @@ async function getFullCharacterStats(userId) {
       bonus_mp: 0n
     };
 
+    // Obiekt zbierający nazwy przedmiotów z bonusami
+    const equipBreakdown = {
+      strength: [], speed: [], endurance: [], intelligence: [], mental_strength: [], bonus_hp: [], bonus_mp: []
+    };
+
     // Iteruj przez założony sprzęt i sumuj bonusy pasywne
     equippedItems.forEach(item => {
       if (item.item_templates && item.item_templates.bonuses) {
@@ -77,13 +82,34 @@ async function getFullCharacterStats(userId) {
         // Sprawdź czy to bonus pasywny
         if (bonuses.type === 'passive' || bonuses.type === undefined) {
           // Dodaj bonusy do statystyk (rzutowanie Stringów na BigInt)
-          if (bonuses.strength) equipBonuses.strength += BigInt(bonuses.strength);
-          if (bonuses.speed) equipBonuses.speed += BigInt(bonuses.speed);
-          if (bonuses.endurance) equipBonuses.endurance += BigInt(bonuses.endurance);
-          if (bonuses.intelligence) equipBonuses.intelligence += BigInt(bonuses.intelligence);
-          if (bonuses.mental_strength) equipBonuses.mental_strength += BigInt(bonuses.mental_strength);
-          if (bonuses.bonus_hp) equipBonuses.bonus_hp += BigInt(bonuses.bonus_hp);
-          if (bonuses.bonus_mp) equipBonuses.bonus_mp += BigInt(bonuses.bonus_mp);
+          if (bonuses.strength) {
+            equipBonuses.strength += BigInt(bonuses.strength);
+            equipBreakdown.strength.push(`${item.item_templates.name}: +${bonuses.strength}`);
+          }
+          if (bonuses.speed) {
+            equipBonuses.speed += BigInt(bonuses.speed);
+            equipBreakdown.speed.push(`${item.item_templates.name}: +${bonuses.speed}`);
+          }
+          if (bonuses.endurance) {
+            equipBonuses.endurance += BigInt(bonuses.endurance);
+            equipBreakdown.endurance.push(`${item.item_templates.name}: +${bonuses.endurance}`);
+          }
+          if (bonuses.intelligence) {
+            equipBonuses.intelligence += BigInt(bonuses.intelligence);
+            equipBreakdown.intelligence.push(`${item.item_templates.name}: +${bonuses.intelligence}`);
+          }
+          if (bonuses.mental_strength) {
+            equipBonuses.mental_strength += BigInt(bonuses.mental_strength);
+            equipBreakdown.mental_strength.push(`${item.item_templates.name}: +${bonuses.mental_strength}`);
+          }
+          if (bonuses.bonus_hp) {
+            equipBonuses.bonus_hp += BigInt(bonuses.bonus_hp);
+            equipBreakdown.bonus_hp.push(`${item.item_templates.name}: +${bonuses.bonus_hp}`);
+          }
+          if (bonuses.bonus_mp) {
+            equipBonuses.bonus_mp += BigInt(bonuses.bonus_mp);
+            equipBreakdown.bonus_mp.push(`${item.item_templates.name}: +${bonuses.bonus_mp}`);
+          }
         }
       }
     });
@@ -138,7 +164,8 @@ async function getFullCharacterStats(userId) {
         intelligence: equipBonuses.intelligence.toString(),
         mental_strength: equipBonuses.mental_strength.toString(),
         bonus_hp: equipBonuses.bonus_hp.toString(),
-        bonus_mp: equipBonuses.bonus_mp.toString()
+        bonus_mp: equipBonuses.bonus_mp.toString(),
+        breakdown: equipBreakdown
       }
     };
 
