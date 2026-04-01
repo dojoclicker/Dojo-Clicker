@@ -583,11 +583,14 @@
                     popup.style.color = 'white';
                     popup.style.border = `2px solid ${bgColor}`;
                     
+                    const tg = data.rewards.training_gains;
+                    const hasTrainingGains = tg && (Number(tg.strength) > 0 || Number(tg.speed) > 0 || Number(tg.endurance) > 0);
+                    
                     popup.innerHTML = `
                         <h3 style="margin: 0 0 1rem 0; font-size: 1.5rem;">✅ ${data.message}</h3>
                         <div style="font-size: 1.1rem; margin-bottom: 0.5rem;">💰 Monety: +${data.rewards.coins}</div>
                         <div style="font-size: 1.1rem;">📊 +${data.rewards.gains.strength} Siła, +${data.rewards.gains.speed} Szybkość, +${data.rewards.gains.endurance} Wytrzymałość</div>
-                        ${data.training_gains && (Number(data.training_gains.strength) > 0 || Number(data.training_gains.speed) > 0 || Number(data.training_gains.endurance) > 0) ? `<div style="font-size: 1rem; margin-top: 8px; color: #fbbf24;">🏋️ Bonusy Treningowe: +${data.training_gains.strength} Siła, +${data.training_gains.speed} Szybkość, +${data.training_gains.endurance} Wytrzymałość</div>` : ''}
+                        ${hasTrainingGains ? `<div style="font-size: 1rem; margin-top: 8px; color: #fbbf24;">🏋️ Bonusy Treningowe: +${tg.strength} Siła, +${tg.speed} Szybkość, +${tg.endurance} Wytrzymałość</div>` : ''}
                         ${penaltyText}
                     `;
                 } else if (data.result === 'failure') {
