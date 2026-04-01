@@ -617,8 +617,8 @@
 
                     notifMsg = `
                         <div style="margin-bottom: 4px;">💰 Monety: <b style="color:#fbbf24;">+${data.rewards.coins}</b></div>
-                        <div style="margin-bottom: 4px;">📊 <b style="color:#4ade80;">+${data.rewards.gains.strength}</b> Siła, <b style="color:#4ade80;">+${data.rewards.gains.speed}</b> Szybkość, <b style="color:#4ade80;">+${data.rewards.gains.endurance}</b> Wytrz.</div>
-                        ${hasTrainingGains ? `<div style="font-size: 0.85rem; margin-top: 6px; color: #fbbf24; border-top: 1px dashed rgba(255,255,255,0.15); padding-top: 6px;">🏋️ Trening: ${trainingTextList.join(', ')}</div>` : ''}
+                        <div style="margin-bottom: 4px;">📊 <b style="color:#ffffff;">+${data.rewards.gains.strength}</b> Siła, <b style="color:#ffffff;">+${data.rewards.gains.speed}</b> Szybkość, <b style="color:#ffffff;">+${data.rewards.gains.endurance}</b> Wytrz.</div>
+                        ${hasTrainingGains ? `<div style="font-size: 0.85rem; margin-top: 6px; color: #fbbf24; border-top: 1px dashed rgba(255,255,255,0.15); padding-top: 6px; font-weight: bold;">🏋️ Trening: ${trainingTextList.join(', ')}</div>` : ''}
                         ${penaltyText}
                     `;
                 } else if (data.result === 'failure') {
@@ -639,14 +639,14 @@
                     if (Number(statsLost.mental_strength) > 0) lostList.push(`-${statsLost.mental_strength} Ment.`);
 
                     if (lostList.length > 0) {
-                        statsLostHtml = `<div style="margin-top: 4px;">📊 Utrata: ${lostList.join(', ')}</div>`;
+                        statsLostHtml = `<div style="margin-top: 4px; font-weight: bold; color: #ffffff;">📊 Utrata: ${lostList.join(', ')}</div>`;
                     }
 
                     notifMsg = `
                         <div style="font-size: 0.85rem; margin-bottom: 6px;">${data.message}</div>
-                        <div style="background: rgba(0,0,0,0.25); padding: 8px; border-radius: 6px; font-size: 0.85rem;">
-                            <div style="color:#fca5a5;">❤️ -${data.damage.hp} HP | 💙 -${data.damage.mp} MP | ⚡ -${data.damage.stamina} Sta</div>
-                            <div style="color:#fbbf24; margin-top:4px;">💰 Utrata monet: -${data.penalty?.coins_lost || 0}</div>
+                        <div style="background: rgba(0,0,0,0.25); padding: 8px; border-radius: 6px; font-size: 0.85rem; font-weight: 500;">
+                            <div style="color:#ffffff;">❤️ <b style="color:#ffffff;">-${data.damage.hp}</b> HP | 💙 <b style="color:#ffffff;">-${data.damage.mp}</b> MP | ⚡ <b style="color:#ffffff;">-${data.damage.stamina}</b> Sta</div>
+                            <div style="color:#fbbf24; margin-top:4px;">💰 Utrata monet: <b style="color:#fbbf24;">-${data.penalty?.coins_lost || 0}</b></div>
                             ${statsLostHtml}
                         </div>
                     `;
@@ -666,9 +666,9 @@
                     notifMsg = `
                         <div style="font-size: 0.85rem; margin-bottom: 6px;">${data.message}</div>
                         <div style="background: rgba(0,0,0,0.3); padding: 8px; border-radius: 6px; font-size: 0.85rem;">
-                            <div style="color:#fbbf24;">💰 Utrata monet: -${data.penalty.coins_lost}</div>
-                            <div style="color:#fca5a5; margin-top:4px;">🏥 Czas w szpitalu: ${data.penalty.hospital_minutes} min</div>
-                            ${statsList.length > 0 ? `<div style="margin-top:4px;">📊 Utrata statystyk: ${statsList.join(', ')}</div>` : ''}
+                            <div style="color:#fbbf24;">💰 Utrata monet: <b style="color:#fbbf24;">-${data.penalty.coins_lost}</b></div>
+                            <div style="color:#ffffff; margin-top:4px;">🏥 Czas w szpitalu: <b style="color:#ffffff;">${data.penalty.hospital_minutes}</b> min</div>
+                            ${statsList.length > 0 ? `<div style="margin-top:4px; font-weight: bold; color: #ffffff;">📊 Utrata statystyk: ${statsList.join(', ')}</div>` : ''}
                         </div>
                     `;
                     duration = 6000;
