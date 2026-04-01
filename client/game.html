@@ -605,12 +605,20 @@
                     }
 
                     const tg = data.rewards.training_gains;
-                    const hasTrainingGains = tg && (Number(tg.strength) > 0 || Number(tg.speed) > 0 || Number(tg.endurance) > 0);
+                    let trainingTextList = [];
+                    if (tg) {
+                        if (Number(tg.strength) > 0) trainingTextList.push(`+${tg.strength} Siła`);
+                        if (Number(tg.speed) > 0) trainingTextList.push(`+${tg.speed} Szybk.`);
+                        if (Number(tg.endurance) > 0) trainingTextList.push(`+${tg.endurance} Wytrz.`);
+                        if (Number(tg.bonus_hp) > 0) trainingTextList.push(`+${tg.bonus_hp} Max HP`);
+                        if (Number(tg.bonus_mp) > 0) trainingTextList.push(`+${tg.bonus_mp} Max MP`);
+                    }
+                    const hasTrainingGains = trainingTextList.length > 0;
 
                     notifMsg = `
                         <div style="margin-bottom: 4px;">💰 Monety: <b style="color:#fbbf24;">+${data.rewards.coins}</b></div>
                         <div style="margin-bottom: 4px;">📊 <b style="color:#4ade80;">+${data.rewards.gains.strength}</b> Siła, <b style="color:#4ade80;">+${data.rewards.gains.speed}</b> Szybkość, <b style="color:#4ade80;">+${data.rewards.gains.endurance}</b> Wytrz.</div>
-                        ${hasTrainingGains ? `<div style="font-size: 0.85rem; margin-top: 6px; color: #fbbf24; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 6px;">🏋️ Trening: +${tg.strength} Siła, +${tg.speed} Szybk., +${tg.endurance} Wytrz.</div>` : ''}
+                        ${hasTrainingGains ? `<div style="font-size: 0.85rem; margin-top: 6px; color: #fbbf24; border-top: 1px dashed rgba(255,255,255,0.15); padding-top: 6px;">🏋️ Trening: ${trainingTextList.join(', ')}</div>` : ''}
                         ${penaltyText}
                     `;
                 } else if (data.result === 'failure') {

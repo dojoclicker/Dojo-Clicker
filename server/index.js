@@ -804,21 +804,29 @@ app.post('/api/missions/start', authenticateToken, async (req, res) => {
     }
 
     let trainGainStr = 0n; let trainGainSpd = 0n; let trainGainEnd = 0n;
+    let trainGainBonusHp = 0n; let trainGainBonusMp = 0n;
+    
     if (fullStats.trainingStats) {
         if (BigInt(fullStats.trainingStats.strength || '0') > 0n) trainGainStr = maxBigInt(1n, (BigInt(fullStats.trainingStats.strength) * rewardMultiplier) / 100n);
         if (BigInt(fullStats.trainingStats.speed || '0') > 0n) trainGainSpd = maxBigInt(1n, (BigInt(fullStats.trainingStats.speed) * rewardMultiplier) / 100n);
         if (BigInt(fullStats.trainingStats.endurance || '0') > 0n) trainGainEnd = maxBigInt(1n, (BigInt(fullStats.trainingStats.endurance) * rewardMultiplier) / 100n);
+        if (BigInt(fullStats.trainingStats.bonus_hp || '0') > 0n) trainGainBonusHp = maxBigInt(1n, (BigInt(fullStats.trainingStats.bonus_hp) * rewardMultiplier) / 100n);
+        if (BigInt(fullStats.trainingStats.bonus_mp || '0') > 0n) trainGainBonusMp = maxBigInt(1n, (BigInt(fullStats.trainingStats.bonus_mp) * rewardMultiplier) / 100n);
     }
 
     const newStr = currentStr + gainStr + trainGainStr;
     const newSpd = currentSpd + gainSpd + trainGainSpd;
     const newEnd = currentEnd + gainEnd + trainGainEnd;
+    const newBonusHp = BigInt(character.bonus_hp || '0') + trainGainBonusHp;
+    const newBonusMp = BigInt(character.bonus_mp || '0') + trainGainBonusMp;
 
     let completedMissions = character.completed_missions || [];
     if (!completedMissions.includes(missionId)) completedMissions.push(missionId);
 
     await supabase.from('characters').update({
-        coins: newCoins.toString(), strength: newStr.toString(), speed: newSpd.toString(), endurance: newEnd.toString(), stamina: newStamina.toString(), completed_missions: completedMissions
+        coins: newCoins.toString(), strength: newStr.toString(), speed: newSpd.toString(), endurance: newEnd.toString(), stamina: newStamina.toString(), 
+        bonus_hp: newBonusHp.toString(), bonus_mp: newBonusMp.toString(),
+        completed_missions: completedMissions
       }).eq('profile_id', userId);
 
     res.json({ 
@@ -826,7 +834,10 @@ app.post('/api/missions/start', authenticateToken, async (req, res) => {
       rewards: { 
         coins: finalCoins.toString(), stats_gained: finalStats.toString(),
         gains: { strength: gainStr.toString(), speed: gainSpd.toString(), endurance: gainEnd.toString() },
-        training_gains: { strength: trainGainStr.toString(), speed: trainGainSpd.toString(), endurance: trainGainEnd.toString() }
+        training_gains: { 
+            strength: trainGainStr.toString(), speed: trainGainSpd.toString(), endurance: trainGainEnd.toString(),
+            bonus_hp: trainGainBonusHp.toString(), bonus_mp: trainGainBonusMp.toString()
+        }
       }
     });
   } catch (err) { res.status(500).json({ error: 'Błąd serwera podczas rozpoczynania misji' }); }
