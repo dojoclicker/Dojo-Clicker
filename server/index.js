@@ -659,13 +659,15 @@ app.post('/api/missions/start', authenticateToken, async (req, res) => {
     if (BigInt(character.stamina ?? '0') < BigInt(mission.stamina_cost)) return res.status(400).json({ status: 'error', message: 'Nie masz staminy!' });
 
     const reqStats = mission.req_stats || {};
-    let lowestRatioPercent = 5000n; // Duża wartość startowa dla DR
     let totalCappedRatio = 0n; // Do średniej szansy
     let reqCount = 0n;
 
     const effectiveStr = BigInt(fullStats.baseStats.strength) + BigInt(fullStats.equipStats.strength || '0');
     const effectiveSpd = BigInt(fullStats.baseStats.speed) + BigInt(fullStats.equipStats.speed || '0');
     const effectiveEnd = BigInt(fullStats.baseStats.endurance) + BigInt(fullStats.equipStats.endurance || '0');
+
+    let lowestRawPlayerStat = -1n;
+    let reqStatForThreshold = 1n;
 
     ['strength', 'speed', 'endurance'].forEach(stat => {
       if (reqStats[stat] && reqStats[stat] > 0) {
@@ -677,9 +679,10 @@ app.post('/api/missions/start', authenticateToken, async (req, res) => {
         const reqStat = BigInt(reqStats[stat]);
         const rawRatio = (playerStat * 100n) / reqStat;
         
-        // 1. Zabezpieczenie dla kar (Diminishing Returns)
-        if (rawRatio < lowestRatioPercent) {
-            lowestRatioPercent = rawRatio;
+        // 1. Zabezpieczenie dla kar (Diminishing Returns) - Wyciągamy SUROWE punkty najsłabszej statystyki
+        if (lowestRawPlayerStat === -1n || playerStat < lowestRawPlayerStat) {
+            lowestRawPlayerStat = playerStat;
+            reqStatForThreshold = reqStat;
         }
         
         // 2. Realna szansa na sukces (każda statystyka max 100% udziału)
@@ -687,8 +690,6 @@ app.post('/api/missions/start', authenticateToken, async (req, res) => {
         reqCount += 1n;
       }
     });
-
-    if (lowestRatioPercent === 5000n) lowestRatioPercent = 100n;
     
     // Średnia szansa na sukces
     let successChance = reqCount > 0n ? (totalCappedRatio / reqCount) : 100n;
@@ -697,25 +698,21 @@ app.post('/api/missions/start', authenticateToken, async (req, res) => {
     const currentSpd = BigInt(fullStats.baseStats.speed);
     const currentEnd = BigInt(fullStats.baseStats.endurance);
 
-    // KROK 4.7.2: Kary za Potęgę (Diminishing Returns) - nowy algorytm "Najsłabsze Ogniwo"
+    // KROK 4.7.2: Kary za Potęgę (Diminishing Returns)
     let rewardMultiplier = 100n;
-    let boredomInjuryChance = 20n; // domyślnie 20% szansy na rany z nudów
+    let boredomInjuryChance = 20n;
     
-    // Wylicz próg dla Najsłabszego Ogniwa
-    const reqStat = reqStats.strength ? BigInt(reqStats.strength) : (reqStats.speed ? BigInt(reqStats.speed) : BigInt(reqStats.endurance || '1'));
-    
-    if (lowestRatioPercent >= (reqStat * 8n) + 100n) {
-        // Duża kara
-        rewardMultiplier = 10n;
-        boredomInjuryChance = 0n;
-    } else if (lowestRatioPercent >= (reqStat * 4n) + 40n) {
-        // Średnia kara
-        rewardMultiplier = 50n;
-        boredomInjuryChance = 5n;
-    } else if (lowestRatioPercent >= (reqStat * 2n) + 15n) {
-        // Mała kara
-        rewardMultiplier = 75n;
-        boredomInjuryChance = 10n;
+    if (lowestRawPlayerStat !== -1n) {
+        if (lowestRawPlayerStat >= (reqStatForThreshold * 8n) + 100n) {
+            rewardMultiplier = 10n; // Duża kara
+            boredomInjuryChance = 0n;
+        } else if (lowestRawPlayerStat >= (reqStatForThreshold * 4n) + 40n) {
+            rewardMultiplier = 50n; // Średnia kara
+            boredomInjuryChance = 5n;
+        } else if (lowestRawPlayerStat >= (reqStatForThreshold * 2n) + 15n) {
+            rewardMultiplier = 75n; // Mała kara
+            boredomInjuryChance = 10n;
+        }
     }
     // Brak kary - pozostaje 100% i 20% szansy na rany z nudów
 

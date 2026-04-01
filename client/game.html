@@ -596,12 +596,15 @@
                     notifTitle = data.message;
                     
                     let penaltyText = '';
-                    if (data.multiplier === 50) {
+                    if (data.multiplier === 75) {
                         notifType = 'warning';
-                        penaltyText = '<div style="font-size: 0.85rem; margin-top: 6px; color: #ffffff; font-weight: bold;">⚠️ Zyski obniżone o 50% (Za potężne statystyki)</div>';
+                        penaltyText = '<div style="font-size: 0.85rem; margin-top: 6px; color: #ffffff; font-weight: bold;">⚠️ Zyski obniżone o 25% (Mała kara za potęgę)</div>';
+                    } else if (data.multiplier === 50) {
+                        notifType = 'warning';
+                        penaltyText = '<div style="font-size: 0.85rem; margin-top: 6px; color: #ffffff; font-weight: bold;">⚠️ Zyski obniżone o 50% (Średnia kara za potęgę)</div>';
                     } else if (data.multiplier === 10) {
                         notifType = 'warning';
-                        penaltyText = '<div style="font-size: 0.85rem; margin-top: 6px; color: #ffffff; font-weight: bold;">⚠️ Zyski obniżone o 90% (Za potężne statystyki)</div>';
+                        penaltyText = '<div style="font-size: 0.85rem; margin-top: 6px; color: #ffffff; font-weight: bold;">⚠️ Zyski obniżone o 90% (Duża kara za potęgę)</div>';
                     }
 
                     const tg = data.rewards.training_gains;
