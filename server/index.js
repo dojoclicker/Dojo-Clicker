@@ -1174,6 +1174,473 @@ app.post('/api/shop/sell', authenticateToken, async (req, res) => {
   } catch (err) { res.status(500).json({ error: 'Błąd' }); }
 });
 
+// ==========================================
+// SYSTEM BANKU (FAZA 1 i 2)
+// ==========================================
+
+// Cenniki i limity Banku
+const BANK_COIN_LIMITS = {
+  1: { limit: 10000, cost: 0 },
+  2: { limit: 50000, cost: 5000 },
+  3: { limit: 250000, cost: 25000 },
+  4: { limit: 1000000, cost: 100000 },
+  5: { limit: 5000000, cost: 500000 },
+  6: { limit: 25000000, cost: 2500000 },
+  7: { limit: 100000000, cost: 10000000 },
+  8: { limit: 500000000, cost: 50000000 },
+  9: { limit: 2000000000, cost: 200000000 },
+  10: { limit: 9007199254740991, cost: 1000000000 }
+};
+
+const BANK_SLOT_COSTS = {
+  '6-10': 5000,
+  '11-15': 25000,
+  '16-20': 100000,
+  '21-25': 500000
+};
+
+// Endpoint 1: Transfer monet
+app.post('/api/bank/transfer_coins', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { action, amount } = req.body;
+
+    if (!action || !amount) return res.status(400).json({ error: 'Brak parametrów' });
+    if (!['deposit', 'withdraw'].includes(action)) return res.status(400).json({ error: 'Nieprawidłowa akcja' });
+
+    const { data: character, error: characterError } = await supabase
+      .from('characters')
+      .select('id, hp, coins, bank_coins, bank_coin_limit_level')
+      .eq('profile_id', userId)
+      .single();
+
+    if (characterError || !character) return res.status(404).json({ error: 'Postać nie znaleziona' });
+
+    // Zabezpieczenie Szpitala
+    if (BigInt(character.hp || '0') <= 0n) {
+      return res.status(400).json({ error: 'Jesteś w Szpitalu! Bank jest niedostępny.' });
+    }
+
+    const transferAmount = BigInt(amount);
+    if (transferAmount <= 0n) return res.status(400).json({ error: 'Kwota musi być dodatnia' });
+
+    const currentCoins = BigInt(character.coins || '0');
+    const currentBankCoins = BigInt(character.bank_coins || '0');
+    const currentLimitLevel = parseInt(character.bank_coin_limit_level || '1');
+    const bankLimit = BigInt(BANK_COIN_LIMITS[currentLimitLevel].limit);
+
+    if (action === 'deposit') {
+      if (currentCoins < transferAmount) return res.status(400).json({ error: 'Nie masz tyle monet!' });
+      if (currentBankCoins + transferAmount > bankLimit) {
+        return res.status(400).json({ error: `Przekroczysz limit banku (${bankLimit})!` });
+      }
+      
+      await supabase.from('characters').update({
+        coins: (currentCoins - transferAmount).toString(),
+        bank_coins: (currentBankCoins + transferAmount).toString()
+      }).eq('id', character.id);
+
+      res.json({ success: true, message: `Wpłacono ${amount} monet do banku!` });
+    } else {
+      if (currentBankCoins < transferAmount) return res.status(400).json({ error: 'Nie masz tyle monet w banku!' });
+      
+      await supabase.from('characters').update({
+        coins: (currentCoins + transferAmount).toString(),
+        bank_coins: (currentBankCoins - transferAmount).toString()
+      }).eq('id', character.id);
+
+      res.json({ success: true, message: `Wypłacono ${amount} monet z banku!` });
+    }
+  } catch (err) { res.status(500).json({ error: 'Błąd serwera' }); }
+});
+
+// Endpoint 2: Ulepszenia Banku
+app.post('/api/bank/upgrade', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { upgrade_type } = req.body;
+
+    if (!upgrade_type || !['coin_limit', 'slot'].includes(upgrade_type)) {
+      return res.status(400).json({ error: 'Nieprawidłowy typ ulepszenia' });
+    }
+
+    const { data: character, error: characterError } = await supabase
+      .from('characters')
+      .select('id, hp, coins, bank_coin_limit_level, bank_slots_unlocked')
+      .eq('profile_id', userId)
+      .single();
+
+    if (characterError || !character) return res.status(404).json({ error: 'Postać nie znaleziona' });
+
+    // Zabezpieczenie Szpitala
+    if (BigInt(character.hp || '0') <= 0n) {
+      return res.status(400).json({ error: 'Jesteś w Szpitalu! Bank jest niedostępny.' });
+    }
+
+    const currentCoins = BigInt(character.coins || '0');
+
+    if (upgrade_type === 'coin_limit') {
+      const currentLevel = parseInt(character.bank_coin_limit_level || '1');
+      if (currentLevel >= 10) return res.status(400).json({ error: 'Osiągnięto maksymalny poziom!' });
+      
+      const nextLevel = currentLevel + 1;
+      const upgradeCost = BigInt(BANK_COIN_LIMITS[nextLevel].cost);
+      
+      if (currentCoins < upgradeCost) return res.status(400).json({ error: 'Nie masz tyle monet na ulepszenie!' });
+      
+      await supabase.from('characters').update({
+        coins: (currentCoins - upgradeCost).toString(),
+        bank_coin_limit_level: nextLevel
+      }).eq('id', character.id);
+
+      res.json({ success: true, message: `Limit banku ulepszony do poziomu ${nextLevel}!` });
+    } else {
+      const currentSlots = parseInt(character.bank_slots_unlocked || '5');
+      if (currentSlots >= 25) return res.status(400).json({ error: 'Osiągnięto maksymalną liczbę slotów!' });
+      
+      const nextSlot = currentSlots + 1;
+      let upgradeCost;
+      
+      if (nextSlot >= 6 && nextSlot <= 10) upgradeCost = BigInt(BANK_SLOT_COSTS['6-10']);
+      else if (nextSlot >= 11 && nextSlot <= 15) upgradeCost = BigInt(BANK_SLOT_COSTS['11-15']);
+      else if (nextSlot >= 16 && nextSlot <= 20) upgradeCost = BigInt(BANK_SLOT_COSTS['16-20']);
+      else if (nextSlot >= 21 && nextSlot <= 25) upgradeCost = BigInt(BANK_SLOT_COSTS['21-25']);
+      
+      if (currentCoins < upgradeCost) return res.status(400).json({ error: 'Nie masz tyle monet na ulepszenie!' });
+      
+      await supabase.from('characters').update({
+        coins: (currentCoins - upgradeCost).toString(),
+        bank_slots_unlocked: nextSlot
+      }).eq('id', character.id);
+
+      res.json({ success: true, message: `Odblokowano ${nextSlot} slotów w banku!` });
+    }
+  } catch (err) { res.status(500).json({ error: 'Błąd serwera' }); }
+});
+
+// Endpoint 3: Transfer przedmiotów
+app.post('/api/bank/transfer_item', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { inventory_id, target_panel, amount } = req.body;
+
+    if (!inventory_id || !target_panel || !amount) return res.status(400).json({ error: 'Brak parametrów' });
+    if (!['bank', 'backpack'].includes(target_panel)) return res.status(400).json({ error: 'Nieprawidłowy panel docelowy' });
+
+    const { data: character, error: characterError } = await supabase
+      .from('characters')
+      .select('id, hp, bank_slots_unlocked')
+      .eq('profile_id', userId)
+      .single();
+
+    if (characterError || !character) return res.status(404).json({ error: 'Postać nie znaleziona' });
+
+    // Zabezpieczenie Szpitala
+    if (BigInt(character.hp || '0') <= 0n) {
+      return res.status(400).json({ error: 'Jesteś w Szpitalu! Bank jest niedostępny.' });
+    }
+
+    const { data: item, error: itemError } = await supabase
+      .from('inventory')
+      .select('*, item_templates(*)')
+      .eq('id', inventory_id)
+      .eq('character_id', character.id)
+      .single();
+
+    if (itemError || !item) return res.status(404).json({ error: 'Przedmiot nie znaleziony' });
+
+    const isConsumable = item.item_templates.type === 'consumable';
+    const maxStack = isConsumable ? 99 : 999999999;
+    const transferAmount = amount === 'all' ? BigInt(item.quantity) : BigInt(amount);
+
+    if (transferAmount <= 0n || transferAmount > BigInt(item.quantity)) {
+      return res.status(400).json({ error: 'Nieprawidłowa ilość' });
+    }
+
+    // Sprawdzenie miejsca w panelu docelowym
+    if (target_panel === 'bank') {
+      const bankSlots = parseInt(character.bank_slots_unlocked || '5');
+      const { data: bankItems } = await supabase
+        .from('inventory')
+        .select('id, item_template_id, quantity')
+        .eq('character_id', character.id)
+        .eq('equipped_slot', 'bank');
+
+      // Sprawdzenie czy można połączyć z istniejącym stackiem
+      let canStack = false;
+      for (const bankItem of bankItems) {
+        if (bankItem.item_template_id === item.item_template_id && BigInt(bankItem.quantity) + transferAmount <= BigInt(maxStack)) {
+          canStack = true;
+          break;
+        }
+      }
+
+      if (!canStack && bankItems.length >= bankSlots) {
+        return res.status(400).json({ error: 'Brak miejsca w banku!' });
+      }
+    } else {
+      // Obliczanie maksymalnych slotów plecaka
+      const { data: charStats } = await supabase
+        .from('characters')
+        .select('strength, speed, endurance')
+        .eq('id', character.id)
+        .single();
+
+      const minPhysicalStat = minBigInt(
+        BigInt(charStats.strength || '0'),
+        minBigInt(BigInt(charStats.speed || '0'), BigInt(charStats.endurance || '0'))
+      );
+      const maxSlots = Math.min(50, 5 + Number(minPhysicalStat / 10000n));
+
+      const { data: backpackItems } = await supabase
+        .from('inventory')
+        .select('id, item_template_id, quantity')
+        .eq('character_id', character.id)
+        .is('equipped_slot', null);
+
+      // Sprawdzenie czy można połączyć z istniejącym stackiem
+      let canStack = false;
+      for (const backpackItem of backpackItems) {
+        if (backpackItem.item_template_id === item.item_template_id && BigInt(backpackItem.quantity) + transferAmount <= BigInt(maxStack)) {
+          canStack = true;
+          break;
+        }
+      }
+
+      if (!canStack && backpackItems.length >= maxSlots) {
+        return res.status(400).json({ error: 'Brak miejsca w plecaku!' });
+      }
+    }
+
+    // Wykonanie transferu
+    if (transferAmount === BigInt(item.quantity)) {
+      // Przeniesienie całego stacka
+      await supabase.from('inventory').update({ equipped_slot: target_panel === 'bank' ? 'bank' : null }).eq('id', inventory_id);
+      
+      if (target_panel === 'backpack') {
+        // Znajdź pierwszy wolny backpack_index
+        const { data: existingBackpack } = await supabase
+          .from('inventory')
+          .select('backpack_index')
+          .eq('character_id', character.id)
+          .is('equipped_slot', null);
+        
+        const occupiedIndexes = existingBackpack.map(i => i.backpack_index).filter(i => i !== null);
+        let firstFreeIndex = 1;
+        while (occupiedIndexes.includes(firstFreeIndex)) firstFreeIndex++;
+        
+        await supabase.from('inventory').update({ backpack_index: firstFreeIndex }).eq('id', inventory_id);
+      }
+    } else {
+      // Podział stacka
+      await supabase.from('inventory').update({ 
+        quantity: (BigInt(item.quantity) - transferAmount).toString() 
+      }).eq('id', inventory_id);
+
+      if (target_panel === 'bank') {
+        await supabase.from('inventory').insert({
+          character_id: character.id,
+          item_template_id: item.item_template_id,
+          quantity: transferAmount.toString(),
+          equipped_slot: 'bank'
+        });
+      } else {
+        const { data: existingBackpack } = await supabase
+          .from('inventory')
+          .select('backpack_index')
+          .eq('character_id', character.id)
+          .is('equipped_slot', null);
+        
+        const occupiedIndexes = existingBackpack.map(i => i.backpack_index).filter(i => i !== null);
+        let firstFreeIndex = 1;
+        while (occupiedIndexes.includes(firstFreeIndex)) firstFreeIndex++;
+        
+        await supabase.from('inventory').insert({
+          character_id: character.id,
+          item_template_id: item.item_template_id,
+          quantity: transferAmount.toString(),
+          equipped_slot: null,
+          backpack_index: firstFreeIndex
+        });
+      }
+    }
+
+    res.json({ success: true, message: `Przeniesiono ${amount} przedmiotów!` });
+  } catch (err) { res.status(500).json({ error: 'Błąd serwera' }); }
+});
+
+// Endpoint 4: Kaskadowy Split w Banku
+app.post('/api/bank/split', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { inventory_id, amount_to_split } = req.body;
+
+    if (!inventory_id || !amount_to_split) return res.status(400).json({ error: 'Brak parametrów' });
+
+    const { data: character, error: characterError } = await supabase
+      .from('characters')
+      .select('id, hp, bank_slots_unlocked')
+      .eq('profile_id', userId)
+      .single();
+
+    if (characterError || !character) return res.status(404).json({ error: 'Postać nie znaleziona' });
+
+    // Zabezpieczenie Szpitala
+    if (BigInt(character.hp || '0') <= 0n) {
+      return res.status(400).json({ error: 'Jesteś w Szpitalu! Bank jest niedostępny.' });
+    }
+
+    const { data: item, error: itemError } = await supabase
+      .from('inventory')
+      .select('*')
+      .eq('id', inventory_id)
+      .eq('character_id', character.id)
+      .single();
+
+    if (itemError || !item) return res.status(404).json({ error: 'Przedmiot nie znaleziony' });
+
+    const splitAmount = BigInt(amount_to_split);
+    if (BigInt(item.quantity) <= splitAmount || splitAmount <= 0n) {
+      return res.status(400).json({ error: 'Zła ilość do podziału!' });
+    }
+
+    // Zmniejszenie głównego stacka
+    await supabase.from('inventory').update({ 
+      quantity: (BigInt(item.quantity) - splitAmount).toString() 
+    }).eq('id', inventory_id);
+
+    // Logika kaskadowa umieszczania
+    const isFromBank = item.equipped_slot === 'bank';
+    const bankSlots = parseInt(character.bank_slots_unlocked || '5');
+    
+    // Obliczanie maksymalnych slotów plecaka
+    const { data: charStats } = await supabase
+      .from('characters')
+      .select('strength, speed, endurance')
+      .eq('id', character.id)
+      .single();
+
+    const minPhysicalStat = minBigInt(
+      BigInt(charStats.strength || '0'),
+      minBigInt(BigInt(charStats.speed || '0'), BigInt(charStats.endurance || '0'))
+    );
+    const maxBackpackSlots = Math.min(50, 5 + Number(minPhysicalStat / 10000n));
+
+    let placed = false;
+    let targetLocation = '';
+
+    // Pierwsza próba: to samo miejsce (bank -> bank, backpack -> backpack)
+    if (isFromBank) {
+      const { data: bankItems } = await supabase
+        .from('inventory')
+        .select('id')
+        .eq('character_id', character.id)
+        .eq('equipped_slot', 'bank');
+
+      if (bankItems.length < bankSlots) {
+        await supabase.from('inventory').insert({
+          character_id: character.id,
+          item_template_id: item.item_template_id,
+          quantity: splitAmount.toString(),
+          equipped_slot: 'bank'
+        });
+        placed = true;
+        targetLocation = 'bank';
+      }
+    } else {
+      const { data: backpackItems } = await supabase
+        .from('inventory')
+        .select('id')
+        .eq('character_id', character.id)
+        .is('equipped_slot', null);
+
+      if (backpackItems.length < maxBackpackSlots) {
+        const { data: existingBackpack } = await supabase
+          .from('inventory')
+          .select('backpack_index')
+          .eq('character_id', character.id)
+          .is('equipped_slot', null);
+        
+        const occupiedIndexes = existingBackpack.map(i => i.backpack_index).filter(i => i !== null);
+        let firstFreeIndex = 1;
+        while (occupiedIndexes.includes(firstFreeIndex)) firstFreeIndex++;
+        
+        await supabase.from('inventory').insert({
+          character_id: character.id,
+          item_template_id: item.item_template_id,
+          quantity: splitAmount.toString(),
+          equipped_slot: null,
+          backpack_index: firstFreeIndex
+        });
+        placed = true;
+        targetLocation = 'backpack';
+      }
+    }
+
+    // Druga próba: alternatywne miejsce
+    if (!placed) {
+      if (isFromBank) {
+        // Spróbuj umieścić w plecaku
+        const { data: backpackItems } = await supabase
+          .from('inventory')
+          .select('id')
+          .eq('character_id', character.id)
+          .is('equipped_slot', null);
+
+        if (backpackItems.length < maxBackpackSlots) {
+          const { data: existingBackpack } = await supabase
+            .from('inventory')
+            .select('backpack_index')
+            .eq('character_id', character.id)
+            .is('equipped_slot', null);
+          
+          const occupiedIndexes = existingBackpack.map(i => i.backpack_index).filter(i => i !== null);
+          let firstFreeIndex = 1;
+          while (occupiedIndexes.includes(firstFreeIndex)) firstFreeIndex++;
+          
+          await supabase.from('inventory').insert({
+            character_id: character.id,
+            item_template_id: item.item_template_id,
+            quantity: splitAmount.toString(),
+            equipped_slot: null,
+            backpack_index: firstFreeIndex
+          });
+          placed = true;
+          targetLocation = 'backpack';
+        }
+      } else {
+        // Spróbuj umieścić w banku
+        const { data: bankItems } = await supabase
+          .from('inventory')
+          .select('id')
+          .eq('character_id', character.id)
+          .eq('equipped_slot', 'bank');
+
+        if (bankItems.length < bankSlots) {
+          await supabase.from('inventory').insert({
+            character_id: character.id,
+            item_template_id: item.item_template_id,
+            quantity: splitAmount.toString(),
+            equipped_slot: 'bank'
+          });
+          placed = true;
+          targetLocation = 'bank';
+        }
+      }
+    }
+
+    if (!placed) {
+      // Cofnij operację
+      await supabase.from('inventory').update({ 
+        quantity: item.quantity 
+      }).eq('id', inventory_id);
+      return res.status(400).json({ error: 'Brak miejsca w plecaku i w banku!' });
+    }
+
+    res.json({ success: true, message: `Podzielono przedmiot! Część umieszczono w ${targetLocation}.` });
+  } catch (err) { res.status(500).json({ error: 'Błąd serwera' }); }
+});
+
 app.listen(port, async () => {
   console.log(`[Dojo-Clicker API] Serwer nasłuchuje na porcie ${port}...`);
   await initGlobalState();
