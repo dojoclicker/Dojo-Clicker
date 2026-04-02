@@ -23,20 +23,18 @@ const ITEMS = {
 
 const missionsData = [
     {
-        id: "10000000-0000-0000-0000-000000000001", name: "Misja 1: Lasek",
+        id: "00000000-0000-0000-0000-000000000001", name: "Trening w pobliskim lesie",
         description: "Wzmocnij swoje statystyki, trenując rąbanie drewna i bieganie.",
         stamina_cost: 2, req_stats: { "strength": "1", "speed": "1", "endurance": "1" },
         reward_coins_min: 0, reward_coins_max: 1, reward_stats: { "min": "2", "max": "3" },
-        drop_table: [{ "item_id": ITEMS.JAGODY, "chance_pct": 20 }],
-        is_repeatable: true, is_one_try: false
+        drop_table: [{ "item_id": ITEMS.JAGODY, "chance_pct": 20 }], is_repeatable: true
     },
     {
-        id: "10000000-0000-0000-0000-000000000002", name: "Misja 2: Bestia z Nieba",
+        id: "00000000-0000-0000-0000-000000000002", name: "Bestia z Nieba",
         description: "Z nieba niespodziewanie pikuje na ciebie gigantyczna, wygłodniała bestia. Odeprzyj atak!",
         stamina_cost: 3, req_stats: { "strength": "15", "speed": "15", "endurance": "15" },
         reward_coins_min: 0, reward_coins_max: 2, reward_stats: { "min": "3", "max": "5" },
-        drop_table: [{ "item_id": ITEMS.MIESO, "chance_pct": 20 }],
-        is_repeatable: true, is_one_try: false
+        drop_table: [{ "item_id": ITEMS.MIESO, "chance_pct": 20 }], is_repeatable: true
     },
     {
         id: "10000000-0000-0000-0000-000000000003", name: "Misja 3: Żółw",
@@ -55,8 +53,8 @@ const missionsData = [
         is_repeatable: true, is_one_try: false
     },
     {
-        id: "10000000-0000-0000-0000-000000000005", name: "Misja 5: Test Mistrza",
-        description: "W podzięce za uratowanie żółwia, Mistrz zgadza się wziąć cię pod skrzydła. Udowodnij potencjał w sparingu.",
+        id: "00000000-0000-0000-0000-000000000005", name: "Test Starego Mistrza (Jednorazowa)",
+        description: "Mistrz zgadza się wziąć cię pod swoje skrzydła. Udowodnij swój potencjał w sparingu.",
         stamina_cost: 10, req_stats: { "strength": "250", "speed": "250", "endurance": "250" },
         reward_coins_min: 2, reward_coins_max: 6, reward_stats: { "min": "15", "max": "25" },
         drop_table: [{ "item_id": ITEMS.CIEZKA_SKORUPA, "chance_pct": 100 }, { "item_id": ITEMS.NAPOJ, "chance_pct": 10 }],
@@ -103,8 +101,8 @@ const missionsData = [
         is_repeatable: true, is_one_try: false
     },
     {
-        id: "10000000-0000-0000-0000-000000000011", name: "Misja 11 (JEDNORAZOWA): Turniej Miejscowy",
-        description: "Lokalny turniej. Masz tylko jedną szansę! W finale czeka na ciebie dziwny starzec w peruce.",
+        id: "00000000-0000-0000-0000-000000000011", name: "Lokalny Turniej Sztuk Walki (Jednorazowa)",
+        description: "Masz tylko jedną szansę! W finale czeka na ciebie dziwny starzec w peruce.",
         stamina_cost: 25, req_stats: { "strength": "15000", "speed": "15000", "endurance": "15000" },
         reward_coins_min: 500, reward_coins_max: 1500, reward_stats: { "min": "1500", "max": "2000" },
         drop_table: [{ "item_id": ITEMS.KROPLA, "chance_pct": 100 }],
@@ -127,12 +125,11 @@ const missionsData = [
         is_repeatable: true, is_one_try: false
     },
     {
-        id: "10000000-0000-0000-0000-000000000014", name: "Misja 14: Morderca (Tao)",
-        description: "Generał wynajął płatnego mordercę latającego na filarze. Jego technika to śmiercionośny promień z palca!",
+        id: "00000000-0000-0000-0000-000000000014", name: "Płatny Morderca Tao",
+        description: "Przeciwnik przyleciał na kamiennym filarze. Jego technika to śmiercionośny promień z palca!",
         stamina_cost: 40, req_stats: { "strength": "55000", "speed": "55000", "endurance": "55000" },
         reward_coins_min: 80, reward_coins_max: 100, reward_stats: { "min": "1500", "max": "2500" },
-        drop_table: [{ "item_id": ITEMS.ZWOJ_MOCY_KI, "chance_pct": 2 }, { "item_id": ITEMS.ZWOJ_SZYBKOSCI, "chance_pct": 2 }],
-        is_repeatable: true, is_one_try: false
+        drop_table: [{ "item_id": ITEMS.ZWOJ_MOCY_KI, "chance_pct": 2 }, { "item_id": ITEMS.ZWOJ_POWIDOK, "chance_pct": 2 }], is_repeatable: true
     },
     {
         id: "10000000-0000-0000-0000-000000000015", name: "Misja 15: Święta Wieża",
@@ -192,9 +189,9 @@ async function seedMissions() {
         const { error: deleteError } = await supabase.from('missions').delete().not('id', 'is', null);
         if (deleteError) throw deleteError;
 
-        console.log('🔄 Resetowanie starych postępów graczy...');
-        const { error: resetError } = await supabase.from('characters').update({ completed_missions: [] }).not('profile_id', 'is', null);
-        if (resetError) throw resetError;
+    //    console.log('🔄 Resetowanie starych postępów graczy...');
+    //    const { error: resetError } = await supabase.from('characters').update({ completed_missions: [] }).not('profile_id', 'is', null);
+    //    if (resetError) throw resetError;
         
         console.log('📦 Wgrywanie nowych misji (upsert)...');
         const { data, error } = await supabase.from('missions').upsert(missionsData, { onConflict: 'id' }).select();

@@ -401,7 +401,24 @@ app.get('/api/missions', authenticateToken, async (req, res) => {
       .order('stamina_cost', { ascending: true });
 
     if (error) return res.status(500).json({ error: 'Błąd serwera podczas pobierania misji' });
-    res.json(missions || []);
+
+    // 1. Pobieramy słownik przedmiotów, aby podmienić UUID na nazwy
+    const { data: items } = await supabase.from('item_templates').select('id, name');
+    const itemDict = {};
+    if (items) items.forEach(item => itemDict[item.id] = item.name);
+
+    // 2. Doklejamy nazwy do tabeli dropów
+    const enrichedMissions = missions.map(mission => {
+        if (mission.drop_table && Array.isArray(mission.drop_table)) {
+            mission.drop_table = mission.drop_table.map(drop => ({
+                ...drop,
+                item_name: itemDict[drop.item_id] || 'Przedmiot'
+            }));
+        }
+        return mission;
+    });
+
+    res.json(enrichedMissions || []);
   } catch (err) {
     res.status(500).json({ error: 'Błąd serwera podczas pobierania misji' });
   }
