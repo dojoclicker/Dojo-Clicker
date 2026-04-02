@@ -359,8 +359,14 @@
 
             const isUnlocked = index === 0 || completed.includes(window.allMissions[index - 1].id) || completed.includes(mission.id);
             
-            // Ikona misji na podstawie indeksu
-            const missionIcons = ['🌲', '🦅', '🐢', '⚔️', '👴'];
+            // Ikona misji na podstawie indeksu (Misje 1-25 z GDD)
+            const missionIcons = [
+                '🌲', '🦅', '🐢', '⚔️', '👴', // 1-5 (Las, Bestia, Żółw, Bandyta, Mistrz)
+                '🥛', '🧱', '🌾', '🪓', '📦', // 6-10 (Mleko, Budowa, Pole, Drwal, Kurier)
+                '🏆', '🎖️', '🗼', '🎯', '🐈', // 11-15 (Turniej, Oficer, Zimowa Wieża, Morderca, Koci Pustelnik)
+                '🤖', '👿', '👹', '👑', '⛩️', // 16-20 (Mech, Demony, Zmutowany, Król Demon, Niebiański Pałac)
+                '⏳', '👤', '🎫', '🥊', '🌍'  // 21-25 (Sala Czasu, Cień, Eliminacje, Półfinały, Finał Turnieju)
+            ];
             const icon = isUnlocked ? missionIcons[index] || '📋' : '🔒';
             
             // Formatowanie czytelnych danych dla tooltipa
