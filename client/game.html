@@ -1303,6 +1303,19 @@
             return '📦'; // Ostateczna domyślna
         }
 
+        // Obliczanie limitu plecaka
+        function calculateMaxBackpackSlots() {
+            if (!window.playerCurrentStats) return 5;
+            const strength = BigInt(window.playerCurrentStats.strength || '0');
+            const speed = BigInt(window.playerCurrentStats.speed || '0');
+            const endurance = BigInt(window.playerCurrentStats.endurance || '0');
+            let minStat = strength;
+            if (speed < minStat) minStat = speed;
+            if (endurance < minStat) minStat = endurance;
+            const bonusSlots = Number(minStat / 10000n);
+            return Math.min(50, 5 + bonusSlots);
+        }
+
         // Tworzenie karty przedmiotu (Główna, uniwersalna funkcja dla całej gry)
         function createItemCard(item) {
             const card = document.createElement('div');
@@ -1500,7 +1513,8 @@
             grid.innerHTML = '';
             
             // Wygeneruj 5 slotów inventory-slot (tak samo jak w widoku Ekwipunku)
-            for (let i = 1; i <= 5; i++) {
+            const maxSlots = calculateMaxBackpackSlots();
+            for (let i = 1; i <= maxSlots; i++) {
                 const slot = document.createElement('div');
                 slot.className = 'inventory-slot';
                 slot.setAttribute('data-index', i);
@@ -1780,8 +1794,8 @@
             const backpackItems = (window.inventoryData || []).filter(item => item.equipped_slot === null);
             grid.innerHTML = '';
             
-            // Standardowy limit w grze to 50
-            for (let i = 1; i <= 50; i++) {
+            const maxSlots = calculateMaxBackpackSlots();
+            for (let i = 1; i <= maxSlots; i++) {
                 const slot = document.createElement('div');
                 slot.className = 'inventory-slot';
                 slot.setAttribute('data-index', i);
