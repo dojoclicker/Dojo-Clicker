@@ -2218,85 +2218,95 @@
             setInterval(fetchCharacterData, 30000);
 
             // ==========================================
-            // SYSTEM GLOBALNEGO TOOLTIPU (Follow-Cursor) - NAPRAWIONY
+            // SYSTEM GLOBALNEGO TOOLTIPU (Hover Intent)
             // ==========================================
             const globalTooltip = document.getElementById('global-tooltip');
 
             if (globalTooltip) {
-                // Twarde nadpisanie stylów, by uniezależnić się od CSS
                 globalTooltip.style.position = 'fixed';
                 globalTooltip.style.pointerEvents = 'none';
                 globalTooltip.style.zIndex = '999999';
-                globalTooltip.style.transition = 'opacity 0.15s ease';
+                globalTooltip.style.transition = 'opacity 0.2s ease'; // Płynne pojawianie
                 
+                let tooltipTimeout = null; // Stoper (Timer)
+                let lastMouseX = 0; // Śledzenie pozycji X
+                let lastMouseY = 0; // Śledzenie pozycji Y
+
                 // Obsługa najechania myszką
                 document.body.addEventListener('mouseover', function(e) {
                     const card = e.target.closest('.item-card, .shop-item-card');
-                    const simpleTooltip = e.target.closest('[data-tooltip]'); // Dodano detekcję statystyk
+                    const simpleTooltip = e.target.closest('[data-tooltip]');
                     
-                    if (card) {
-                        // Zabezpieczenie przed miganiem dla kart
-                        const cardId = card.dataset.inventoryId || card.dataset.templateId || card.className;
-                        if (globalTooltip.dataset.currentCard === cardId) return; 
+                    if (card || simpleTooltip) {
+                        clearTimeout(tooltipTimeout); // Anuluj poprzedni stoper
                         
-                        const templateData = card.getAttribute('data-item-template');
-                        if (!templateData) return;
-                        
-                        try {
-                            const template = JSON.parse(decodeURIComponent(templateData));
-                            globalTooltip.innerHTML = createItemTooltip(template);
-                            globalTooltip.style.opacity = '1';
-                            globalTooltip.style.visibility = 'visible';
-                            globalTooltip.dataset.currentCard = cardId;
-                        } catch (err) {
-                            console.error('[Tooltip] Błąd odczytu danych:', err);
-                        }
-                    } else if (simpleTooltip) {
-                        // Nowa logika dla prostych tooltipów statystyk
-                        const text = simpleTooltip.getAttribute('data-tooltip');
-                        if (!text) return;
-                        
-                        if (globalTooltip.dataset.currentCard === text) return;
-                        
-                        // Renderowanie prostego tekstu w spójnym, ładnym layoucie
-                        globalTooltip.innerHTML = `<div style="white-space: pre-wrap; font-size: 0.85rem; padding: 4px; color: var(--text-primary, #e2e8f0);">${text}</div>`;
-                        globalTooltip.style.opacity = '1';
-                        globalTooltip.style.visibility = 'visible';
-                        globalTooltip.dataset.currentCard = text;
+                        // Odpal nowy stoper na 400 milisekund
+                        tooltipTimeout = setTimeout(() => {
+                            if (card) {
+                                const cardId = card.dataset.inventoryId || card.dataset.templateId || card.className;
+                                if (globalTooltip.dataset.currentCard === cardId && globalTooltip.style.opacity === '1') return; 
+                                
+                                const templateData = card.getAttribute('data-item-template');
+                                if (!templateData) return;
+                                
+                                try {
+                                    const template = JSON.parse(decodeURIComponent(templateData));
+                                    globalTooltip.innerHTML = createItemTooltip(template);
+                                    positionTooltip(lastMouseX, lastMouseY); // Ustaw na kursorem
+                                    
+                                    globalTooltip.style.opacity = '1';
+                                    globalTooltip.style.visibility = 'visible';
+                                    globalTooltip.dataset.currentCard = cardId;
+                                } catch (err) { console.error('[Tooltip] Błąd odczytu danych:', err); }
+                            } else if (simpleTooltip) {
+                                const text = simpleTooltip.getAttribute('data-tooltip');
+                                if (!text) return;
+                                if (globalTooltip.dataset.currentCard === text && globalTooltip.style.opacity === '1') return;
+                                
+                                globalTooltip.innerHTML = `<div style="white-space: pre-wrap; font-size: 0.85rem; padding: 4px; color: var(--text-primary, #e2e8f0);">${text}</div>`;
+                                positionTooltip(lastMouseX, lastMouseY);
+                                
+                                globalTooltip.style.opacity = '1';
+                                globalTooltip.style.visibility = 'visible';
+                                globalTooltip.dataset.currentCard = text;
+                            }
+                        }, 400); // <-- TUTAJ JEST CZAS OPÓŹNIENIA (400ms)
                     }
                 });
+
+                // Funkcja pomocnicza do ucieczki przed krawędziami ekranu
+                function positionTooltip(mouseX, mouseY) {
+                    const rect = globalTooltip.getBoundingClientRect();
+                    let x = mouseX - (rect.width / 2);
+                    let y = mouseY + 20;
+                    
+                    if (x < 10) x = 10;
+                    if (x + rect.width > window.innerWidth - 10) x = window.innerWidth - rect.width - 10;
+                    if (y + rect.height > window.innerHeight - 10) y = mouseY - rect.height - 10;
+                    if (y < 10) y = 10; 
+                    
+                    globalTooltip.style.left = x + 'px';
+                    globalTooltip.style.top = y + 'px';
+                }
 
                 // Obsługa śledzenia kursora
                 document.body.addEventListener('mousemove', function(e) {
+                    // Zapisujemy pozycję, by stoper wiedział gdzie się pojawić
+                    lastMouseX = e.clientX;
+                    lastMouseY = e.clientY;
+                    
                     if (globalTooltip.style.opacity === '1') {
-                        const rect = globalTooltip.getBoundingClientRect();
-                        let x = e.clientX - (rect.width / 2);
-                        let y = e.clientY + 20;
-                        
-                        // Ochrona przed krawędziami
-                        if (x < 10) x = 10;
-                        if (x + rect.width > window.innerWidth - 10) x = window.innerWidth - rect.width - 10;
-                        if (y + rect.height > window.innerHeight - 10) {
-                            y = e.clientY - rect.height - 10;
-                        }
-                        if (y < 10) y = 10; // Ochrona przed górną krawędzią - ostatnia warunek
-                        
-                        globalTooltip.style.left = x + 'px';
-                        globalTooltip.style.top = y + 'px';
+                        positionTooltip(e.clientX, e.clientY);
                     }
                 });
 
-                // Obsługa zjechania myszką - KRYTYCZNA POPRAWKA
+                // Obsługa zjechania myszką
                 document.body.addEventListener('mouseout', function(e) {
                     const card = e.target.closest('.item-card, .shop-item-card');
                     const simpleTooltip = e.target.closest('[data-tooltip]');
                     
-                    if (card && !card.contains(e.relatedTarget)) {
-                        globalTooltip.style.opacity = '0';
-                        globalTooltip.style.visibility = 'hidden';
-                        globalTooltip.dataset.currentCard = '';
-                    } else if (simpleTooltip && !simpleTooltip.contains(e.relatedTarget)) {
-                        // Zrzucanie tooltipa po zjechaniu ze statystyki
+                    if ((card && !card.contains(e.relatedTarget)) || (simpleTooltip && !simpleTooltip.contains(e.relatedTarget))) {
+                        clearTimeout(tooltipTimeout); // ZABIJ STOPER - Gracz przejechał dalej!
                         globalTooltip.style.opacity = '0';
                         globalTooltip.style.visibility = 'hidden';
                         globalTooltip.dataset.currentCard = '';
