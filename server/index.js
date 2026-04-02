@@ -928,6 +928,7 @@ app.post('/api/missions/start', authenticateToken, async (req, res) => {
 
     // === SYSTEM DROPÓW W MISJACH (KROK 4.8) ===
     let droppedItems = [];
+    let lostDrops = []; // Nowa tablica na utracone przedmioty z powodu braku miejsca
     if (mission.drop_table && mission.drop_table.length > 0 && roll <= Number(successChance)) {
         // Obliczenie dynamicznego plecaka wg wzoru z GDD
         const minPhysicalStat = minBigInt(currentStr, minBigInt(currentSpd, currentEnd));
@@ -1002,8 +1003,10 @@ app.post('/api/missions/start', authenticateToken, async (req, res) => {
                         await supabase.from('inventory').insert(newItem);
                         droppedItems.push({ name: itemTemplate.name, quantity: 1 });
                         backpackItems.push(newItem); 
+                    } else {
+                        // Rejestrujemy utracony drop, aby wysłać info do gracza
+                        lostDrops.push(itemTemplate.name);
                     }
-                    // Jeśli freeIdx > maxBackpackSlots, nagroda po prostu przepada
                 }
             }
         }
@@ -1023,6 +1026,7 @@ app.post('/api/missions/start', authenticateToken, async (req, res) => {
         coins: finalCoins.toString(), stats_gained: finalStats.toString(),
         boredom_damage: appliedBoredomDamage.toString(),
         dropped_items: droppedItems, 
+        lost_items: lostDrops,
         gains: { strength: gainStr.toString(), speed: gainSpd.toString(), endurance: gainEnd.toString() },
         training_gains: { 
             strength: trainGainStr.toString(), speed: trainGainSpd.toString(), endurance: trainGainEnd.toString(),
