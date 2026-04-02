@@ -435,18 +435,16 @@
                 <div class="mission-title" style="${titleColor}">${titlePrefix}${mission.name}</div>
                 <div class="mission-cost">⚡ ${mission.stamina_cost} Stamina</div>
                 
-                <div class="mission-tooltip">
-                    <div class="tooltip-title">${mission.name}</div>
-                    <div style="font-size: 0.85rem; margin-bottom: 0.5rem; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 0.5rem; text-align: center;"><i>${mission.description || ''}</i></div>
-                    <div style="font-size: 0.95rem; margin-bottom: 0.75rem; text-align: center; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 0.5rem;">Szansa na sukces: <span style="color: ${chanceColor}; font-weight: bold;">${chanceNum}%</span></div>
-                    <div style="font-size: 0.85rem; color: var(--goku-accent); font-weight: bold;">Koszt Staminy: ${mission.stamina_cost}</div>
-                    <div style="font-size: 0.85rem; margin-top: 4px;"><b>Wymagania:</b> ${reqStatsText}</div>
-                    <div style="font-size: 0.85rem; margin-top: 4px;"><b>Nagroda Monety:</b> ${mission.reward_coins_min || '0'} - ${mission.reward_coins_max || '0'}</div>
-                    <div style="font-size: 0.85rem; margin-top: 4px;"><b>Statystyki:</b> ${rewardStatsText}</div>
-                    <div style="font-size: 0.85rem; margin-top: 4px;"><b>Dodatkowe Drop:</b> ${dropsText}</div>
-                    <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 8px; border-top: 1px dashed rgba(255,255,255,0.1); padding-top: 6px; text-align: center;">${unlockInfoText}</div>
-                </div>
-            `;
+                `; // Zakończenie HTML dla karty (Usunięto mission-tooltip)
+
+            // Dynamiczne doczepianie danych o misji do znacznika na potrzeby globalnego tooltipu
+            const missionTooltipData = {
+                name: mission.name, description: mission.description, chanceColor: chanceColor,
+                chanceNum: chanceNum, stamina_cost: mission.stamina_cost, reqStatsText: reqStatsText,
+                reward_coins_min: mission.reward_coins_min, reward_coins_max: mission.reward_coins_max,
+                rewardStatsText: rewardStatsText, dropsText: dropsText, unlockInfoText: unlockInfoText
+            };
+            card.setAttribute('data-mission-template', encodeURIComponent(JSON.stringify(missionTooltipData)));
 
             // Twarda blokada lub aktywacja karty
             if (!isUnlocked || isLockedByStory) {
@@ -458,21 +456,6 @@
                     startMission(mission.id);
                 });
             }
-
-            // Śledzenie kursora dla tooltipa misji
-            card.addEventListener('mousemove', (e) => {
-                const tooltip = card.querySelector('.mission-tooltip');
-                if (tooltip) {
-                    const cardRect = card.getBoundingClientRect();
-                    
-                    // Pozycja myszy względem lewego górnego rogu KARTY
-                    let x = (e.clientX - cardRect.left) - (tooltip.offsetWidth / 2);
-                    let y = (e.clientY - cardRect.top) + 20;
-                    
-                    tooltip.style.left = x + 'px';
-                    tooltip.style.top = y + 'px';
-                }
-            });
 
             return card;
         }
@@ -2234,7 +2217,7 @@
 
                 // Obsługa najechania myszką
                 document.body.addEventListener('mouseover', function(e) {
-                    const card = e.target.closest('.item-card, .shop-item-card');
+                    const card = e.target.closest('.item-card, .shop-item-card, .mission-card');
                     const simpleTooltip = e.target.closest('[data-tooltip]');
                     
                     if (card || simpleTooltip) {
@@ -2246,13 +2229,29 @@
                                 const cardId = card.dataset.inventoryId || card.dataset.templateId || card.className;
                                 if (globalTooltip.dataset.currentCard === cardId && globalTooltip.style.opacity === '1') return; 
                                 
-                                const templateData = card.getAttribute('data-item-template');
+                                const isMission = card.classList.contains('mission-card');
+                                const templateData = card.getAttribute(isMission ? 'data-mission-template' : 'data-item-template');
                                 if (!templateData) return;
                                 
                                 try {
                                     const template = JSON.parse(decodeURIComponent(templateData));
-                                    globalTooltip.innerHTML = createItemTooltip(template);
-                                    positionTooltip(lastMouseX, lastMouseY); // Ustaw na kursorem
+                                    
+                                    if (isMission) {
+                                        globalTooltip.innerHTML = `
+                                            <div class="tooltip-title">${template.name}</div>
+                                            <div style="font-size: 0.85rem; margin-bottom: 0.5rem; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 0.5rem; text-align: center;"><i>${template.description || ''}</i></div>
+                                            <div style="font-size: 0.95rem; margin-bottom: 0.75rem; text-align: center; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 0.5rem;">Szansa na sukces: <span style="color: ${template.chanceColor}; font-weight: bold;">${template.chanceNum}%</span></div>
+                                            <div style="font-size: 0.85rem; color: var(--goku-accent); font-weight: bold;">Koszt Staminy: ${template.stamina_cost}</div>
+                                            <div style="font-size: 0.85rem; margin-top: 4px;"><b>Wymagania:</b> ${template.reqStatsText}</div>
+                                            <div style="font-size: 0.85rem; margin-top: 4px;"><b>Nagroda Monety:</b> ${template.reward_coins_min || '0'} - ${template.reward_coins_max || '0'}</div>
+                                            <div style="font-size: 0.85rem; margin-top: 4px;"><b>Statystyki:</b> ${template.rewardStatsText}</div>
+                                            <div style="font-size: 0.85rem; margin-top: 4px;"><b>Dodatkowe Drop:</b> ${template.dropsText}</div>
+                                            <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 8px; border-top: 1px dashed rgba(255,255,255,0.1); padding-top: 6px; text-align: center;">${template.unlockInfoText}</div>
+                                        `;
+                                    } else {
+                                        globalTooltip.innerHTML = createItemTooltip(template);
+                                    }
+                                    positionTooltip(lastMouseX, lastMouseY); // Ustaw nad kursorem
                                     
                                     globalTooltip.style.opacity = '1';
                                     globalTooltip.style.visibility = 'visible';
@@ -2302,7 +2301,7 @@
 
                 // Obsługa zjechania myszką
                 document.body.addEventListener('mouseout', function(e) {
-                    const card = e.target.closest('.item-card, .shop-item-card');
+                    const card = e.target.closest('.item-card, .shop-item-card, .mission-card');
                     const simpleTooltip = e.target.closest('[data-tooltip]');
                     
                     if ((card && !card.contains(e.relatedTarget)) || (simpleTooltip && !simpleTooltip.contains(e.relatedTarget))) {
