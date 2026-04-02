@@ -413,12 +413,22 @@
             // Informacja o typie misji
             const unlockInfoText = mission.is_repeatable ? 'Misja powtarzalna. Sukces odblokowuje kolejne wyzwania.' : 'Misja Jednorazowa. Po sukcesie zostaje zablokowana i odblokowuje kolejne wyzwanie.';
 
+            // NOWE: Dynamiczny tytuł i kolor generowany z góry
+            let titleColor = '';
+            let titlePrefix = '';
+            if (isCompleted) {
+                titleColor = 'color: #4ade80;';
+                titlePrefix = '[UKOŃCZONO] ';
+            } else if (isFailedOneTry) {
+                titleColor = 'color: #ef4444;';
+                titlePrefix = '[SZANSA PRZEPADŁA] ';
+            }
+
             card.innerHTML = `
                 <div class="mission-icon">${icon}</div>
-                <div class="mission-title">${mission.name}</div>
+                <div class="mission-title" style="${titleColor}">${titlePrefix}${mission.name}</div>
                 <div class="mission-cost">⚡ ${mission.stamina_cost} Stamina</div>
                 
-                <!-- Tooltip z informacjami o misji -->
                 <div class="mission-tooltip">
                     <div class="tooltip-title">${mission.name}</div>
                     <div style="font-size: 0.85rem; margin-bottom: 0.5rem; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 0.5rem; text-align: center;"><i>${mission.description || ''}</i></div>
@@ -432,18 +442,12 @@
                 </div>
             `;
 
-            // Dodaj klasę locked jeśli nieodblokowane LUB zablokowane fabularnie
+            // Twarda blokada lub aktywacja karty
             if (!isUnlocked || isLockedByStory) {
                 card.classList.add('locked');
-                
-                // Dodanie prefiksu do tytułu dla lepszej widoczności
-                if (isCompleted) {
-                    card.innerHTML = card.innerHTML.replace('<div class="mission-title">', '<div class="mission-title" style="color: #4ade80;">[UKOŃCZONO] ');
-                } else if (isFailedOneTry) {
-                    card.innerHTML = card.innerHTML.replace('<div class="mission-title">', '<div class="mission-title" style="color: #ef4444;">[SZANSA PRZEPADŁA] ');
-                }
+                card.style.pointerEvents = 'none'; // Fizyczna blokada kliknięcia
+                card.style.filter = 'grayscale(100%) opacity(0.6)'; // Natychmiastowe wyszarzenie
             } else {
-                // Dodaj obsługę kliknięcia tylko dla odblokowanych i dostępnych misji
                 card.addEventListener('click', () => {
                     startMission(mission.id);
                 });
@@ -593,8 +597,11 @@
                 // Sprawdź status błędu z serwera
                 if (data.status === 'error') {
                     const errorMessage = data.message || 'Nie udało się rozpocząć misji. Spróbuj ponownie.';
-                    
                     showCustomPopup('❌ Błąd', errorMessage);
+                    
+                    // HEALING FRONTENDU: Jeśli frontend rozjechał się z bazą i gracz kliknął ukończoną misję,
+                    // ten kod wymusi natychmiastowe zaciągnięcie poprawnych danych i "zamrożenie" karty.
+                    fetchCharacterData();
                     return;
                 }
                 
