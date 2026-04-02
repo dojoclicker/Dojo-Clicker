@@ -478,6 +478,23 @@ app.post('/api/inventory/swap', authenticateToken, async (req, res) => {
       if (existingItem) wasOccupied = true;
     }
 
+    // === REVERSE SWAP BYPASS FIX ===
+    // Jeśli zdejmujemy przedmiot z ciała do plecaka i zamieniamy się z innym przedmiotem, 
+    // musimy sprawdzić, czy gracz spełnia wymogi przedmiotu, który właśnie wyląduje na ciele!
+    if (targetItem && draggedItem.equipped_slot !== null && slot_target === 'backpack') {
+      if (targetItem.item_templates && targetItem.item_templates.category === 'equipment' && targetItem.item_templates.req_stats) {
+        for (const [stat, requiredValue] of Object.entries(targetItem.item_templates.req_stats)) {
+          const playerStat = BigInt(character[stat] || '1');
+          const requiredStat = BigInt(requiredValue);
+          if (playerStat < requiredStat) {
+            const statNames = { 'strength': 'Siła', 'speed': 'Szybkość', 'endurance': 'Wytrzymałość', 'intelligence': 'Inteligencja', 'mental_strength': 'Siła Mentalna' };
+            return res.status(400).json({ error: `Przedmiot w plecaku wymaga więcej statystyk! Wymagana ${statNames[stat] || stat}: ${requiredValue}` });
+          }
+        }
+      }
+    }
+    // ===============================
+
     if (targetItem && draggedItem.item_template_id === targetItem.item_template_id && (draggedItem.item_templates.category === 'consumable' || draggedItem.item_templates.category === 'special_consumable')) {
       const totalQuantity = BigInt(draggedItem.quantity || '1') + BigInt(targetItem.quantity || '1');
       if (totalQuantity <= 99n) {
