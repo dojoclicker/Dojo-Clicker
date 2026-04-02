@@ -1576,6 +1576,10 @@
             if (window.isInventoryActionLocked) return;
             window.isInventoryActionLocked = true;
             
+            // Wymuszone ukrycie tooltipa przy sprzedaży
+            const tooltip = document.getElementById('global-tooltip');
+            if (tooltip) { tooltip.style.opacity = '0'; tooltip.style.visibility = 'hidden'; tooltip.dataset.currentCard = ''; }
+            
             try {
                 const response = await fetch(`${API_BASE_URL}/api/shop/sell`, {
                     method: 'POST',
@@ -1618,6 +1622,10 @@
         async function splitItem(inventoryId, amount) {
             if (window.isInventoryActionLocked) return;
             window.isInventoryActionLocked = true;
+            
+            // Wymuszone ukrycie tooltipa przy dzieleniu
+            const tooltip = document.getElementById('global-tooltip');
+            if (tooltip) { tooltip.style.opacity = '0'; tooltip.style.visibility = 'hidden'; tooltip.dataset.currentCard = ''; }
             
             try {
                 const response = await fetch(`${API_BASE_URL}/api/inventory/split`, {
@@ -1753,6 +1761,10 @@
         async function consumeItem(inventoryId) {
             if (window.isInventoryActionLocked) return;
             window.isInventoryActionLocked = true;
+            
+            // Wymuszone ukrycie tooltipa przy konsumpcji
+            const tooltip = document.getElementById('global-tooltip');
+            if (tooltip) { tooltip.style.opacity = '0'; tooltip.style.visibility = 'hidden'; tooltip.dataset.currentCard = ''; }
             
             try {
                 const response = await fetch(`${API_BASE_URL}/api/inventory/consume`, {
