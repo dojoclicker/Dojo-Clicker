@@ -383,6 +383,7 @@ app.get('/api/character', authenticateToken, async (req, res) => {
       stats: baseStats, 
       equip_stats: equipStats, 
       completed_missions: character.completed_missions || [],
+      attempted_one_try_missions: character.attempted_one_try_missions || [],
       hospital_until: exactHospitalEndTime ? new Date(exactHospitalEndTime).toISOString() : ensureUTC(character.hospital_until)
     };
 
@@ -692,6 +693,16 @@ app.post('/api/missions/start', authenticateToken, async (req, res) => {
     if (BigInt(character.hp || '0') <= 0n) return res.status(400).json({ status: 'error', message: 'Jesteś w Szpitalu! Nie możesz podjąć misji.' });
     if (BigInt(character.stamina ?? '0') < BigInt(mission.stamina_cost)) return res.status(400).json({ status: 'error', message: 'Nie masz staminy!' });
 
+    const completedMissions = character.completed_missions || [];
+    const attemptedOneTry = character.attempted_one_try_missions || [];
+
+    if (mission.is_repeatable === false && completedMissions.includes(missionId)) {
+        return res.status(400).json({ status: 'error', message: 'Ta misja została już przez Ciebie ukończona!' });
+    }
+    if (mission.is_one_try === true && attemptedOneTry.includes(missionId)) {
+        return res.status(400).json({ status: 'error', message: 'Wykorzystałeś już swoją jedyną szansę w tej misji!' });
+    }
+
     const reqStats = mission.req_stats || {};
     let totalCappedRatio = 0n; // Do średniej szansy
     let reqCount = 0n;
@@ -850,7 +861,8 @@ app.post('/api/missions/start', authenticateToken, async (req, res) => {
                 hp: '0', mp: '0', stamina: newStamina.toString(), coins: deathNewCoins.toString(),
                 strength: deathFinalStr.toString(), speed: deathFinalSpd.toString(), endurance: deathFinalEnd.toString(),
                 intelligence: deathFinalInt.toString(), mental_strength: deathFinalMen.toString(),
-                last_death_penalty: deathStatsLostLog, hospital_until: hospitalUntilUTC, current_form: 'Stan Podstawowy'
+                last_death_penalty: deathStatsLostLog, hospital_until: hospitalUntilUTC, current_form: 'Stan Podstawowy',
+                attempted_one_try_missions: (mission.is_one_try === true && !attemptedOneTry.includes(missionId)) ? [...attemptedOneTry, missionId] : attemptedOneTry
             }).eq('profile_id', userId);
 
             return res.json({ 
@@ -867,7 +879,8 @@ app.post('/api/missions/start', authenticateToken, async (req, res) => {
         await supabase.from('characters').update({
             hp: newHp.toString(), mp: newMp.toString(), stamina: newStamina.toString(), coins: newCoins.toString(),
             strength: finalStr.toString(), speed: finalSpd.toString(), endurance: finalEnd.toString(),
-            intelligence: finalInt.toString(), mental_strength: finalMen.toString()
+            intelligence: finalInt.toString(), mental_strength: finalMen.toString(),
+            attempted_one_try_missions: (mission.is_one_try === true && !attemptedOneTry.includes(missionId)) ? [...attemptedOneTry, missionId] : attemptedOneTry
         }).eq('profile_id', userId);
 
         return res.json({ result: 'hurt', message: `PORAŻKA! Obrażenia: ${damagePercent}%`, damage: { hp: ((maxHp * damagePercent) / 100n).toString(), mp: ((maxMp * damagePercent) / 100n).toString(), stamina: ((maxStamina * damagePercent) / 100n).toString() }, penalty: { coins_lost: coinsLost.toString(), stats_lost: statsLostLog } });
@@ -923,9 +936,6 @@ app.post('/api/missions/start', authenticateToken, async (req, res) => {
     const newEnd = currentEnd + gainEnd + trainGainEnd;
     const newBonusHp = BigInt(character.bonus_hp || '0') + trainGainBonusHp;
     const newBonusMp = BigInt(character.bonus_mp || '0') + trainGainBonusMp;
-
-    let completedMissions = character.completed_missions || [];
-    if (!completedMissions.includes(missionId)) completedMissions.push(missionId);
 
     // KROK 4.7.2: Sprawdzenie Wydarzenia Losowego po sukcesie
     let finalHp = BigInt(character.hp || '100');
@@ -1030,11 +1040,22 @@ app.post('/api/missions/start', authenticateToken, async (req, res) => {
     }
     // ==========================================
 
+    let newCompleted = [...completedMissions];
+    let newAttempted = [...attemptedOneTry];
+    
+    // Każda pierwsza wygrana (nawet powtarzalna) musi trafić do completed, 
+    // aby odblokować graczowi kolejną misję na liście!
+    if (!newCompleted.includes(missionId)) newCompleted.push(missionId);
+    
+    // Zapisujemy próbę dla misji One-Try
+    if (mission.is_one_try === true && !newAttempted.includes(missionId)) newAttempted.push(missionId);
+
     await supabase.from('characters').update({
         coins: newCoins.toString(), strength: newStr.toString(), speed: newSpd.toString(), endurance: newEnd.toString(), 
         hp: finalHp.toString(), mp: finalMp.toString(), stamina: finalStamina.toString(),
         bonus_hp: newBonusHp.toString(), bonus_mp: newBonusMp.toString(),
-        completed_missions: completedMissions
+        completed_missions: newCompleted,
+        attempted_one_try_missions: newAttempted
       }).eq('profile_id', userId);
 
     res.json({ 

@@ -351,6 +351,12 @@
             
             // Sprawdzenie odblokowania
             const completed = window.playerCompletedMissions || [];
+            const attempted = window.playerAttemptedOneTry || [];
+            
+            const isCompleted = mission.is_repeatable === false && completed.includes(mission.id);
+            const isFailedOneTry = mission.is_one_try === true && attempted.includes(mission.id) && !completed.includes(mission.id);
+            const isLockedByStory = isCompleted || isFailedOneTry;
+
             const isUnlocked = index === 0 || completed.includes(window.allMissions[index - 1].id) || completed.includes(mission.id);
             
             // Ikona misji na podstawie indeksu
@@ -426,11 +432,18 @@
                 </div>
             `;
 
-            // Dodaj klasę locked jeśli nieodblokowane
-            if (!isUnlocked) {
+            // Dodaj klasę locked jeśli nieodblokowane LUB zablokowane fabularnie
+            if (!isUnlocked || isLockedByStory) {
                 card.classList.add('locked');
+                
+                // Dodanie prefiksu do tytułu dla lepszej widoczności
+                if (isCompleted) {
+                    card.innerHTML = card.innerHTML.replace('<div class="mission-title">', '<div class="mission-title" style="color: #4ade80;">[UKOŃCZONO] ');
+                } else if (isFailedOneTry) {
+                    card.innerHTML = card.innerHTML.replace('<div class="mission-title">', '<div class="mission-title" style="color: #ef4444;">[SZANSA PRZEPADŁA] ');
+                }
             } else {
-                // Dodaj obsługę kliknięcia tylko dla odblokowanych misji
+                // Dodaj obsługę kliknięcia tylko dla odblokowanych i dostępnych misji
                 card.addEventListener('click', () => {
                     startMission(mission.id);
                 });
@@ -947,6 +960,7 @@
 
                 // Zapisz progres misji i odśwież interfejs misji
                 window.playerCompletedMissions = data.completed_missions;
+                window.playerAttemptedOneTry = data.attempted_one_try_missions || [];
                 window.playerCurrentStats = data.stats;
                 window.playerEquipStats = data.equip_stats || {}; // <-- NOWE: Zapisujemy sprzęt
                 if (window.allMissions) renderMissions(window.allMissions);
