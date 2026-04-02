@@ -1560,7 +1560,6 @@
                     }
                     
                     // Standardowe odłożenie na puste miejsce w plecaku
-                    if (sourceSlot === 'backpack') return; // blokada plecak->plecak
                     performItemSwap(inventoryId, 'backpack', targetIndex, null);
                 });
                 
@@ -1830,7 +1829,7 @@
                         if (typeof performItemSwap === 'function') performItemSwap(inventoryId, 'backpack', targetIndex, targetInventoryId);
                         return; 
                     }
-                    if (sourceSlot !== 'backpack' && typeof performItemSwap === 'function') performItemSwap(inventoryId, 'backpack', targetIndex, null);
+                    if (typeof performItemSwap === 'function') performItemSwap(inventoryId, 'backpack', targetIndex, null);
                 });
                 
                 const item = backpackItems.find(b => b.backpack_index === i);
