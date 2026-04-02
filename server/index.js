@@ -419,6 +419,13 @@ app.get('/api/missions', authenticateToken, async (req, res) => {
         return mission;
     });
 
+    // NOWE: Twarde sortowanie po wymaganej sile (gwarantuje idealną kolejność 1-25 niezależnie od bazy)
+    enrichedMissions.sort((a, b) => {
+        const strA = parseInt(a.req_stats?.strength || '0', 10);
+        const strB = parseInt(b.req_stats?.strength || '0', 10);
+        return strA - strB;
+    });
+
     res.json(enrichedMissions || []);
   } catch (err) {
     res.status(500).json({ error: 'Błąd serwera podczas pobierania misji' });
