@@ -169,10 +169,13 @@
                 </div>
 
                 <!-- Prawy Panel - Plecak (Inventory) -->
-                <div class="inventory-panel">
-                    <h3 class="panel-title">Plecak</h3>
-                    <div class="inventory-grid">
-                        </div>
+                <div class="inventory-panel" style="display: flex; flex-direction: column;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; padding-bottom: 10px; border-bottom: 2px solid var(--goku-panel-border);">
+                        <h4 style="margin: 0; color: #a3e635; font-size: 1.3rem; text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);">Twój Plecak</h4>
+                        <button class="nuke-help-btn" data-tooltip="Przeciągnij przedmiot na ciało, aby go założyć (Drag & Drop), lub po prostu kliknij w niego dwukrotnie.">?</button>
+                    </div>
+                    <div class="inventory-grid" style="align-content: start; flex: 1;">
+                    </div>
                 </div>
             </div>
         </div>
@@ -236,12 +239,14 @@
                 </div>
 
                 <!-- Prawa kolumna - plecak do sprzedaży -->
-                <div class="shop-right-column">
-                    <div class="shop-backpack-panel">
-                        <div class="shop-backpack-title">Plecak</div>
-                        <div class="shop-backpack-grid" id="shop-backpack-grid">
-                            <!-- Sloty plecaka będą renderowane dynamicznie -->
+                <div class="shop-right-column" style="display: flex; flex-direction: column;">
+                    <div class="shop-backpack-panel" style="display: flex; flex-direction: column; flex: 1;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; padding-bottom: 10px; border-bottom: 2px solid var(--goku-panel-border);">
+                            <h4 style="margin: 0; color: #a3e635; font-size: 1.3rem; text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);">Twój Plecak</h4>
+                            <button class="nuke-help-btn" data-tooltip="Przeciągnij przedmiot do lewej kolumny sklepu, aby go sprzedać, lub po prostu kliknij go dwukrotnie.">?</button>
                         </div>
+                        <div class="shop-backpack-grid" id="shop-backpack-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(75px, 1fr)); gap: 10px; align-content: start; flex: 1;">
+                            </div>
                     </div>
                 </div>
             </div>
@@ -299,8 +304,8 @@
 
                     <div style="flex: 1; background: var(--goku-panel-bg); border: 1px solid var(--goku-panel-border); border-radius: 8px; padding: 20px; display: flex; flex-direction: column;">
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; padding-bottom: 10px; border-bottom: 2px solid var(--goku-panel-border);">
-                            <h4 style="margin: 0; color: #a3e635;">Twój Plecak</h4>
-                            <span style="font-size: 0.8rem; color: var(--text-muted);">Przeciągnij lub kliknij 2x</span>
+                            <h4 style="margin: 0; color: #a3e635; font-size: 1.3rem; text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);">Twój Plecak</h4>
+                            <button class="nuke-help-btn" data-tooltip="Przeciągnij przedmioty do skrytki obok, aby je schować, lub kliknij na nie dwukrotnie, by przenieść je błyskawicznie.">?</button>
                         </div>
                         <div class="bank-backpack-grid" id="bank-backpack-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(75px, 1fr)); gap: 10px; align-content: start; flex: 1;">
                             </div>
