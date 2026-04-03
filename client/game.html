@@ -2041,7 +2041,6 @@
                 
                 if (data.success) {
                     showSuccessMessage(data.message);
-                    await fetchCharacterData();
                     await fetchInventory();
                     renderBank();
                 } else {
@@ -2084,7 +2083,6 @@
                 
                 if (data.success) {
                     showSuccessMessage(data.message);
-                    await fetchCharacterData();
                     await fetchInventory();
                     renderBank();
                 } else {
@@ -2316,7 +2314,7 @@
             }
         }
 
-        // Wykonywanie zamiany przedmiotów z backendem
+        // Wykonywanie zamiany przedmiotów z backendem (OPCJA 1 - Błyskawiczny RAM Update)
         async function performItemSwap(inventoryId, slotTarget, backpackIndexTarget = null, targetItemId = null) {
             if (window.isInventoryActionLocked) return;
             window.isInventoryActionLocked = true;
@@ -2339,12 +2337,55 @@
                 const data = await response.json();
                 
                 if (data.success) {
-                    // Sukces - odśwież dane
-                    await fetchInventory();
-                    await fetchCharacterData();
-                    showSuccessMessage(data.message);
+                    // === OPCJA 1: Lokalna (błyskawiczna) aktualizacja tablicy ===
+                    const item1 = window.inventoryData.find(i => i.id === inventoryId);
+                    const item2 = targetItemId ? window.inventoryData.find(i => i.id === targetItemId) : null;
+                    
+                    // Sprawdzamy, czy to czynność wpływająca na statystyki (zakładanie/zdejmowanie sprzętu)
+                    const isEquipAction = (slotTarget !== 'backpack' && slotTarget !== 'bank') || 
+                                          (item1 && item1.equipped_slot !== null && item1.equipped_slot !== 'bank');
+
+                    if (data.message.includes('połączone')) {
+                        // Wyjątek: Jeśli połączono stosy (ilość uległa zmianie), bezpiecznie jest pobrać nowy stan
+                        await fetchInventory();
+                        showSuccessMessage(data.message);
+                    } else {
+                        // Zwykłe przeniesienie - modyfikujemy tylko RAM przeglądarki (0 zapytań GET!)
+                        const dbSlotTarget = slotTarget === 'backpack' ? null : slotTarget;
+                        const parsedIndexTarget = backpackIndexTarget ? parseInt(backpackIndexTarget) : null;
+
+                        if (item1 && item2) {
+                            // Swap (zamiana miejsc)
+                            const tempSlot = item1.equipped_slot;
+                            const tempIndex = item1.backpack_index;
+                            
+                            item1.equipped_slot = item2.equipped_slot;
+                            item1.backpack_index = item2.backpack_index;
+                            
+                            item2.equipped_slot = tempSlot;
+                            item2.backpack_index = tempIndex;
+                        } else if (item1) {
+                            // Przesunięcie na pusty slot
+                            item1.equipped_slot = dbSlotTarget;
+                            item1.backpack_index = parsedIndexTarget;
+                        }
+
+                        // Błyskawiczne przerysowanie interfejsu (bez czekania na serwer)
+                        renderInventory(window.inventoryData);
+                        
+                        const activeTab = localStorage.getItem('active_game_tab');
+                        if (activeTab === 'bank' && typeof renderBank === 'function') renderBank();
+                        if (activeTab === 'shop' && typeof renderShopBackpack === 'function') renderShopBackpack();
+                        
+                        // Pokazujemy dymek sukcesu TYLKO przy zbroi (koniec ze spamem przy sortowaniu!)
+                        if (isEquipAction) showSuccessMessage(data.message);
+                    }
+
+                    // Pobieramy nowe statystyki postaci (cicho), TYLKO jeśli założono/zdjęto sprzęt
+                    if (isEquipAction) {
+                        await fetchCharacterData(true); 
+                    }
                 } else {
-                    // Błąd z backendu
                     showWarningMessage(data.error || 'Błąd podczas zamiany przedmiotów');
                 }
                 
