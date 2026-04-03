@@ -81,7 +81,7 @@ async function getFullCharacterStats(userId) {
           if (bonuses.bonus_mp) trainingBonuses.bonus_mp += BigInt(bonuses.bonus_mp);
         }
       }
-    }); // <-- TO TUTAJ WINDSURF ZEPSUŁ NAWIASY
+    }); 
 
     const baseStats = {
       strength: BigInt(character.strength || '1'),
@@ -483,12 +483,6 @@ app.post('/api/inventory/swap', authenticateToken, async (req, res) => {
         .from('inventory').select('*, item_templates(*)').eq('character_id', character.id).is('equipped_slot', null)
         .eq('backpack_index', backpack_index_target).neq('id', item_id_1).maybeSingle();
       if (existingBackpackItem) { targetItem = existingBackpackItem; wasOccupied = true; }
-    } else if (slot_target === 'bank' && backpack_index_target !== null && backpack_index_target !== undefined) {
-      if (backpack_index_target > (character.bank_slots_unlocked || 5)) return res.status(400).json({ error: 'Ten slot w skrytce jest zablokowany!' });
-      const { data: existingBankItem } = await supabase
-        .from('inventory').select('*, item_templates(*)').eq('character_id', character.id).eq('equipped_slot', 'bank')
-        .eq('backpack_index', backpack_index_target).neq('id', item_id_1).maybeSingle();
-      if (existingBankItem) { targetItem = existingBankItem; wasOccupied = true; }
     } else if (slot_target !== 'backpack' && slot_target !== 'bank') {
       const { data: existingItem } = await supabase
         .from('inventory').select('id').eq('character_id', character.id).eq('equipped_slot', slot_target)
@@ -496,7 +490,7 @@ app.post('/api/inventory/swap', authenticateToken, async (req, res) => {
       if (existingItem) wasOccupied = true;
     }
 
-    // === REVERSE SWAP BYPASS FIX ===
+    // Walidacja wymagań przedmiotu zakładanego prosto z plecaka
     // Jeśli zdejmujemy przedmiot z ciała do plecaka i zamieniamy się z innym przedmiotem, 
     // musimy sprawdzić, czy gracz spełnia wymogi przedmiotu, który właśnie wyląduje na ciele!
     if (targetItem && draggedItem.equipped_slot !== null && slot_target === 'backpack') {
@@ -1379,7 +1373,7 @@ app.post('/api/bank/transfer_item', authenticateToken, async (req, res) => {
             let query = supabase.from('inventory').select('id, quantity, backpack_index')
                 .eq('character_id', character.id)
                 .eq('item_template_id', item.item_template_id)
-                .neq('id', inventory_id); // KRYTYCZNA POPRAWKA: Ignoruj samego siebie!
+                .neq('id', inventory_id); 
                 
             if (target_panel === 'bank') query = query.eq('equipped_slot', 'bank');
             else query = query.is('equipped_slot', null);
@@ -1569,7 +1563,7 @@ app.post('/api/bank/split', authenticateToken, async (req, res) => {
             item_template_id: item.item_template_id,
             quantity: splitAmount.toString(),
             equipped_slot: targetPanel,
-            backpack_index: freeIdx // NAPRAWA GHOST ITEMS
+            backpack_index: freeIdx 
         });
         return res.json({ success: true, message: `Podzielono stos i umieszczono w nowym slocie!` });
     } else {
