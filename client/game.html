@@ -1814,9 +1814,9 @@
                         const inventoryId = e.dataTransfer.getData('inventory_id');
                         const targetIndex = this.getAttribute('data-index');
                         
-                        // Naprawa Banku: Używamy prawidłowej funkcji transferu zamiast zakładania zbroi
+                        // Naprawa Banku: Przekazujemy dokładny indeks!
                         if (typeof transferBankItem === 'function') {
-                            transferBankItem(inventoryId, 'bank', 'all');
+                            transferBankItem(inventoryId, 'bank', 'all', targetIndex);
                         }
                     });
 
@@ -1879,7 +1879,7 @@
                     const targetIndex = this.getAttribute('data-index');
                     
                     if (sourceSlot === 'bank') {
-                        if (typeof transferBankItem === 'function') transferBankItem(inventoryId, 'backpack', 'all');
+                        if (typeof transferBankItem === 'function') transferBankItem(inventoryId, 'backpack', 'all', targetIndex);
                         return;
                     }
                     
@@ -1997,7 +1997,7 @@
         }
 
         // Transfer przedmiotu między bankiem a plecakiem
-        async function transferBankItem(inventoryId, targetPanel, amount) {
+        async function transferBankItem(inventoryId, targetPanel, amount, targetIndex = null) {
             if (window.isInventoryActionLocked) return;
             window.isInventoryActionLocked = true;
 
@@ -2011,7 +2011,8 @@
                     body: JSON.stringify({
                         inventory_id: inventoryId,
                         target_panel: targetPanel,
-                        amount: amount
+                        amount: amount,
+                        target_index: targetIndex
                     })
                 });
 

@@ -1332,7 +1332,7 @@ app.post('/api/bank/upgrade', authenticateToken, async (req, res) => {
 app.post('/api/bank/transfer_item', authenticateToken, async (req, res) => {
   try {
     const userId = req.user.id;
-    const { inventory_id, target_panel, amount } = req.body;
+    const { inventory_id, target_panel, amount, target_index } = req.body;
 
     if (!inventory_id || !target_panel || !amount) return res.status(400).json({ error: 'Brak parametrów' });
     if (!['bank', 'backpack'].includes(target_panel)) return res.status(400).json({ error: 'Nieprawidłowy panel docelowy' });
@@ -1434,14 +1434,19 @@ app.post('/api/bank/transfer_item', authenticateToken, async (req, res) => {
         let firstFreeIndex = 1;
         while (occupiedIndexes.includes(firstFreeIndex)) firstFreeIndex++;
 
+        let finalIndex = firstFreeIndex;
+        if (target_index !== undefined && target_index !== null) {
+            let parsedIdx = parseInt(target_index);
+            // Jeśli wybrana kratka jest wolna, połóż tam. Jeśli zajęta, wrzuć w pierwsze wolne miejsce.
+            if (!occupiedIndexes.includes(parsedIdx)) finalIndex = parsedIdx;
+        }
+
         if (transferAmount === BigInt(item.quantity)) {
-            // Przenosimy w całości na nowe miejsce
             await supabase.from('inventory').update({ 
                 equipped_slot: target_panel === 'bank' ? 'bank' : null, 
-                backpack_index: firstFreeIndex 
+                backpack_index: finalIndex 
             }).eq('id', inventory_id);
         } else {
-            // Odejmujemy z oryginału i tworzymy nowy
             await supabase.from('inventory').update({ 
                 quantity: (BigInt(item.quantity) - transferAmount).toString() 
             }).eq('id', inventory_id);
@@ -1451,7 +1456,7 @@ app.post('/api/bank/transfer_item', authenticateToken, async (req, res) => {
                 item_template_id: item.item_template_id,
                 quantity: transferAmount.toString(),
                 equipped_slot: target_panel === 'bank' ? 'bank' : null,
-                backpack_index: firstFreeIndex
+                backpack_index: finalIndex
             });
         }
     }
