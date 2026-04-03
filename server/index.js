@@ -1376,17 +1376,14 @@ app.post('/api/bank/transfer_item', authenticateToken, async (req, res) => {
     const isStackable = item.item_templates.category === 'consumable' || item.item_templates.category === 'special_consumable';
 
     if (isStackable) {
-        let query = supabase.from('inventory').select('id, quantity')
-            .eq('character_id', character.id)
-            .eq('item_template_id', item.item_template_id);
+            let query = supabase.from('inventory').select('id, quantity')
+                .eq('character_id', character.id)
+                .eq('item_template_id', item.item_template_id);
+                
+            if (target_panel === 'bank') query = query.eq('equipped_slot', 'bank');
+            else query = query.is('equipped_slot', null);
             
-        if (target_panel === 'bank') {
-            query = query.eq('equipped_slot', 'bank');
-        } else {
-            query = query.is('equipped_slot', null);
-        }
-        
-        const { data: targetItems } = await query;
+            const { data: targetItems } = await query;
 
         // Szukamy stosu, który ma miejsce (do max 99)
         if (targetItems && targetItems.length > 0) {
@@ -1511,7 +1508,11 @@ app.post('/api/bank/split', authenticateToken, async (req, res) => {
     const targetPanel = isFromBank ? 'bank' : null;
     
     // Szukamy wolnego miejsca w obecnym panelu
-    const { data: panelItems } = await supabase.from('inventory').select('backpack_index').eq('character_id', character.id).is('equipped_slot', targetPanel);
+    let panelQuery = supabase.from('inventory').select('backpack_index').eq('character_id', character.id);
+    if (isFromBank) panelQuery = panelQuery.eq('equipped_slot', 'bank');
+    else panelQuery = panelQuery.is('equipped_slot', null);
+    
+    const { data: panelItems } = await panelQuery;
     const occupied = panelItems.map(i => i.backpack_index).filter(i => i !== null);
     
     // Walidacja limitów miejsca
