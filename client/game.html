@@ -250,67 +250,65 @@
         <div id="bank-view" style="display: none;">
             <div class="bank-container" style="display: flex; flex-direction: column; gap: 20px;">
                 
-                <div class="bank-top-panel" style="background: var(--goku-panel-bg); border: 1px solid var(--goku-panel-border); border-radius: 8px; padding: 20px; display: flex; flex-wrap: wrap; gap: 20px; justify-content: space-between; align-items: stretch;">
+                <div class="bank-top-panel" style="background: var(--goku-panel-bg); border: 1px solid var(--goku-panel-border); border-radius: 8px; padding: 20px; display: flex; gap: 20px; align-items: stretch;">
                     
-                    <div class="bank-money-section" style="flex: 1; min-width: 250px; background: rgba(0,0,0,0.2); padding: 15px; border-radius: 6px;">
-                        <h4 style="margin: 0 0 10px 0; color: #fbbf24; border-bottom: 1px dashed rgba(255,255,255,0.1); padding-bottom: 5px;">Stan Konta</h4>
-                        <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
-                            <div>
-                                <div style="font-size: 0.8rem; color: var(--text-secondary);">Portfel:</div>
-                                <div id="bank-coins-display" style="font-weight: bold; color: var(--text-primary); font-size: 1.1rem;">0 💰</div>
-                            </div>
-                            <div style="text-align: right;">
-                                <div style="font-size: 0.8rem; color: var(--text-secondary);">W Banku:</div>
-                                <div id="bank-bank-coins-display" style="font-weight: bold; color: #fbbf24; font-size: 1.1rem;">0 💰</div>
-                            </div>
+                    <div style="background: rgba(0,0,0,0.2); padding: 15px; border-radius: 6px; flex: 1; border: 1px solid rgba(255,255,255,0.05);">
+                        <h4 style="margin: 0 0 12px 0; color: #fbbf24; font-size: 1rem; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 5px;">Stan Konta</h4>
+                        <div style="margin-bottom: 12px;">
+                            <div style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 2px;">W Portfelu:</div>
+                            <div id="bank-coins-display" style="font-weight: bold; color: var(--text-primary); font-size: 1.1rem;">0 💰</div>
                         </div>
-                        <div style="font-size: 0.85rem; color: var(--text-muted);">
-                            Limit: <span id="bank-limit-display" style="color: #fbbf24;">10,000</span> 💰 (Poziom <span id="bank-level-display">1</span>)
+                        <div>
+                            <div style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 2px;">W Banku:</div>
+                            <div id="bank-bank-coins-display" style="font-weight: bold; color: #fbbf24; font-size: 1.1rem;">0 💰</div>
                         </div>
                     </div>
 
-                    <div class="bank-transfer-section" style="flex: 1; min-width: 250px; background: rgba(0,0,0,0.15); padding: 15px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.05); display: flex; flex-direction: column; justify-content: center;">
-                        <h4 style="margin: 0 0 10px 0; color: var(--goku-accent); text-align: center;">Transfer Monet</h4>
-                        <input type="text" id="bank-amount-input" placeholder="Wpisz kwotę..." maxlength="15" style="width: 100%; padding: 8px; border-radius: 4px; border: 1px solid var(--goku-panel-border); background: var(--input-bg); color: white; box-sizing: border-box; margin-bottom: 10px; text-align: center;">
+                    <div style="background: rgba(0,0,0,0.15); padding: 15px; border-radius: 6px; flex: 1.2; border: 1px solid rgba(255,255,255,0.05); display: flex; flex-direction: column; justify-content: center;">
+                        <h4 style="margin: 0 0 12px 0; color: var(--goku-accent); text-align: center; font-size: 1rem;">Transfer Monet</h4>
+                        <input type="text" id="bank-amount-input" placeholder="Wpisz kwotę..." maxlength="15" style="width: 100%; padding: 10px; border-radius: 4px; border: 1px solid var(--goku-panel-border); background: var(--input-bg); color: white; box-sizing: border-box; margin-bottom: 10px; text-align: center;">
                         <div style="display: flex; gap: 10px;">
-                            <button id="bank-deposit-btn" class="btn-header" style="flex: 1; background-color: #15803d; padding: 6px;">Wpłać</button>
-                            <button id="bank-withdraw-btn" class="btn-header" style="flex: 1; background-color: #b45309; padding: 6px;">Wypłać</button>
+                            <button id="bank-deposit-btn" class="btn-header" style="flex: 1; background-color: #15803d;">Wpłać</button>
+                            <button id="bank-withdraw-btn" class="btn-header" style="flex: 1; background-color: #b45309;">Wypłać</button>
                         </div>
                     </div>
 
-                    <div class="bank-upgrade-section" style="flex: 1; min-width: 200px; background: rgba(0,0,0,0.2); padding: 15px; border-radius: 6px; display: flex; flex-direction: column; justify-content: center;">
-                        <h4 style="margin: 0 0 10px 0; color: var(--text-secondary); text-align: center;">Zarządzanie</h4>
-                        <button id="bank-upgrade-limit-btn" class="btn-header upgrade-btn" style="width: 100%; margin-bottom: 8px; padding: 8px;">Ulepsz Limit Banku</button>
-                        <button id="bank-upgrade-slots-btn" class="btn-header upgrade-btn" style="width: 100%; padding: 8px;">Kup Slot w Skrytce</button>
+                    <div style="background: rgba(0,0,0,0.2); padding: 15px; border-radius: 6px; flex: 1; border: 1px solid rgba(255,255,255,0.05); display: flex; flex-direction: column; justify-content: center;">
+                        <h4 style="margin: 0 0 10px 0; color: var(--text-secondary); text-align: center; font-size: 1rem;">Zarządzanie Limitem</h4>
+                        <div style="text-align: center; margin-bottom: 12px;">
+                            <div style="font-size: 0.8rem; color: var(--text-muted);">Aktualny limit gotówki:</div>
+                            <div style="font-size: 1rem; color: #fbbf24; font-weight: bold;"><span id="bank-limit-display">0</span> 💰</div>
+                        </div>
+                        <button id="bank-upgrade-limit-btn" class="btn-header upgrade-btn" style="width: 100%; padding: 10px; font-size: 0.9rem;">
+                            Ulepsz do Poz. <span id="bank-next-level">-</span><br>
+                            <small>(Koszt: <span id="bank-upgrade-cost">-</span> 💰)</small>
+                        </button>
                     </div>
-
                 </div>
 
                 <div class="bank-bottom-panel" style="display: flex; gap: 20px; align-items: stretch;">
                     
-                    <div class="bank-stash-panel" style="flex: 1; background: var(--goku-panel-bg); border: 1px solid var(--goku-panel-border); border-radius: 8px; padding: 20px; display: flex; flex-direction: column;">
+                    <div style="flex: 1; background: var(--goku-panel-bg); border: 1px solid var(--goku-panel-border); border-radius: 8px; padding: 20px; display: flex; flex-direction: column;">
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; padding-bottom: 10px; border-bottom: 2px solid var(--goku-panel-border);">
                             <h4 style="margin: 0; color: #fbbf24;">Skrytka Banku</h4>
-                            <span style="font-size: 0.85rem; background: rgba(0,0,0,0.3); padding: 4px 8px; border-radius: 4px;">Sloty: <b id="bank-slots-display">5/25</b></span>
+                            <span style="font-size: 0.85rem; background: rgba(0,0,0,0.3); padding: 4px 8px; border-radius: 4px;">Zajęte: <b id="bank-slots-display">0/0</b></span>
                         </div>
-                        <div class="bank-items-grid" id="bank-items-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(65px, 1fr)); gap: 8px; align-content: start; flex: 1;">
+                        <div class="bank-items-grid" id="bank-items-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(75px, 1fr)); gap: 10px; align-content: start; flex: 1;">
                             </div>
                     </div>
 
-                    <div class="bank-backpack-panel" style="flex: 1; background: var(--goku-panel-bg); border: 1px solid var(--goku-panel-border); border-radius: 8px; padding: 20px; display: flex; flex-direction: column;">
+                    <div style="flex: 1; background: var(--goku-panel-bg); border: 1px solid var(--goku-panel-border); border-radius: 8px; padding: 20px; display: flex; flex-direction: column;">
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; padding-bottom: 10px; border-bottom: 2px solid var(--goku-panel-border);">
                             <h4 style="margin: 0; color: #a3e635;">Twój Plecak</h4>
                             <span style="font-size: 0.8rem; color: var(--text-muted);">Przeciągnij lub kliknij 2x</span>
                         </div>
-                        <div class="bank-backpack-grid" id="bank-backpack-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(65px, 1fr)); gap: 8px; align-content: start; flex: 1;">
+                        <div class="bank-backpack-grid" id="bank-backpack-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(75px, 1fr)); gap: 10px; align-content: start; flex: 1;">
                             </div>
                     </div>
 
                 </div>
-
             </div>
         </div>
-    </main>
 
     <div id="pl-tooltip" class="nuke-floating-tooltip">
         <strong style="color: #ff6b00; font-size: 1.1rem;">Jak wyliczany jest Poziom Mocy?</strong>
@@ -1733,23 +1731,32 @@
         function renderBank() {
             if (!document.getElementById('bank-view')) return;
 
-            // Aktualizacja wyświetlania monet i limitów
             const coinsDisplay = document.getElementById('bank-coins-display');
             const bankCoinsDisplay = document.getElementById('bank-bank-coins-display');
             const limitDisplay = document.getElementById('bank-limit-display');
-            const levelDisplay = document.getElementById('bank-level-display');
+            const nextLevelDisplay = document.getElementById('bank-next-level');
+            const upgradeCostDisplay = document.getElementById('bank-upgrade-cost');
             const slotsDisplay = document.getElementById('bank-slots-display');
 
-            if (coinsDisplay) coinsDisplay.textContent = `${window.playerCurrentCoins.toLocaleString()} 💰`;
-            if (bankCoinsDisplay) bankCoinsDisplay.textContent = `${window.playerBankCoins.toLocaleString()} 💰`;
-            if (limitDisplay) limitDisplay.textContent = getBankLimit(window.playerBankCoinLimitLevel).toLocaleString();
-            if (levelDisplay) levelDisplay.textContent = window.playerBankCoinLimitLevel;
-            if (slotsDisplay) slotsDisplay.textContent = `${window.playerBankSlotsUnlocked}/25`;
+            const currentLimitLevel = window.playerBankCoinLimitLevel || 1;
+            const currentCoins = window.playerCurrentCoins || 0;
+            const bankCoins = window.playerBankCoins || 0;
 
-            // Renderowanie slotów banku
-            renderBankSlots();
+            if (coinsDisplay) coinsDisplay.textContent = `${currentCoins.toLocaleString()} 💰`;
+            if (bankCoinsDisplay) bankCoinsDisplay.textContent = `${bankCoins.toLocaleString()} 💰`;
+            if (limitDisplay) limitDisplay.textContent = getBankLimit(currentLimitLevel).toLocaleString();
             
-            // Renderowanie plecaka w widoku banku
+            // Logika kosztu ulepszenia limitu
+            const nextLevel = currentLevel + 1;
+            const limitCosts = { 2: 5000, 3: 25000, 4: 100000, 5: 500000, 6: 2500000, 7: 10000000, 8: 50000000, 9: 200000000, 10: 1000000000 };
+            
+            if (nextLevelDisplay) nextLevelDisplay.textContent = nextLevel <= 10 ? nextLevel : "MAX";
+            if (upgradeCostDisplay) upgradeCostDisplay.textContent = nextLevel <= 10 ? limitCosts[nextLevel].toLocaleString() : "---";
+
+            const bankItems = (window.inventoryData || []).filter(item => item.equipped_slot === 'bank');
+            if (slotsDisplay) slotsDisplay.textContent = `${bankItems.length}/${window.playerBankSlotsUnlocked}`;
+
+            renderBankSlots();
             renderBankBackpack();
         }
 
@@ -1768,22 +1775,44 @@
 
             bankGrid.innerHTML = '';
             const bankItems = (window.inventoryData || []).filter(item => item.equipped_slot === 'bank');
-            
+            const unlocked = window.playerBankSlotsUnlocked || 5;
+
+            // Ceny slotów zgodnie z Twoją zasadą
+            function getSlotCost(n) {
+                if (n >= 6 && n <= 10) return 5000;
+                if (n >= 11 && n <= 15) return 25000;
+                if (n >= 16 && n <= 20) return 100000;
+                if (n >= 21 && n <= 25) return 500000;
+                return 0;
+            }
+
             for (let i = 1; i <= 25; i++) {
                 const slot = document.createElement('div');
                 slot.className = 'bank-slot';
-                slot.dataset.slotIndex = i;
+                slot.style.width = '75px';
+                slot.style.height = '75px';
                 
-                if (i > (window.playerBankSlotsUnlocked || 5)) {
-                    slot.classList.add('locked');
-                    slot.innerHTML = `<div>🔒</div><div>Kup slot</div>`;
-                    slot.addEventListener('click', () => showBuySlotModal(i));
-                } else {
+                if (i <= unlocked) {
+                    // Slot odblokowany
                     const item = bankItems.find(item => item.backpack_index === i);
                     if (item) {
-                        const itemCard = createItemCard(item); // Używamy globalnej funkcji!
+                        const itemCard = createItemCard(item);
                         slot.appendChild(itemCard);
                     }
+                } else if (i === unlocked + 1) {
+                    // NASTĘPNY slot do kupienia (Tylko ten ma cenę i jest klikalny!)
+                    const cost = getSlotCost(i);
+                    slot.classList.add('locked');
+                    slot.style.cursor = 'pointer';
+                    slot.style.border = '1px dashed var(--goku-accent)';
+                    slot.innerHTML = `<div style="font-size: 1.2rem;">🔓</div><div style="font-size: 0.65rem; color: #4ade80; font-weight: bold;">Kup slot ${i}</div><div style="font-size: 0.6rem;">${cost.toLocaleString()} 💰</div>`;
+                    slot.addEventListener('click', () => showBuySlotModal(i));
+                } else {
+                    // Sloty zablokowane (Dalsza kolejka - brak ceny, nieklikalne)
+                    slot.classList.add('locked');
+                    slot.style.cursor = 'not-allowed';
+                    slot.style.opacity = '0.4';
+                    slot.innerHTML = `<div style="font-size: 1rem;">🔒</div><div style="font-size: 0.6rem; color: var(--text-muted);">Zablokowane</div>`;
                 }
                 bankGrid.appendChild(slot);
             }
