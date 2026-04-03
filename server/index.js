@@ -456,10 +456,6 @@ app.post('/api/inventory/swap', authenticateToken, async (req, res) => {
     const userId = req.user.id;
     const { item_id_1, slot_target, backpack_index_target, item_id_2 } = req.body;
 
-    if (slot === 'bank') {
-        return res.status(400).json({ error: 'Nie możesz założyć banku na postać!' });
-    }
-
     if (!item_id_1 || !slot_target) return res.status(400).json({ error: 'Brak parametrów' });
 
     const { data: character } = await supabase.from('characters').select('*').eq('profile_id', userId).single();
