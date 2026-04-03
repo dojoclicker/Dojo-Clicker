@@ -71,10 +71,10 @@ body {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 1rem 2rem;
+    padding: 0.5rem 1.5rem; /* Zmniejszono padding */
     background: linear-gradient(135deg, var(--goku-panel-bg) 0%, rgba(22, 30, 49, 0.8) 100%);
     border-bottom: 2px solid var(--goku-accent);
-    max-height: 100px;
+    max-height: 65px; /* Zmniejszono wysokość z 100px */
     transition: all var(--transition-normal) ease;
     z-index: 50;
     overflow: hidden;
@@ -87,7 +87,7 @@ body {
 }
 
 .game-logo {
-    font-size: 1.8rem;
+    font-size: 1.3rem; /* Zmniejszono czcionkę z 1.8rem */
     font-weight: bold;
     color: var(--goku-accent);
     text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
@@ -99,7 +99,8 @@ body {
 }
 
 .btn-header {
-    padding: 0.5rem 1.5rem;
+    padding: 0.4rem 1rem; /* Zmniejszono padding */
+    font-size: 0.85rem; /* Dodano mniejszą czcionkę */
     background: var(--goku-accent);
     color: white;
     border: none;
@@ -137,7 +138,7 @@ body {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 0.75rem 2rem;
+    padding: 0.4rem 1.5rem; /* Zmniejszono padding */
     background: var(--goku-panel-bg);
     border-bottom: 1px solid var(--goku-panel-border);
     box-shadow: 0 4px 12px rgba(0,0,0,0.5);
@@ -158,7 +159,7 @@ body {
     flex-direction: column;
     align-items: center;
     min-width: 80px;
-    padding: 0.5rem 1rem;
+    padding: 0.4rem 0.8rem; /* Zmniejszono padding */
     background: rgba(255, 107, 0, 0.1);
     border: 1px solid rgba(255, 107, 0, 0.3);
     border-radius: 8px;

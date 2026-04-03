@@ -1385,6 +1385,7 @@
                 e.stopPropagation();
                 
                 // KRYTYCZNA POPRAWKA: Wymuszone ukrycie tooltipa
+                if (window.tooltipTimeout) clearTimeout(window.tooltipTimeout); // <-- DODAJ TĘ LINIJKĘ
                 const tooltip = document.getElementById('global-tooltip');
                 if (tooltip) {
                     tooltip.style.opacity = '0';
@@ -2648,7 +2649,7 @@
                 globalTooltip.style.zIndex = '999999';
                 globalTooltip.style.transition = 'opacity 0.2s ease'; // Płynne pojawianie
                 
-                let tooltipTimeout = null; // Stoper (Timer)
+                window.tooltipTimeout = null; // ZMIANA: Stoper globalny!
                 let lastMouseX = 0; // Śledzenie pozycji X
                 let lastMouseY = 0; // Śledzenie pozycji Y
 
@@ -2658,10 +2659,10 @@
                     const simpleTooltip = e.target.closest('[data-tooltip]');
                     
                     if (card || simpleTooltip) {
-                        clearTimeout(tooltipTimeout); // Anuluj poprzedni stoper
+                        clearTimeout(window.tooltipTimeout); // Anuluj poprzedni stoper
                         
                         // Odpal nowy stoper na 400 milisekund
-                        tooltipTimeout = setTimeout(() => {
+                        window.tooltipTimeout = setTimeout(() => {
                             if (card) {
                                 const cardId = card.dataset.inventoryId || card.dataset.templateId || card.className;
                                 if (globalTooltip.dataset.currentCard === cardId && globalTooltip.style.opacity === '1') return; 
@@ -2742,7 +2743,7 @@
                     const simpleTooltip = e.target.closest('[data-tooltip]');
                     
                     if ((card && !card.contains(e.relatedTarget)) || (simpleTooltip && !simpleTooltip.contains(e.relatedTarget))) {
-                        clearTimeout(tooltipTimeout); // ZABIJ STOPER - Gracz przejechał dalej!
+                        clearTimeout(window.tooltipTimeout); // ZABIJ STOPER - Gracz przejechał dalej!
                         globalTooltip.style.opacity = '0';
                         globalTooltip.style.visibility = 'hidden';
                         globalTooltip.dataset.currentCard = '';
