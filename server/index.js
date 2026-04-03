@@ -373,6 +373,9 @@ app.get('/api/character', authenticateToken, async (req, res) => {
       username: profile.username,
       power_level: powerLevel.toString(),
       coins: character.coins ?? '0',
+      bank_coins: character.bank_coins ?? '0', // DODANO
+      bank_coin_limit_level: character.bank_coin_limit_level ?? 1, // DODANO
+      bank_slots_unlocked: character.bank_slots_unlocked ?? 5, // DODANO
       current_form: character.current_form ?? 'Stan Podstawowy',
       current_hp: current_hp.toString(),
       current_mp: current_mp.toString(),
@@ -384,7 +387,7 @@ app.get('/api/character', authenticateToken, async (req, res) => {
       equip_stats: equipStats, 
       completed_missions: character.completed_missions || [],
       attempted_one_try_missions: character.attempted_one_try_missions || [],
-      hospital_until: exactHospitalEndTime ? new Date(exactHospitalEndTime).toISOString() : ensureUTC(character.hospital_until)
+      hospital_until: exactHospitalEndTime ? new Date(exactHospitalEndTime).toISOString() : (character.hospital_until ? String(character.hospital_until).trim() + 'Z' : null)
     };
 
     res.json(JSON.parse(JSON.stringify(characterData, bigIntReplacer)));
