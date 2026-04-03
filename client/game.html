@@ -172,13 +172,7 @@
                 <div class="inventory-panel">
                     <h3 class="panel-title">Plecak</h3>
                     <div class="inventory-grid">
-                        <!-- 5 slotów plecaka w jednym rzędzie -->
-                        <div class="inventory-slot" data-index="1"></div>
-                        <div class="inventory-slot" data-index="2"></div>
-                        <div class="inventory-slot" data-index="3"></div>
-                        <div class="inventory-slot" data-index="4"></div>
-                        <div class="inventory-slot" data-index="5"></div>
-                    </div>
+                        </div>
                 </div>
             </div>
         </div>
@@ -1194,52 +1188,87 @@
 
         // Renderowanie ekwipunku w interfejsie
         function renderInventory(items) {
-            // Krok A: Złap wszystkie sloty i wyczyść je
             const equipmentSlots = document.querySelectorAll('[data-slot]');
-            const inventorySlots = document.querySelectorAll('.inventory-panel .inventory-slot');
+            const inventoryGrid = document.querySelector('.inventory-panel .inventory-grid');
             
-            // Wyczyść sloty wyposażenia, zostawiając domyślne napisy
+            // Wyczyść sloty wyposażenia (ciało)
             equipmentSlots.forEach(slot => {
                 const slotType = slot.getAttribute('data-slot');
                 const defaultText = getDefaultSlotText(slotType);
                 slot.innerHTML = `<span>${defaultText}</span>`;
             });
 
-            // Wyczyść sloty plecaka
-            inventorySlots.forEach(slot => {
-                slot.innerHTML = '';
-            });
-            
-            if (!items || items.length === 0) {
-                console.log('[Inventory] Brak przedmiotów w ekwipunku');
-                return;
-            }
+            // Wyczyść siatkę plecaka
+            if (inventoryGrid) inventoryGrid.innerHTML = '';
 
-            // Krok B: Przeiteruj przez przedmioty i stwórz karty
-            items.forEach(item => {
-                if (item.equipped_slot) {
-                    // Przedmiot założony - umieść w odpowiednim slocie wyposażenia
-                    const slot = document.querySelector(`[data-slot="${item.equipped_slot}"]`);
-                    if (slot) {
-                        const card = createItemCard(item);
-                        slot.innerHTML = ''; // Wyczyść slot przed dodaniem
-                        slot.appendChild(card);
-                    }
-                } else {
-                    // Przedmiot w plecaku - umieść w konkretnym slocie
-                    const targetIndex = item.backpack_index;
-                    if (targetIndex) {
-                        const slot = document.querySelector(`.inventory-panel .inventory-slot[data-index="${targetIndex}"]`);
-                        if (slot) {
-                            const card = createItemCard(item);
-                            slot.innerHTML = ''; 
-                            slot.appendChild(card);
-                        }
-                    }
+            const allItems = items || [];
+            
+            // 1. Renderuj wyposażenie na ciele
+            const equippedItems = allItems.filter(item => item.equipped_slot !== null && item.equipped_slot !== 'bank');
+            equippedItems.forEach(item => {
+                const slot = document.querySelector(`[data-slot="${item.equipped_slot}"]`);
+                if (slot) {
+                    const card = createItemCard(item);
+                    slot.innerHTML = '';
+                    slot.appendChild(card);
                 }
             });
 
-            console.log(`[Inventory] Wyrenderowano ${items.length} przedmiotów`);
+            // 2. Renderuj dynamiczny plecak z eventami (Identycznie jak Sklep i Bank!)
+            const backpackItems = allItems.filter(item => item.equipped_slot === null);
+            const maxSlots = calculateMaxBackpackSlots();
+            
+            for (let i = 1; i <= maxSlots; i++) {
+                const slot = document.createElement('div');
+                slot.className = 'inventory-slot';
+                slot.setAttribute('data-index', i);
+                
+                slot.addEventListener('dragover', function(e) {
+                    if (window.isInventoryActionLocked) return;
+                    e.preventDefault();
+                    this.style.backgroundColor = 'rgba(255, 107, 0, 0.3)';
+                });
+                
+                slot.addEventListener('dragleave', function(e) {
+                    this.style.backgroundColor = '';
+                });
+                
+                slot.addEventListener('drop', function(e) {
+                    if (window.isInventoryActionLocked) return;
+                    e.preventDefault();
+                    e.stopPropagation();
+                    this.style.backgroundColor = '';
+                    
+                    const inventoryId = e.dataTransfer.getData('inventory_id');
+                    const sourceSlot = e.dataTransfer.getData('source_slot');
+                    const targetIndex = this.getAttribute('data-index');
+                    
+                    const droppedOnCard = e.target.closest('.item-card');
+                    if (droppedOnCard) {
+                        const targetInventoryId = droppedOnCard.dataset.inventoryId;
+                        const targetItemSlot = droppedOnCard.dataset.itemSlot;
+                        
+                        if (sourceSlot !== 'null' && sourceSlot !== 'backpack' && sourceSlot !== '') {
+                            if (sourceSlot !== targetItemSlot) {
+                                showWarningMessage("Nie możesz zamienić z przedmiotem z innego slotu!");
+                                return;
+                            }
+                        }
+                        performItemSwap(inventoryId, 'backpack', targetIndex, targetInventoryId);
+                        return; 
+                    }
+                    performItemSwap(inventoryId, 'backpack', targetIndex, null);
+                });
+                
+                const item = backpackItems.find(b => b.backpack_index === i);
+                if (item) {
+                    const card = createItemCard(item);
+                    slot.appendChild(card);
+                }
+                if (inventoryGrid) inventoryGrid.appendChild(slot);
+            }
+
+            console.log(`[Inventory] Wyrenderowano ${allItems.length} przedmiotów`);
             
             // Zaktualizuj przycisk Magicznej Fasolki w Szpitalu
             updateMagicBeanButton(items);
@@ -2333,50 +2362,6 @@
                     
                     // Wywołaj backend do zamiany przedmiotów
                     performItemSwap(inventoryId, slotTarget);
-                });
-            });
-
-            // Dodaj event listenery do wszystkich slotów plecaka
-            const inventorySlots = document.querySelectorAll('.inventory-slot');
-            inventorySlots.forEach(slot => {
-                slot.addEventListener('dragover', function(e) {
-                    e.preventDefault(); // Pozwól na upuszczenie
-                    this.style.backgroundColor = 'rgba(255, 107, 0, 0.3)'; // Wizualny feedback
-                });
-                
-                slot.addEventListener('dragleave', function(e) {
-                    this.style.backgroundColor = ''; // Przywróć domyślny kolor
-                });
-                
-                slot.addEventListener('drop', function(e) {
-                    e.preventDefault();
-                    this.style.backgroundColor = ''; // Przywróć domyślny kolor
-                    const inventoryId = e.dataTransfer.getData('inventory_id');
-                    const sourceSlot = e.dataTransfer.getData('source_slot');
-                    const targetIndex = this.getAttribute('data-index');
-                    
-                    // Jeśli upuszczamy na istniejącą kartę przedmiotu
-                    const droppedOnCard = e.target.closest('.item-card');
-                    if (droppedOnCard) {
-                        const targetInventoryId = droppedOnCard.dataset.inventoryId;
-                        const targetItemSlot = droppedOnCard.dataset.itemSlot;
-                        
-                        // Zabezpieczenie: jeśli zamieniamy sprzęt z ciała na sprzęt w plecaku
-                        if (sourceSlot !== 'null' && sourceSlot !== 'backpack' && sourceSlot !== '') {
-                            // Wtedy sloty MUSZĄ się zgadzać
-                            if (sourceSlot !== targetItemSlot) {
-                                showWarningMessage("Nie możesz zamienić z przedmiotem z innego slotu!");
-                                return;
-                            }
-                        }
-                        
-                        // Wykonanie atomowej zamiany (Scenariusz A w bazie - zadziała dla ciało<->plecak oraz plecak<->plecak)
-                        performItemSwap(inventoryId, 'backpack', targetIndex, targetInventoryId);
-                        return; 
-                    }
-                    
-                    // Standardowe odłożenie na puste miejsce w plecaku
-                    performItemSwap(inventoryId, 'backpack', targetIndex, null);
                 });
             });
 
