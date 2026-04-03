@@ -456,6 +456,10 @@ app.post('/api/inventory/swap', authenticateToken, async (req, res) => {
     const userId = req.user.id;
     const { item_id_1, slot_target, backpack_index_target, item_id_2 } = req.body;
 
+    if (slot === 'bank') {
+        return res.status(400).json({ error: 'Nie możesz założyć banku na postać!' });
+    }
+
     if (!item_id_1 || !slot_target) return res.status(400).json({ error: 'Brak parametrów' });
 
     const { data: character } = await supabase.from('characters').select('*').eq('profile_id', userId).single();
@@ -1372,12 +1376,17 @@ app.post('/api/bank/transfer_item', authenticateToken, async (req, res) => {
     const isStackable = item.item_templates.category === 'consumable' || item.item_templates.category === 'special_consumable';
 
     if (isStackable) {
-        const { data: targetItems } = await supabase
-            .from('inventory')
-            .select('id, quantity')
+        let query = supabase.from('inventory').select('id, quantity')
             .eq('character_id', character.id)
-            .eq('item_template_id', item.item_template_id)
-            .is('equipped_slot', target_panel === 'bank' ? 'bank' : null);
+            .eq('item_template_id', item.item_template_id);
+            
+        if (target_panel === 'bank') {
+            query = query.eq('equipped_slot', 'bank');
+        } else {
+            query = query.is('equipped_slot', null);
+        }
+        
+        const { data: targetItems } = await query;
 
         // Szukamy stosu, który ma miejsce (do max 99)
         if (targetItems && targetItems.length > 0) {
@@ -1417,11 +1426,16 @@ app.post('/api/bank/transfer_item', authenticateToken, async (req, res) => {
         }
     } else {
         // SCENARIUSZ B: Szukamy wolnej kratki i wkładamy
-        const { data: existingItems } = await supabase
-            .from('inventory')
-            .select('backpack_index')
-            .eq('character_id', character.id)
-            .is('equipped_slot', target_panel === 'bank' ? 'bank' : null);
+        let idxQuery = supabase.from('inventory').select('backpack_index')
+            .eq('character_id', character.id);
+            
+        if (target_panel === 'bank') {
+            idxQuery = idxQuery.eq('equipped_slot', 'bank');
+        } else {
+            idxQuery = idxQuery.is('equipped_slot', null);
+        }
+        
+        const { data: existingItems } = await idxQuery;
             
         const occupiedIndexes = existingItems.map(i => i.backpack_index).filter(i => i !== null);
         let firstFreeIndex = 1;
