@@ -1017,13 +1017,6 @@
                     updateStatDisplay('stat-endurance', data.stats.endurance, data.equip_stats.endurance, data.equip_stats.breakdown?.endurance || []);
                     updateStatDisplay('stat-intelligence', data.stats.intelligence, data.equip_stats.intelligence, data.equip_stats.breakdown?.intelligence || []);
                     updateStatDisplay('stat-mental_strength', data.stats.mental_strength, data.equip_stats.mental_strength, data.equip_stats.breakdown?.mental_strength || []);
-                } else {
-                    // Fallback - stare zachowanie jeśli equip_stats nie istnieje
-                    document.getElementById('stat-strength').textContent = data.stats.strength;
-                    document.getElementById('stat-speed').textContent = data.stats.speed;
-                    document.getElementById('stat-endurance').textContent = data.stats.endurance;
-                    document.getElementById('stat-intelligence').textContent = data.stats.intelligence;
-                    document.getElementById('stat-mental_strength').textContent = data.stats.mental_strength;
                 }
 
                 // Zapisz progres misji i odśwież interfejs misji
@@ -2375,14 +2368,12 @@
                     
                     // Zabezpieczenie przed sortowaniem w plecaku
                     if (sourceSlot === 'backpack' && targetSlot === null) {
-                        console.log('Ignorowanie: Brak obsługi ręcznego sortowania plecaka w DB.');
                         return;
                     }
                     
                     // Zabezpieczenie 2: Zamiana w tym samym miejscu
                     const draggedElement = document.querySelector(`[data-inventory-id="${inventoryId}"]`);
                     if (draggedElement && draggedElement.parentElement === this) {
-                        console.log('Anulowano: upuszczenie w tym samym miejscu');
                         return;
                     }
                     
@@ -2408,7 +2399,6 @@
                         const requiredSlotName = slotNames[itemSlot] || itemSlot;
                         
                         showWarningMessage(`Ten przedmiot nie pasuje do tego miejsca! Wymaga: ${requiredSlotName}`);
-                        console.log('Błędny slot:', itemName, '(wymaga:', itemSlot, ', cel:', targetSlot, ')');
                         return;
                     }
                     
@@ -2478,7 +2468,6 @@
                 });
             }
 
-            console.log('[Drag&Drop] Zainicjalizowano mechanikę Drag & Drop');
         }
 
         // Inicjalizacja aplikacji
