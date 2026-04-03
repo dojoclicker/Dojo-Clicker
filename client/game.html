@@ -2663,6 +2663,11 @@
                         
                         // Odpal nowy stoper na 400 milisekund
                         window.tooltipTimeout = setTimeout(() => {
+                            // KRYTYCZNA POPRAWKA: Blokujemy "duchy" usuniętych kart i blokujemy tooltipy podczas ładowania!
+                            if (window.isInventoryActionLocked) return;
+                            if (card && !document.body.contains(card)) return;
+                            if (simpleTooltip && !document.body.contains(simpleTooltip)) return;
+
                             if (card) {
                                 const cardId = card.dataset.inventoryId || card.dataset.templateId || card.className;
                                 if (globalTooltip.dataset.currentCard === cardId && globalTooltip.style.opacity === '1') return; 
