@@ -1391,7 +1391,7 @@ app.post('/api/bank/transfer_item', authenticateToken, async (req, res) => {
     const isStackable = item.item_templates.category === 'consumable' || item.item_templates.category === 'special_consumable';
 
     if (isStackable) {
-            let query = supabase.from('inventory').select('id, quantity')
+            let query = supabase.from('inventory').select('id, quantity, backpack_index')
                 .eq('character_id', character.id)
                 .eq('item_template_id', item.item_template_id)
                 .neq('id', inventory_id); // KRYTYCZNA POPRAWKA: Ignoruj samego siebie!
@@ -1403,7 +1403,13 @@ app.post('/api/bank/transfer_item', authenticateToken, async (req, res) => {
 
         // Szukamy stosu, który ma miejsce (do max 99)
         if (targetItems && targetItems.length > 0) {
-            targetStackItem = targetItems.find(t => BigInt(t.quantity) + transferAmount <= 99n);
+            if (target_index !== undefined && target_index !== null) {
+                // Drag & Drop: Łączymy w stos TYLKO jeśli upuściłeś prosto na inny stos
+                targetStackItem = targetItems.find(t => t.backpack_index === parseInt(target_index) && BigInt(t.quantity) + transferAmount <= 99n);
+            } else {
+                // Szybkie przenoszenie (dwuklik): Łączymy z pierwszym z brzegu
+                targetStackItem = targetItems.find(t => BigInt(t.quantity) + transferAmount <= 99n);
+            }
         }
     }
 
