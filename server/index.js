@@ -1367,118 +1367,89 @@ app.post('/api/bank/transfer_item', authenticateToken, async (req, res) => {
       return res.status(400).json({ error: 'Nieprawidłowa ilość' });
     }
 
-    // Sprawdzenie miejsca w panelu docelowym
-    if (target_panel === 'bank') {
-      const bankSlots = parseInt(character.bank_slots_unlocked || '5');
-      const { data: bankItems } = await supabase
-        .from('inventory')
-        .select('id, item_template_id, quantity')
-        .eq('character_id', character.id)
-        .eq('equipped_slot', 'bank');
+    // 1. Sprawdzenie możliwości stackowania (łączenia)
+    let targetStackItem = null;
+    const isStackable = item.item_templates.category === 'consumable' || item.item_templates.category === 'special_consumable';
 
-      // Sprawdzenie czy można połączyć z istniejącym stackiem
-      let canStack = false;
-      for (const bankItem of bankItems) {
-        if (bankItem.item_template_id === item.item_template_id && BigInt(bankItem.quantity) + transferAmount <= BigInt(maxStack)) {
-          canStack = true;
-          break;
+    if (isStackable) {
+        const { data: targetItems } = await supabase
+            .from('inventory')
+            .select('id, quantity')
+            .eq('character_id', character.id)
+            .eq('item_template_id', item.item_template_id)
+            .is('equipped_slot', target_panel === 'bank' ? 'bank' : null);
+
+        // Szukamy stosu, który ma miejsce (do max 99)
+        if (targetItems && targetItems.length > 0) {
+            targetStackItem = targetItems.find(t => BigInt(t.quantity) + transferAmount <= 99n);
         }
-      }
-
-      if (!canStack && bankItems.length >= bankSlots) {
-        return res.status(400).json({ error: 'Brak miejsca w banku!' });
-      }
-    } else {
-      // Obliczanie maksymalnych slotów plecaka
-      const { data: charStats } = await supabase
-        .from('characters')
-        .select('strength, speed, endurance')
-        .eq('id', character.id)
-        .single();
-
-      const minPhysicalStat = minBigInt(
-        BigInt(charStats.strength || '0'),
-        minBigInt(BigInt(charStats.speed || '0'), BigInt(charStats.endurance || '0'))
-      );
-      const maxSlots = Math.min(50, 5 + Number(minPhysicalStat / 10000n));
-
-      const { data: backpackItems } = await supabase
-        .from('inventory')
-        .select('id, item_template_id, quantity')
-        .eq('character_id', character.id)
-        .is('equipped_slot', null);
-
-      // Sprawdzenie czy można połączyć z istniejącym stackiem
-      let canStack = false;
-      for (const backpackItem of backpackItems) {
-        if (backpackItem.item_template_id === item.item_template_id && BigInt(backpackItem.quantity) + transferAmount <= BigInt(maxStack)) {
-          canStack = true;
-          break;
-        }
-      }
-
-      if (!canStack && backpackItems.length >= maxSlots) {
-        return res.status(400).json({ error: 'Brak miejsca w plecaku!' });
-      }
     }
 
-    // Wykonanie transferu
-    if (transferAmount === BigInt(item.quantity)) {
-      // Przeniesienie całego stacka
-      if (target_panel === 'bank') {
-        const { data: existingBank } = await supabase.from('inventory').select('backpack_index').eq('character_id', character.id).eq('equipped_slot', 'bank');
-        const occupiedIndexes = existingBank.map(i => i.backpack_index).filter(i => i !== null);
-        let firstFreeIndex = 1;
-        while (occupiedIndexes.includes(firstFreeIndex)) firstFreeIndex++;
-        await supabase.from('inventory').update({ equipped_slot: 'bank', backpack_index: firstFreeIndex }).eq('id', inventory_id);
-      } else {
-        const { data: existingBackpack } = await supabase.from('inventory').select('backpack_index').eq('character_id', character.id).is('equipped_slot', null);
-        const occupiedIndexes = existingBackpack.map(i => i.backpack_index).filter(i => i !== null);
-        let firstFreeIndex = 1;
-        while (occupiedIndexes.includes(firstFreeIndex)) firstFreeIndex++;
-        await supabase.from('inventory').update({ equipped_slot: null, backpack_index: firstFreeIndex }).eq('id', inventory_id);
-      }
-    } else {
-      // Podział stacka
-      await supabase.from('inventory').update({ 
-        quantity: (BigInt(item.quantity) - transferAmount).toString() 
-      }).eq('id', inventory_id);
-
-      if (target_panel === 'bank') {
-        const { data: existingBank } = await supabase.from('inventory').select('backpack_index').eq('character_id', character.id).eq('equipped_slot', 'bank');
-        const occupiedIndexes = existingBank.map(i => i.backpack_index).filter(i => i !== null);
-        let firstFreeIndex = 1;
-        while (occupiedIndexes.includes(firstFreeIndex)) firstFreeIndex++;
-        
-        await supabase.from('inventory').insert({
-          character_id: character.id,
-          item_template_id: item.item_template_id,
-          quantity: transferAmount.toString(),
-          equipped_slot: 'bank',
-          backpack_index: firstFreeIndex
-        });
-      } else {
-        const { data: existingBackpack } = await supabase
-          .from('inventory')
-          .select('backpack_index')
-          .eq('character_id', character.id)
-          .is('equipped_slot', null);
-        
-        const occupiedIndexes = existingBackpack.map(i => i.backpack_index).filter(i => i !== null);
-        let firstFreeIndex = 1;
-        while (occupiedIndexes.includes(firstFreeIndex)) firstFreeIndex++;
-        
-        await supabase.from('inventory').insert({
-          character_id: character.id,
-          item_template_id: item.item_template_id,
-          quantity: transferAmount.toString(),
-          equipped_slot: null,
-          backpack_index: firstFreeIndex
-        });
-      }
+    // 2. Walidacja pojemności (jeśli brak stosu do połączenia)
+    if (!targetStackItem) {
+        if (target_panel === 'bank') {
+            const bankSlots = parseInt(character.bank_slots_unlocked || '5');
+            const { count } = await supabase.from('inventory').select('*', { count: 'exact', head: true }).eq('character_id', character.id).eq('equipped_slot', 'bank');
+            if (count >= bankSlots) return res.status(400).json({ error: 'Brak miejsca w banku!' });
+        } else {
+            // Obliczanie plecaka
+            const { data: charStats } = await supabase.from('characters').select('strength, speed, endurance').eq('id', character.id).single();
+            const minPhysicalStat = minBigInt(BigInt(charStats.strength || '0'), minBigInt(BigInt(charStats.speed || '0'), BigInt(charStats.endurance || '0')));
+            const maxSlots = Math.min(50, 5 + Number(minPhysicalStat / 10000n));
+            const { count } = await supabase.from('inventory').select('*', { count: 'exact', head: true }).eq('character_id', character.id).is('equipped_slot', null);
+            if (count >= maxSlots) return res.status(400).json({ error: 'Brak miejsca w plecaku!' });
+        }
     }
 
-    res.json({ success: true, message: `Przeniesiono ${amount} przedmiotów!` });
+    // 3. Wykonanie akcji w bazie danych
+    if (targetStackItem) {
+        // SCENARIUSZ A: Łączenie stosów
+        await supabase.from('inventory').update({ 
+            quantity: (BigInt(targetStackItem.quantity) + transferAmount).toString() 
+        }).eq('id', targetStackItem.id);
+
+        if (transferAmount === BigInt(item.quantity)) {
+            await supabase.from('inventory').delete().eq('id', inventory_id); // Przeniesiono całość
+        } else {
+            await supabase.from('inventory').update({ 
+                quantity: (BigInt(item.quantity) - transferAmount).toString() 
+            }).eq('id', inventory_id); // Odkrojono część
+        }
+    } else {
+        // SCENARIUSZ B: Szukamy wolnej kratki i wkładamy
+        const { data: existingItems } = await supabase
+            .from('inventory')
+            .select('backpack_index')
+            .eq('character_id', character.id)
+            .is('equipped_slot', target_panel === 'bank' ? 'bank' : null);
+            
+        const occupiedIndexes = existingItems.map(i => i.backpack_index).filter(i => i !== null);
+        let firstFreeIndex = 1;
+        while (occupiedIndexes.includes(firstFreeIndex)) firstFreeIndex++;
+
+        if (transferAmount === BigInt(item.quantity)) {
+            // Przenosimy w całości na nowe miejsce
+            await supabase.from('inventory').update({ 
+                equipped_slot: target_panel === 'bank' ? 'bank' : null, 
+                backpack_index: firstFreeIndex 
+            }).eq('id', inventory_id);
+        } else {
+            // Odejmujemy z oryginału i tworzymy nowy
+            await supabase.from('inventory').update({ 
+                quantity: (BigInt(item.quantity) - transferAmount).toString() 
+            }).eq('id', inventory_id);
+
+            await supabase.from('inventory').insert({
+                character_id: character.id,
+                item_template_id: item.item_template_id,
+                quantity: transferAmount.toString(),
+                equipped_slot: target_panel === 'bank' ? 'bank' : null,
+                backpack_index: firstFreeIndex
+            });
+        }
+    }
+
+    res.json({ success: true, message: `Przeniesiono ${amount === 'all' ? 'całość' : amount + ' szt.'} pomyślnie!` });
   } catch (err) { res.status(500).json({ error: 'Błąd serwera' }); }
 });
 
@@ -1522,135 +1493,42 @@ app.post('/api/bank/split', authenticateToken, async (req, res) => {
       quantity: (BigInt(item.quantity) - splitAmount).toString() 
     }).eq('id', inventory_id);
 
-    // Logika kaskadowa umieszczania
     const isFromBank = item.equipped_slot === 'bank';
-    const bankSlots = parseInt(character.bank_slots_unlocked || '5');
+    const targetPanel = isFromBank ? 'bank' : null;
     
-    // Obliczanie maksymalnych slotów plecaka
-    const { data: charStats } = await supabase
-      .from('characters')
-      .select('strength, speed, endurance')
-      .eq('id', character.id)
-      .single();
-
-    const minPhysicalStat = minBigInt(
-      BigInt(charStats.strength || '0'),
-      minBigInt(BigInt(charStats.speed || '0'), BigInt(charStats.endurance || '0'))
-    );
-    const maxBackpackSlots = Math.min(50, 5 + Number(minPhysicalStat / 10000n));
-
-    let placed = false;
-    let targetLocation = '';
-
-    // Pierwsza próba: to samo miejsce (bank -> bank, backpack -> backpack)
+    // Szukamy wolnego miejsca w obecnym panelu
+    const { data: panelItems } = await supabase.from('inventory').select('backpack_index').eq('character_id', character.id).is('equipped_slot', targetPanel);
+    const occupied = panelItems.map(i => i.backpack_index).filter(i => i !== null);
+    
+    // Walidacja limitów miejsca
+    let hasSpace = false;
     if (isFromBank) {
-      const { data: bankItems } = await supabase
-        .from('inventory')
-        .select('id')
-        .eq('character_id', character.id)
-        .eq('equipped_slot', 'bank');
-
-      if (bankItems.length < bankSlots) {
-        await supabase.from('inventory').insert({
-          character_id: character.id,
-          item_template_id: item.item_template_id,
-          quantity: splitAmount.toString(),
-          equipped_slot: 'bank'
-        });
-        placed = true;
-        targetLocation = 'bank';
-      }
+        const bankSlots = parseInt(character.bank_slots_unlocked || '5');
+        hasSpace = panelItems.length < bankSlots;
     } else {
-      const { data: backpackItems } = await supabase
-        .from('inventory')
-        .select('id')
-        .eq('character_id', character.id)
-        .is('equipped_slot', null);
+        const { data: charStats } = await supabase.from('characters').select('strength, speed, endurance').eq('id', character.id).single();
+        const minPhysicalStat = minBigInt(BigInt(charStats.strength || '0'), minBigInt(BigInt(charStats.speed || '0'), BigInt(charStats.endurance || '0')));
+        const maxSlots = Math.min(50, 5 + Number(minPhysicalStat / 10000n));
+        hasSpace = panelItems.length < maxSlots;
+    }
 
-      if (backpackItems.length < maxBackpackSlots) {
-        const { data: existingBackpack } = await supabase
-          .from('inventory')
-          .select('backpack_index')
-          .eq('character_id', character.id)
-          .is('equipped_slot', null);
-        
-        const occupiedIndexes = existingBackpack.map(i => i.backpack_index).filter(i => i !== null);
-        let firstFreeIndex = 1;
-        while (occupiedIndexes.includes(firstFreeIndex)) firstFreeIndex++;
+    if (hasSpace) {
+        let freeIdx = 1;
+        while (occupied.includes(freeIdx)) freeIdx++;
         
         await supabase.from('inventory').insert({
-          character_id: character.id,
-          item_template_id: item.item_template_id,
-          quantity: splitAmount.toString(),
-          equipped_slot: null,
-          backpack_index: firstFreeIndex
+            character_id: character.id,
+            item_template_id: item.item_template_id,
+            quantity: splitAmount.toString(),
+            equipped_slot: targetPanel,
+            backpack_index: freeIdx // NAPRAWA GHOST ITEMS
         });
-        placed = true;
-        targetLocation = 'backpack';
-      }
+        return res.json({ success: true, message: `Podzielono stos i umieszczono w nowym slocie!` });
+    } else {
+        // Brak miejsca na podział, cofamy potrącenie z początku!
+        await supabase.from('inventory').update({ quantity: item.quantity }).eq('id', inventory_id);
+        return res.status(400).json({ error: `Brak wolnych miejsc w ${isFromBank ? 'banku' : 'plecaku'} na wydzielenie stosu!` });
     }
-
-    // Druga próba: alternatywne miejsce
-    if (!placed) {
-      if (isFromBank) {
-        // Spróbuj umieścić w plecaku
-        const { data: backpackItems } = await supabase
-          .from('inventory')
-          .select('id')
-          .eq('character_id', character.id)
-          .is('equipped_slot', null);
-
-        if (backpackItems.length < maxBackpackSlots) {
-          const { data: existingBackpack } = await supabase
-            .from('inventory')
-            .select('backpack_index')
-            .eq('character_id', character.id)
-            .is('equipped_slot', null);
-          
-          const occupiedIndexes = existingBackpack.map(i => i.backpack_index).filter(i => i !== null);
-          let firstFreeIndex = 1;
-          while (occupiedIndexes.includes(firstFreeIndex)) firstFreeIndex++;
-          
-          await supabase.from('inventory').insert({
-            character_id: character.id,
-            item_template_id: item.item_template_id,
-            quantity: splitAmount.toString(),
-            equipped_slot: null,
-            backpack_index: firstFreeIndex
-          });
-          placed = true;
-          targetLocation = 'backpack';
-        }
-      } else {
-        // Spróbuj umieścić w banku
-        const { data: bankItems } = await supabase
-          .from('inventory')
-          .select('id')
-          .eq('character_id', character.id)
-          .eq('equipped_slot', 'bank');
-
-        if (bankItems.length < bankSlots) {
-          await supabase.from('inventory').insert({
-            character_id: character.id,
-            item_template_id: item.item_template_id,
-            quantity: splitAmount.toString(),
-            equipped_slot: 'bank'
-          });
-          placed = true;
-          targetLocation = 'bank';
-        }
-      }
-    }
-
-    if (!placed) {
-      // Cofnij operację
-      await supabase.from('inventory').update({ 
-        quantity: item.quantity 
-      }).eq('id', inventory_id);
-      return res.status(400).json({ error: 'Brak miejsca w plecaku i w banku!' });
-    }
-
-    res.json({ success: true, message: `Podzielono przedmiot! Część umieszczono w ${targetLocation}.` });
   } catch (err) { res.status(500).json({ error: 'Błąd serwera' }); }
 });
 
