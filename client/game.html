@@ -946,15 +946,16 @@
                 window.playerBankCoinLimitLevel = Number(data.bank_coin_limit_level || 1);
                 window.playerBankSlotsUnlocked = Number(data.bank_slots_unlocked || 5);
                 
-                // Wymuś odświeżenie przycisków w sklepie (Race condition fix)
-                if (typeof renderShopItems === 'function' && document.getElementById('shop-items-grid')) {
-                    renderShopItems();
-                }
+                // NAJPIERW ZAPISZ STATYSTYKI (Zabija błąd 5 slotów)
+                if (data.stats) window.playerCurrentStats = data.stats;
 
-                // Wymuś odświeżenie widoku Banku (Race condition fix)
-                if (typeof renderBank === 'function' && document.getElementById('bank-view')) {
-                    renderBank();
+                // DOPIERO TERAZ ODRYSUJ PLECAKI
+                if (window.inventoryData) {
+                    renderInventory(window.inventoryData);
+                    if (typeof renderShopBackpack === 'function') renderShopBackpack();
+                    if (typeof renderShopItems === 'function') renderShopItems();
                 }
+                if (typeof renderBank === 'function') renderBank();
 
                 // Aktualizacja pasków zasobów z bonusami z ekwipunku
                 const hpBonus = data.equip_stats?.bonus_hp || '0';
@@ -1032,7 +1033,7 @@
                 // Zapisz progres misji i odśwież interfejs misji
                 window.playerCompletedMissions = data.completed_missions;
                 window.playerAttemptedOneTry = data.attempted_one_try_missions || [];
-                window.playerCurrentStats = data.stats;
+                if (data.strength !== undefined) window.playerCurrentStats = data;
                 window.playerEquipStats = data.equip_stats || {}; // <-- NOWE: Zapisujemy sprzęt
                 if (window.allMissions) renderMissions(window.allMissions);
 
