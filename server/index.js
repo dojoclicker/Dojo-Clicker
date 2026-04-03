@@ -1393,7 +1393,8 @@ app.post('/api/bank/transfer_item', authenticateToken, async (req, res) => {
     if (isStackable) {
             let query = supabase.from('inventory').select('id, quantity')
                 .eq('character_id', character.id)
-                .eq('item_template_id', item.item_template_id);
+                .eq('item_template_id', item.item_template_id)
+                .neq('id', inventory_id); // KRYTYCZNA POPRAWKA: Ignoruj samego siebie!
                 
             if (target_panel === 'bank') query = query.eq('equipped_slot', 'bank');
             else query = query.is('equipped_slot', null);
