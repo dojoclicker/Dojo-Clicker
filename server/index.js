@@ -1438,9 +1438,9 @@ app.post('/api/bank/transfer_item', authenticateToken, async (req, res) => {
             }).eq('id', inventory_id); // Odkrojono część
         }
     } else {
-        // SCENARIUSZ B: Szukamy wolnej kratki i wkładamy
-        let idxQuery = supabase.from('inventory').select('backpack_index')
-            .eq('character_id', character.id);
+          // SCENARIUSZ B: Szukamy wolnej kratki i wkładamy
+          let idxQuery = supabase.from('inventory').select('id, backpack_index')
+              .eq('character_id', character.id);
             
         if (target_panel === 'bank') {
             idxQuery = idxQuery.eq('equipped_slot', 'bank');
@@ -1455,13 +1455,34 @@ app.post('/api/bank/transfer_item', authenticateToken, async (req, res) => {
         while (occupiedIndexes.includes(firstFreeIndex)) firstFreeIndex++;
 
         let finalIndex = firstFreeIndex;
+        let swapTargetItem = null;
+
         if (target_index !== undefined && target_index !== null) {
             let parsedIdx = parseInt(target_index);
-            // Jeśli wybrana kratka jest wolna, połóż tam. Jeśli zajęta, wrzuć w pierwsze wolne miejsce.
-            if (!occupiedIndexes.includes(parsedIdx)) finalIndex = parsedIdx;
+            if (!occupiedIndexes.includes(parsedIdx)) {
+                finalIndex = parsedIdx;
+            } else if (transferAmount === BigInt(item.quantity)) {
+                // Kratka jest zajęta! Pobieramy przedmiot, który tam leży, aby go zamienić (SWAP)
+                finalIndex = parsedIdx;
+                swapTargetItem = existingItems.find(i => i.backpack_index === parsedIdx);
+            }
         }
 
         if (transferAmount === BigInt(item.quantity)) {
+            if (swapTargetItem) {
+                // Zabezpieczenie: blokujemy zamianę ze skrytki z przedmiotem założonym na ciało postaci
+                if (item.equipped_slot !== 'bank' && item.equipped_slot !== null) {
+                    return res.status(400).json({ error: 'Nie możesz podmienić przedmiotu w banku bezpośrednio na założony ekwipunek!' });
+                }
+                
+                // SWAP: Kładziemy przedmiot z docelowej kratki na stare miejsce przeciągniętego przedmiotu
+                await supabase.from('inventory').update({
+                    equipped_slot: item.equipped_slot,
+                    backpack_index: item.backpack_index
+                }).eq('id', swapTargetItem.id);
+            }
+
+            // Przenosimy przeciągnięty przedmiot na jego nowe miejsce
             await supabase.from('inventory').update({ 
                 equipped_slot: target_panel === 'bank' ? 'bank' : null, 
                 backpack_index: finalIndex 
