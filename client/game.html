@@ -247,69 +247,67 @@
             </div>
         </div>
 
-        <!-- Widok Banku -->
         <div id="bank-view" style="display: none;">
-            <div class="bank-container">
-                <!-- Lewa kolumna - Panel Banku -->
-                <div class="bank-left-column">
-                    <div class="bank-panel">
-                        <h3 class="panel-title">Bank</h3>
-                        
-                        <!-- Sekcja monet -->
-                        <div class="bank-money-section">
-                            <div class="bank-money-row">
-                                <div class="money-info">
-                                    <div class="money-label">Portfel:</div>
-                                    <div class="money-value" id="bank-coins-display">0 💰</div>
-                                </div>
-                                <div class="money-info">
-                                    <div class="money-label">Bank:</div>
-                                    <div class="money-value" id="bank-bank-coins-display">0 💰</div>
-                                </div>
+            <div class="bank-container" style="display: flex; flex-direction: column; gap: 20px;">
+                
+                <div class="bank-top-panel" style="background: var(--goku-panel-bg); border: 1px solid var(--goku-panel-border); border-radius: 8px; padding: 20px; display: flex; flex-wrap: wrap; gap: 20px; justify-content: space-between; align-items: stretch;">
+                    
+                    <div class="bank-money-section" style="flex: 1; min-width: 250px; background: rgba(0,0,0,0.2); padding: 15px; border-radius: 6px;">
+                        <h4 style="margin: 0 0 10px 0; color: #fbbf24; border-bottom: 1px dashed rgba(255,255,255,0.1); padding-bottom: 5px;">Stan Konta</h4>
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
+                            <div>
+                                <div style="font-size: 0.8rem; color: var(--text-secondary);">Portfel:</div>
+                                <div id="bank-coins-display" style="font-weight: bold; color: var(--text-primary); font-size: 1.1rem;">0 💰</div>
                             </div>
-                            <div class="bank-limit-info">
-                                Limit: <span id="bank-limit-display">10,000</span> 💰 (Poziom <span id="bank-level-display">1</span>)
+                            <div style="text-align: right;">
+                                <div style="font-size: 0.8rem; color: var(--text-secondary);">W Banku:</div>
+                                <div id="bank-bank-coins-display" style="font-weight: bold; color: #fbbf24; font-size: 1.1rem;">0 💰</div>
                             </div>
                         </div>
-
-                        <!-- Sekcja transferu monet -->
-                        <div class="bank-transfer-section">
-                            <h4>Transfer Monet</h4>
-                            <div class="transfer-controls">
-                                <input type="text" id="bank-amount-input" placeholder="Ilość" maxlength="15">
-                                <div class="transfer-buttons">
-                                    <button id="bank-deposit-btn" class="btn-header">Wpłać</button>
-                                    <button id="bank-withdraw-btn" class="btn-header">Wypłać</button>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Sekcja ulepszeń -->
-                        <div class="bank-upgrade-section">
-                            <h4>Ulepszenia</h4>
-                            <button id="bank-upgrade-limit-btn" class="btn-header upgrade-btn">Ulepsz Limit</button>
-                            <button id="bank-upgrade-slots-btn" class="btn-header upgrade-btn">Kup Slot</button>
-                        </div>
-
-                        <!-- Sekcja slotów przedmiotów -->
-                        <div class="bank-items-section">
-                            <h4>Sloty Banku: <span id="bank-slots-display">5/25</span></h4>
-                            <div class="bank-items-grid" id="bank-items-grid">
-                                <!-- Sloty banku będą renderowane dynamicznie -->
-                            </div>
+                        <div style="font-size: 0.85rem; color: var(--text-muted);">
+                            Limit: <span id="bank-limit-display" style="color: #fbbf24;">10,000</span> 💰 (Poziom <span id="bank-level-display">1</span>)
                         </div>
                     </div>
-                </div>
 
-                <!-- Prawa kolumna - Plecak do transferu -->
-                <div class="bank-right-column">
-                    <div class="bank-backpack-panel">
-                        <div class="bank-backpack-title">Plecak</div>
-                        <div class="bank-backpack-grid" id="bank-backpack-grid">
-                            <!-- Sloty plecaka będą renderowane dynamicznie -->
+                    <div class="bank-transfer-section" style="flex: 1; min-width: 250px; background: rgba(0,0,0,0.15); padding: 15px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.05); display: flex; flex-direction: column; justify-content: center;">
+                        <h4 style="margin: 0 0 10px 0; color: var(--goku-accent); text-align: center;">Transfer Monet</h4>
+                        <input type="text" id="bank-amount-input" placeholder="Wpisz kwotę..." maxlength="15" style="width: 100%; padding: 8px; border-radius: 4px; border: 1px solid var(--goku-panel-border); background: var(--input-bg); color: white; box-sizing: border-box; margin-bottom: 10px; text-align: center;">
+                        <div style="display: flex; gap: 10px;">
+                            <button id="bank-deposit-btn" class="btn-header" style="flex: 1; background-color: #15803d; padding: 6px;">Wpłać</button>
+                            <button id="bank-withdraw-btn" class="btn-header" style="flex: 1; background-color: #b45309; padding: 6px;">Wypłać</button>
                         </div>
                     </div>
+
+                    <div class="bank-upgrade-section" style="flex: 1; min-width: 200px; background: rgba(0,0,0,0.2); padding: 15px; border-radius: 6px; display: flex; flex-direction: column; justify-content: center;">
+                        <h4 style="margin: 0 0 10px 0; color: var(--text-secondary); text-align: center;">Zarządzanie</h4>
+                        <button id="bank-upgrade-limit-btn" class="btn-header upgrade-btn" style="width: 100%; margin-bottom: 8px; padding: 8px;">Ulepsz Limit Banku</button>
+                        <button id="bank-upgrade-slots-btn" class="btn-header upgrade-btn" style="width: 100%; padding: 8px;">Kup Slot w Skrytce</button>
+                    </div>
+
                 </div>
+
+                <div class="bank-bottom-panel" style="display: flex; gap: 20px; align-items: stretch;">
+                    
+                    <div class="bank-stash-panel" style="flex: 1; background: var(--goku-panel-bg); border: 1px solid var(--goku-panel-border); border-radius: 8px; padding: 20px; display: flex; flex-direction: column;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; padding-bottom: 10px; border-bottom: 2px solid var(--goku-panel-border);">
+                            <h4 style="margin: 0; color: #fbbf24;">Skrytka Banku</h4>
+                            <span style="font-size: 0.85rem; background: rgba(0,0,0,0.3); padding: 4px 8px; border-radius: 4px;">Sloty: <b id="bank-slots-display">5/25</b></span>
+                        </div>
+                        <div class="bank-items-grid" id="bank-items-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(65px, 1fr)); gap: 8px; align-content: start; flex: 1;">
+                            </div>
+                    </div>
+
+                    <div class="bank-backpack-panel" style="flex: 1; background: var(--goku-panel-bg); border: 1px solid var(--goku-panel-border); border-radius: 8px; padding: 20px; display: flex; flex-direction: column;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; padding-bottom: 10px; border-bottom: 2px solid var(--goku-panel-border);">
+                            <h4 style="margin: 0; color: #a3e635;">Twój Plecak</h4>
+                            <span style="font-size: 0.8rem; color: var(--text-muted);">Przeciągnij lub kliknij 2x</span>
+                        </div>
+                        <div class="bank-backpack-grid" id="bank-backpack-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(65px, 1fr)); gap: 8px; align-content: start; flex: 1;">
+                            </div>
+                    </div>
+
+                </div>
+
             </div>
         </div>
     </main>
