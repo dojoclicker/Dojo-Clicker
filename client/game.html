@@ -1383,6 +1383,15 @@
             card.addEventListener('dblclick', function(e) {
                 e.preventDefault();
                 e.stopPropagation();
+                
+                // KRYTYCZNA POPRAWKA: Wymuszone ukrycie tooltipa
+                const tooltip = document.getElementById('global-tooltip');
+                if (tooltip) {
+                    tooltip.style.opacity = '0';
+                    tooltip.style.visibility = 'hidden';
+                    tooltip.dataset.currentCard = '';
+                }
+                
                 if (window.isInventoryActionLocked) return;
 
                 const activeTab = localStorage.getItem('active_game_tab');
@@ -1412,6 +1421,16 @@
                             splitItem(item.id, splitAmount);
                         }
                     }
+                }
+            });
+
+            // Event: Zakończenie przeciągania (Zabezpieczenie przed wiszącym tooltipem)
+            card.addEventListener('dragend', function() {
+                const tooltip = document.getElementById('global-tooltip');
+                if (tooltip) {
+                    tooltip.style.opacity = '0';
+                    tooltip.style.visibility = 'hidden';
+                    tooltip.dataset.currentCard = '';
                 }
             });
 
@@ -2766,21 +2785,6 @@
                 });
             }
 
-            // NAPRAWA BŁĘDU 0: Ukrywanie tooltipa przy dwukliku i przenoszeniu
-            document.addEventListener('dblclick', function() {
-                const tooltip = document.getElementById('global-tooltip');
-                if (tooltip) {
-                    tooltip.style.opacity = '0';
-                    tooltip.style.visibility = 'hidden';
-                }
-            });
-            document.addEventListener('drop', function() {
-                const tooltip = document.getElementById('global-tooltip');
-                if (tooltip) {
-                    tooltip.style.opacity = '0';
-                    tooltip.style.visibility = 'hidden';
-                }
-            });
         });
     </script>
 <div id="global-tooltip" class="item-tooltip"></div>

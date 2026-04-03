@@ -234,14 +234,14 @@ body {
 /* Lewy Panel Boczny */
 #left-sidebar {
     grid-area: sidebar;
-    width: 300px;
+    width: 260px;
     background: var(--goku-panel-bg);
     border-right: 1px solid var(--goku-panel-border);
-    padding: 1.5rem;
+    padding: 1rem;
     overflow-y: auto;
     display: flex;
     flex-direction: column;
-    gap: 1.5rem;
+    gap: 1rem;
 }
 
 .player-info { text-align: center; }
@@ -251,8 +251,8 @@ body {
 .coins { font-size: 1rem; color: var(--warning); font-weight: 600; }
 
 .avatar-placeholder {
-    width: 200px;
-    height: 400px;
+    width: 100%;
+    height: 180px; /* Kompaktowy kwadrat */
     margin: 0 auto;
     background: linear-gradient(135deg, rgba(255, 107, 0, 0.1) 0%, rgba(255, 107, 0, 0.05) 100%);
     border: 2px solid var(--goku-accent);
@@ -263,8 +263,12 @@ body {
     color: var(--text-muted);
     font-size: 0.9rem;
 }
+.avatar-placeholder span {
+    font-size: 3rem !important; /* Mniejsza ikona w avatarze */
+}
 
-.resource-bars { display: flex; flex-direction: column; gap: 1rem; }
+/* Smukłe, naprawione paski zasobów */
+.resource-bars { display: flex; flex-direction: column; gap: 0.8rem; margin-top: 0.5rem; }
 .resource-bar { display: flex; flex-direction: column; gap: 0.25rem; }
 .resource-header { display: flex; justify-content: space-between; align-items: center; font-size: 0.8rem; font-weight: 600; }
 .resource-name { color: var(--text-secondary); }
@@ -272,19 +276,16 @@ body {
 
 .bar-container {
     width: 100%;
-    height: 20px;
-    background: rgba(0, 0, 0, 0.3);
-    border-radius: 10px;
+    height: 14px; /* Smuklejsze paski */
+    background: rgba(0, 0, 0, 0.4);
+    border-radius: 8px;
     overflow: hidden;
     position: relative;
 }
 
 .bar-fill {
     height: 100%;
-    border-radius: 10px;
-    transition: width var(--transition-normal) ease;
-    position: relative;
-    overflow: hidden;
+    transition: width 0.3s ease;
 }
 
 .bar-fill::after {
@@ -293,11 +294,6 @@ body {
     top: 0; left: 0; right: 0; bottom: 0;
     background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.2) 50%, transparent 100%);
     animation: shimmer 2s infinite;
-}
-
-@keyframes shimmer {
-    0% { transform: translateX(-100%); }
-    100% { transform: translateX(100%); }
 }
 
 .hp-bar .bar-fill { background: linear-gradient(90deg, var(--hp-bg) 0%, var(--hp-color) 100%); }
@@ -1134,67 +1130,4 @@ body {
     .shop-category-tabs .category-tab:nth-child(3) { flex: 1 1 100% !important; }
     
     .shop-item-name, .shop-item-description { word-wrap: break-word !important; overflow-wrap: break-word !important; word-break: break-word !important; hyphens: auto !important; max-width: 100% !important; white-space: normal !important; }
-}
-
-
-
-
-/* =========================================
-   UI/UX OVERHAUL (Kompaktowy, profesjonalny wygląd)
-   ========================================= */
-
-/* 1. Pomniejszenie Panelu 1 (Header) */
-#top-panel-1 {
-    padding: 6px 20px !important;
-    min-height: auto !important;
-}
-.game-logo {
-    font-size: 1.25rem !important; /* Mniejsze logo */
-}
-.btn-header {
-    padding: 5px 12px !important;
-    font-size: 0.85rem !important;
-}
-
-/* 2. Pomniejszenie Panelu 2 (Nawigacja z przyciskami) */
-#top-panel-2 {
-    padding: 4px 20px !important;
-}
-.nav-btn {
-    padding: 6px 12px !important;
-    min-width: 80px !important; /* Węższe przyciski */
-}
-.nav-icon {
-    font-size: 1.1rem !important; /* Mniejsze ikonki (miecz, tarcza) */
-    margin-bottom: 2px !important;
-}
-.nav-text {
-    font-size: 0.75rem !important;
-}
-
-/* 3. Kompaktowy Panel Boczny (Lewy - Statystyki i Avatar) */
-#left-sidebar {
-    width: 250px !important; /* Zwężenie z 300px na 250px */
-    padding: 12px !important;
-}
-.avatar-placeholder {
-    min-height: 200px !important; /* DRASTYCZNE zmniejszenie avatara z 400px! */
-    margin-bottom: 12px !important;
-}
-.avatar-placeholder span {
-    font-size: 3rem !important; /* Mniejsza ikona w avatarze */
-}
-.stat-row {
-    padding: 5px 0 !important; /* Mniejsze luki między statystykami */
-    font-size: 0.85rem !important;
-}
-.resource-container {
-    margin-bottom: 8px !important;
-}
-.resource-bar {
-    height: 18px !important; /* Chudsze paski HP/MP */
-}
-.resource-text {
-    font-size: 0.75rem !important;
-    line-height: 18px !important;
 }
