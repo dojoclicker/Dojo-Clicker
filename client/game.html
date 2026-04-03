@@ -2580,39 +2580,7 @@
                 window.location.href = 'index.html';
             });
 
-            // 5. Ukrywanie headera przy scrollowaniu z bezpiecznikiem (Anti-Thrashing)
-            let lastScrollY = 0;
-            const header = document.getElementById('top-panel-1');
-            const workspace = document.getElementById('main-workspace');
-            
-            workspace.addEventListener('scroll', function() {
-                // ZABEZPIECZENIE 0: Nie ukrywaj headera, jeśli jest ręcznie zwinięty
-                if (document.getElementById('top-panel-1').classList.contains('header-collapsed')) return;
-                
-                // ZABEZPIECZENIE 1: Jeśli treść ledwo wystaje poza ekran, w ogóle nie ukrywaj headera.
-                // Zapobiega to pętli, w której ukrycie headera likwiduje pasek scrolla.
-                if (this.scrollHeight - this.clientHeight < 200) {
-                    header.classList.remove('header-hidden');
-                    return;
-                }
-
-                const currentScrollY = this.scrollTop;
-                
-                // ZABEZPIECZENIE 2: Ignoruj sztuczne "mikroskoki" (np. wywołane przez znikający header)
-                if (Math.abs(currentScrollY - lastScrollY) < 15) return;
-
-                if (currentScrollY > lastScrollY && currentScrollY > 100) {
-                    // Scroll w dół - ukryj header
-                    header.classList.add('header-hidden');
-                } else if (currentScrollY < lastScrollY) {
-                    // Scroll w górę - pokaż header
-                    header.classList.remove('header-hidden');
-                }
-                
-                lastScrollY = currentScrollY;
-            });
-
-            // 6. Symulacja aktualizacji czasu gry (placeholder)
+            // 5. Symulacja aktualizacji czasu gry (placeholder)
             function updateGameTime() {
                 const timeElement = document.getElementById('game-time');
                 // Tutaj będzie logika synchronizacji z serwerem
