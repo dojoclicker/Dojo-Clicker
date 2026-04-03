@@ -1579,11 +1579,6 @@
                 const item = backpackItems.find(b => b.backpack_index === i);
                 if (item) {
                     const card = createItemCard(item);
-                    card.addEventListener('dblclick', function(e) {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        sellItem(item.id, 1);
-                    });
                     slot.appendChild(card);
                 }
                 grid.appendChild(slot);
@@ -1783,6 +1778,7 @@
                 if (i > (window.playerBankSlotsUnlocked || 5)) {
                     slot.classList.add('locked');
                     slot.innerHTML = `<div>🔒</div><div>Kup slot</div>`;
+                    slot.addEventListener('click', () => showBuySlotModal(i));
                 } else {
                     const item = bankItems.find(item => item.backpack_index === i);
                     if (item) {
