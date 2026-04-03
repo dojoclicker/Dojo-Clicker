@@ -528,15 +528,18 @@ app.post('/api/inventory/swap', authenticateToken, async (req, res) => {
     }
 
     let swapError = null;
+    
+    // Tłumacz frontendowego 'backpack' na bazodanowy 'null'
+    const db_slot_target = slot_target === 'backpack' ? null : slot_target;
 
     // Ręczna zamiana dla Banku (Omijamy starą bazę danych)
     if (slot_target === 'bank' || draggedItem.equipped_slot === 'bank') {
         if (targetItem) {
             const { error: err1 } = await supabase.from('inventory').update({ equipped_slot: draggedItem.equipped_slot, backpack_index: draggedItem.backpack_index }).eq('id', targetItem.id);
-            const { error: err2 } = await supabase.from('inventory').update({ equipped_slot: slot_target, backpack_index: backpack_index_target }).eq('id', draggedItem.id);
+            const { error: err2 } = await supabase.from('inventory').update({ equipped_slot: db_slot_target, backpack_index: backpack_index_target }).eq('id', draggedItem.id);
             swapError = err1 || err2;
         } else {
-            const { error: err1 } = await supabase.from('inventory').update({ equipped_slot: slot_target, backpack_index: backpack_index_target }).eq('id', draggedItem.id);
+            const { error: err1 } = await supabase.from('inventory').update({ equipped_slot: db_slot_target, backpack_index: backpack_index_target }).eq('id', draggedItem.id);
             swapError = err1;
         }
     } else {
