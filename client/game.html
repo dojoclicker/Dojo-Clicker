@@ -1814,13 +1814,10 @@
                         const inventoryId = e.dataTransfer.getData('inventory_id');
                         const targetIndex = this.getAttribute('data-index');
                         
-                        const droppedOnCard = e.target.closest('.item-card');
-                        if (droppedOnCard) {
-                            const targetInventoryId = droppedOnCard.dataset.inventoryId;
-                            if (typeof performItemSwap === 'function') performItemSwap(inventoryId, 'bank', targetIndex, targetInventoryId);
-                            return; 
+                        // Naprawa Banku: Używamy prawidłowej funkcji transferu zamiast zakładania zbroi
+                        if (typeof transferBankItem === 'function') {
+                            transferBankItem(inventoryId, 'bank', 'all');
                         }
-                        if (typeof performItemSwap === 'function') performItemSwap(inventoryId, 'bank', targetIndex, null);
                     });
 
                     // Slot odblokowany
