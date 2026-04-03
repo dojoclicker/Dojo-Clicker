@@ -1791,8 +1791,38 @@
                 slot.className = 'bank-slot';
                 slot.style.width = '75px';
                 slot.style.height = '75px';
+                slot.setAttribute('data-index', i);
                 
                 if (i <= unlocked) {
+                    // Event listenery dla Drop w Banku (pozwala na precyzyjne sortowanie)
+                    slot.addEventListener('dragover', function(e) {
+                        if (window.isInventoryActionLocked) return;
+                        e.preventDefault();
+                        this.style.backgroundColor = 'rgba(255, 107, 0, 0.3)';
+                    });
+                    
+                    slot.addEventListener('dragleave', function(e) {
+                        this.style.backgroundColor = '';
+                    });
+                    
+                    slot.addEventListener('drop', function(e) {
+                        if (window.isInventoryActionLocked) return;
+                        e.preventDefault();
+                        e.stopPropagation();
+                        this.style.backgroundColor = '';
+                        
+                        const inventoryId = e.dataTransfer.getData('inventory_id');
+                        const targetIndex = this.getAttribute('data-index');
+                        
+                        const droppedOnCard = e.target.closest('.item-card');
+                        if (droppedOnCard) {
+                            const targetInventoryId = droppedOnCard.dataset.inventoryId;
+                            if (typeof performItemSwap === 'function') performItemSwap(inventoryId, 'bank', targetIndex, targetInventoryId);
+                            return; 
+                        }
+                        if (typeof performItemSwap === 'function') performItemSwap(inventoryId, 'bank', targetIndex, null);
+                    });
+
                     // Slot odblokowany
                     const item = bankItems.find(item => item.backpack_index === i);
                     if (item) {
@@ -2450,40 +2480,9 @@
                 });
             }
 
-            // Dodaj strefę drop dla Banku (siatka banku)
-            const bankItemsGrid = document.getElementById('bank-items-grid');
-            if (bankItemsGrid) {
-                bankItemsGrid.addEventListener('dragover', function(e) {
-                    e.preventDefault();
-                    this.style.backgroundColor = 'rgba(255, 107, 0, 0.1)';
-                    this.style.border = '2px dashed #ff6b00';
-                });
-                
-                bankItemsGrid.addEventListener('dragleave', function(e) {
-                    this.style.backgroundColor = '';
-                    this.style.border = '';
-                });
-                
-                bankItemsGrid.addEventListener('drop', function(e) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    this.style.backgroundColor = '';
-                    this.style.border = '';
-                    
-                    const inventoryId = e.dataTransfer.getData('inventory_id');
-                    const sourceSlot = e.dataTransfer.getData('source_slot');
-                    
-                    // Logika Banku: przenoszenie z plecaka do banku
-                    if (sourceSlot === 'backpack' || sourceSlot === 'null') {
-                        transferBankItem(inventoryId, 'bank', 'all');
-                    }
-                    // Zablokuj wewnętrzne sortowanie w banku
-                    else if (sourceSlot === 'bank') {
-                        console.log('Ignorowanie: Brak obsługi ręcznego sortowania w banku.');
-                        return;
-                    }
-                });
-            }
+            // Stara, globalna strefa drop dla banku została usunięta, ponieważ
+            // każda kratka (bank-slot) zarządza teraz swoim własnym upuszczaniem
+            // za pomocą performItemSwap, co umożliwia precyzyjne sortowanie i łączenie.
 
             console.log('[Drag&Drop] Zainicjalizowano mechanikę Drag & Drop');
         }

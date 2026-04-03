@@ -482,7 +482,13 @@ app.post('/api/inventory/swap', authenticateToken, async (req, res) => {
         .from('inventory').select('*, item_templates(*)').eq('character_id', character.id).is('equipped_slot', null)
         .eq('backpack_index', backpack_index_target).neq('id', item_id_1).maybeSingle();
       if (existingBackpackItem) { targetItem = existingBackpackItem; wasOccupied = true; }
-    } else if (slot_target !== 'backpack') {
+    } else if (slot_target === 'bank' && backpack_index_target !== null && backpack_index_target !== undefined) {
+      if (backpack_index_target > (character.bank_slots_unlocked || 5)) return res.status(400).json({ error: 'Ten slot w skrytce jest zablokowany!' });
+      const { data: existingBankItem } = await supabase
+        .from('inventory').select('*, item_templates(*)').eq('character_id', character.id).eq('equipped_slot', 'bank')
+        .eq('backpack_index', backpack_index_target).neq('id', item_id_1).maybeSingle();
+      if (existingBankItem) { targetItem = existingBankItem; wasOccupied = true; }
+    } else if (slot_target !== 'backpack' && slot_target !== 'bank') {
       const { data: existingItem } = await supabase
         .from('inventory').select('id').eq('character_id', character.id).eq('equipped_slot', slot_target)
         .neq('id', item_id_1).maybeSingle();
@@ -1418,21 +1424,18 @@ app.post('/api/bank/transfer_item', authenticateToken, async (req, res) => {
     // Wykonanie transferu
     if (transferAmount === BigInt(item.quantity)) {
       // Przeniesienie całego stacka
-      await supabase.from('inventory').update({ equipped_slot: target_panel === 'bank' ? 'bank' : null }).eq('id', inventory_id);
-      
-      if (target_panel === 'backpack') {
-        // Znajdź pierwszy wolny backpack_index
-        const { data: existingBackpack } = await supabase
-          .from('inventory')
-          .select('backpack_index')
-          .eq('character_id', character.id)
-          .is('equipped_slot', null);
-        
+      if (target_panel === 'bank') {
+        const { data: existingBank } = await supabase.from('inventory').select('backpack_index').eq('character_id', character.id).eq('equipped_slot', 'bank');
+        const occupiedIndexes = existingBank.map(i => i.backpack_index).filter(i => i !== null);
+        let firstFreeIndex = 1;
+        while (occupiedIndexes.includes(firstFreeIndex)) firstFreeIndex++;
+        await supabase.from('inventory').update({ equipped_slot: 'bank', backpack_index: firstFreeIndex }).eq('id', inventory_id);
+      } else {
+        const { data: existingBackpack } = await supabase.from('inventory').select('backpack_index').eq('character_id', character.id).is('equipped_slot', null);
         const occupiedIndexes = existingBackpack.map(i => i.backpack_index).filter(i => i !== null);
         let firstFreeIndex = 1;
         while (occupiedIndexes.includes(firstFreeIndex)) firstFreeIndex++;
-        
-        await supabase.from('inventory').update({ backpack_index: firstFreeIndex }).eq('id', inventory_id);
+        await supabase.from('inventory').update({ equipped_slot: null, backpack_index: firstFreeIndex }).eq('id', inventory_id);
       }
     } else {
       // Podział stacka
@@ -1441,11 +1444,17 @@ app.post('/api/bank/transfer_item', authenticateToken, async (req, res) => {
       }).eq('id', inventory_id);
 
       if (target_panel === 'bank') {
+        const { data: existingBank } = await supabase.from('inventory').select('backpack_index').eq('character_id', character.id).eq('equipped_slot', 'bank');
+        const occupiedIndexes = existingBank.map(i => i.backpack_index).filter(i => i !== null);
+        let firstFreeIndex = 1;
+        while (occupiedIndexes.includes(firstFreeIndex)) firstFreeIndex++;
+        
         await supabase.from('inventory').insert({
           character_id: character.id,
           item_template_id: item.item_template_id,
           quantity: transferAmount.toString(),
-          equipped_slot: 'bank'
+          equipped_slot: 'bank',
+          backpack_index: firstFreeIndex
         });
       } else {
         const { data: existingBackpack } = await supabase
