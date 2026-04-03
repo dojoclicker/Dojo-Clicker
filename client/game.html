@@ -2765,6 +2765,22 @@
                     this.textContent = isExpanded ? 'Zwiń 🔼' : 'Szczegóły postaci 🔽';
                 });
             }
+
+            // NAPRAWA BŁĘDU 0: Ukrywanie tooltipa przy dwukliku i przenoszeniu
+            document.addEventListener('dblclick', function() {
+                const tooltip = document.getElementById('global-tooltip');
+                if (tooltip) {
+                    tooltip.style.opacity = '0';
+                    tooltip.style.visibility = 'hidden';
+                }
+            });
+            document.addEventListener('drop', function() {
+                const tooltip = document.getElementById('global-tooltip');
+                if (tooltip) {
+                    tooltip.style.opacity = '0';
+                    tooltip.style.visibility = 'hidden';
+                }
+            });
         });
     </script>
 <div id="global-tooltip" class="item-tooltip"></div>

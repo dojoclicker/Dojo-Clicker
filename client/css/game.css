@@ -1135,3 +1135,66 @@ body {
     
     .shop-item-name, .shop-item-description { word-wrap: break-word !important; overflow-wrap: break-word !important; word-break: break-word !important; hyphens: auto !important; max-width: 100% !important; white-space: normal !important; }
 }
+
+
+
+
+/* =========================================
+   UI/UX OVERHAUL (Kompaktowy, profesjonalny wygląd)
+   ========================================= */
+
+/* 1. Pomniejszenie Panelu 1 (Header) */
+#top-panel-1 {
+    padding: 6px 20px !important;
+    min-height: auto !important;
+}
+.game-logo {
+    font-size: 1.25rem !important; /* Mniejsze logo */
+}
+.btn-header {
+    padding: 5px 12px !important;
+    font-size: 0.85rem !important;
+}
+
+/* 2. Pomniejszenie Panelu 2 (Nawigacja z przyciskami) */
+#top-panel-2 {
+    padding: 4px 20px !important;
+}
+.nav-btn {
+    padding: 6px 12px !important;
+    min-width: 80px !important; /* Węższe przyciski */
+}
+.nav-icon {
+    font-size: 1.1rem !important; /* Mniejsze ikonki (miecz, tarcza) */
+    margin-bottom: 2px !important;
+}
+.nav-text {
+    font-size: 0.75rem !important;
+}
+
+/* 3. Kompaktowy Panel Boczny (Lewy - Statystyki i Avatar) */
+#left-sidebar {
+    width: 250px !important; /* Zwężenie z 300px na 250px */
+    padding: 12px !important;
+}
+.avatar-placeholder {
+    min-height: 200px !important; /* DRASTYCZNE zmniejszenie avatara z 400px! */
+    margin-bottom: 12px !important;
+}
+.avatar-placeholder span {
+    font-size: 3rem !important; /* Mniejsza ikona w avatarze */
+}
+.stat-row {
+    padding: 5px 0 !important; /* Mniejsze luki między statystykami */
+    font-size: 0.85rem !important;
+}
+.resource-container {
+    margin-bottom: 8px !important;
+}
+.resource-bar {
+    height: 18px !important; /* Chudsze paski HP/MP */
+}
+.resource-text {
+    font-size: 0.75rem !important;
+    line-height: 18px !important;
+}
