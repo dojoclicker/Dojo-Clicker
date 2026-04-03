@@ -45,7 +45,8 @@ async function getFullCharacterStats(userId) {
       .from('inventory')
       .select('*, item_templates(*)')
       .eq('character_id', character.id)
-      .not('equipped_slot', 'is', null);
+      .not('equipped_slot', 'is', null)
+      .neq('equipped_slot', 'bank'); // TWARDE ZABEZPIECZENIE: Ignoruj przedmioty schowane w banku!
 
     if (equipmentError) {
       console.error('[Stats] Błąd pobierania ekwipunku:', equipmentError);
