@@ -893,7 +893,7 @@
         }
 
         // Pobieranie danych postaci z API
-        async function fetchCharacterData() {
+        async function fetchCharacterData(isBackground = false) {
             const sessionToken = localStorage.getItem('session_token');
             
             try {
@@ -920,8 +920,10 @@
                 
             } catch (error) {
                 console.error('[Character] Błąd pobierania danych:', error);
-                // Wyświetl błąd użytkownikowi
-                showErrorMessage('Nie udało się pobrać danych postaci. Spróbuj odświeżyć stronę.');
+                // Wyświetl błąd użytkownikowi tylko jeśli to była ręczna akcja gracza
+                if (!isBackground) {
+                    showErrorMessage('Nie udało się pobrać danych postaci. Spróbuj odświeżyć stronę.');
+                }
             }
         }
 
@@ -2635,8 +2637,8 @@
             setInterval(updateGameTime, 1000);
             updateGameTime(); // Pierwsza aktualizacja
 
-            // Odświeżanie danych postaci co 30 sekund
-            setInterval(fetchCharacterData, 30000);
+            // Odświeżanie danych postaci co 30 sekund (cicho, w tle)
+            setInterval(() => fetchCharacterData(true), 30000);
 
             // ==========================================
             // SYSTEM GLOBALNEGO TOOLTIPU (Hover Intent)
