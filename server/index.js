@@ -527,29 +527,14 @@ app.post('/api/inventory/swap', authenticateToken, async (req, res) => {
       }
     }
 
-    let swapError = null;
-    
-    // Tłumacz frontendowego 'backpack' na bazodanowy 'null'
-    const db_slot_target = slot_target === 'backpack' ? null : slot_target;
-
-    // Ręczna zamiana dla Banku (Omijamy starą bazę danych)
-    if (slot_target === 'bank' || draggedItem.equipped_slot === 'bank') {
-        if (targetItem) {
-            const { error: err1 } = await supabase.from('inventory').update({ equipped_slot: draggedItem.equipped_slot, backpack_index: draggedItem.backpack_index }).eq('id', targetItem.id);
-            const { error: err2 } = await supabase.from('inventory').update({ equipped_slot: db_slot_target, backpack_index: backpack_index_target }).eq('id', draggedItem.id);
-            swapError = err1 || err2;
-        } else {
-            const { error: err1 } = await supabase.from('inventory').update({ equipped_slot: db_slot_target, backpack_index: backpack_index_target }).eq('id', draggedItem.id);
-            swapError = err1;
-        }
-    } else {
-        // Stara logika dla Plecaka i Ciała
-        const { error: rpcError } = await supabase.rpc('swap_items', {
-            p_character_id: character.id, p_item_id_1: item_id_1, p_slot_target: slot_target,
-            p_backpack_index_target: backpack_index_target || null, p_item_id_2: item_id_2 || null
-        });
-        swapError = rpcError;
-    }
+    // Zaktualizowana logika zamiany – baza danych robi teraz wszystko za nas!
+    const { error: swapError } = await supabase.rpc('swap_items', {
+        p_character_id: character.id, 
+        p_item_id_1: item_id_1, 
+        p_slot_target: slot_target,
+        p_backpack_index_target: backpack_index_target || null, 
+        p_item_id_2: item_id_2 || null
+    });
 
     if (swapError) return res.status(500).json({ error: 'Błąd podczas zamiany przedmiotów' });
 

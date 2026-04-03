@@ -115,17 +115,6 @@ body {
     box-shadow: 0 4px 12px rgba(255, 107, 0, 0.3);
 }
 
-/* Stany ukrywania headera */
-.header-hidden {
-    transform: translateY(-100%);
-    opacity: 0;
-    max-height: 0 !important;
-    padding-top: 0 !important;
-    padding-bottom: 0 !important;
-    border-bottom: none !important;
-    overflow: hidden;
-}
-
 #top-panel-1.header-collapsed {
     padding: 0.25rem 1rem;
     background: transparent;
