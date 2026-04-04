@@ -2612,15 +2612,18 @@
 
             // Pobieranie i renderowanie rankingu
             async function fetchRanking() {
+                const rankingList = document.getElementById('ranking-list');
                 try {
                     const res = await apiCall('/api/ranking');
                     if (res.success) {
                         renderRanking(res.data);
                     } else {
                         console.error('[Ranking] Błąd:', res.error);
+                        if (rankingList) rankingList.innerHTML = `<div style="color: var(--error); text-align: center; padding: 2rem;">⚠️ Błąd: ${res.error}</div>`;
                     }
                 } catch (err) {
                     console.error('[Ranking] Błąd pobierania:', err);
+                    if (rankingList) rankingList.innerHTML = `<div style="color: var(--error); text-align: center; padding: 2rem;">⚠️ Błąd połączenia z serwerem</div>`;
                 }
             }
 
@@ -2684,13 +2687,7 @@
                 try {
                     const { data, error } = await supabaseClient
                         .from('global_messages')
-                        .select(`
-                            id,
-                            message,
-                            is_ghost,
-                            created_at,
-                            profiles!inner(username)
-                        `)
+                        .select('id, content, username, is_ghost, created_at')
                         .order('created_at', { ascending: false })
                         .limit(50);
 
@@ -2699,6 +2696,7 @@
                     renderChatMessages(data.reverse()); // Odwróć aby najnowsze były na dole
                 } catch (err) {
                     console.error('[Chat] Błąd pobierania wiadomości:', err);
+                    document.getElementById('chat-messages').innerHTML = '<div style="text-align: center; padding: 1rem; color: var(--error);">Błąd wczytywania czatu</div>';
                 }
             }
 
@@ -2735,9 +2733,9 @@
                             ${ghostStyle}
                         ">
                             <div style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.25rem;">
-                                <span style="font-weight: bold;">${time}</span> - <span>${ghostIcon}${msg.profiles.username}</span>
+                                <span style="font-weight: bold;">${time}</span> - <span>${ghostIcon}${msg.username}</span>
                             </div>
-                            <div style="font-size: 0.9rem;">${msg.message}</div>
+                            <div style="font-size: 0.9rem;">${msg.content}</div>
                         </div>
                     `;
                 }).join('');
@@ -2839,9 +2837,9 @@
                         ${ghostStyle}
                     ">
                         <div style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.25rem;">
-                            <span style="font-weight: bold;">${time}</span> - <span>${ghostIcon}${message.profiles.username}</span>
+                            <span style="font-weight: bold;">${time}</span> - <span>${ghostIcon}${message.username}</span>
                         </div>
-                        <div style="font-size: 0.9rem;">${message.message}</div>
+                        <div style="font-size: 0.9rem;">${message.content}</div>
                     </div>
                 `;
 
