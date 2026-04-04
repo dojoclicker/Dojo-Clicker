@@ -394,18 +394,17 @@ body {
     display: none;
     justify-content: center;
     align-items: flex-start;
-    padding-top: 2rem;
+    /* Usunięto padding-top: 2rem aby wyrównać z oknem ekwipunku */
 }
 
 .hospital-container {
     display: flex; 
     flex-direction: row; 
-    gap: 20px;
-    padding: 20px;
+    gap: 1rem; /* Zmniejszono z 20px dla idealnej symetrii z Ekwipunkiem */
+    padding: 1rem; /* Wyrównanie z marginesami w innych oknach */
     align-items: stretch;
     width: 100%;
-    max-width: 1000px;
-    margin: 0 auto;
+    /* Usunięto max-width: 1000px - teraz Szpital wypełnia całą szerokość! */
 }
 
 .hospital-panel-left {
@@ -416,13 +415,14 @@ body {
     display: flex;
     justify-content: center;
     align-items: center;
-    padding: 20px;
+    padding: 1.5rem; /* Zmieniono z 20px na 1.5rem dla zgodności z Ekwipunkiem */
+    min-width: 0; /* Gwarantuje idealne wymuszenie 50/50 */
 }
 
 .hospital-big-graphic {
     width: 100%;
     height: 100%;
-    min-height: 350px;
+    min-height: 420px; /* Zmieniono z 350px na 420px (idetyczna wysokość co sylwetka gracza) */
     background: radial-gradient(circle, #2a1111 0%, #0a0f1d 100%);
     border: 3px solid #dc2626;
     border-radius: 8px;
@@ -435,11 +435,11 @@ body {
 
 .hospital-panel-right {
     flex: 1; 
-    min-width: 350px; 
+    min-width: 0; /* Zmieniono z 350px dla wymuszenia 50/50 */
     background: var(--goku-panel-bg);
     border: 2px solid var(--goku-panel-border);
     border-radius: 12px;
-    padding: 20px;
+    padding: 1.5rem; /* Zmieniono z 20px na 1.5rem */
     text-align: center;
     display: flex;
     flex-direction: column;
@@ -449,7 +449,6 @@ body {
 .text-hospital-danger { color: #ef4444 !important; text-shadow: 0 0 10px rgba(239, 68, 68, 0.5); }
 .text-hospital-success { color: #22c55e !important; text-shadow: 0 0 10px rgba(34, 197, 94, 0.5); }
 .disabled, .tab-disabled { pointer-events: none !important; filter: grayscale(100%) brightness(0.5); opacity: 0.5; cursor: not-allowed; position: relative; }
-
 /* WIDOK EKWIPUNKU */
 .equipment-container {
     display: flex;
