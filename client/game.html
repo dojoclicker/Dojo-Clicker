@@ -343,6 +343,57 @@
             return sessionToken;
         }
 
+        // ==========================================
+        // GLOBALNY SILNIK API (REFAKTORYZACJA)
+        // ==========================================
+        async function apiCall(endpoint, method = 'GET', body = null, useActionLock = false) {
+            // Automatyczna obsługa blokady zapobiegająca Race Conditions
+            if (useActionLock) {
+                if (window.isInventoryActionLocked) return null;
+                window.isInventoryActionLocked = true;
+            }
+            
+            try {
+                const options = {
+                    method,
+                    headers: {
+                        'Authorization': `Bearer ${localStorage.getItem('session_token')}`,
+                        'Content-Type': 'application/json'
+                    }
+                };
+                if (body) options.body = JSON.stringify(body);
+
+                const response = await fetch(`${API_BASE_URL}${endpoint}`, options);
+
+                // Automatyczna obsługa wylogowania przy błędnym tokenie
+                if (!response.ok) {
+                    if (response.status === 401 || response.status === 403) {
+                        localStorage.removeItem('session_token');
+                        window.location.href = 'index.html';
+                        return null; // Null oznacza twarde zatrzymanie akcji
+                    }
+                    const errorData = await response.json().catch(() => ({}));
+                    return { success: false, error: errorData.error || 'Błąd serwera' };
+                }
+
+                const data = await response.json();
+                
+                // Standaryzacja odpowiedzi dla naszych endpointów POST
+                if (data.success === false) {
+                     return { success: false, error: data.error || data.message || 'Błąd akcji', data };
+                }
+                
+                return { success: true, data };
+                
+            } catch (error) {
+                console.error(`[API] Błąd połączenia z ${endpoint}:`, error);
+                return { success: false, error: 'Wystąpił problem z połączeniem sieciowym.' };
+            } finally {
+                // Gwarancja zdjęcia blokady
+                if (useActionLock) window.isInventoryActionLocked = false;
+            }
+        }
+
         // Pobieranie danych misji z API
         async function fetchMissions() {
             const sessionToken = localStorage.getItem('session_token');
@@ -1941,181 +1992,71 @@
 
         // Transfer monet
         async function transferBankCoins(action) {
-            if (window.isInventoryActionLocked) return;
-            window.isInventoryActionLocked = true;
-
             const input = document.getElementById('bank-amount-input');
             const amount = input.value.replace(/\D/g, ''); // Tylko cyfry
             
             if (!amount || parseInt(amount) <= 0) {
                 showWarningMessage('Podaj prawidłową ilość monet');
-                window.isInventoryActionLocked = false;
                 return;
             }
 
-            try {
-                const response = await fetch(`${API_BASE_URL}/api/bank/transfer_coins`, {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${localStorage.getItem('session_token')}`,
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        action: action,
-                        amount: amount
-                    })
-                });
+            const res = await apiCall('/api/bank/transfer_coins', 'POST', { action: action, amount: amount }, true);
+            if (!res) return; // Przerwanie jeśli np. wylogowano
 
-                if (!response.ok) {
-                    const errorData = await response.json();
-                    showWarningMessage(errorData.error || 'Błąd podczas transferu monet');
-                    return;
-                }
-
-                const data = await response.json();
-                
-                if (data.success) {
-                    showSuccessMessage(data.message);
-                    input.value = '';
-                    await fetchCharacterData();
-                    await fetchInventory();
-                    renderBank();
-                } else {
-                    showWarningMessage(data.error || 'Błąd podczas transferu monet');
-                }
-                
-            } catch (error) {
-                console.error('[Bank] Błąd komunikacji z backendem:', error);
-                showWarningMessage('Wystąpił błąd podczas transferu monet');
-            } finally {
-                window.isInventoryActionLocked = false;
+            if (res.success) {
+                showSuccessMessage(res.data.message);
+                input.value = ''; // Specyficzna logika zachowana!
+                await fetchCharacterData();
+                await fetchInventory();
+                renderBank();
+            } else {
+                showWarningMessage(res.error || 'Błąd podczas transferu monet');
             }
         }
 
         // Ulepszanie banku
         async function upgradeBank(upgradeType) {
-            if (window.isInventoryActionLocked) return;
-            window.isInventoryActionLocked = true;
+            const res = await apiCall('/api/bank/upgrade', 'POST', { upgrade_type: upgradeType }, true);
+            if (!res) return;
 
-            try {
-                const response = await fetch(`${API_BASE_URL}/api/bank/upgrade`, {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${localStorage.getItem('session_token')}`,
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        upgrade_type: upgradeType
-                    })
-                });
-
-                if (!response.ok) {
-                    const errorData = await response.json();
-                    showWarningMessage(errorData.error || 'Błąd podczas ulepszania banku');
-                    return;
-                }
-
-                const data = await response.json();
-                
-                if (data.success) {
-                    showSuccessMessage(data.message);
-                    await fetchCharacterData();
-                    renderBank();
-                } else {
-                    showWarningMessage(data.error || 'Błąd podczas ulepszania banku');
-                }
-                
-            } catch (error) {
-                console.error('[Bank] Błąd komunikacji z backendem:', error);
-                showWarningMessage('Wystąpił błąd podczas ulepszania banku');
-            } finally {
-                window.isInventoryActionLocked = false;
+            if (res.success) {
+                showSuccessMessage(res.data.message);
+                await fetchCharacterData(); // Specyficzna logika zachowana!
+                renderBank();
+            } else {
+                showWarningMessage(res.error || 'Błąd podczas ulepszania banku');
             }
         }
 
         // Transfer przedmiotu między bankiem a plecakiem
         async function transferBankItem(inventoryId, targetPanel, amount, targetIndex = null) {
-            if (window.isInventoryActionLocked) return;
-            window.isInventoryActionLocked = true;
+            const res = await apiCall('/api/bank/transfer_item', 'POST', {
+                inventory_id: inventoryId, target_panel: targetPanel, amount: amount, target_index: targetIndex
+            }, true);
+            if (!res) return;
 
-            try {
-                const response = await fetch(`${API_BASE_URL}/api/bank/transfer_item`, {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${localStorage.getItem('session_token')}`,
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        inventory_id: inventoryId,
-                        target_panel: targetPanel,
-                        amount: amount,
-                        target_index: targetIndex
-                    })
-                });
-
-                if (!response.ok) {
-                    const errorData = await response.json();
-                    showWarningMessage(errorData.error || 'Błąd podczas transferu przedmiotu');
-                    return;
-                }
-
-                const data = await response.json();
-                
-                if (data.success) {
-                    showSuccessMessage(data.message);
-                    await fetchInventory();
-                    renderBank();
-                } else {
-                    showWarningMessage(data.error || 'Błąd podczas transferu przedmiotu');
-                }
-                
-            } catch (error) {
-                console.error('[Bank] Błąd komunikacji z backendem:', error);
-                showWarningMessage('Wystąpił błąd podczas transferu przedmiotu');
-            } finally {
-                window.isInventoryActionLocked = false;
+            if (res.success) {
+                showSuccessMessage(res.data.message);
+                await fetchInventory(); // Specyficzna logika zachowana!
+                renderBank();
+            } else {
+                showWarningMessage(res.error || 'Błąd podczas transferu przedmiotu');
             }
         }
 
         // Dzielenie przedmiotu w banku
         async function splitBankItem(inventoryId, amount) {
-            if (window.isInventoryActionLocked) return;
-            window.isInventoryActionLocked = true;
+            const res = await apiCall('/api/bank/split', 'POST', {
+                inventory_id: inventoryId, amount_to_split: amount
+            }, true);
+            if (!res) return;
 
-            try {
-                const response = await fetch(`${API_BASE_URL}/api/bank/split`, {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${localStorage.getItem('session_token')}`,
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        inventory_id: inventoryId,
-                        amount_to_split: amount
-                    })
-                });
-
-                if (!response.ok) {
-                    const errorData = await response.json();
-                    showWarningMessage(errorData.error || 'Błąd podczas dzielenia przedmiotu');
-                    return;
-                }
-
-                const data = await response.json();
-                
-                if (data.success) {
-                    showSuccessMessage(data.message);
-                    await fetchInventory();
-                    renderBank();
-                } else {
-                    showWarningMessage(data.error || 'Błąd podczas dzielenia przedmiotu');
-                }
-                
-            } catch (error) {
-                console.error('[Bank] Błąd komunikacji z backendem:', error);
-                showWarningMessage('Wystąpił błąd podczas dzielenia przedmiotu');
-            } finally {
-                window.isInventoryActionLocked = false;
+            if (res.success) {
+                showSuccessMessage(res.data.message);
+                await fetchInventory(); // Specyficzna logika zachowana!
+                renderBank();
+            } else {
+                showWarningMessage(res.error || 'Błąd podczas dzielenia przedmiotu');
             }
         }
 
