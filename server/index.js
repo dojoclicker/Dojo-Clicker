@@ -1709,7 +1709,8 @@ app.post('/api/chat/send', authenticateToken, async (req, res) => {
       .from('global_messages')
       .insert({
         profile_id: userId,
-        message: message.trim(),
+        username: character.profiles.username, // [DODANE] Przekazanie nicku!
+        content: message.trim(),               // [POPRAWIONE] Z 'message' na 'content'
         is_ghost: isGhost
       });
     

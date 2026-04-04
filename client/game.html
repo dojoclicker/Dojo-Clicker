@@ -2788,54 +2788,25 @@
 
             // Inicjalizacja Supabase Realtime dla czatu
             function initializeRealtimeChat() {
-                // Subskrypcja do nowych wiadomości
                 const channel = supabaseClient
                     .channel('global_chat')
                     .on(
                         'postgres_changes',
-                        { 
-                            event: 'INSERT', 
-                            schema: 'public', 
-                            table: 'global_messages' 
-                        },
+                        { event: 'INSERT', schema: 'public', table: 'global_messages' },
                         (payload) => {
-                            console.log('[Chat] Nowa wiadomość:', payload.new);
-                            
-                            // Dodaj nową wiadomość do czatu bez przeładowania całej listy
                             const chatMessages = document.getElementById('chat-messages');
                             if (chatMessages && chatMessages.style.display !== 'none') {
-                                // Pobierz dane profilu dla nowej wiadomości
-                                supabaseClient
-                                    .from('profiles')
-                                    .select('username')
-                                    .eq('id', payload.new.profile_id)
-                                    .single()
-                                    .then(({ data, error }) => {
-                                        if (!error && data) {
-                                            const newMessage = {
-                                                ...payload.new,
-                                                profiles: data
-                                            };
-                                            
-                                            // Dodaj wiadomość na końcu listy
-                                            addNewChatMessage(newMessage);
-                                        }
-                                    });
+                                // Nick jest już w payload.new.username! 
+                                // Omijamy zbędne odpytywanie bazy.
+                                addNewChatMessage(payload.new);
                             }
                         }
                     )
                     .subscribe((status) => {
-                        if (status === 'SUBSCRIBED') {
-                            console.log('[Chat] Połączono z Supabase Realtime');
-                        } else if (status === 'TIMED_OUT' || status === 'CLOSED') {
-                            console.log('[Chat] Utracono połączenie z Supabase Realtime, próba ponownego połączenia...');
-                            setTimeout(() => {
-                                initializeRealtimeChat();
-                            }, 5000);
+                        if (status === 'TIMED_OUT' || status === 'CLOSED') {
+                            setTimeout(() => initializeRealtimeChat(), 5000);
                         }
                     });
-
-                // Zapisz kanał do globalnej zmiennej aby można go było wyczyścić
                 window.chatChannel = channel;
             }
 
