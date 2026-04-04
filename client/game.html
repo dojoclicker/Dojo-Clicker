@@ -1629,16 +1629,20 @@
             const canAfford = playerCoins >= Number(item.price);
             
             card.innerHTML = `
-                <div class="shop-item-emoji">${item.emoji}</div>
-                <div class="shop-item-name">${item.name}</div>
-                <div class="shop-item-description">${item.description}</div>
-                <div class="shop-item-price">
-                    <span>💰</span>
-                    <span>${item.price}</span>
+                <div class="shop-item-content">
+                    <div class="shop-item-emoji">${item.emoji}</div>
+                    <div class="shop-item-name">${item.name}</div>
+                    <div class="shop-item-description">${item.description}</div>
                 </div>
-                <button class="shop-buy-btn" ${!canAfford || !hasSpace ? 'disabled' : ''}>
-                    ${!canAfford ? 'Brak monet' : !hasSpace ? 'Brak miejsca' : 'Kup'}
-                </button>
+                <div class="shop-item-bottom">
+                    <div class="shop-item-price">
+                        <span>💰</span>
+                        <span>${item.price}</span>
+                    </div>
+                    <button class="shop-buy-btn" ${!canAfford || !hasSpace ? 'disabled' : ''}>
+                        ${!canAfford ? 'Brak monet' : !hasSpace ? 'Brak miejsca' : 'Kup'}
+                    </button>
+                </div>
             `;
             
             // Event listener dla kupna
