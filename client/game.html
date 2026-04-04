@@ -144,13 +144,16 @@
         </div>
 
         <!-- Widok Ekwipunku -->
-        <div class="equipment-panel">
+        <div id="equipment-view" style="display: none;">
+            <div class="equipment-container" style="display: flex; flex-direction: row; gap: 1rem; width: 100%; align-items: stretch;">
+                
+                <div class="equipment-panel" style="flex: 1; background: var(--goku-panel-bg); border: 2px solid var(--goku-panel-border); border-radius: 12px; padding: 1.5rem; display: flex; flex-direction: column; min-width: 0;">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; padding-bottom: 10px; border-bottom: 2px solid var(--goku-panel-border);">
                         <h4 style="margin: 0; color: var(--goku-accent); font-size: 1.3rem; text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);">Wyposażenie</h4>
                         <button class="nuke-help-btn" data-tooltip="Przeciągnij przedmiot z plecaka na odpowiednie miejsce na ciele, aby go założyć.">?</button>
                     </div>
                     
-                    <div class="character-body-container">
+                    <div class="character-body-container" style="padding: 0.75rem; background: rgba(0, 0, 0, 0.2); border: 1px solid var(--goku-panel-border); border-radius: 8px; display: flex; justify-content: center; align-items: center; flex: 1; min-height: 420px;">
                         <div class="character-body">
                             <div class="equipment-slot" data-slot="ear_l">L. Kolczyk</div>
                             <div class="equipment-slot" data-slot="necklace">Naszyjnik</div>
@@ -167,6 +170,19 @@
                         </div>
                     </div>
                 </div>
+
+                <div class="inventory-panel" style="flex: 1; background: var(--goku-panel-bg); border: 2px solid var(--goku-panel-border); border-radius: 12px; padding: 1.5rem; display: flex; flex-direction: column; min-width: 0;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; padding-bottom: 10px; border-bottom: 2px solid var(--goku-panel-border);">
+                        <h4 style="margin: 0; color: #a3e635; font-size: 1.3rem; text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);">Twój Plecak</h4>
+                        <button class="nuke-help-btn" data-tooltip="Przeciągnij przedmiot na ciało, aby go założyć (Drag & Drop), lub po prostu kliknij w niego dwukrotnie.">?</button>
+                    </div>
+                    
+                    <div class="inventory-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(75px, 1fr)); gap: 10px; align-content: start; padding: 0.75rem; background: rgba(0, 0, 0, 0.2); border: 1px solid var(--goku-panel-border); border-radius: 8px; flex: 1; overflow-y: auto; height: 420px;">
+                    </div>
+                </div>
+
+            </div>
+        </div>
 
                 <!-- Prawy Panel - Plecak (Inventory) -->
                 <div class="inventory-panel" style="display: flex; flex-direction: column;">
