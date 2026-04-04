@@ -1490,11 +1490,19 @@
 
                 // Przetwarzanie i segregacja szablonów
                 templates.forEach(template => {
+                    // Słownik tłumaczeń na język polski
+                    const slotNamesPL = {
+                        'head': 'Głowa', 'chest': 'Tors', 'legs': 'Nogi', 
+                        'feet': 'Stopy', 'hands': 'Dłonie', 'ear_l': 'L. Kolczyk', 
+                        'ear_r': 'P. Kolczyk', 'ring_l': 'L. Pierścień', 
+                        'ring_r': 'P. Pierścień', 'necklace': 'Naszyjnik'
+                    };
+
                     // Przekazuj pełny szablon, a nie okrojoną wersję
                     const shopItem = {
                         ...template, // Przekaż wszystkie właściwości szablonu
                         emoji: getItemEmoji(template.name, template.category),
-                        description: template.slot ? 'Wymagany slot: ' + template.slot : 'Przedmiot',
+                        description: template.slot ? 'Miejsce: ' + (slotNamesPL[template.slot] || template.slot) : 'Przedmiot',
                         price: template.buy_price_coins
                     };
 
