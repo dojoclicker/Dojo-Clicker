@@ -2463,376 +2463,121 @@
 
         }
 
-        // Inicjalizacja aplikacji
-        document.addEventListener('DOMContentLoaded', function() {
-            // 1. Sprawdź autoryzację
-            const sessionToken = checkAuthentication();
-            if (!sessionToken) return; // Funkcja sama przekieruje
+        // ==========================================
+        // DASHBOARD - RANKING I CZAT (FAZA 5) - FUNKCJE GLOBALNE
+        // ==========================================
 
-            // 2. Pobierz dane postaci
-            fetchCharacterData();
+        async function fetchRanking() {
+            const rankingList = document.getElementById('ranking-list');
+            try {
+                const res = await apiCall('/api/ranking');
+                if (res.success) {
+                    renderRanking(res.data);
+                } else {
+                    console.error('[Ranking] Błąd:', res.error);
+                    if (rankingList) rankingList.innerHTML = `<div style="color: var(--error); text-align: center; padding: 2rem;">⚠️ Błąd: ${res.error}</div>`;
+                }
+            } catch (err) {
+                console.error('[Ranking] Błąd pobierania:', err);
+                if (rankingList) rankingList.innerHTML = `<div style="color: var(--error); text-align: center; padding: 2rem;">⚠️ Błąd połączenia z serwerem</div>`;
+            }
+        }
 
-            // 3. Pobierz misje
-            fetchMissions();
+        function renderRanking(rankingData) {
+            const rankingList = document.getElementById('ranking-list');
+            if (!rankingList) return;
 
-            // 4. Pobierz ekwipunek
-            fetchInventory();
-
-            // 5. Zainicjalizuj sklep (jeśli widok sklepu istnieje)
-            if (document.getElementById('shop-view')) {
-                initShop();
+            if (!rankingData || rankingData.length === 0) {
+                rankingList.innerHTML = `
+                    <div style="color: var(--text-muted); text-align: center; padding: 2rem;">
+                        <div>🏆 Brak danych rankingu</div>
+                    </div>
+                `;
+                return;
             }
 
-            // 6. Zainicjalizuj Drag & Drop
-            setTimeout(() => {
-                initializeDragAndDrop();
-            }, 500); // Małe opóźnienie dla pewności, że elementy są w DOM
-
-            // 4. Event Listener dla przycisku Magicznej Fasolki
-            document.getElementById('btn-use-senzu')?.addEventListener('click', async function() {
-                // Przeszukaj inventory w poszukiwaniu Magicznej Fasolki
-                const magicBean = window.inventoryData?.find(item => 
-                    item.item_template_id === '00000000-0000-0000-0000-000000000006' && 
-                    item.equipped_slot === null
-                );
+            const rankingHTML = rankingData.map((player, index) => {
+                const position = player.position;
+                const powerLevel = parseInt(player.power_level).toLocaleString('pl-PL');
                 
-                if (!magicBean) {
-                    showWarningMessage('Nie masz Magicznej Fasolki w plecaku!');
-                    return;
+                let glowStyle = '';
+                let positionIcon = '';
+                if (position === 1) {
+                    glowStyle = 'box-shadow: 0 0 20px rgba(255, 215, 0, 0.6); border: 2px solid gold;';
+                    positionIcon = '🥇';
+                } else if (position === 2) {
+                    glowStyle = 'box-shadow: 0 0 20px rgba(192, 192, 192, 0.6); border: 2px solid silver;';
+                    positionIcon = '🥈';
+                } else if (position === 3) {
+                    glowStyle = 'box-shadow: 0 0 20px rgba(205, 127, 50, 0.6); border: 2px solid #cd7f32;';
+                    positionIcon = '🥉';
+                } else {
+                    positionIcon = `${position}.`;
                 }
+
+                return `
+                    <div class="ranking-item" style="
+                        display: flex; 
+                        align-items: center; 
+                        padding: 0.5rem; 
+                        margin-bottom: 0.5rem; 
+                        background: rgba(0,0,0,0.2); 
+                        border-radius: 6px; 
+                        border: 1px solid var(--goku-panel-border);
+                        ${glowStyle}
+                    ">
+                        <div style="font-weight: bold; margin-right: 0.75rem; min-width: 30px;">${positionIcon}</div>
+                        <div style="flex: 1; color: var(--text-primary);">${player.username}</div>
+                        <div style="color: var(--goku-accent); font-weight: bold; font-size: 0.9rem;">${powerLevel}</div>
+                    </div>
+                `;
+            }).join('');
+
+            rankingList.innerHTML = rankingHTML;
+        }
+
+        async function fetchChatMessages() {
+            try {
+                const { data, error } = await supabaseClient
+                    .from('global_messages')
+                    .select('id, content, username, is_ghost, created_at')
+                    .order('created_at', { ascending: false })
+                    .limit(50);
+
+                if (error) throw error;
                 
-                // Wywołaj standardową konsumpcję
-                consumeItem(magicBean.id);
-            });
-
-            // 3. ZARZĄDZANIE WIDOKAMI I PAMIĘĆ ZAKŁADKI (STATE PERSISTENCE)
-            const navButtons = document.querySelectorAll('.nav-btn');
-            const savedTab = localStorage.getItem('active_game_tab') || 'dashboard';
-
-            // Filtrowanie inputa banku - tylko cyfry
-            const bankAmountInput = document.getElementById('bank-amount-input');
-            if (bankAmountInput) {
-                bankAmountInput.addEventListener('input', function() {
-                    this.value = this.value.replace(/\D/g, '');
-                });
-            }
-
-            // Event listenery dla przycisków Banku
-            const bankDepositBtn = document.getElementById('bank-deposit-btn');
-            const bankWithdrawBtn = document.getElementById('bank-withdraw-btn');
-            const bankUpgradeLimitBtn = document.getElementById('bank-upgrade-limit-btn');
-            const bankUpgradeSlotsBtn = document.getElementById('bank-upgrade-slots-btn');
-
-            if (bankDepositBtn) {
-                bankDepositBtn.addEventListener('click', () => transferBankCoins('deposit'));
-            }
-            if (bankWithdrawBtn) {
-                bankWithdrawBtn.addEventListener('click', () => transferBankCoins('withdraw'));
-            }
-            if (bankUpgradeLimitBtn) {
-                bankUpgradeLimitBtn.addEventListener('click', () => upgradeBank('coin_limit'));
-            }
-            if (bankUpgradeSlotsBtn) {
-                bankUpgradeSlotsBtn.addEventListener('click', () => upgradeBank('slot'));
-            }
-
-            // Podepnij nasłuchiwanie pod przyciski nawigacyjne
-            navButtons.forEach(button => {
-                button.addEventListener('click', function() {
-                    const tabName = this.getAttribute('data-tab');
-                    activateTab(tabName);
-                });
-            });
-
-            // 4. Obsługa przycisków headera
-            document.getElementById('home-btn').addEventListener('click', function() {
-                activateTab('dashboard'); // Zawsze wraca do czystego widoku dashboardu
-            });
-
-            // Uruchomienie domyślnego/z zapisanego widoku przy starcie
-            activateTab(savedTab);
-
-            document.getElementById('logout-btn').addEventListener('click', function() {
-                console.log('Wylogowuję gracza');
-                localStorage.removeItem('session_token');
-                window.location.href = 'index.html';
-            });
-
-            // 5. Symulacja aktualizacji czasu gry (placeholder)
-            function updateGameTime() {
-                const timeElement = document.getElementById('game-time');
-                // Tutaj będzie logika synchronizacji z serwerem
-                // Na razie symulacja
-                const now = new Date();
-                const dcDay = Math.floor(now.getDate() / 8) + 1; // Placeholder
-                const dcHour = now.getHours();
-                const dcMinute = now.getMinutes();
-                timeElement.textContent = `DC: Dzień ${dcDay} | ${dcHour.toString().padStart(2, '0')}:${dcMinute.toString().padStart(2, '0')}`;
-            }
-
-            // --- LOGIKA TOOLTIPA POZIOMU MOCY ---
-            const plBtn = document.getElementById('pl-info-btn');
-            const plTooltip = document.getElementById('pl-tooltip');
-
-            if (plBtn && plTooltip) {
-                // Wyświetlanie/ukrywanie po kliknięciu
-                plBtn.addEventListener('click', (e) => {
-                    e.stopPropagation(); // Blokuje propagację kliknięcia
-                    
-                    if (plTooltip.style.display === 'block') {
-                        plTooltip.style.display = 'none';
-                    } else {
-                        // Dynamiczne pozycjonowanie względem przycisku
-                        const rect = plBtn.getBoundingClientRect();
-                        plTooltip.style.left = (rect.right + 20) + 'px'; // 20px w prawo od przycisku
-                        plTooltip.style.top = (rect.top + (rect.height / 2)) + 'px';
-                        plTooltip.style.transform = 'translateY(-50%)'; // Środek tooltipa do środka przycisku
-                        
-                        plTooltip.style.display = 'block';
-                    }
-                });
-
-                plTooltip.addEventListener('mouseleave', () => {
-                    plTooltip.style.display = 'none';
-                });
-
-                // Zamknięcie przy kliknięciu gdziekolwiek w tło
-                document.addEventListener('click', (e) => {
-                    if (e.target !== plBtn && !plTooltip.contains(e.target)) {
-                        plTooltip.style.display = 'none';
-                    }
-                });
-            }
-
-            // Aktualizuj czas co sekundę
-            setInterval(updateGameTime, 1000);
-            updateGameTime(); // Pierwsza aktualizacja
-
-            // Odświeżanie danych postaci co 30 sekund (cicho, w tle)
-            setInterval(() => fetchCharacterData(true), 30000);
-
-            // ==========================================
-            // DASHBOARD - RANKING I CZAT (FAZA 5)
-            // ==========================================
-
-            // Pobieranie i renderowanie rankingu
-            async function fetchRanking() {
-                const rankingList = document.getElementById('ranking-list');
-                try {
-                    const res = await apiCall('/api/ranking');
-                    if (res.success) {
-                        renderRanking(res.data);
-                    } else {
-                        console.error('[Ranking] Błąd:', res.error);
-                        if (rankingList) rankingList.innerHTML = `<div style="color: var(--error); text-align: center; padding: 2rem;">⚠️ Błąd: ${res.error}</div>`;
-                    }
-                } catch (err) {
-                    console.error('[Ranking] Błąd pobierania:', err);
-                    if (rankingList) rankingList.innerHTML = `<div style="color: var(--error); text-align: center; padding: 2rem;">⚠️ Błąd połączenia z serwerem</div>`;
-                }
-            }
-
-            // Renderowanie listy rankingu
-            function renderRanking(rankingData) {
-                const rankingList = document.getElementById('ranking-list');
-                if (!rankingList) return;
-
-                if (!rankingData || rankingData.length === 0) {
-                    rankingList.innerHTML = `
-                        <div style="color: var(--text-muted); text-align: center; padding: 2rem;">
-                            <div>🏆 Brak danych rankingu</div>
-                        </div>
-                    `;
-                    return;
-                }
-
-                const rankingHTML = rankingData.map((player, index) => {
-                    const position = player.position;
-                    const powerLevel = parseInt(player.power_level).toLocaleString('pl-PL');
-                    
-                    // Kolory podium
-                    let glowStyle = '';
-                    let positionIcon = '';
-                    if (position === 1) {
-                        glowStyle = 'box-shadow: 0 0 20px rgba(255, 215, 0, 0.6); border: 2px solid gold;';
-                        positionIcon = '🥇';
-                    } else if (position === 2) {
-                        glowStyle = 'box-shadow: 0 0 20px rgba(192, 192, 192, 0.6); border: 2px solid silver;';
-                        positionIcon = '🥈';
-                    } else if (position === 3) {
-                        glowStyle = 'box-shadow: 0 0 20px rgba(205, 127, 50, 0.6); border: 2px solid #cd7f32;';
-                        positionIcon = '🥉';
-                    } else {
-                        positionIcon = `${position}.`;
-                    }
-
-                    return `
-                        <div class="ranking-item" style="
-                            display: flex; 
-                            align-items: center; 
-                            padding: 0.5rem; 
-                            margin-bottom: 0.5rem; 
-                            background: rgba(0,0,0,0.2); 
-                            border-radius: 6px; 
-                            border: 1px solid var(--goku-panel-border);
-                            ${glowStyle}
-                        ">
-                            <div style="font-weight: bold; margin-right: 0.75rem; min-width: 30px;">${positionIcon}</div>
-                            <div style="flex: 1; color: var(--text-primary);">${player.username}</div>
-                            <div style="color: var(--goku-accent); font-weight: bold; font-size: 0.9rem;">${powerLevel}</div>
-                        </div>
-                    `;
-                }).join('');
-
-                rankingList.innerHTML = rankingHTML;
-            }
-
-            // Pobieranie wiadomości czatu
-            async function fetchChatMessages() {
-                try {
-                    const { data, error } = await supabaseClient
-                        .from('global_messages')
-                        .select('id, content, username, is_ghost, created_at')
-                        .order('created_at', { ascending: false })
-                        .limit(50);
-
-                    if (error) throw error;
-                    
-                    renderChatMessages(data.reverse()); // Odwróć aby najnowsze były na dole
-                } catch (err) {
-                    console.error('[Chat] Błąd pobierania wiadomości:', err);
-                    document.getElementById('chat-messages').innerHTML = '<div style="text-align: center; padding: 1rem; color: var(--error);">Błąd wczytywania czatu</div>';
-                }
-            }
-
-            // Renderowanie wiadomości czatu
-            function renderChatMessages(messages) {
+                renderChatMessages(data.reverse()); 
+            } catch (err) {
+                console.error('[Chat] Błąd pobierania wiadomości:', err);
                 const chatMessages = document.getElementById('chat-messages');
-                if (!chatMessages) return;
+                if (chatMessages) chatMessages.innerHTML = '<div style="text-align: center; padding: 1rem; color: var(--error);">Błąd wczytywania czatu</div>';
+            }
+        }
 
-                if (!messages || messages.length === 0) {
-                    chatMessages.innerHTML = `
-                        <div style="color: var(--text-muted); text-align: center; padding: 1rem;">
-                            <div>💬 Brak wiadomości</div>
-                        </div>
-                    `;
-                    return;
-                }
+        function renderChatMessages(messages) {
+            const chatMessages = document.getElementById('chat-messages');
+            if (!chatMessages) return;
 
-                const messagesHTML = messages.map(msg => {
-                    const time = new Date(msg.created_at).toLocaleTimeString('pl-PL', { 
-                        hour: '2-digit', 
-                        minute: '2-digit' 
-                    });
-                    const ghostIcon = msg.is_ghost ? '👻 ' : '';
-                    const ghostStyle = msg.is_ghost ? 
-                        'opacity: 0.7; color: #87ceeb;' : 
-                        'color: var(--text-primary);';
-
-                    return `
-                        <div class="chat-message" style="
-                            margin-bottom: 0.5rem; 
-                            padding: 0.5rem;
-                            background: rgba(0,0,0,0.1); 
-                            border-radius: 4px;
-                            ${ghostStyle}
-                        ">
-                            <div style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.25rem;">
-                                <span style="font-weight: bold;">${time}</span> - <span>${ghostIcon}${msg.username}</span>
-                            </div>
-                            <div style="font-size: 0.9rem;">${msg.content}</div>
-                        </div>
-                    `;
-                }).join('');
-
-                chatMessages.innerHTML = messagesHTML;
-                
-                // Auto-scroll do dołu
-                setTimeout(() => {
-                    chatMessages.scrollTop = chatMessages.scrollHeight;
-                }, 100);
+            if (!messages || messages.length === 0) {
+                chatMessages.innerHTML = `
+                    <div style="color: var(--text-muted); text-align: center; padding: 1rem;">
+                        <div>💬 Brak wiadomości</div>
+                    </div>
+                `;
+                return;
             }
 
-            // Wysyłanie wiadomości czatu
-            async function sendChatMessage() {
-                const chatInput = document.getElementById('chat-input');
-                const message = chatInput.value.trim();
-                
-                if (!message) return;
-
-                try {
-                    const res = await apiCall('/api/chat/send', 'POST', { message });
-                    if (res.success) {
-                        chatInput.value = '';
-                        showNotification('Czat', res.data.message, 'success', 2000);
-                        // Odśwież czat po wysłaniu
-                        fetchChatMessages();
-                    } else {
-                        showNotification('Błąd czatu', res.error, 'error');
-                    }
-                } catch (err) {
-                    console.error('[Chat] Błąd wysyłania:', err);
-                    showNotification('Błąd czatu', 'Nie udało się wysłać wiadomości', 'error');
-                }
-            }
-
-            // Inicjalizacja czatu i rankingu (tylko gdy dashboard jest aktywny)
-            function initializeDashboard() {
-                const dashboardView = document.getElementById('dashboard-view');
-                if (!dashboardView) return;
-
-                // Sprawdź czy dashboard jest widoczny
-                if (dashboardView.style.display !== 'none') {
-                    fetchRanking();
-                    fetchChatMessages();
-                    initializeRealtimeChat();
-                }
-            }
-
-            // Inicjalizacja Supabase Realtime dla czatu
-            function initializeRealtimeChat() {
-                const channel = supabaseClient
-                    .channel('global_chat')
-                    .on(
-                        'postgres_changes',
-                        { event: 'INSERT', schema: 'public', table: 'global_messages' },
-                        (payload) => {
-                            const chatMessages = document.getElementById('chat-messages');
-                            if (chatMessages && chatMessages.style.display !== 'none') {
-                                // Nick jest już w payload.new.username! 
-                                // Omijamy zbędne odpytywanie bazy.
-                                addNewChatMessage(payload.new);
-                            }
-                        }
-                    )
-                    .subscribe((status) => {
-                        if (status === 'TIMED_OUT' || status === 'CLOSED') {
-                            setTimeout(() => initializeRealtimeChat(), 5000);
-                        }
-                    });
-                window.chatChannel = channel;
-            }
-
-            // Dodawanie pojedynczej nowej wiadomości do czatu
-            function addNewChatMessage(message) {
-                const chatMessages = document.getElementById('chat-messages');
-                if (!chatMessages) return;
-
-                // [POPRAWIONE] Bezpieczne usuwanie placeholdera w Vanilla JS
-                if (chatMessages.innerHTML.includes('Brak wiadomości') || chatMessages.innerHTML.includes('Ładowanie czatu')) {
-                    chatMessages.innerHTML = '';
-                }
-
-                const time = new Date(message.created_at).toLocaleTimeString('pl-PL', { 
+            const messagesHTML = messages.map(msg => {
+                const time = new Date(msg.created_at).toLocaleTimeString('pl-PL', { 
                     hour: '2-digit', 
                     minute: '2-digit' 
                 });
-                const ghostIcon = message.is_ghost ? '👻 ' : '';
-                const ghostStyle = message.is_ghost ? 
+                const ghostIcon = msg.is_ghost ? '👻 ' : '';
+                const ghostStyle = msg.is_ghost ? 
                     'opacity: 0.7; color: #87ceeb;' : 
                     'color: var(--text-primary);';
 
-                const messageHTML = `
+                return `
                     <div class="chat-message" style="
                         margin-bottom: 0.5rem; 
                         padding: 0.5rem;
@@ -2841,82 +2586,257 @@
                         ${ghostStyle}
                     ">
                         <div style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.25rem;">
-                            <span style="font-weight: bold;">${time}</span> - <span>${ghostIcon}${message.username}</span>
+                            <span style="font-weight: bold;">${time}</span> - <span>${ghostIcon}${msg.username}</span>
                         </div>
-                        <div style="font-size: 0.9rem;">${message.content}</div>
+                        <div style="font-size: 0.9rem;">${msg.content}</div>
                     </div>
                 `;
+            }).join('');
 
-                // Dodaj nową wiadomość na końcu
-                chatMessages.insertAdjacentHTML('beforeend', messageHTML);
-                
-                // Auto-scroll do dołu
-                setTimeout(() => {
-                    chatMessages.scrollTop = chatMessages.scrollHeight;
-                }, 100);
+            chatMessages.innerHTML = messagesHTML;
+            
+            setTimeout(() => {
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+            }, 100);
+        }
+
+        async function sendChatMessage() {
+            const chatInput = document.getElementById('chat-input');
+            if (!chatInput) return;
+            const message = chatInput.value.trim();
+            
+            if (!message) return;
+
+            try {
+                const res = await apiCall('/api/chat/send', 'POST', { message });
+                if (res && res.success) {
+                    chatInput.value = '';
+                    showNotification('Czat', res.data.message, 'success', 2000);
+                    fetchChatMessages();
+                } else if (res) {
+                    showNotification('Błąd czatu', res.error, 'error');
+                }
+            } catch (err) {
+                console.error('[Chat] Błąd wysyłania:', err);
+                showNotification('Błąd czatu', 'Nie udało się wysłać wiadomości', 'error');
+            }
+        }
+
+        function initializeDashboard() {
+            const dashboardView = document.getElementById('dashboard-view');
+            if (!dashboardView) return;
+
+            if (dashboardView.style.display !== 'none') {
+                fetchRanking();
+                fetchChatMessages();
+                initializeRealtimeChat();
+            }
+        }
+
+        function initializeRealtimeChat() {
+            const channel = supabaseClient
+                .channel('global_chat')
+                .on(
+                    'postgres_changes',
+                    { event: 'INSERT', schema: 'public', table: 'global_messages' },
+                    (payload) => {
+                        const chatMessages = document.getElementById('chat-messages');
+                        if (chatMessages && chatMessages.style.display !== 'none') {
+                            addNewChatMessage(payload.new);
+                        }
+                    }
+                )
+                .subscribe((status) => {
+                    if (status === 'TIMED_OUT' || status === 'CLOSED') {
+                        setTimeout(() => initializeRealtimeChat(), 5000);
+                    }
+                });
+            window.chatChannel = channel;
+        }
+
+        function addNewChatMessage(message) {
+            const chatMessages = document.getElementById('chat-messages');
+            if (!chatMessages) return;
+
+            if (chatMessages.innerHTML.includes('Brak wiadomości') || chatMessages.innerHTML.includes('Ładowanie czatu')) {
+                chatMessages.innerHTML = '';
             }
 
-            // Event listenery dla czatu
-            document.addEventListener('DOMContentLoaded', function() {
-                const chatSendBtn = document.getElementById('chat-send-btn');
-                const chatInput = document.getElementById('chat-input');
-
-                if (chatSendBtn) {
-                    chatSendBtn.addEventListener('click', sendChatMessage);
-                }
-
-                if (chatInput) {
-                    chatInput.addEventListener('keypress', function(e) {
-                        if (e.key === 'Enter') {
-                            sendChatMessage();
-                        }
-                    });
-                }
-
-                // Inicjalizuj dashboard po załadowaniu
-                setTimeout(initializeDashboard, 1000);
+            const time = new Date(message.created_at).toLocaleTimeString('pl-PL', { 
+                hour: '2-digit', 
+                minute: '2-digit' 
             });
+            const ghostIcon = message.is_ghost ? '👻 ' : '';
+            const ghostStyle = message.is_ghost ? 
+                'opacity: 0.7; color: #87ceeb;' : 
+                'color: var(--text-primary);';
+
+            const messageHTML = `
+                <div class="chat-message" style="
+                    margin-bottom: 0.5rem; 
+                    padding: 0.5rem;
+                    background: rgba(0,0,0,0.1); 
+                    border-radius: 4px;
+                    ${ghostStyle}
+                ">
+                    <div style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.25rem;">
+                        <span style="font-weight: bold;">${time}</span> - <span>${ghostIcon}${message.username}</span>
+                    </div>
+                    <div style="font-size: 0.9rem;">${message.content}</div>
+                </div>
+            `;
+
+            chatMessages.insertAdjacentHTML('beforeend', messageHTML);
+            
+            setTimeout(() => {
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+            }, 100);
+        }
+
+        // Standaryzowana funkcja do zabijania wszystkich dymków (TERAZ GLOBALNA)
+        window.hideAllActiveTooltips = function() {
+            const tooltip = document.getElementById('global-tooltip');
+            if (tooltip) {
+                tooltip.style.opacity = '0';
+                tooltip.style.visibility = 'hidden';
+                tooltip.dataset.currentCard = '';
+            }
+            if (window.tooltipTimeout) {
+                clearTimeout(window.tooltipTimeout);
+            }
+        };
+
+
+        // ==========================================
+        // INICJALIZACJA APLIKACJI (Zdarzenia DOM)
+        // ==========================================
+        document.addEventListener('DOMContentLoaded', function() {
+            // 1. Sprawdź autoryzację
+            const sessionToken = checkAuthentication();
+            if (!sessionToken) return;
+
+            // 2. Pobierz dane
+            fetchCharacterData();
+            fetchMissions();
+            fetchInventory();
+
+            if (document.getElementById('shop-view')) initShop();
+            setTimeout(() => initializeDragAndDrop(), 500); 
+
+            // Czat Listenery
+            const chatSendBtn = document.getElementById('chat-send-btn');
+            const chatInput = document.getElementById('chat-input');
+            if (chatSendBtn) chatSendBtn.addEventListener('click', sendChatMessage);
+            if (chatInput) {
+                chatInput.addEventListener('keypress', function(e) {
+                    if (e.key === 'Enter') sendChatMessage();
+                });
+            }
+
+            // Magiczna fasolka
+            document.getElementById('btn-use-senzu')?.addEventListener('click', async function() {
+                const magicBean = window.inventoryData?.find(item => 
+                    item.item_template_id === '00000000-0000-0000-0000-000000000006' && 
+                    item.equipped_slot === null
+                );
+                if (!magicBean) {
+                    showWarningMessage('Nie masz Magicznej Fasolki w plecaku!');
+                    return;
+                }
+                consumeItem(magicBean.id);
+            });
+
+            // Nawigacja
+            const navButtons = document.querySelectorAll('.nav-btn');
+            const savedTab = localStorage.getItem('active_game_tab') || 'dashboard';
+
+            // Filtrowanie inputa banku
+            const bankAmountInput = document.getElementById('bank-amount-input');
+            if (bankAmountInput) {
+                bankAmountInput.addEventListener('input', function() {
+                    this.value = this.value.replace(/\D/g, '');
+                });
+            }
+
+            // Bank
+            document.getElementById('bank-deposit-btn')?.addEventListener('click', () => transferBankCoins('deposit'));
+            document.getElementById('bank-withdraw-btn')?.addEventListener('click', () => transferBankCoins('withdraw'));
+            document.getElementById('bank-upgrade-limit-btn')?.addEventListener('click', () => upgradeBank('coin_limit'));
+            document.getElementById('bank-upgrade-slots-btn')?.addEventListener('click', () => upgradeBank('slot'));
+
+            navButtons.forEach(button => {
+                button.addEventListener('click', function() {
+                    activateTab(this.getAttribute('data-tab'));
+                });
+            });
+
+            document.getElementById('home-btn').addEventListener('click', function() {
+                activateTab('dashboard'); 
+            });
+
+            activateTab(savedTab);
+
+            document.getElementById('logout-btn').addEventListener('click', function() {
+                localStorage.removeItem('session_token');
+                window.location.href = 'index.html';
+            });
+
+            function updateGameTime() {
+                const timeElement = document.getElementById('game-time');
+                if (!timeElement) return;
+                const now = new Date();
+                const dcDay = Math.floor(now.getDate() / 8) + 1; 
+                const dcHour = now.getHours();
+                const dcMinute = now.getMinutes();
+                timeElement.textContent = `DC: Dzień ${dcDay} | ${dcHour.toString().padStart(2, '0')}:${dcMinute.toString().padStart(2, '0')}`;
+            }
+
+            const plBtn = document.getElementById('pl-info-btn');
+            const plTooltip = document.getElementById('pl-tooltip');
+            if (plBtn && plTooltip) {
+                plBtn.addEventListener('click', (e) => {
+                    e.stopPropagation(); 
+                    if (plTooltip.style.display === 'block') {
+                        plTooltip.style.display = 'none';
+                    } else {
+                        const rect = plBtn.getBoundingClientRect();
+                        plTooltip.style.left = (rect.right + 20) + 'px'; 
+                        plTooltip.style.top = (rect.top + (rect.height / 2)) + 'px';
+                        plTooltip.style.transform = 'translateY(-50%)'; 
+                        plTooltip.style.display = 'block';
+                    }
+                });
+                plTooltip.addEventListener('mouseleave', () => plTooltip.style.display = 'none');
+                document.addEventListener('click', (e) => {
+                    if (e.target !== plBtn && !plTooltip.contains(e.target)) plTooltip.style.display = 'none';
+                });
+            }
+
+            setInterval(updateGameTime, 1000);
+            updateGameTime(); 
+            setInterval(() => fetchCharacterData(true), 30000);
 
             // ==========================================
             // SYSTEM GLOBALNEGO TOOLTIPU (Hover Intent)
             // ==========================================
-            
-            // Standaryzowana funkcja do zabijania wszystkich dymków na ekranie
-            window.hideAllActiveTooltips = function() {
-                const tooltip = document.getElementById('global-tooltip');
-                if (tooltip) {
-                    tooltip.style.opacity = '0';
-                    tooltip.style.visibility = 'hidden';
-                    tooltip.dataset.currentCard = '';
-                }
-                if (window.tooltipTimeout) {
-                    clearTimeout(window.tooltipTimeout);
-                }
-            };
-            
             const globalTooltip = document.getElementById('global-tooltip');
-
             if (globalTooltip) {
                 globalTooltip.style.position = 'fixed';
                 globalTooltip.style.pointerEvents = 'none';
                 globalTooltip.style.zIndex = '999999';
-                globalTooltip.style.transition = 'opacity 0.2s ease'; // Płynne pojawianie
+                globalTooltip.style.transition = 'opacity 0.2s ease'; 
                 
-                window.tooltipTimeout = null; // ZMIANA: Stoper globalny!
-                let lastMouseX = 0; // Śledzenie pozycji X
-                let lastMouseY = 0; // Śledzenie pozycji Y
+                window.tooltipTimeout = null; 
+                let lastMouseX = 0; 
+                let lastMouseY = 0; 
 
-                // Obsługa najechania myszką
                 document.body.addEventListener('mouseover', function(e) {
                     const card = e.target.closest('.item-card, .shop-item-card, .mission-card');
                     const simpleTooltip = e.target.closest('[data-tooltip]');
                     
                     if (card || simpleTooltip) {
-                        clearTimeout(window.tooltipTimeout); // Anuluj poprzedni stoper
-                        
-                        // Odpal nowy stoper na 400 milisekund
+                        clearTimeout(window.tooltipTimeout); 
                         window.tooltipTimeout = setTimeout(() => {
-                            // KRYTYCZNA POPRAWKA: Blokujemy "duchy" usuniętych kart i blokujemy tooltipy podczas ładowania!
                             if (window.isInventoryActionLocked) return;
                             if (card && !document.body.contains(card)) return;
                             if (simpleTooltip && !document.body.contains(simpleTooltip)) return;
@@ -2931,7 +2851,6 @@
                                 
                                 try {
                                     const template = JSON.parse(decodeURIComponent(templateData));
-                                    
                                     if (isMission) {
                                         globalTooltip.innerHTML = `
                                             <div class="tooltip-title">${template.name}</div>
@@ -2947,12 +2866,12 @@
                                     } else {
                                         globalTooltip.innerHTML = createItemTooltip(template);
                                     }
-                                    positionTooltip(lastMouseX, lastMouseY); // Ustaw nad kursorem
+                                    positionTooltip(lastMouseX, lastMouseY); 
                                     
                                     globalTooltip.style.opacity = '1';
                                     globalTooltip.style.visibility = 'visible';
                                     globalTooltip.dataset.currentCard = cardId;
-                                } catch (err) { console.error('[Tooltip] Błąd odczytu danych:', err); }
+                                } catch (err) { console.error('[Tooltip] Błąd:', err); }
                             } else if (simpleTooltip) {
                                 const text = simpleTooltip.getAttribute('data-tooltip');
                                 if (!text) return;
@@ -2965,11 +2884,10 @@
                                 globalTooltip.style.visibility = 'visible';
                                 globalTooltip.dataset.currentCard = text;
                             }
-                        }, 400); // <-- TUTAJ JEST CZAS OPÓŹNIENIA (400ms)
+                        }, 400);
                     }
                 });
 
-                // Funkcja pomocnicza do ucieczki przed krawędziami ekranu
                 function positionTooltip(mouseX, mouseY) {
                     const rect = globalTooltip.getBoundingClientRect();
                     let x = mouseX - (rect.width / 2);
@@ -2984,24 +2902,17 @@
                     globalTooltip.style.top = y + 'px';
                 }
 
-                // Obsługa śledzenia kursora
                 document.body.addEventListener('mousemove', function(e) {
-                    // Zapisujemy pozycję, by stoper wiedział gdzie się pojawić
                     lastMouseX = e.clientX;
                     lastMouseY = e.clientY;
-                    
-                    if (globalTooltip.style.opacity === '1') {
-                        positionTooltip(e.clientX, e.clientY);
-                    }
+                    if (globalTooltip.style.opacity === '1') positionTooltip(e.clientX, e.clientY);
                 });
 
-                // Obsługa zjechania myszką
                 document.body.addEventListener('mouseout', function(e) {
                     const card = e.target.closest('.item-card, .shop-item-card, .mission-card');
                     const simpleTooltip = e.target.closest('[data-tooltip]');
-                    
                     if ((card && !card.contains(e.relatedTarget)) || (simpleTooltip && !simpleTooltip.contains(e.relatedTarget))) {
-                        clearTimeout(window.tooltipTimeout); // ZABIJ STOPER - Gracz przejechał dalej!
+                        clearTimeout(window.tooltipTimeout); 
                         globalTooltip.style.opacity = '0';
                         globalTooltip.style.visibility = 'hidden';
                         globalTooltip.dataset.currentCard = '';
@@ -3009,41 +2920,27 @@
                 });
             }
 
-            // 7. Obsługa zwijania headera
+            // Header i Mobile
             const toggleHeaderBtn = document.getElementById('toggle-header-btn');
             const headerPanel = document.getElementById('top-panel-1');
-            
-            // Odczytaj stan z localStorage przy starcie
-            const headerCollapsed = localStorage.getItem('header_collapsed');
-            if (headerCollapsed === 'true') {
+            if (localStorage.getItem('header_collapsed') === 'true') {
                 headerPanel.classList.add('header-collapsed');
                 toggleHeaderBtn.textContent = '🔽';
             }
-            
-            // EventListener dla przycisku toggle
             toggleHeaderBtn.addEventListener('click', function() {
                 const isCollapsed = headerPanel.classList.toggle('header-collapsed');
-                
-                // Zapisz stan w localStorage
                 localStorage.setItem('header_collapsed', isCollapsed.toString());
-                
-                // Zmień ikonę przycisku
                 this.textContent = isCollapsed ? '🔽' : '🔼';
             });
 
-            // 8. Obsługa zwijania panelu statystyk na mobile
             const toggleStatsBtn = document.getElementById('toggle-stats-details');
             const leftSidebar = document.getElementById('left-sidebar');
-            
             if (toggleStatsBtn) {
                 toggleStatsBtn.addEventListener('click', function() {
                     const isExpanded = leftSidebar.classList.toggle('stats-expanded');
-                    
-                    // Zmień tekst przycisku
                     this.textContent = isExpanded ? 'Zwiń 🔼' : 'Szczegóły postaci 🔽';
                 });
             }
-
         });
     </script>
 <div id="global-tooltip" class="item-tooltip"></div>
