@@ -471,11 +471,13 @@ body {
 }
 
 .equipment-panel {
+    flex: 1; /* Wymusza 50% szerokości */
     background: var(--goku-panel-bg);
     border: 2px solid var(--goku-panel-border);
     border-radius: 12px;
     padding: 1.5rem;
-    min-width: 450px;
+    display: flex;
+    flex-direction: column;
 }
 
 .character-body {
@@ -539,11 +541,13 @@ body {
 .equipment-slot[data-slot="feet"] { grid-area: feet; }
 
 .inventory-panel {
+    flex: 1; /* Wymusza 50% szerokości */
     background: var(--goku-panel-bg);
     border: 2px solid var(--goku-panel-border);
     border-radius: 12px;
     padding: 1.5rem;
-    min-width: 500px;
+    display: flex;
+    flex-direction: column;
 }
 
 .inventory-grid {
@@ -551,13 +555,24 @@ body {
     grid-template-columns: repeat(auto-fill, minmax(75px, 1fr));
     gap: 10px;
     align-content: start;
-    /* --- NOWY, PIĘKNY WYGLĄD Z BANKU --- */
     padding: 0.75rem;
     background: rgba(0, 0, 0, 0.2);
     border: 1px solid var(--goku-panel-border);
     border-radius: 8px;
-    max-height: 400px;
+    height: 420px; /* Twarda wysokość dla idealnej symetrii z lewym panelem */
     overflow-y: auto;
+}
+
+/* NOWA KLASA: Tło dla postaci (dodaj to zaraz pod .inventory-grid) */
+.character-body-container {
+    padding: 0.75rem;
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid var(--goku-panel-border);
+    border-radius: 8px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 420px; /* Dokładnie taka sama wysokość jak plecak obok */
 }
 
 .inventory-slot {
