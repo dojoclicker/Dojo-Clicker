@@ -213,13 +213,32 @@ app.get('/api/status', (req, res) => {
 // SYSTEM AUTORYZACJI I KONT
 // ==========================================
 
+// Przywrócona funkcja autoryzacji
+async function authenticateToken(req, res, next) {
+  try {
+    const authHeader = req.headers['authorization'];
+    const token = authHeader && authHeader.split(' ')[1]; 
+
+    if (!token) return res.status(401).json({ error: 'Brak tokenu autoryzacyjnego' });
+
+    const { data: { user }, error } = await supabase.auth.getUser(token);
+    if (error || !user) return res.status(403).json({ error: 'Nieprawidłowy lub wygasły token' });
+
+    req.user = user;
+    next();
+  } catch (err) {
+    console.error('[Auth] Błąd weryfikacji tokenu:', err.message);
+    return res.status(403).json({ error: 'Błąd weryfikacji tokenu' });
+  }
+}
+
 // Middleware sprawdzający, czy gracz żyje (Szpital)
 const requireAlive = async (req, res, next) => {
     try {
         const { data: char, error } = await supabase
             .from('characters')
             .select('hp')
-            .eq('profile_id', req.user.id) // Używamy profile_id, tak jak w reszcie Twojego kodu
+            .eq('profile_id', req.user.id)
             .single();
 
         if (error || !char) return res.status(404).json({ error: 'Nie znaleziono postaci' });
@@ -227,7 +246,7 @@ const requireAlive = async (req, res, next) => {
         if (BigInt(char.hp || '0') <= 0n) {
             return res.status(400).json({ success: false, error: 'Jesteś w Szpitalu! Nie możesz wykonywać tej akcji.' });
         }
-        next(); // Gracz żyje, wpuszczamy go dalej!
+        next(); 
     } catch (err) {
         res.status(500).json({ error: 'Błąd weryfikacji zdrowia' });
     }
