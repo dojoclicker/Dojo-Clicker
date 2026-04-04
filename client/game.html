@@ -389,7 +389,8 @@
         // Konfiguracja Supabase
         const SUPABASE_URL = 'https://your-project.supabase.co'; // TODO: Uzupełnij URL projektu
         const SUPABASE_ANON_KEY = 'your-anon-key'; // TODO: Uzupełnij klucz publiczny
-        const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        // Zmieniamy nazwę zmiennej na supabaseClient i używamy globalnego obiektu supabase
+        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
         
         // Globalna blokada akcji ekwipunku (Race Condition fix)
         window.isInventoryActionLocked = false;
@@ -2680,7 +2681,7 @@
             // Pobieranie wiadomości czatu
             async function fetchChatMessages() {
                 try {
-                    const { data, error } = await supabase
+                    const { data, error } = await supabaseClient
                         .from('global_messages')
                         .select(`
                             id,
@@ -2787,7 +2788,7 @@
             // Inicjalizacja Supabase Realtime dla czatu
             function initializeRealtimeChat() {
                 // Subskrypcja do nowych wiadomości
-                const channel = supabase
+                const channel = supabaseClient
                     .channel('global_chat')
                     .on(
                         'postgres_changes',
@@ -2803,7 +2804,7 @@
                             const chatMessages = document.getElementById('chat-messages');
                             if (chatMessages && chatMessages.style.display !== 'none') {
                                 // Pobierz dane profilu dla nowej wiadomości
-                                supabase
+                                supabaseClient
                                     .from('profiles')
                                     .select('username')
                                     .eq('id', payload.new.profile_id)
