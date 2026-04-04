@@ -387,9 +387,10 @@
             : 'https://dojo-clicker.onrender.com';
         
         // Konfiguracja Supabase
-        const SUPABASE_URL = 'https://your-project.supabase.co'; // TODO: Uzupełnij URL projektu
-        const SUPABASE_ANON_KEY = 'your-anon-key'; // TODO: Uzupełnij klucz publiczny
-        // Zmieniamy nazwę zmiennej na supabaseClient i używamy globalnego obiektu supabase
+        const SUPABASE_URL = 'https://mtilsthiwqoquwpecyln.supabase.co'; 
+        const SUPABASE_ANON_KEY = 'sb_publishable_36PlexFXBSJOQyDG3WDItA_jq1s6zm6'; 
+
+        // Inicjalizacja klienta
         const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
         
         // Globalna blokada akcji ekwipunku (Race Condition fix)
