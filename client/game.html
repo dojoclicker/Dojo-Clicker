@@ -2612,7 +2612,7 @@
                 if (res && res.success) {
                     chatInput.value = '';
                     showNotification('Czat', res.data.message, 'success', 2000);
-                    fetchChatMessages();
+                    // USUNIĘTO: fetchChatMessages(); <--- Pozbywamy się tego!
                 } else if (res) {
                     showNotification('Błąd czatu', res.error, 'error');
                 }
