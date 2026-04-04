@@ -1718,96 +1718,47 @@
 
         // Kupowanie przedmiotu
         async function buyItem(item) {
-            if (window.isInventoryActionLocked) return;
-            window.isInventoryActionLocked = true;
-            
-            try {
-                const response = await fetch(`${API_BASE_URL}/api/shop/buy`, {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${localStorage.getItem('session_token')}`,
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        template_id: item.id,
-                        shop_level: currentShopLevel
-                    })
-                });
+            const res = await apiCall('/api/shop/buy', 'POST', {
+                template_id: item.id,
+                shop_level: currentShopLevel
+            }, true);
+            if (!res) return;
 
-                if (!response.ok) {
-                    const errorData = await response.json();
-                    if (response.status === 400 && errorData.error && errorData.error.includes('miejsce')) {
-                        showWarningMessage('Brak miejsca w plecaku!');
-                        return;
-                    }
-                    showWarningMessage(errorData.error || 'Błąd podczas kupna');
-                    return;
-                }
-
-                const data = await response.json();
-                
-                if (data.success) {
-                    showSuccessMessage(`Kupiono ${item.name}!`);
-                    await fetchInventory(); // Odśwież ekwipunek
-                    await fetchCharacterData(); // Odśwież monety
-                    renderShopItems(); // Odśwież przyciski
-                    renderShopBackpack(); // Odśwież plecak
+            if (res.success) {
+                showSuccessMessage(`Kupiono ${item.name}!`);
+                await fetchInventory();
+                await fetchCharacterData();
+                renderShopItems();
+                renderShopBackpack();
+            } else {
+                // Wyjątek z poprzedniego kodu - cichy warning dla braku miejsca
+                if (res.error && res.error.includes('miejsce')) {
+                    showWarningMessage('Brak miejsca w plecaku!');
                 } else {
-                    showWarningMessage(data.error || 'Błąd podczas kupna');
+                    showWarningMessage(res.error || 'Błąd podczas kupna');
                 }
-                
-            } catch (error) {
-                console.error('[Shop] Błąd komunikacji z backendem:', error);
-                showWarningMessage('Wystąpił błąd podczas kupna');
-            } finally {
-                window.isInventoryActionLocked = false;
             }
         }
 
         // Sprzedaż przedmiotu
         async function sellItem(inventoryId, amount = 'all') {
-            if (window.isInventoryActionLocked) return;
-            window.isInventoryActionLocked = true;
-            
             // Wymuszone ukrycie tooltipa przy sprzedaży
             const tooltip = document.getElementById('global-tooltip');
             if (tooltip) { tooltip.style.opacity = '0'; tooltip.style.visibility = 'hidden'; tooltip.dataset.currentCard = ''; }
             
-            try {
-                const response = await fetch(`${API_BASE_URL}/api/shop/sell`, {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${localStorage.getItem('session_token')}`,
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        inventory_id: inventoryId,
-                        amount: amount
-                    })
-                });
+            const res = await apiCall('/api/shop/sell', 'POST', {
+                inventory_id: inventoryId,
+                amount: amount
+            }, true);
+            if (!res) return;
 
-                if (!response.ok) {
-                    const errorData = await response.json();
-                    showWarningMessage(errorData.error || 'Błąd podczas sprzedaży');
-                    return;
-                }
-
-                const data = await response.json();
-                
-                if (data.success) {
-                    showSuccessMessage(`Sprzedano ${data.item.name} x${data.item.quantity} za ${data.item.total_sell_price} monet!`);
-                    await fetchInventory(); // Odśwież ekwipunek
-                    await fetchCharacterData(); // Odśwież monety
-                    renderShopBackpack(); // Odśwież plecak
-                } else {
-                    showWarningMessage(data.error || 'Błąd podczas sprzedaży');
-                }
-                
-            } catch (error) {
-                console.error('[Shop] Błąd komunikacji z backendem:', error);
-                showWarningMessage('Wystąpił błąd podczas sprzedaży');
-            } finally {
-                window.isInventoryActionLocked = false;
+            if (res.success) {
+                showSuccessMessage(`Sprzedano ${res.data.item.name} x${res.data.item.quantity} za ${res.data.item.total_sell_price} monet!`);
+                await fetchInventory();
+                await fetchCharacterData();
+                renderShopBackpack();
+            } else {
+                showWarningMessage(res.error || 'Błąd podczas sprzedaży');
             }
         }
 
@@ -2085,46 +2036,20 @@
 
         // Funkcja do dzielenia przedmiotów
         async function splitItem(inventoryId, amount) {
-            if (window.isInventoryActionLocked) return;
-            window.isInventoryActionLocked = true;
-            
             // Wymuszone ukrycie tooltipa przy dzieleniu
             const tooltip = document.getElementById('global-tooltip');
             if (tooltip) { tooltip.style.opacity = '0'; tooltip.style.visibility = 'hidden'; tooltip.dataset.currentCard = ''; }
             
-            try {
-                const response = await fetch(`${API_BASE_URL}/api/inventory/split`, {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${localStorage.getItem('session_token')}`,
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        inventory_id: inventoryId,
-                        amount_to_split: amount
-                    })
-                });
+            const res = await apiCall('/api/inventory/split', 'POST', {
+                inventory_id: inventoryId,
+                amount_to_split: amount
+            }, true);
+            if (!res) return;
 
-                if (!response.ok) {
-                    const errorData = await response.json();
-                    showWarningMessage(errorData.error || 'Błąd podczas dzielenia przedmiotu');
-                    return;
-                }
-
-                const data = await response.json();
-                
-                if (data.success) {
-                    // Ciche odświeżenie bez wiadomości, aby uniknąć podwójnego kliknięcia
-                    await fetchInventory();
-                } else {
-                    showWarningMessage(data.error || 'Błąd podczas dzielenia przedmiotu');
-                }
-                
-            } catch (error) {
-                console.error('[Split] Błąd komunikacji z backendem:', error);
-                showWarningMessage('Wystąpił błąd podczas dzielenia przedmiotu');
-            } finally {
-                window.isInventoryActionLocked = false;
+            if (res.success) {
+                await fetchInventory(); // Ciche odświeżenie bez wiadomości
+            } else {
+                showWarningMessage(res.error || 'Błąd podczas dzielenia przedmiotu');
             }
         }
 
@@ -2224,56 +2149,24 @@
 
         // Wykonywanie konsumpcji przedmiotu z backendem
         async function consumeItem(inventoryId) {
-            if (window.isInventoryActionLocked) return;
-            window.isInventoryActionLocked = true;
-            
             // Wymuszone ukrycie tooltipa przy konsumpcji
             const tooltip = document.getElementById('global-tooltip');
             if (tooltip) { tooltip.style.opacity = '0'; tooltip.style.visibility = 'hidden'; tooltip.dataset.currentCard = ''; }
             
-            try {
-                const response = await fetch(`${API_BASE_URL}/api/inventory/consume`, {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${localStorage.getItem('session_token')}`,
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        inventory_id: inventoryId
-                    })
-                });
+            const res = await apiCall('/api/inventory/consume', 'POST', { inventory_id: inventoryId }, true);
+            if (!res) return;
 
-                if (!response.ok) {
-                    const errorData = await response.json();
-                    
-                    // Sprawdź czy to warning (np. pełne zasoby)
-                    if (errorData.status === 'warning') {
-                        showWarningMessage(errorData.message);
-                        return;
-                    }
-                    
-                    // Inne błędy
-                    showWarningMessage(errorData.error || 'Błąd podczas używania przedmiotu');
-                    return;
-                }
-
-                const data = await response.json();
-                
-                if (data.success) {
-                    // Sukces - odśwież dane
-                    await fetchInventory();
-                    await fetchCharacterData();
-                    showSuccessMessage(data.message);
+            if (res.success) {
+                await fetchInventory();
+                await fetchCharacterData();
+                showSuccessMessage(res.data.message);
+            } else {
+                // Sprawdź czy to warning (np. pełne zasoby) przekazany z backendu
+                if (res.data && res.data.status === 'warning') {
+                    showWarningMessage(res.data.message);
                 } else {
-                    // Błąd z backendu
-                    showWarningMessage(data.error || 'Błąd podczas używania przedmiotu');
+                    showWarningMessage(res.error || 'Błąd podczas używania przedmiotu');
                 }
-                
-            } catch (error) {
-                console.error('[Consume] Błąd komunikacji z backendem:', error);
-                showWarningMessage('Wystąpił błąd podczas używania przedmiotu');
-            } finally {
-                window.isInventoryActionLocked = false;
             }
         }
 
