@@ -1734,6 +1734,16 @@ app.post('/api/chat/send', authenticateToken, async (req, res) => {
   }
 });
 
+// Czyszczenie mapy anty-spamowej czatu co 1 godzinę (Zabezpieczenie RAM)
+setInterval(() => {
+  const now = Date.now();
+  for (const [userId, timestamp] of chatRateLimitMap.entries()) {
+    if (now - timestamp > CHAT_RATE_LIMIT_TTL) {
+      chatRateLimitMap.delete(userId);
+    }
+  }
+}, 60 * 60 * 1000);
+
 app.listen(port, async () => {
   console.log(`[Dojo-Clicker API] Serwer nasłuchuje na porcie ${port}...`);
   await initGlobalState();
