@@ -204,6 +204,42 @@
             </div>
         </div>
 
+        <div id="shop-view" style="display: none;">
+            <div class="shop-container game-panel-row">
+                
+                <div class="shop-left-column game-panel" style="flex: 1.4;">
+                    <div class="shop-level-tabs">
+                        <button class="shop-tab active" data-level="1">Sklep Nowicjusza</button>
+                        <button class="shop-tab disabled" data-level="2" disabled>Sklep Poziom 2</button>
+                    </div>
+
+                    <div class="shop-category-tabs">
+                        <button class="category-tab active" data-category="consumables">Przedmioty Używalne</button>
+                        <button class="category-tab" data-category="training">Sprzęt Treningowy</button>
+                        <button class="category-tab" data-category="equipment">Ekwipunek Zwykły</button>
+                    </div>
+
+                    <div class="shop-content" style="flex: 1;">
+                        <div class="shop-items-grid" id="shop-items-grid">
+                            </div>
+                    </div>
+                </div>
+
+                <div class="shop-right-column game-panel" style="flex: 1;">
+                    <div class="shop-backpack-panel" style="display: flex; flex-direction: column; height: 100%;">
+                        <div class="game-panel-header">
+                            <h4 class="game-panel-title" style="color: #a3e635;">Twój Plecak</h4>
+                            <button class="nuke-help-btn" data-tooltip="Przeciągnij przedmiot do lewej kolumny sklepu, aby go sprzedać w całości, lub kliknij go dwukrotnie aby sprzedać jedną sztukę.">?</button>
+                        </div>
+                        
+                        <div class="shop-backpack-grid" id="shop-backpack-grid" style="flex: 1; height: 100%; min-height: 400px;">
+                            </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
         <div id="bank-view" style="display: none;">
             <div class="bank-container bank-wrapper">
                 
