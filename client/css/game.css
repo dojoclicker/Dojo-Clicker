@@ -548,9 +548,16 @@ body {
 
 .inventory-grid {
     display: grid;
-    grid-template-columns: repeat(5, 80px);
+    grid-template-columns: repeat(auto-fill, minmax(75px, 1fr));
     gap: 10px;
-    justify-content: center;
+    align-content: start;
+    /* --- NOWY, PIĘKNY WYGLĄD Z BANKU --- */
+    padding: 0.75rem;
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid var(--goku-panel-border);
+    border-radius: 8px;
+    max-height: 400px;
+    overflow-y: auto;
 }
 
 .inventory-slot {
@@ -955,10 +962,17 @@ body {
 }
 
 .shop-backpack-grid {
-    display: flex;
-    flex-wrap: wrap;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(75px, 1fr));
     gap: 10px;
-    justify-content: center;
+    align-content: start;
+    /* --- NOWY, PIĘKNY WYGLĄD Z BANKU --- */
+    padding: 0.75rem;
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid var(--goku-panel-border);
+    border-radius: 8px;
+    max-height: 400px;
+    overflow-y: auto;
 }
 
 /* SYSTEM TOOLTIPÓW */
