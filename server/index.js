@@ -213,23 +213,25 @@ app.get('/api/status', (req, res) => {
 // SYSTEM AUTORYZACJI I KONT
 // ==========================================
 
-async function authenticateToken(req, res, next) {
-  try {
-    const authHeader = req.headers['authorization'];
-    const token = authHeader && authHeader.split(' ')[1]; 
+// Middleware sprawdzający, czy gracz żyje (Szpital)
+const requireAlive = async (req, res, next) => {
+    try {
+        const { data: char, error } = await supabase
+            .from('characters')
+            .select('hp')
+            .eq('profile_id', req.user.id) // Używamy profile_id, tak jak w reszcie Twojego kodu
+            .single();
 
-    if (!token) return res.status(401).json({ error: 'Brak tokenu autoryzacyjnego' });
+        if (error || !char) return res.status(404).json({ error: 'Nie znaleziono postaci' });
 
-    const { data: { user }, error } = await supabase.auth.getUser(token);
-    if (error || !user) return res.status(403).json({ error: 'Nieprawidłowy lub wygasły token' });
-
-    req.user = user;
-    next();
-  } catch (err) {
-    console.error('[Auth] Błąd weryfikacji tokenu:', err.message);
-    return res.status(403).json({ error: 'Błąd weryfikacji tokenu' });
-  }
-}
+        if (BigInt(char.hp || '0') <= 0n) {
+            return res.status(400).json({ success: false, error: 'Jesteś w Szpitalu! Nie możesz wykonywać tej akcji.' });
+        }
+        next(); // Gracz żyje, wpuszczamy go dalej!
+    } catch (err) {
+        res.status(500).json({ error: 'Błąd weryfikacji zdrowia' });
+    }
+};
 
 function bigIntReplacer(key, value) {
   return typeof value === 'bigint' ? value.toString() : value;
@@ -690,7 +692,7 @@ app.post('/api/inventory/consume', authenticateToken, async (req, res) => {
 // ==========================================
 // SILNIK MISJI
 // ==========================================
-app.post('/api/missions/start', authenticateToken, async (req, res) => {
+app.post('/api/missions/start', authenticateToken, requireAlive, async (req, res) => {
   try {
     const { missionId } = req.body;
     const userId = req.user.id;
@@ -705,7 +707,6 @@ app.post('/api/missions/start', authenticateToken, async (req, res) => {
       .single();
 
     if (missionError || !mission) return res.status(404).json({ error: 'Nie znaleziono misji' });
-    if (BigInt(character.hp || '0') <= 0n) return res.status(400).json({ status: 'error', message: 'Jesteś w Szpitalu! Nie możesz podjąć misji.' });
     if (BigInt(character.stamina ?? '0') < BigInt(mission.stamina_cost)) return res.status(400).json({ status: 'error', message: 'Nie masz staminy!' });
 
     const completedMissions = character.completed_missions || [];
@@ -1129,7 +1130,7 @@ app.get('/api/shop/items', authenticateToken, async (req, res) => {
   } catch (err) { res.status(500).json({ error: 'Błąd' }); }
 });
 
-app.post('/api/shop/buy', authenticateToken, async (req, res) => {
+app.post('/api/shop/buy', authenticateToken, requireAlive, async (req, res) => {
   try {
     const userId = req.user.id;
     const { template_id, quantity = 1 } = req.body;
@@ -1160,7 +1161,7 @@ app.post('/api/shop/buy', authenticateToken, async (req, res) => {
   } catch (err) { res.status(500).json({ error: 'Błąd' }); }
 });
 
-app.post('/api/shop/sell', authenticateToken, async (req, res) => {
+app.post('/api/shop/sell', authenticateToken, requireAlive, async (req, res) => {
   try {
     const userId = req.user.id;
     const { inventory_id, amount } = req.body;
@@ -1208,7 +1209,7 @@ const BANK_SLOT_COSTS = {
 };
 
 // Endpoint 1: Transfer monet
-app.post('/api/bank/transfer_coins', authenticateToken, async (req, res) => {
+app.post('/api/bank/transfer_coins', authenticateToken, requireAlive, async (req, res) => {
   try {
     const userId = req.user.id;
     const { action, amount } = req.body;
@@ -1223,11 +1224,6 @@ app.post('/api/bank/transfer_coins', authenticateToken, async (req, res) => {
       .single();
 
     if (characterError || !character) return res.status(404).json({ error: 'Postać nie znaleziona' });
-
-    // Zabezpieczenie Szpitala
-    if (BigInt(character.hp || '0') <= 0n) {
-      return res.status(400).json({ error: 'Jesteś w Szpitalu! Bank jest niedostępny.' });
-    }
 
     const transferAmount = BigInt(amount);
     if (transferAmount <= 0n) return res.status(400).json({ error: 'Kwota musi być dodatnia' });
@@ -1263,7 +1259,7 @@ app.post('/api/bank/transfer_coins', authenticateToken, async (req, res) => {
 });
 
 // Endpoint 2: Ulepszenia Banku
-app.post('/api/bank/upgrade', authenticateToken, async (req, res) => {
+app.post('/api/bank/upgrade', authenticateToken, requireAlive, async (req, res) => {
   try {
     const userId = req.user.id;
     const { upgrade_type } = req.body;
@@ -1327,7 +1323,7 @@ app.post('/api/bank/upgrade', authenticateToken, async (req, res) => {
 });
 
 // Endpoint 3: Transfer przedmiotów
-app.post('/api/bank/transfer_item', authenticateToken, async (req, res) => {
+app.post('/api/bank/transfer_item', authenticateToken, requireAlive, async (req, res) => {
   try {
     const userId = req.user.id;
     const { inventory_id, target_panel, amount, target_index } = req.body;
@@ -1492,7 +1488,7 @@ app.post('/api/bank/transfer_item', authenticateToken, async (req, res) => {
 });
 
 // Endpoint 4: Kaskadowy Split w Banku
-app.post('/api/bank/split', authenticateToken, async (req, res) => {
+app.post('/api/bank/split', authenticateToken, requireAlive, async (req, res) => {
   try {
     const userId = req.user.id;
     const { inventory_id, amount_to_split } = req.body;
