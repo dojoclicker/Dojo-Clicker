@@ -1220,6 +1220,11 @@
             if (tabName === 'bank') {
                 renderBank();
             }
+
+            // Renderuj Dashboard (Czat i Ranking) jeśli aktywny
+            if (tabName === 'dashboard') {
+                setTimeout(initializeDashboard, 100);
+            }
         }
 
         // Pobieranie danych ekwipunku z API
@@ -2813,10 +2818,9 @@
                 const chatMessages = document.getElementById('chat-messages');
                 if (!chatMessages) return;
 
-                // Usuń placeholder "Brak wiadomości" jeśli istnieje
-                const placeholder = chatMessages.querySelector('div:has(> div:contains("💬 Brak wiadomości"))');
-                if (placeholder) {
-                    placeholder.remove();
+                // [POPRAWIONE] Bezpieczne usuwanie placeholdera w Vanilla JS
+                if (chatMessages.innerHTML.includes('Brak wiadomości') || chatMessages.innerHTML.includes('Ładowanie czatu')) {
+                    chatMessages.innerHTML = '';
                 }
 
                 const time = new Date(message.created_at).toLocaleTimeString('pl-PL', { 
@@ -2872,17 +2876,6 @@
                 // Inicjalizuj dashboard po załadowaniu
                 setTimeout(initializeDashboard, 1000);
             });
-
-            // Hook do przełączania zakładek - odświeżaj dashboard gdy jest aktywny
-            const originalTabSwitching = window.switchTab;
-            if (typeof originalTabSwitching === 'function') {
-                window.switchTab = function(tabName) {
-                    originalTabSwitching(tabName);
-                    if (tabName === 'dashboard') {
-                        setTimeout(initializeDashboard, 100);
-                    }
-                };
-            }
 
             // ==========================================
             // SYSTEM GLOBALNEGO TOOLTIPU (Hover Intent)
