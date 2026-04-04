@@ -188,15 +188,15 @@
                 
                 <div class="hospital-panel-left game-panel" style="flex: 1; justify-content: center; align-items: center;">
                     <div class="hospital-big-graphic">
-                        <div style="font-size: 12rem; filter: drop-shadow(0 0 15px rgba(220,38,38,0.6)); line-height: 1;">🏥</div>
+                        <div class="hospital-emoji">🏥</div>
                     </div>
                 </div>
 
                 <div class="hospital-panel-right game-panel" style="flex: 1; text-align: center; justify-content: center;">
-                    <h2 id="hospital-header" style="padding: 10px; border-radius: 8px; font-size: 2rem; margin-bottom: 0;">Jesteś Ranny!</h2>
-                    <p id="hospital-desc" style="font-size: 1.1rem; margin: 15px 0;">Potrzebujesz leczenia...</p>
+                    <h2 id="hospital-header" class="hospital-title">Jesteś Ranny!</h2>
+                    <p id="hospital-desc" class="hospital-subtitle">Potrzebujesz leczenia...</p>
                     
-                    <div id="hospital-countdown" style="font-size: 3.5rem; font-weight: bold; margin: 20px 0; color: var(--error); text-shadow: 2px 2px 4px rgba(0,0,0,0.5);">00:00:00</div>
+                    <div id="hospital-countdown" class="hospital-timer">00:00:00</div>
                     
                     <button class="upgrade-btn" id="btn-use-senzu" style="display: block; margin: 15px auto; max-width: 250px; background: #6c757d;">Zjedz Magiczną Fasolkę (0)</button>
                 </div>
@@ -204,47 +204,10 @@
             </div>
         </div>
 
-        <!-- Widok Sklepu -->
-        <div id="shop-view" style="display: none;">
-            <div class="shop-container game-panel-row">
-                
-                <div class="shop-left-column game-panel" style="flex: 1.4;">
-                    <div class="shop-level-tabs">
-                        <button class="shop-tab active" data-level="1">Sklep Nowicjusza</button>
-                        <button class="shop-tab disabled" data-level="2" disabled>Sklep Poziom 2</button>
-                    </div>
-
-                    <div class="shop-category-tabs">
-                        <button class="category-tab active" data-category="consumables">Przedmioty Używalne</button>
-                        <button class="category-tab" data-category="training">Sprzęt Treningowy</button>
-                        <button class="category-tab" data-category="equipment">Ekwipunek Zwykły</button>
-                    </div>
-
-                    <div class="shop-content" style="flex: 1;">
-                        <div class="shop-items-grid" id="shop-items-grid">
-                            </div>
-                    </div>
-                </div>
-
-                <div class="shop-right-column game-panel" style="flex: 1;">
-                    <div class="shop-backpack-panel" style="display: flex; flex-direction: column; height: 100%;">
-                        <div class="game-panel-header">
-                            <h4 class="game-panel-title" style="color: #a3e635;">Twój Plecak</h4>
-                            <button class="nuke-help-btn" data-tooltip="Przeciągnij przedmiot do lewej kolumny sklepu, aby go sprzedać w całości, lub kliknij go dwukrotnie aby sprzedać jedną sztukę.">?</button>
-                        </div>
-                        
-                        <div class="shop-backpack-grid" id="shop-backpack-grid" style="flex: 1; height: 100%; min-height: 400px;">
-                            </div>
-                    </div>
-                </div>
-
-            </div>
-        </div>
-
         <div id="bank-view" style="display: none;">
-            <div class="bank-container" style="display: flex; flex-direction: column; gap: 1rem; width: 100%;">
+            <div class="bank-container bank-wrapper">
                 
-                <div class="game-panel" style="width: 100%;">
+                <div class="game-panel bank-top-panel">
                     <div class="game-panel-header">
                         <h4 class="game-panel-title" style="color: #f59e0b;">Zarządzanie Lokatą</h4>
                         <button class="nuke-help-btn" data-tooltip="Depozytuj monety, aby chronić je przed stratą po śmierci w misji.">?</button>
@@ -263,21 +226,21 @@
                         </div>
                         <div class="bank-limit-info" style="margin-bottom: 15px;">Limit: <span id="bank-limit-display">10,000</span> 💰</div>
                         
-                        <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
-                            <div class="bank-transfer-section" style="flex: 1; min-width: 200px; margin-bottom: 0;">
-                                <h4 style="margin-top: 0; margin-bottom: 10px; color: var(--text-primary);">Transfer Monet</h4>
+                        <div class="bank-actions-wrapper">
+                            <div class="bank-transfer-section bank-action-box">
+                                <h4 class="bank-action-title">Transfer Monet</h4>
                                 <div class="transfer-controls">
-                                    <input type="text" id="bank-amount-input" placeholder="Wpisz ilość..." style="width: 100%; margin-bottom: 10px;">
-                                    <div class="transfer-buttons" style="display: flex; gap: 10px;">
+                                    <input type="text" id="bank-amount-input" class="bank-full-input" placeholder="Wpisz ilość...">
+                                    <div class="bank-btn-group">
                                         <button class="btn-header" id="bank-deposit-btn" style="flex: 1;">Wpłać</button>
                                         <button class="btn-header" id="bank-withdraw-btn" style="flex: 1;">Wypłać</button>
                                     </div>
                                 </div>
                             </div>
 
-                            <div class="bank-upgrade-section" style="flex: 1; min-width: 200px; margin-bottom: 0;">
-                                <h4 style="margin-top: 0; margin-bottom: 10px; color: var(--text-primary);">Ulepszenie Banku</h4>
-                                <button class="upgrade-btn" id="bank-upgrade-limit-btn" style="width: 100%; margin-bottom: 5px;">Zwiększ limit (Koszt: <span id="bank-upgrade-cost">5,000</span>)</button>
+                            <div class="bank-upgrade-section bank-action-box">
+                                <h4 class="bank-action-title">Ulepszenie Banku</h4>
+                                <button class="upgrade-btn bank-full-input" id="bank-upgrade-limit-btn">Zwiększ limit (Koszt: <span id="bank-upgrade-cost">5,000</span>)</button>
                                 <div class="bank-limit-info">Poziom: <span id="bank-next-level">2</span></div>
                             </div>
                         </div>
@@ -294,7 +257,7 @@
                         </div>
                         
                         <div class="bank-items-grid" id="bank-items-grid" style="flex: 1; min-height: 350px;">
-                            </div>
+                        </div>
                     </div>
 
                     <div class="game-panel" style="flex: 1;">
@@ -586,26 +549,18 @@
         }
 
         // UNIWERSALNY SYSTEM POWIADOMIEŃ (Toasty w prawym górnym rogu)
+        // UNIWERSALNY SYSTEM POWIADOMIEŃ (Toasty w prawym górnym rogu)
         function showNotification(title, message, type = 'info', duration = 3500) {
-            // 1. Znajdź lub stwórz globalny kontener na powiadomienia
             let container = document.getElementById('notification-container');
             if (!container) {
                 container = document.createElement('div');
                 container.id = 'notification-container';
-                container.style.cssText = `
-                    position: fixed; top: 20px; right: 20px;
-                    display: flex; flex-direction: column; gap: 10px;
-                    z-index: 10000; pointer-events: none;
-                    max-width: 350px; width: 100%;
-                `;
                 document.body.appendChild(container);
             }
 
-            // 2. Stwórz sam popup
             const popup = document.createElement('div');
-            popup.style.pointerEvents = 'auto'; // Pozwala na kliknięcie w powiadomienie
+            popup.className = 'toast-popup';
             
-            // Kolory i ikony
             let bgColor = 'var(--goku-panel-bg)';
             let borderColor = 'var(--goku-panel-border)';
             let icon = 'ℹ️';
@@ -615,48 +570,31 @@
             else if (type === 'error') { bgColor = '#cc0000'; borderColor = '#990000'; icon = '❌'; }
             else if (type === 'death') { bgColor = '#8b0000'; borderColor = '#5c0000'; icon = '🏥'; }
 
-            // Nowoczesny, kompaktowy design z animacją wjazdu
-            popup.style.cssText = `
-                padding: 1rem; border-radius: 8px;
-                box-shadow: 0 6px 16px rgba(0,0,0,0.6);
-                color: white; background-color: ${bgColor}; 
-                border-left: 6px solid ${borderColor};
-                cursor: pointer; text-align: left;
-                transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.3s ease;
-                transform: translateX(120%);
-                opacity: 0;
-            `;
+            popup.style.backgroundColor = bgColor;
+            popup.style.borderLeft = `6px solid ${borderColor}`;
             
-            // Renderowanie treści (Kompaktowe)
             popup.innerHTML = `
-                <div style="display: flex; align-items: center; gap: 10px; margin-bottom: ${message ? '6px' : '0'};">
-                    <span style="font-size: 1.4rem; line-height: 1;">${icon}</span>
-                    <h3 style="margin: 0; font-size: 1.1rem; text-shadow: 1px 1px 2px rgba(0,0,0,0.3);">${title}</h3>
+                <div class="toast-header" style="${message ? 'margin-bottom: 6px;' : 'margin-bottom: 0;'}">
+                    <span class="toast-icon">${icon}</span>
+                    <h3 class="toast-title">${title}</h3>
                 </div>
-                ${message ? `<div style="font-size: 0.95rem; line-height: 1.4; padding-left: 32px; color: #f8fafc;">${message}</div>` : ''}
+                ${message ? `<div class="toast-body">${message}</div>` : ''}
             `;
             
-            // Dodaj do kontenera i aktywuj animację
             container.appendChild(popup);
             requestAnimationFrame(() => {
                 popup.style.transform = 'translateX(0)';
                 popup.style.opacity = '1';
             });
 
-            // Funkcja zamykająca powiadomienie
             const closePopup = () => {
                 popup.style.transform = 'translateX(120%)';
                 popup.style.opacity = '0';
                 setTimeout(() => { if (popup.parentNode) popup.remove(); }, 300);
             };
 
-            // Zamknięcie po kliknięciu
             popup.addEventListener('click', closePopup);
-            
-            // Automatyczne zniknięcie
-            setTimeout(() => {
-                if (popup.parentNode) closePopup();
-            }, duration);
+            setTimeout(() => { if (popup.parentNode) closePopup(); }, duration);
         }
 
         // Klasyczne wrappery dla wstecznej kompatybilności starego kodu
@@ -2077,92 +2015,85 @@
 
         // Tworzenie tooltipu dla przedmiotu
         function createItemTooltip(template) {
-        if (!template) return '';
+            if (!template) return '';
 
-        let tooltipHTML = `<div class="tooltip-title">${template.name || 'Nieznany Przedmiot'}</div>`;
+            let tooltipHTML = `<div class="tooltip-title">${template.name || 'Nieznany Przedmiot'}</div>`;
 
-        // Kategoria
-        let categoryName = 'Przedmiot';
-        if (template.category === 'equipment') categoryName = 'Ekwipunek';
-        else if (template.category === 'consumable') categoryName = 'Używalne';
-        else if (template.category === 'special_consumable') categoryName = 'Przedmiot Specjalny';
+            let categoryName = 'Przedmiot';
+            if (template.category === 'equipment') categoryName = 'Ekwipunek';
+            else if (template.category === 'consumable') categoryName = 'Używalne';
+            else if (template.category === 'special_consumable') categoryName = 'Przedmiot Specjalny';
 
-        tooltipHTML += `<div style="text-align: center; color: var(--text-secondary); margin-bottom: 10px; font-size: 0.85rem;"><i>${categoryName}</i></div>`;
+            tooltipHTML += `<div style="text-align: center; color: var(--text-secondary); margin-bottom: 10px; font-size: 0.85rem;"><i>${categoryName}</i></div>`;
 
-        // Specjalny przypadek dla Magicznej Fasolki
-        if (template.name === 'Magiczna Fasolka') {
-            tooltipHTML += '<div style="margin-bottom: 8px; font-size: 0.85rem; background: rgba(0,0,0,0.2); padding: 6px; border-radius: 6px;"><strong>Efekt poza szpitalem:</strong><br><span style="color: #67e8f9;">• Leczy 100% zasobów (HP, MP, Stamina)</span></div>';
-            tooltipHTML += '<div style="margin-bottom: 8px; font-size: 0.85rem; background: rgba(0,0,0,0.2); padding: 6px; border-radius: 6px;"><strong>Efekt w szpitalu:</strong><br><span style="color: #67e8f9;">• Leczy 100% zasobów, natychmiast zdejmuje karę czasu i przywraca statystyki utracone w wyniku ostatniej śmierci</span></div>';
-        }
-
-        const statNamesPL = { strength: 'Siła', speed: 'Szybkość', endurance: 'Wytrzymałość', intelligence: 'Inteligencja', mental_strength: 'Siła Mentalna', bonus_hp: 'Max HP', bonus_mp: 'Max MP' };
-
-        // 1. Wymagany Slot
-        if (template.slot) {
-            const slotNamesPL = { head: 'Głowa', chest: 'Tors', legs: 'Nogi', feet: 'Stopy', hands: 'Ręce', ear_l: 'L. Kolczyk', ear_r: 'P. Kolczyk', ring_l: 'L. Pierścień', ring_r: 'P. Pierścień', necklace: 'Naszyjnik', ear: 'Ucho', ring: 'Palec' };
-            tooltipHTML += `<div style="margin-bottom: 8px; font-size: 0.85rem; color: #cbd5e1; background: rgba(255,255,255,0.05); padding: 4px; border-radius: 4px; text-align: center;"><strong>Miejsce:</strong> ${slotNamesPL[template.slot] || template.slot}</div>`;
-        }
-
-        // 2. Wymagania do założenia
-        if (template.req_stats && Object.keys(template.req_stats).length > 0) {
-            tooltipHTML += '<div style="margin-bottom: 8px; font-size: 0.85rem; background: rgba(0,0,0,0.2); padding: 6px; border-radius: 6px;"><strong>Wymagania:</strong><br>';
-            for (const [stat, val] of Object.entries(template.req_stats)) {
-                tooltipHTML += `<span style="color: #fca5a5;">• ${statNamesPL[stat] || stat}: ${val}</span><br>`;
+            if (template.name === 'Magiczna Fasolka') {
+                tooltipHTML += '<div class="tooltip-section"><span class="tooltip-section-title">Efekt poza szpitalem:</span><span class="tooltip-bullet">• Leczy 100% zasobów (HP, MP, Stamina)</span></div>';
+                tooltipHTML += '<div class="tooltip-section"><span class="tooltip-section-title">Efekt w szpitalu:</span><span class="tooltip-bullet">• Leczy 100% zasobów, zdejmuje karę czasu i przywraca statystyki</span></div>';
             }
-            tooltipHTML += '</div>';
-        }
 
-        // 3. Bonusy Pasywne / Treningowe
-        if (template.bonuses && Object.keys(template.bonuses).length > 0) {
-            const isTraining = template.bonuses.type === 'training';
-            const bonusTitle = isTraining ? '<span style="color: #f59e0b;">Bonusy Treningowe:</span>' : '<span style="color: #4ade80;">Bonusy Pasywne:</span>';
-            const bonusSuffix = isTraining ? ' <small style="color: #94a3b8;">(za misję/pracę)</small>' : '';
+            const statNamesPL = { strength: 'Siła', speed: 'Szybkość', endurance: 'Wytrzymałość', intelligence: 'Inteligencja', mental_strength: 'Siła Mentalna', bonus_hp: 'Max HP', bonus_mp: 'Max MP' };
 
-            tooltipHTML += `<div style="margin-bottom: 8px; font-size: 0.85rem; background: rgba(0,0,0,0.2); padding: 6px; border-radius: 6px;"><strong>${bonusTitle}</strong><br>`;
-            for (const [bonus, val] of Object.entries(template.bonuses)) {
-                if (bonus === 'type') continue; // Ignorujemy flagę techniczną
-                const statName = statNamesPL[bonus] || bonus;
-                tooltipHTML += `<span style="color: #a3e635;">• +${val} do ${statName}${bonusSuffix}</span><br>`;
+            if (template.slot) {
+                const slotNamesPL = { head: 'Głowa', chest: 'Tors', legs: 'Nogi', feet: 'Stopy', hands: 'Ręce', ear_l: 'L. Kolczyk', ear_r: 'P. Kolczyk', ring_l: 'L. Pierścień', ring_r: 'P. Pierścień', necklace: 'Naszyjnik' };
+                tooltipHTML += `<div class="tooltip-slot-badge"><strong>Miejsce:</strong> ${slotNamesPL[template.slot] || template.slot}</div>`;
             }
-            tooltipHTML += '</div>';
-        }
 
-        // 4. Efekty konsumpcji (jeśli dotyczy)
-        if (template.consumable_effect && Object.keys(template.consumable_effect).length > 0 && template.name !== 'Magiczna Fasolka') {
-            tooltipHTML += '<div style="margin-bottom: 8px; font-size: 0.85rem; background: rgba(0,0,0,0.2); padding: 6px; border-radius: 6px;"><strong>Efekt użycia:</strong><br>';
-            for (const [effect, val] of Object.entries(template.consumable_effect)) {
-                let displayEffect = effect;
-                if (effect === 'restore_hp') displayEffect = `Przywraca ${val} HP`;
-                else if (effect === 'restore_mp') displayEffect = `Przywraca ${val} MP`;
-                else if (effect === 'restore_stamina') displayEffect = `Przywraca ${val} Staminy`;
-                else if (effect === 'bonus_stamina') displayEffect = `+${val} Max Staminy na stałe`;
-                else if (effect === 'full_resurrection' || effect === 'hospital_exit_recovery') displayEffect = 'Pełne wyleczenie (Przebudzenie)';
-                else if (effect === 'permanent_bonus') displayEffect = 'Trwały bonus statystyk';
-                else if (effect === 'unlock_transformation') displayEffect = 'Odblokowuje transformację';
-                else if (effect === 'temporary_buff') displayEffect = 'Tymczasowe błogosławieństwo';
-                else if (effect === 'restore_hp_pct') displayEffect = `Przywraca ${val}% HP`;
-                else if (effect === 'restore_mp_pct') displayEffect = `Przywraca ${val}% MP`;
-                tooltipHTML += `<span style="color: #67e8f9;">• ${displayEffect}</span><br>`;
+            if (template.req_stats && Object.keys(template.req_stats).length > 0) {
+                tooltipHTML += '<div class="tooltip-section"><span class="tooltip-section-title">Wymagania:</span>';
+                for (const [stat, val] of Object.entries(template.req_stats)) {
+                    tooltipHTML += `<span class="tooltip-bullet req">• ${statNamesPL[stat] || stat}: ${val}</span><br>`;
+                }
+                tooltipHTML += '</div>';
             }
-            tooltipHTML += '</div>';
-        }
 
-        // 5. Zawsze widoczne ceny (Kupno / Sprzedaż)
-        if (template.buy_price_coins) {
-            const buyPrice = template.buy_price_coins;
-            const sellPrice = Math.floor(Number(buyPrice) / 2);
-            tooltipHTML += `<div style="margin-top: 10px; border-top: 1px dashed rgba(255, 255, 255, 0.2); padding-top: 8px; font-size: 0.85rem;">
-                <div style="display: flex; justify-content: space-between; color: #fbbf24; margin-bottom: 4px;">
-                    <span>Cena Kupna:</span> <strong>${buyPrice} 💰</strong>
-                </div>
-                <div style="display: flex; justify-content: space-between; color: #cbd5e1;">
-                    <span>Cena Sprzedaży:</span> <strong>${sellPrice} 💰</strong>
-                </div>
-            </div>`;
-        }
+            if (template.bonuses && Object.keys(template.bonuses).length > 0) {
+                const isTraining = template.bonuses.type === 'training';
+                const bonusTitle = isTraining ? '<span style="color: #f59e0b;">Bonusy Treningowe:</span>' : '<span style="color: #4ade80;">Bonusy Pasywne:</span>';
+                const bonusSuffix = isTraining ? ' <small style="color: #94a3b8;">(za misję/pracę)</small>' : '';
 
-        return tooltipHTML;
-    }
+                tooltipHTML += `<div class="tooltip-section"><span class="tooltip-section-title">${bonusTitle}</span>`;
+                for (const [bonus, val] of Object.entries(template.bonuses)) {
+                    if (bonus === 'type') continue;
+                    const statName = statNamesPL[bonus] || bonus;
+                    tooltipHTML += `<span class="tooltip-bullet pass">• +${val} do ${statName}${bonusSuffix}</span><br>`;
+                }
+                tooltipHTML += '</div>';
+            }
+
+            if (template.consumable_effect && Object.keys(template.consumable_effect).length > 0 && template.name !== 'Magiczna Fasolka') {
+                tooltipHTML += '<div class="tooltip-section"><span class="tooltip-section-title">Efekt użycia:</span>';
+                for (const [effect, val] of Object.entries(template.consumable_effect)) {
+                    let displayEffect = effect;
+                    if (effect === 'restore_hp') displayEffect = `Przywraca ${val} HP`;
+                    else if (effect === 'restore_mp') displayEffect = `Przywraca ${val} MP`;
+                    else if (effect === 'restore_stamina') displayEffect = `Przywraca ${val} Staminy`;
+                    else if (effect === 'bonus_stamina') displayEffect = `+${val} Max Staminy na stałe`;
+                    else if (effect === 'full_resurrection' || effect === 'hospital_exit_recovery') displayEffect = 'Pełne wyleczenie (Przebudzenie)';
+                    else if (effect === 'permanent_bonus') displayEffect = 'Trwały bonus statystyk';
+                    else if (effect === 'unlock_transformation') displayEffect = 'Odblokowuje transformację';
+                    else if (effect === 'temporary_buff') displayEffect = 'Tymczasowe błogosławieństwo';
+                    else if (effect === 'restore_hp_pct') displayEffect = `Przywraca ${val}% HP`;
+                    else if (effect === 'restore_mp_pct') displayEffect = `Przywraca ${val}% MP`;
+                    tooltipHTML += `<span class="tooltip-bullet">• ${displayEffect}</span><br>`;
+                }
+                tooltipHTML += '</div>';
+            }
+
+            if (template.buy_price_coins) {
+                const buyPrice = template.buy_price_coins;
+                const sellPrice = Math.floor(Number(buyPrice) / 2);
+                tooltipHTML += `<div class="tooltip-price-box">
+                    <div class="tooltip-price-row" style="color: #fbbf24;">
+                        <span>Cena Kupna:</span> <strong>${buyPrice} 💰</strong>
+                    </div>
+                    <div class="tooltip-price-row" style="color: #cbd5e1;">
+                        <span>Cena Sprzedaży:</span> <strong>${sellPrice} 💰</strong>
+                    </div>
+                </div>`;
+            }
+
+            return tooltipHTML;
+        }
 
         // Wyświetlanie błędu ekwipunku
         function showInventoryError(message) {
