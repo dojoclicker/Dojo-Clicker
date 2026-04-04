@@ -1607,6 +1607,132 @@ app.post('/api/bank/split', authenticateToken, requireAlive, async (req, res) =>
   } catch (err) { res.status(500).json({ error: 'Błąd serwera' }); }
 });
 
+// ==========================================
+// RANKING I CZAT GLOBALNY (FAZA 5)
+// ==========================================
+
+// Cache dla rankingu (odświeżany co 5 minut)
+let rankingCache = null;
+let rankingCacheTime = 0;
+const RANKING_CACHE_TTL = 5 * 60 * 1000; // 5 minut
+
+// Rate-limiting dla czatu (1 wiadomość na 3 sekundy na profil)
+const chatRateLimitMap = new Map();
+const CHAT_RATE_LIMIT_TTL = 3000; // 3 sekundy
+
+// Pobranie rankingu z cache lub bazy
+async function getRanking() {
+  const now = Date.now();
+  
+  if (rankingCache && (now - rankingCacheTime) < RANKING_CACHE_TTL) {
+    return rankingCache;
+  }
+  
+  try {
+    const { data, error } = await supabase
+      .from('characters')
+      .select(`
+        id,
+        base_power_level,
+        profiles!inner(username)
+      `)
+      .order('base_power_level', { ascending: false })
+      .limit(10);
+    
+    if (error) throw error;
+    
+    rankingCache = data;
+    rankingCacheTime = now;
+    
+    return data;
+  } catch (err) {
+    console.error('[Ranking] Błąd pobierania rankingu:', err.message);
+    return [];
+  }
+}
+
+// Endpoint GET /api/ranking - Top 10 graczy
+app.get('/api/ranking', async (req, res) => {
+  try {
+    const ranking = await getRanking();
+    
+    const formattedRanking = ranking.map((player, index) => ({
+      position: index + 1,
+      username: player.profiles.username,
+      power_level: BigInt(player.base_power_level || '1').toString()
+    }));
+    
+    res.json(formattedRanking);
+  } catch (err) {
+    console.error('[Ranking] Błąd endpointu:', err.message);
+    res.status(500).json({ error: 'Błąd serwera podczas pobierania rankingu' });
+  }
+});
+
+// Endpoint POST /api/chat/send - Wysyłanie wiadomości globalnych
+app.post('/api/chat/send', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { message } = req.body;
+    
+    if (!message || typeof message !== 'string' || message.trim().length === 0) {
+      return res.status(400).json({ error: 'Wiadomość nie może być pusta' });
+    }
+    
+    if (message.length > 200) {
+      return res.status(400).json({ error: 'Wiadomość może mieć maksymalnie 200 znaków' });
+    }
+    
+    // Rate-limiting check
+    const now = Date.now();
+    const lastMessageTime = chatRateLimitMap.get(userId) || 0;
+    if (now - lastMessageTime < CHAT_RATE_LIMIT_TTL) {
+      return res.status(429).json({ error: 'Możesz wysłać tylko 1 wiadomość na 3 sekundy' });
+    }
+    
+    // Pobierz dane postaci
+    const { data: character, error: characterError } = await supabase
+      .from('characters')
+      .select('hp, profiles!inner(username)')
+      .eq('profile_id', userId)
+      .single();
+    
+    if (characterError || !character) {
+      return res.status(404).json({ error: 'Nie znaleziono postaci' });
+    }
+    
+    // Sprawdź czy gracz jest duchem (hp <= 0)
+    const isGhost = BigInt(character.hp || '0') <= 0n;
+    
+    // Wstaw wiadomość do bazy
+    const { error: insertError } = await supabase
+      .from('global_messages')
+      .insert({
+        profile_id: userId,
+        message: message.trim(),
+        is_ghost: isGhost
+      });
+    
+    if (insertError) {
+      console.error('[Chat] Błąd zapisu wiadomości:', insertError);
+      return res.status(500).json({ error: 'Błąd serwera podczas wysyłania wiadomości' });
+    }
+    
+    // Aktualizuj rate-limiting
+    chatRateLimitMap.set(userId, now);
+    
+    res.json({ 
+      success: true, 
+      message: isGhost ? 'Wiadomość wysłana jako duch 👻' : 'Wiadomość wysłana',
+      is_ghost: isGhost
+    });
+    
+  } catch (err) {
+    console.error('[Chat] Błąd endpointu:', err.message);
+    res.status(500).json({ error: 'Błąd serwera podczas wysyłania wiadomości' });
+  }
+});
+
 app.listen(port, async () => {
   console.log(`[Dojo-Clicker API] Serwer nasłuchuje na porcie ${port}...`);
   await initGlobalState();

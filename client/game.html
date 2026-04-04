@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, shrink-to-fit=no">
     <title>Dojo-Clicker - Gra Przeglądarkowa</title>
     <link rel="stylesheet" href="css/game.css?v=1">
+    <!-- Supabase JS SDK -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
     <!-- Górny Panel 1 - Header -->
@@ -130,9 +132,68 @@
     <main id="main-workspace">
         <!-- Widok Dashboard (Strona Główna) -->
         <div id="dashboard-view" style="display: none;">
-            <div class="welcome-placeholder">
-                <h1 class="welcome-title">Strona Główna</h1>
-                <p class="welcome-subtitle">Tutaj pojawi się dashboard z najważniejszymi informacjami ze świata gry</p>
+            <div class="game-panel-row">
+                <!-- Hub (70%) -->
+                <div class="dashboard-hub game-panel" style="flex: 7;">
+                    <div class="game-panel-header">
+                        <h4 class="game-panel-title" style="color: var(--goku-accent);">🏢 Hub</h4>
+                    </div>
+                    <div class="hub-content">
+                        <div class="hub-section">
+                            <h5 style="color: var(--text-primary); margin-bottom: 1rem;">📢 Aktualności</h5>
+                            <div class="news-feed" style="background: rgba(0,0,0,0.2); padding: 1rem; border-radius: 8px; border: 1px solid var(--goku-panel-border); min-height: 120px;">
+                                <div style="color: var(--text-muted); text-align: center; padding: 1rem;">
+                                    <div>🎮 Witaj w Dojo-Clicker!</div>
+                                    <div style="margin-top: 0.5rem; font-size: 0.9rem;">Trenuj, walcz misje, zostając najpotężniejszym wojownikiem!</div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="hub-section" style="margin-top: 1.5rem;">
+                            <h5 style="color: var(--text-primary); margin-bottom: 1rem;">📋 Specjalne Zadania</h5>
+                            <div class="special-tasks" style="background: rgba(0,0,0,0.2); padding: 1rem; border-radius: 8px; border: 1px solid var(--goku-panel-border); min-height: 100px;">
+                                <div style="color: var(--text-muted); text-align: center; padding: 1rem;">
+                                    <div>🎯 Brak aktywnych zadań specjalnych</div>
+                                    <div style="margin-top: 0.5rem; font-size: 0.9rem;">Sprawdzaj regularnie po nowe wyzwania!</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Ranking (30%) -->
+                <div class="dashboard-ranking game-panel" style="flex: 3;">
+                    <div class="game-panel-header">
+                        <h4 class="game-panel-title" style="color: #f59e0b;">🏆 Top 10</h4>
+                        <button class="nuke-help-btn" data-tooltip="Ranking 10 najsilniejszych wojowników wg Poziomu Mocy. Odświeżany co 5 minut.">?</button>
+                    </div>
+                    <div class="ranking-content">
+                        <div id="ranking-list" style="min-height: 300px;">
+                            <div style="color: var(--text-muted); text-align: center; padding: 2rem;">
+                                <div>⏳ Ładowanie rankingu...</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Globalny Czat -->
+            <div class="game-panel" style="margin-top: 1rem;">
+                <div class="game-panel-header">
+                    <h4 class="game-panel-title" style="color: #06b6d4;">💬 Globalny Czat</h4>
+                    <button class="nuke-help-btn" data-tooltip="Czat globalny wszystkich graczy. Duchy (👻) mogą pisać będąc w szpitalu!">?</button>
+                </div>
+                <div class="chat-container">
+                    <div id="chat-messages" class="chat-messages" style="height: 200px; overflow-y: auto; background: rgba(0,0,0,0.2); border: 1px solid var(--goku-panel-border); border-radius: 8px; padding: 0.5rem;">
+                        <div style="color: var(--text-muted); text-align: center; padding: 1rem;">
+                            <div>💬 Ładowanie czatu...</div>
+                        </div>
+                    </div>
+                    <div class="chat-input-container" style="display: flex; gap: 0.5rem; margin-top: 0.5rem;">
+                        <input type="text" id="chat-input" class="chat-input" placeholder="Napisz wiadomość..." maxlength="200" style="flex: 1; padding: 0.5rem; background: var(--goku-panel-bg); border: 1px solid var(--goku-panel-border); border-radius: 4px; color: var(--text-primary);">
+                        <button id="chat-send-btn" class="btn-header" style="padding: 0.5rem 1rem;">Wyślij</button>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -324,6 +385,11 @@
         const API_BASE_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.protocol === 'file:'
             ? 'http://localhost:3000' 
             : 'https://dojo-clicker.onrender.com';
+        
+        // Konfiguracja Supabase
+        const SUPABASE_URL = 'https://your-project.supabase.co'; // TODO: Uzupełnij URL projektu
+        const SUPABASE_ANON_KEY = 'your-anon-key'; // TODO: Uzupełnij klucz publiczny
+        const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
         
         // Globalna blokada akcji ekwipunku (Race Condition fix)
         window.isInventoryActionLocked = false;
@@ -2537,6 +2603,315 @@
 
             // Odświeżanie danych postaci co 30 sekund (cicho, w tle)
             setInterval(() => fetchCharacterData(true), 30000);
+
+            // ==========================================
+            // DASHBOARD - RANKING I CZAT (FAZA 5)
+            // ==========================================
+
+            // Pobieranie i renderowanie rankingu
+            async function fetchRanking() {
+                try {
+                    const res = await apiCall('/api/ranking');
+                    if (res.success) {
+                        renderRanking(res.data);
+                    } else {
+                        console.error('[Ranking] Błąd:', res.error);
+                    }
+                } catch (err) {
+                    console.error('[Ranking] Błąd pobierania:', err);
+                }
+            }
+
+            // Renderowanie listy rankingu
+            function renderRanking(rankingData) {
+                const rankingList = document.getElementById('ranking-list');
+                if (!rankingList) return;
+
+                if (!rankingData || rankingData.length === 0) {
+                    rankingList.innerHTML = `
+                        <div style="color: var(--text-muted); text-align: center; padding: 2rem;">
+                            <div>🏆 Brak danych rankingu</div>
+                        </div>
+                    `;
+                    return;
+                }
+
+                const rankingHTML = rankingData.map((player, index) => {
+                    const position = player.position;
+                    const powerLevel = parseInt(player.power_level).toLocaleString('pl-PL');
+                    
+                    // Kolory podium
+                    let glowStyle = '';
+                    let positionIcon = '';
+                    if (position === 1) {
+                        glowStyle = 'box-shadow: 0 0 20px rgba(255, 215, 0, 0.6); border: 2px solid gold;';
+                        positionIcon = '🥇';
+                    } else if (position === 2) {
+                        glowStyle = 'box-shadow: 0 0 20px rgba(192, 192, 192, 0.6); border: 2px solid silver;';
+                        positionIcon = '🥈';
+                    } else if (position === 3) {
+                        glowStyle = 'box-shadow: 0 0 20px rgba(205, 127, 50, 0.6); border: 2px solid #cd7f32;';
+                        positionIcon = '🥉';
+                    } else {
+                        positionIcon = `${position}.`;
+                    }
+
+                    return `
+                        <div class="ranking-item" style="
+                            display: flex; 
+                            align-items: center; 
+                            padding: 0.5rem; 
+                            margin-bottom: 0.5rem; 
+                            background: rgba(0,0,0,0.2); 
+                            border-radius: 6px; 
+                            border: 1px solid var(--goku-panel-border);
+                            ${glowStyle}
+                        ">
+                            <div style="font-weight: bold; margin-right: 0.75rem; min-width: 30px;">${positionIcon}</div>
+                            <div style="flex: 1; color: var(--text-primary);">${player.username}</div>
+                            <div style="color: var(--goku-accent); font-weight: bold; font-size: 0.9rem;">${powerLevel}</div>
+                        </div>
+                    `;
+                }).join('');
+
+                rankingList.innerHTML = rankingHTML;
+            }
+
+            // Pobieranie wiadomości czatu
+            async function fetchChatMessages() {
+                try {
+                    const { data, error } = await supabase
+                        .from('global_messages')
+                        .select(`
+                            id,
+                            message,
+                            is_ghost,
+                            created_at,
+                            profiles!inner(username)
+                        `)
+                        .order('created_at', { ascending: false })
+                        .limit(50);
+
+                    if (error) throw error;
+                    
+                    renderChatMessages(data.reverse()); // Odwróć aby najnowsze były na dole
+                } catch (err) {
+                    console.error('[Chat] Błąd pobierania wiadomości:', err);
+                }
+            }
+
+            // Renderowanie wiadomości czatu
+            function renderChatMessages(messages) {
+                const chatMessages = document.getElementById('chat-messages');
+                if (!chatMessages) return;
+
+                if (!messages || messages.length === 0) {
+                    chatMessages.innerHTML = `
+                        <div style="color: var(--text-muted); text-align: center; padding: 1rem;">
+                            <div>💬 Brak wiadomości</div>
+                        </div>
+                    `;
+                    return;
+                }
+
+                const messagesHTML = messages.map(msg => {
+                    const time = new Date(msg.created_at).toLocaleTimeString('pl-PL', { 
+                        hour: '2-digit', 
+                        minute: '2-digit' 
+                    });
+                    const ghostIcon = msg.is_ghost ? '👻 ' : '';
+                    const ghostStyle = msg.is_ghost ? 
+                        'opacity: 0.7; color: #87ceeb;' : 
+                        'color: var(--text-primary);';
+
+                    return `
+                        <div class="chat-message" style="
+                            margin-bottom: 0.5rem; 
+                            padding: 0.5rem;
+                            background: rgba(0,0,0,0.1); 
+                            border-radius: 4px;
+                            ${ghostStyle}
+                        ">
+                            <div style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.25rem;">
+                                <span style="font-weight: bold;">${time}</span> - <span>${ghostIcon}${msg.profiles.username}</span>
+                            </div>
+                            <div style="font-size: 0.9rem;">${msg.message}</div>
+                        </div>
+                    `;
+                }).join('');
+
+                chatMessages.innerHTML = messagesHTML;
+                
+                // Auto-scroll do dołu
+                setTimeout(() => {
+                    chatMessages.scrollTop = chatMessages.scrollHeight;
+                }, 100);
+            }
+
+            // Wysyłanie wiadomości czatu
+            async function sendChatMessage() {
+                const chatInput = document.getElementById('chat-input');
+                const message = chatInput.value.trim();
+                
+                if (!message) return;
+
+                try {
+                    const res = await apiCall('/api/chat/send', 'POST', { message });
+                    if (res.success) {
+                        chatInput.value = '';
+                        showNotification('Czat', res.data.message, 'success', 2000);
+                        // Odśwież czat po wysłaniu
+                        fetchChatMessages();
+                    } else {
+                        showNotification('Błąd czatu', res.error, 'error');
+                    }
+                } catch (err) {
+                    console.error('[Chat] Błąd wysyłania:', err);
+                    showNotification('Błąd czatu', 'Nie udało się wysłać wiadomości', 'error');
+                }
+            }
+
+            // Inicjalizacja czatu i rankingu (tylko gdy dashboard jest aktywny)
+            function initializeDashboard() {
+                const dashboardView = document.getElementById('dashboard-view');
+                if (!dashboardView) return;
+
+                // Sprawdź czy dashboard jest widoczny
+                if (dashboardView.style.display !== 'none') {
+                    fetchRanking();
+                    fetchChatMessages();
+                    initializeRealtimeChat();
+                }
+            }
+
+            // Inicjalizacja Supabase Realtime dla czatu
+            function initializeRealtimeChat() {
+                // Subskrypcja do nowych wiadomości
+                const channel = supabase
+                    .channel('global_chat')
+                    .on(
+                        'postgres_changes',
+                        { 
+                            event: 'INSERT', 
+                            schema: 'public', 
+                            table: 'global_messages' 
+                        },
+                        (payload) => {
+                            console.log('[Chat] Nowa wiadomość:', payload.new);
+                            
+                            // Dodaj nową wiadomość do czatu bez przeładowania całej listy
+                            const chatMessages = document.getElementById('chat-messages');
+                            if (chatMessages && chatMessages.style.display !== 'none') {
+                                // Pobierz dane profilu dla nowej wiadomości
+                                supabase
+                                    .from('profiles')
+                                    .select('username')
+                                    .eq('id', payload.new.profile_id)
+                                    .single()
+                                    .then(({ data, error }) => {
+                                        if (!error && data) {
+                                            const newMessage = {
+                                                ...payload.new,
+                                                profiles: data
+                                            };
+                                            
+                                            // Dodaj wiadomość na końcu listy
+                                            addNewChatMessage(newMessage);
+                                        }
+                                    });
+                            }
+                        }
+                    )
+                    .subscribe((status) => {
+                        if (status === 'SUBSCRIBED') {
+                            console.log('[Chat] Połączono z Supabase Realtime');
+                        } else if (status === 'TIMED_OUT' || status === 'CLOSED') {
+                            console.log('[Chat] Utracono połączenie z Supabase Realtime, próba ponownego połączenia...');
+                            setTimeout(() => {
+                                initializeRealtimeChat();
+                            }, 5000);
+                        }
+                    });
+
+                // Zapisz kanał do globalnej zmiennej aby można go było wyczyścić
+                window.chatChannel = channel;
+            }
+
+            // Dodawanie pojedynczej nowej wiadomości do czatu
+            function addNewChatMessage(message) {
+                const chatMessages = document.getElementById('chat-messages');
+                if (!chatMessages) return;
+
+                // Usuń placeholder "Brak wiadomości" jeśli istnieje
+                const placeholder = chatMessages.querySelector('div:has(> div:contains("💬 Brak wiadomości"))');
+                if (placeholder) {
+                    placeholder.remove();
+                }
+
+                const time = new Date(message.created_at).toLocaleTimeString('pl-PL', { 
+                    hour: '2-digit', 
+                    minute: '2-digit' 
+                });
+                const ghostIcon = message.is_ghost ? '👻 ' : '';
+                const ghostStyle = message.is_ghost ? 
+                    'opacity: 0.7; color: #87ceeb;' : 
+                    'color: var(--text-primary);';
+
+                const messageHTML = `
+                    <div class="chat-message" style="
+                        margin-bottom: 0.5rem; 
+                        padding: 0.5rem;
+                        background: rgba(0,0,0,0.1); 
+                        border-radius: 4px;
+                        ${ghostStyle}
+                    ">
+                        <div style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.25rem;">
+                            <span style="font-weight: bold;">${time}</span> - <span>${ghostIcon}${message.profiles.username}</span>
+                        </div>
+                        <div style="font-size: 0.9rem;">${message.message}</div>
+                    </div>
+                `;
+
+                // Dodaj nową wiadomość na końcu
+                chatMessages.insertAdjacentHTML('beforeend', messageHTML);
+                
+                // Auto-scroll do dołu
+                setTimeout(() => {
+                    chatMessages.scrollTop = chatMessages.scrollHeight;
+                }, 100);
+            }
+
+            // Event listenery dla czatu
+            document.addEventListener('DOMContentLoaded', function() {
+                const chatSendBtn = document.getElementById('chat-send-btn');
+                const chatInput = document.getElementById('chat-input');
+
+                if (chatSendBtn) {
+                    chatSendBtn.addEventListener('click', sendChatMessage);
+                }
+
+                if (chatInput) {
+                    chatInput.addEventListener('keypress', function(e) {
+                        if (e.key === 'Enter') {
+                            sendChatMessage();
+                        }
+                    });
+                }
+
+                // Inicjalizuj dashboard po załadowaniu
+                setTimeout(initializeDashboard, 1000);
+            });
+
+            // Hook do przełączania zakładek - odświeżaj dashboard gdy jest aktywny
+            const originalTabSwitching = window.switchTab;
+            if (typeof originalTabSwitching === 'function') {
+                window.switchTab = function(tabName) {
+                    originalTabSwitching(tabName);
+                    if (tabName === 'dashboard') {
+                        setTimeout(initializeDashboard, 100);
+                    }
+                };
+            }
 
             // ==========================================
             // SYSTEM GLOBALNEGO TOOLTIPU (Hover Intent)
