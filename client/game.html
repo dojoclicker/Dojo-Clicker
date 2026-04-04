@@ -219,8 +219,8 @@
                         <button class="category-tab" data-category="equipment">Ekwipunek Zwykły</button>
                     </div>
 
-                    <div class="shop-content" style="flex: 1;">
-                        <div class="shop-items-grid" id="shop-items-grid">
+                    <div class="shop-content" style="flex: 1; margin-top: 15px; padding: 0.5rem;">
+                        <div class="shop-items-grid" id="shop-items-grid" style="gap: 15px;">
                             </div>
                     </div>
                 </div>
@@ -277,7 +277,8 @@
                             <div class="bank-upgrade-section bank-action-box">
                                 <h4 class="bank-action-title">Ulepszenie Banku</h4>
                                 <button class="upgrade-btn bank-full-input" id="bank-upgrade-limit-btn">Zwiększ limit (Koszt: <span id="bank-upgrade-cost">5,000</span>)</button>
-                                <div class="bank-limit-info">Poziom: <span id="bank-next-level">2</span></div>
+                                <div class="bank-limit-info">Następny Poziom: <span id="bank-next-level">2</span></div>
+                                <div class="bank-limit-info" style="color: var(--success); margin-top: 4px;">Nowy Limit: <span id="bank-next-limit-value">50,000</span> 💰</div>
                             </div>
                         </div>
                     </div>
@@ -1787,6 +1788,17 @@
             
             if (nextLevelDisplay) nextLevelDisplay.textContent = nextLevel <= 10 ? nextLevel : "MAX";
             if (upgradeCostDisplay) upgradeCostDisplay.textContent = nextLevel <= 10 ? limitCosts[nextLevel].toLocaleString() : "---";
+
+            // DODANY KOD: Informacja o pojemności kolejnego poziomu
+            const limitValueEl = document.getElementById('bank-next-limit-value');
+            if (limitValueEl) {
+                const limitsBank = { 1: 10000, 2: 50000, 3: 250000, 4: 1000000, 5: 5000000, 6: 25000000, 7: 100000000, 8: 500000000, 9: 2000000000, 10: 9007199254740991 };
+                if (nextLevel <= 10) {
+                    limitValueEl.innerText = limitsBank[nextLevel].toLocaleString();
+                } else {
+                    limitValueEl.innerText = 'MAX';
+                }
+            }
 
             const bankItems = (window.inventoryData || []).filter(item => item.equipped_slot === 'bank');
             if (slotsDisplay) slotsDisplay.textContent = `${bankItems.length}/${window.playerBankSlotsUnlocked}`;

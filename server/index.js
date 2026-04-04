@@ -1409,17 +1409,35 @@ app.post('/api/bank/transfer_item', authenticateToken, requireAlive, async (req,
 
     // 2. Walidacja pojemności (jeśli brak stosu do połączenia)
     if (!targetStackItem) {
-        if (target_panel === 'bank') {
-            const bankSlots = parseInt(character.bank_slots_unlocked || '5');
-            const { count } = await supabase.from('inventory').select('*', { count: 'exact', head: true }).eq('character_id', character.id).eq('equipped_slot', 'bank');
-            if (count >= bankSlots) return res.status(400).json({ error: 'Brak miejsca w banku!' });
-        } else {
-            // Obliczanie plecaka
-            const { data: charStats } = await supabase.from('characters').select('strength, speed, endurance').eq('id', character.id).single();
-            const minPhysicalStat = minBigInt(BigInt(charStats.strength || '0'), minBigInt(BigInt(charStats.speed || '0'), BigInt(charStats.endurance || '0')));
-            const maxSlots = Math.min(50, 5 + Number(minPhysicalStat / 10000n));
-            const { count } = await supabase.from('inventory').select('*', { count: 'exact', head: true }).eq('character_id', character.id).is('equipped_slot', null);
-            if (count >= maxSlots) return res.status(400).json({ error: 'Brak miejsca w plecaku!' });
+        let isSwap = false;
+        
+        // ZABEZPIECZENIE: Sprawdzamy, czy przesuwamy item wewnątrz tego samego panelu (np. z banku na inną kratkę banku)
+        const isInternalMove = (item.equipped_slot === 'bank' && target_panel === 'bank') || (item.equipped_slot === null && target_panel === 'backpack');
+
+        // ZABEZPIECZENIE: Sprawdzamy, czy to podmiana (SWAP) przedmiotu z zajętą kratką
+        if (target_index !== undefined && target_index !== null && transferAmount === BigInt(item.quantity)) {
+            let query = supabase.from('inventory').select('id').eq('character_id', character.id).eq('backpack_index', parseInt(target_index));
+            if (target_panel === 'bank') query = query.eq('equipped_slot', 'bank');
+            else query = query.is('equipped_slot', null);
+            
+            const { data: existItem } = await query;
+            if (existItem && existItem.length > 0) isSwap = true;
+        }
+
+        // WYJĄTEK: Jeśli to SWAP lub ruch wewnątrz jednej skrzyni, omijamy blokadę "Brak miejsca"! (Ilość przedmiotów nie rośnie)
+        if (!isSwap && !isInternalMove) {
+            if (target_panel === 'bank') {
+                const bankSlots = parseInt(character.bank_slots_unlocked || '5');
+                const { count } = await supabase.from('inventory').select('*', { count: 'exact', head: true }).eq('character_id', character.id).eq('equipped_slot', 'bank');
+                if (count >= bankSlots) return res.status(400).json({ error: 'Brak miejsca w banku!' });
+            } else {
+                // Obliczanie plecaka
+                const { data: charStats } = await supabase.from('characters').select('strength, speed, endurance').eq('id', character.id).single();
+                const minPhysicalStat = minBigInt(BigInt(charStats.strength || '0'), minBigInt(BigInt(charStats.speed || '0'), BigInt(charStats.endurance || '0')));
+                const maxSlots = Math.min(50, 5 + Number(minPhysicalStat / 10000n));
+                const { count } = await supabase.from('inventory').select('*', { count: 'exact', head: true }).eq('character_id', character.id).is('equipped_slot', null);
+                if (count >= maxSlots) return res.status(400).json({ error: 'Brak miejsca w plecaku!' });
+            }
         }
     }
 
