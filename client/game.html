@@ -43,8 +43,8 @@
                 <div class="nav-icon">🛒</div>
                 <div class="nav-text">Sklep</div>
             </button>
-            <button class="nav-btn locked" data-tab="training" id="nav-training-btn">
-                <div class="nav-icon" id="training-nav-icon">🔒</div>
+            <button class="nav-btn disabled" data-tab="training" id="nav-training-btn">
+                <div class="nav-icon">🧘‍♂️</div>
                 <div class="nav-text">Trening</div>
             </button>
         </div>
@@ -582,6 +582,7 @@
         function createMissionCard(mission, index) {
             const card = document.createElement('div');
             card.className = 'mission-card';
+            card.dataset.missionId = mission.id;
             
             // Sprawdzenie odblokowania
             const completed = window.playerCompletedMissions || [];
@@ -1205,7 +1206,10 @@
                 window.playerAttemptedOneTry = data.attempted_one_try_missions || [];
                 if (data.strength !== undefined) window.playerCurrentStats = data;
                 window.playerEquipStats = data.equip_stats || {}; // <-- NOWE: Zapisujemy sprzęt
-                if (window.allMissions) renderMissions(window.allMissions);
+                if (window.allMissions) {
+                    renderMissions(window.allMissions);
+                    if (typeof window.refreshActiveTooltip === 'function') window.refreshActiveTooltip();
+                }
 
                 console.log('[UI] Dane postaci załadowane pomyślnie:', data);
                 
@@ -2194,6 +2198,22 @@
             }
         }
 
+        // Tworzenie tooltipu dla misji
+        function createMissionTooltip(template) {
+            if (!template) return '';
+            return `
+                <div class="tooltip-title">${template.name}</div>
+                <div style="font-size: 0.85rem; margin-bottom: 0.5rem; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 0.5rem; text-align: center;"><i>${template.description || ''}</i></div>
+                <div style="font-size: 0.95rem; margin-bottom: 0.75rem; text-align: center; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 0.5rem;">Szansa na sukces: <span style="color: ${template.chanceColor}; font-weight: bold;">${template.chanceNum}%</span></div>
+                <div style="font-size: 0.85rem; color: var(--goku-accent); font-weight: bold;">Koszt Staminy: ${template.stamina_cost}</div>
+                <div style="font-size: 0.85rem; margin-top: 4px;"><b>Wymagania:</b> ${template.reqStatsText}</div>
+                <div style="font-size: 0.85rem; margin-top: 4px;"><b>Nagroda Monety:</b> ${template.reward_coins_min || '0'} - ${template.reward_coins_max || '0'}</div>
+                <div style="font-size: 0.85rem; margin-top: 4px;"><b>Statystyki:</b> ${template.rewardStatsText}</div>
+                <div style="font-size: 0.85rem; margin-top: 4px;"><b>Dodatkowe Drop:</b> ${template.dropsText}</div>
+                <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 8px; border-top: 1px dashed rgba(255,255,255,0.1); padding-top: 6px; text-align: center;">${template.unlockInfoText}</div>
+            `;
+        }
+
         // Tworzenie tooltipu dla przedmiotu
         function createItemTooltip(template) {
             if (!template) return '';
@@ -2774,6 +2794,25 @@
             }
         };
 
+        // Globalna funkcja odświeżająca zawartość otwartego dymka w czasie rzeczywistym
+        window.refreshActiveTooltip = function() {
+            const tooltip = document.getElementById('global-tooltip');
+            if (tooltip && tooltip.style.opacity === '1' && tooltip.dataset.currentCard) {
+                const activeCardId = tooltip.dataset.currentCard;
+                const newCard = document.querySelector(`[data-inventory-id="${activeCardId}"], [data-template-id="${activeCardId}"], [data-mission-id="${activeCardId}"]`);
+                
+                if (newCard) {
+                    const isMission = newCard.classList.contains('mission-card');
+                    const templateData = newCard.getAttribute(isMission ? 'data-mission-template' : 'data-item-template');
+                    if (templateData) {
+                        try {
+                            const template = JSON.parse(decodeURIComponent(templateData));
+                            tooltip.innerHTML = isMission ? createMissionTooltip(template) : createItemTooltip(template);
+                        } catch(e) {}
+                    }
+                }
+            }
+        };
 
         // ==========================================
         // INICJALIZACJA APLIKACJI (Zdarzenia DOM)
@@ -2910,7 +2949,7 @@
                             if (simpleTooltip && !document.body.contains(simpleTooltip)) return;
 
                             if (card) {
-                                const cardId = card.dataset.inventoryId || card.dataset.templateId || card.className;
+                                const cardId = card.dataset.inventoryId || card.dataset.templateId || card.dataset.missionId || card.className;
                                 if (globalTooltip.dataset.currentCard === cardId && globalTooltip.style.opacity === '1') return; 
                                 
                                 const isMission = card.classList.contains('mission-card');
@@ -2920,17 +2959,7 @@
                                 try {
                                     const template = JSON.parse(decodeURIComponent(templateData));
                                     if (isMission) {
-                                        globalTooltip.innerHTML = `
-                                            <div class="tooltip-title">${template.name}</div>
-                                            <div style="font-size: 0.85rem; margin-bottom: 0.5rem; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 0.5rem; text-align: center;"><i>${template.description || ''}</i></div>
-                                            <div style="font-size: 0.95rem; margin-bottom: 0.75rem; text-align: center; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 0.5rem;">Szansa na sukces: <span style="color: ${template.chanceColor}; font-weight: bold;">${template.chanceNum}%</span></div>
-                                            <div style="font-size: 0.85rem; color: var(--goku-accent); font-weight: bold;">Koszt Staminy: ${template.stamina_cost}</div>
-                                            <div style="font-size: 0.85rem; margin-top: 4px;"><b>Wymagania:</b> ${template.reqStatsText}</div>
-                                            <div style="font-size: 0.85rem; margin-top: 4px;"><b>Nagroda Monety:</b> ${template.reward_coins_min || '0'} - ${template.reward_coins_max || '0'}</div>
-                                            <div style="font-size: 0.85rem; margin-top: 4px;"><b>Statystyki:</b> ${template.rewardStatsText}</div>
-                                            <div style="font-size: 0.85rem; margin-top: 4px;"><b>Dodatkowe Drop:</b> ${template.dropsText}</div>
-                                            <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 8px; border-top: 1px dashed rgba(255,255,255,0.1); padding-top: 6px; text-align: center;">${template.unlockInfoText}</div>
-                                        `;
+                                        globalTooltip.innerHTML = createMissionTooltip(template);
                                     } else {
                                         globalTooltip.innerHTML = createItemTooltip(template);
                                     }
@@ -3051,8 +3080,7 @@
                 const data = res.data;
 
                 if (data.isUnlocked) {
-                    navTrainingBtn.classList.remove('locked');
-                    trainingNavIcon.textContent = '🏋️‍♂️'; // Zdejmujemy kłódkę!
+                    navTrainingBtn.classList.remove('disabled', 'locked'); // Zdejmujemy szpitalną blokadę!
                 }
 
                 trainingMentors = data.mentors || [];
@@ -3210,11 +3238,7 @@
         // Inicjalizacja przy ładowaniu
         if (navTrainingBtn) {
             navTrainingBtn.addEventListener('click', () => {
-                if (navTrainingBtn.classList.contains('locked')) {
-                    showWarningMessage('Ten tryb jest zablokowany! Ukończ Misję 5.');
-                } else {
-                    fetchTrainingStatus();
-                }
+                fetchTrainingStatus();
             });
         }
         
