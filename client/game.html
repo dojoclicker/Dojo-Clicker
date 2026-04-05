@@ -3226,14 +3226,33 @@
         stopBtn.addEventListener('click', () => handleStopTraining('cancel'));
 
         // 5. Zarządzanie stanami UI i Zegarem
+        function lockTabsForTraining(isLocked) {
+            const tabsToLock = [
+                document.querySelector('[data-tab="missions"]'),
+                document.querySelector('[data-tab="equipment"]'),
+                document.querySelector('[data-tab="shop"]'),
+                document.querySelector('[data-tab="bank"]')
+            ];
+            
+            tabsToLock.forEach(tab => {
+                if (!tab) return;
+                if (isLocked) {
+                    tab.classList.add('tab-disabled'); // Szpitalne wyszarzenie
+                } else {
+                    tab.classList.remove('tab-disabled');
+                }
+            });
+        }
+
         function showSetupState() {
             activeTrainingEndTime = null;
             clearInterval(trainingCountdownInterval);
             setupView.style.display = 'flex';
             progressView.style.display = 'none';
             
-            // Odblokowanie misji (dostosuj jeśli blokujesz inaczej)
+            // Odblokowanie misji i nawigacji
             document.querySelectorAll('.mission-card button').forEach(b => b.disabled = false);
+            lockTabsForTraining(false);
         }
 
         function showActiveTrainingState(mentor, endTime) {
@@ -3242,8 +3261,9 @@
             progressView.style.display = 'flex';
             activeMentorName.textContent = `Trenujesz u: ${mentor ? mentor.name : 'Nieznany'}`;
             
-            // Blokada misji w trakcie treningu!
+            // Blokada misji i nawigacji w trakcie treningu!
             document.querySelectorAll('.mission-card button').forEach(b => b.disabled = true);
+            lockTabsForTraining(true);
             
             startCountdown();
         }
