@@ -1087,13 +1087,13 @@ app.post('/api/missions/start', authenticateToken, requireAlive, async (req, res
     // Zapisujemy próbę dla misji One-Try
     if (mission.is_one_try === true && !newAttempted.includes(missionId)) newAttempted.push(missionId);
 
-    // SYSTEM ODBLOKOWAŃ GDD: Sprawdzamy czy to misja fabularna odblokowująca nową mechanikę
-    if (mission.name === 'Test Mistrza' && !newUnlockedFeatures.includes('training')) newUnlockedFeatures.push('training');
-    if (mission.name === 'Mleko' && !newUnlockedFeatures.includes('work')) newUnlockedFeatures.push('work');
-    if (mission.name === 'Kurier' && !newUnlockedFeatures.includes('special_tasks')) newUnlockedFeatures.push('special_tasks');
-    if (mission.name === 'Święta Wieża' && !newUnlockedFeatures.includes('laboratory')) newUnlockedFeatures.push('laboratory');
-    if (mission.name === 'Niebiański Pałac' && !newUnlockedFeatures.includes('meditation')) newUnlockedFeatures.push('meditation');
-    if (mission.name === 'Finał' && !newUnlockedFeatures.includes('pvp')) newUnlockedFeatures.push('pvp');
+    // SYSTEM ODBLOKOWAŃ GDD (Po ID misji - 100% niezawodne)
+    if (missionId === '00000000-0000-0000-0000-000000000005' && !newUnlockedFeatures.includes('training')) newUnlockedFeatures.push('training');
+    if (missionId === '00000000-0000-0000-0000-000000000006' && !newUnlockedFeatures.includes('work')) newUnlockedFeatures.push('work');
+    if (missionId === '00000000-0000-0000-0000-000000000010' && !newUnlockedFeatures.includes('special_tasks')) newUnlockedFeatures.push('special_tasks');
+    if (missionId === '00000000-0000-0000-0000-000000000015' && !newUnlockedFeatures.includes('laboratory')) newUnlockedFeatures.push('laboratory');
+    if (missionId === '00000000-0000-0000-0000-000000000020' && !newUnlockedFeatures.includes('meditation')) newUnlockedFeatures.push('meditation');
+    if (missionId === '00000000-0000-0000-0000-000000000025' && !newUnlockedFeatures.includes('pvp')) newUnlockedFeatures.push('pvp');
 
     await supabase.from('characters').update({
         coins: newCoins.toString(), strength: newStr.toString(), speed: newSpd.toString(), endurance: newEnd.toString(), 

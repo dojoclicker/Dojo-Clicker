@@ -1212,6 +1212,9 @@
                     if (typeof window.refreshActiveTooltip === 'function') window.refreshActiveTooltip();
                 }
 
+                // Sprawdzamy na żywo czy po walce odblokowano nową mechanikę
+                if (typeof fetchTrainingStatus === 'function') fetchTrainingStatus();
+
                 console.log('[UI] Dane postaci załadowane pomyślnie:', data);
                 
             } catch (error) {
@@ -2204,13 +2207,13 @@
             if (!template) return '';
             
             let unlockText = '';
-            // Używamy .includes() na wypadek dopisków typu "(Jednorazowa)" w nazwie z bazy danych
-            if (template.name.includes('Test Mistrza') || template.name.includes('Test Starego Mistrza')) unlockText = 'Sukces odblokowuje: Zakładkę Treningu 🧘‍♂️';
-            else if (template.name.includes('Mleko')) unlockText = 'Sukces odblokowuje: Pracę 💼';
-            else if (template.name.includes('Kurier')) unlockText = 'Sukces odblokowuje: Zadania Specjalne 📜';
-            else if (template.name.includes('Święta Wieża')) unlockText = 'Sukces odblokowuje: Laboratorium Zwojów 🧪';
-            else if (template.name.includes('Niebiański Pałac')) unlockText = 'Sukces odblokowuje: Głęboką Medytację 🧘‍♀️';
-            else if (template.name.includes('Finał')) unlockText = 'Sukces odblokowuje: Arenę PVP ⚔️';
+            // Używamy ID misji dla 100% niezawodności
+            if (template.id === '00000000-0000-0000-0000-000000000005') unlockText = 'Sukces odblokowuje: Zakładkę Treningu 🧘‍♂️';
+            else if (template.id === '00000000-0000-0000-0000-000000000006') unlockText = 'Sukces odblokowuje: Pracę 💼';
+            else if (template.id === '00000000-0000-0000-0000-000000000010') unlockText = 'Sukces odblokowuje: Zadania Specjalne 📜';
+            else if (template.id === '00000000-0000-0000-0000-000000000015') unlockText = 'Sukces odblokowuje: Laboratorium Zwojów 🧪';
+            else if (template.id === '00000000-0000-0000-0000-000000000020') unlockText = 'Sukces odblokowuje: Głęboką Medytację 🧘‍♀️';
+            else if (template.id === '00000000-0000-0000-0000-000000000025') unlockText = 'Sukces odblokowuje: Arenę PVP ⚔️';
 
             let unlockHtml = unlockText ? `<div style="font-size: 0.85rem; color: #a3e635; margin-top: 8px; border-top: 1px dashed rgba(255,255,255,0.1); padding-top: 6px; text-align: center; font-weight: bold;">${unlockText}</div>` : '';
 
