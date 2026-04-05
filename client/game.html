@@ -2204,12 +2204,13 @@
             if (!template) return '';
             
             let unlockText = '';
-            if (template.name === 'Test Mistrza') unlockText = 'Sukces odblokowuje: Zakładkę Treningu 🧘‍♂️';
-            else if (template.name === 'Mleko') unlockText = 'Sukces odblokowuje: Pracę 💼';
-            else if (template.name === 'Kurier') unlockText = 'Sukces odblokowuje: Zadania Specjalne 📜';
-            else if (template.name === 'Święta Wieża') unlockText = 'Sukces odblokowuje: Laboratorium Zwojów 🧪';
-            else if (template.name === 'Niebiański Pałac') unlockText = 'Sukces odblokowuje: Głęboką Medytację 🧘‍♀️';
-            else if (template.name === 'Finał') unlockText = 'Sukces odblokowuje: Arenę PVP ⚔️';
+            // Używamy .includes() na wypadek dopisków typu "(Jednorazowa)" w nazwie z bazy danych
+            if (template.name.includes('Test Mistrza') || template.name.includes('Test Starego Mistrza')) unlockText = 'Sukces odblokowuje: Zakładkę Treningu 🧘‍♂️';
+            else if (template.name.includes('Mleko')) unlockText = 'Sukces odblokowuje: Pracę 💼';
+            else if (template.name.includes('Kurier')) unlockText = 'Sukces odblokowuje: Zadania Specjalne 📜';
+            else if (template.name.includes('Święta Wieża')) unlockText = 'Sukces odblokowuje: Laboratorium Zwojów 🧪';
+            else if (template.name.includes('Niebiański Pałac')) unlockText = 'Sukces odblokowuje: Głęboką Medytację 🧘‍♀️';
+            else if (template.name.includes('Finał')) unlockText = 'Sukces odblokowuje: Arenę PVP ⚔️';
 
             let unlockHtml = unlockText ? `<div style="font-size: 0.85rem; color: #a3e635; margin-top: 8px; border-top: 1px dashed rgba(255,255,255,0.1); padding-top: 6px; text-align: center; font-weight: bold;">${unlockText}</div>` : '';
 
@@ -2222,6 +2223,7 @@
                 <div style="font-size: 0.85rem; margin-top: 4px;"><b>Nagroda Monety:</b> ${template.reward_coins_min || '0'} - ${template.reward_coins_max || '0'}</div>
                 <div style="font-size: 0.85rem; margin-top: 4px;"><b>Statystyki:</b> ${template.rewardStatsText}</div>
                 <div style="font-size: 0.85rem; margin-top: 4px;"><b>Dodatkowe Drop:</b> ${template.dropsText}</div>
+                <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 8px; border-top: 1px dashed rgba(255,255,255,0.1); padding-top: 6px; text-align: center;">${template.unlockInfoText}</div>
                 ${unlockHtml}
             `;
         }
