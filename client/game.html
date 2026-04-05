@@ -1755,7 +1755,8 @@
             if (existingItem && isStackable) {
                 hasSpace = true; // Zmieści się na istniejącym stosie
             } else {
-                hasSpace = backpackItems.length < 5; // Wymaga wolnego slota
+                // [POPRAWKA] Używamy globalnej funkcji wyliczającej rozmiar plecaka!
+                hasSpace = backpackItems.length < calculateMaxBackpackSlots(); 
             }
             
             const canAfford = playerCoins >= Number(item.price);

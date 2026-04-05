@@ -1120,8 +1120,13 @@ app.post('/api/inventory/split', authenticateToken, async (req, res) => {
     const { data: character } = await supabase.from('characters').select('id').eq('profile_id', userId).single();
     if (!character) return res.status(404).json({ error: 'Postać nie znaleziona' });
 
+    // [POPRAWKA] Dynamiczne sprawdzanie pojemności
+    const { data: charStats } = await supabase.from('characters').select('strength, speed, endurance').eq('id', character.id).single();
+    const minPhysicalStat = minBigInt(BigInt(charStats.strength || '0'), minBigInt(BigInt(charStats.speed || '0'), BigInt(charStats.endurance || '0')));
+    const maxSlots = Math.min(50, 5 + Number(minPhysicalStat / 10000n));
+
     const { data: backpackItems } = await supabase.from('inventory').select('id, backpack_index').eq('character_id', character.id).is('equipped_slot', null);
-    if (backpackItems.length >= 5) return res.status(400).json({ error: 'Brak miejsca w plecaku!' });
+    if (backpackItems.length >= maxSlots) return res.status(400).json({ error: 'Brak miejsca w plecaku!' });
 
     const { data: item } = await supabase.from('inventory').select('*').eq('id', inventory_id).eq('character_id', character.id).single();
     if (!item) return res.status(404).json({ error: 'Nie znaleziono' });
@@ -1164,9 +1169,14 @@ app.post('/api/shop/buy', authenticateToken, requireAlive, async (req, res) => {
 
     const { data: backpackItems } = await supabase.from('inventory').select('id, item_template_id, quantity, backpack_index').eq('character_id', character.id).is('equipped_slot', null);
     
+    // [POPRAWKA] Dynamiczne sprawdzanie pojemności
+    const { data: charStats } = await supabase.from('characters').select('strength, speed, endurance').eq('id', character.id).single();
+    const minPhysicalStat = minBigInt(BigInt(charStats.strength || '0'), minBigInt(BigInt(charStats.speed || '0'), BigInt(charStats.endurance || '0')));
+    const maxSlots = Math.min(50, 5 + Number(minPhysicalStat / 10000n));
+
     const existingItem = backpackItems.find(item => item.item_template_id === template_id);
     const isStackable = itemTemplate.category === 'consumable' || itemTemplate.category === 'special_consumable';
-    if (!existingItem || !isStackable) { if (backpackItems.length >= 5) return res.status(400).json({ error: 'Pełny plecak!' }); }
+    if (!existingItem || !isStackable) { if (backpackItems.length >= maxSlots) return res.status(400).json({ error: 'Pełny plecak!' }); }
 
     await supabase.from('characters').update({ coins: (BigInt(character.coins || '0') - totalCost).toString() }).eq('id', character.id);
 
