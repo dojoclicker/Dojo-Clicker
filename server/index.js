@@ -360,8 +360,14 @@ app.get('/api/character', authenticateToken, async (req, res) => {
     }
 
     if (ticks60s > 0n || !character.last_calculation_time) {
+      const isTraining = !!character.active_training_id; // Sprawdzamy czy gracz obecnie trenuje
+
       if (isHospitalized) {
         dbUpdateNeeded = false;
+      } else if (isTraining) {
+        // Zatrzymujemy odnawianie statystyk, ale wymuszamy zapis samego czasu (dbUpdateNeeded = true), 
+        // żeby "przepalić" tykanie zegara i zablokować darmową staminę po zakończeniu treningu!
+        dbUpdateNeeded = true; 
       } else {
         const finalEndurance = BigInt(baseStats.endurance) + BigInt(equipStats.endurance || '0');
         const finalMentalStrength = BigInt(baseStats.mental_strength) + BigInt(equipStats.mental_strength || '0');
