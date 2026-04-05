@@ -1088,7 +1088,11 @@
 
                 if (currentHp <= 0 && data.hospital_until) {
                     // STAN: MARTWY / W SZPITALU
-                    activateTab('hospital');
+                    // [POPRAWKA] Przenosimy do szpitala TYLKO jeśli gracz nie jest na Stronie Głównej (Dashboardzie)
+                    const currentTab = localStorage.getItem('active_game_tab');
+                    if (currentTab !== 'dashboard' && currentTab !== 'hospital') {
+                        activateTab('hospital');
+                    }
                     startHospitalCountdown(data.hospital_until);
                 } else {
                     // STAN: ZDROWY
