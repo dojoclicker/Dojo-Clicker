@@ -449,6 +449,12 @@ body {
 .text-hospital-danger { color: #ef4444 !important; text-shadow: 0 0 10px rgba(239, 68, 68, 0.5); }
 .text-hospital-success { color: #22c55e !important; text-shadow: 0 0 10px rgba(34, 197, 94, 0.5); }
 .disabled, .tab-disabled { pointer-events: none !important; filter: grayscale(100%) brightness(0.5); opacity: 0.5; cursor: not-allowed; position: relative; }
+
+.dashboard-container {
+    padding: 1rem;
+    width: 100%;
+}
+
 /* WIDOK EKWIPUNKU */
 .equipment-container {
     display: flex;
@@ -1242,9 +1248,9 @@ body {
     /* 4. GŁÓWNY OBSZAR ROBOCZY */
     main#main-workspace { padding: 10px !important; width: 100% !important; max-width: 100% !important; overflow-x: hidden !important; flex-grow: 1 !important; box-sizing: border-box !important; display: block !important; }
     
-    .equipment-container, .shop-container, .hospital-container, .bank-container { display: flex !important; flex-direction: column !important; align-items: center !important; width: 100% !important; max-width: 100% !important; padding: 0 !important; margin: 0 !important; gap: 15px !important; box-sizing: border-box !important; }
+    .dashboard-container, .equipment-container, .shop-container, .hospital-container, .bank-container { display: flex !important; flex-direction: column !important; align-items: center !important; width: 100% !important; max-width: 100% !important; padding: 0 !important; margin: 0 !important; gap: 15px !important; box-sizing: border-box !important; }
     
-    .equipment-panel, .inventory-panel, .shop-left-column, .shop-right-column, .hospital-panel-left, .hospital-panel-right, .bank-left-column, .bank-right-column { width: 100% !important; max-width: 100% !important; min-width: 0 !important; padding: 15px 10px !important; margin: 0 !important; box-sizing: border-box !important; flex: none !important; }
+    .dashboard-hub, .dashboard-ranking, .equipment-panel, .inventory-panel, .shop-left-column, .shop-right-column, .hospital-panel-left, .hospital-panel-right, .bank-left-column, .bank-right-column { width: 100% !important; max-width: 100% !important; min-width: 0 !important; padding: 15px 10px !important; margin: 0 !important; box-sizing: border-box !important; flex: none !important; }
     
     .missions-grid { display: grid !important; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)) !important; gap: 10px !important; padding: 0 0 50px 0 !important; width: 100% !important; box-sizing: border-box !important; }
     .mission-card { width: 100% !important; height: auto !important; min-height: 180px !important; padding: 10px !important; box-sizing: border-box !important; }
