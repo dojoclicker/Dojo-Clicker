@@ -3100,8 +3100,15 @@
                     navTrainingBtn.classList.remove('disabled', 'locked'); 
                     localStorage.setItem('training_unlocked', 'true'); // Zapamiętujemy odblokowanie!
                 } else {
-                    navTrainingBtn.classList.add('disabled'); 
+                    navTrainingBtn.classList.add('disabled', 'locked'); 
                     localStorage.setItem('training_unlocked', 'false'); // Na wypadek resetu konta z 1. dniem miesiąca
+                    
+                    // BEZPIECZNIK INTRUZA: Jeśli gracz "wpadł" do zakładki z pamięci przeglądarki, a nie ma dostępu - wyrzuć go!
+                    const trainingView = document.getElementById('training-view');
+                    if (trainingView && trainingView.style.display !== 'none') {
+                        const missionsBtn = document.querySelector('[data-tab="missions"]');
+                        if (missionsBtn) missionsBtn.click(); // Natychmiastowo przełącza widok z powrotem na Misje
+                    }
                 }
 
                 trainingMentors = data.mentors || [];
@@ -3260,6 +3267,14 @@
         if (navTrainingBtn) {
             navTrainingBtn.addEventListener('click', () => {
                 fetchTrainingStatus();
+            });
+        }
+
+        // Czyszczenie pamięci przy wylogowaniu (zapobiega mieszaniu się kont)
+        const logoutBtnGame = document.getElementById('logout-btn');
+        if (logoutBtnGame) {
+            logoutBtnGame.addEventListener('click', () => {
+                localStorage.removeItem('training_unlocked');
             });
         }
         
