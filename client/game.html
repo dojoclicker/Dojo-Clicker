@@ -1180,7 +1180,9 @@
 
                 if (currentHp <= 0 && data.hospital_until) {
                     // STAN: MARTWY / W SZPITALU
-                    // [POPRAWKA] Przenosimy do szpitala TYLKO jeśli gracz nie jest na Stronie Głównej (Dashboardzie)
+                    localStorage.setItem('is_hospitalized', 'true'); // Zapamiętujemy szpital dla błyskawicznego startu!
+                    
+                    // Przenosimy do szpitala TYLKO jeśli gracz nie jest na Stronie Głównej (Dashboardzie)
                     const currentTab = localStorage.getItem('active_game_tab');
                     if (currentTab !== 'dashboard' && currentTab !== 'hospital') {
                         activateTab('hospital');
@@ -1188,6 +1190,8 @@
                     startHospitalCountdown(data.hospital_until);
                 } else {
                     // STAN: ZDROWY
+                    localStorage.setItem('is_hospitalized', 'false'); // Czyścimy pamięć o szpitalu
+                    
                     if (hospitalInterval) clearInterval(hospitalInterval);
                     lockTabsForHospital(false);
                     
@@ -3332,6 +3336,9 @@
         if (logoutBtnGame) {
             logoutBtnGame.addEventListener('click', () => {
                 localStorage.removeItem('training_unlocked');
+                localStorage.removeItem('is_training_active'); // Zdejmuje blokadę treningu w przeglądarce dla nowego konta
+                localStorage.removeItem('is_hospitalized');    // Zdejmuje blokadę szpitala w przeglądarce dla nowego konta
+                localStorage.setItem('active_game_tab', 'dashboard'); // Wymusza bezpieczny start na Stronie Głównej!
             });
         }
         
@@ -3343,6 +3350,11 @@
         // Błyskawiczne zablokowanie innych zakładek, jeśli w pamięci jest aktywny trening
         if (localStorage.getItem('is_training_active') === 'true') {
             if (typeof lockTabsForTraining === 'function') lockTabsForTraining(true);
+        }
+
+        // Błyskawiczne zablokowanie nawigacji dla Szpitala (brak skaczących guzików po wciśnięciu F5)
+        if (localStorage.getItem('is_hospitalized') === 'true') {
+            if (typeof lockTabsForHospital === 'function') lockTabsForHospital(true);
         }
 
         // Zbuduj status w tle bez sztucznego opóźnienia
