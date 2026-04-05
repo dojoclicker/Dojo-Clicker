@@ -340,8 +340,27 @@ app.get('/api/character', authenticateToken, async (req, res) => {
 
     let elapsedMs = now - effectiveLastCalcTime;
     if (isNaN(elapsedMs) || elapsedMs < 0) elapsedMs = 0;
+
+    // --- TRYB SMART / PRZYJAZNY (Odnawianie staminy po zakończeniu treningu) ---
+    let isTrainingActiveRightNow = false;
+    if (character.active_training_id && character.training_end_time) {
+        const trainingEndTimeMs = new Date(character.training_end_time).getTime();
+        
+        if (now < trainingEndTimeMs) {
+            // Trening wciąż trwa. Cały upłynięty czas to czas treningu (0 darmowej regeneracji)
+            isTrainingActiveRightNow = true;
+            elapsedMs = 0; 
+        } else {
+            // Trening już się zakończył. 
+            // Liczymy regenerację tylko od momentu zakończenia treningu (odcinamy godziny u mistrza)
+            if (effectiveLastCalcTime < trainingEndTimeMs) {
+                elapsedMs = now - trainingEndTimeMs;
+            }
+        }
+    }
+    // -------------------------------------------------------------------------
     
-    const consumedMs = elapsedMs - (elapsedMs % 60000); 
+    const consumedMs = elapsedMs - (elapsedMs % 60000);
     let remainderMs = elapsedMs % 60000; 
     if (isNaN(remainderMs)) remainderMs = 0;
     
@@ -360,13 +379,10 @@ app.get('/api/character', authenticateToken, async (req, res) => {
     }
 
     if (ticks60s > 0n || !character.last_calculation_time) {
-      const isTraining = !!character.active_training_id; // Sprawdzamy czy gracz obecnie trenuje
-
       if (isHospitalized) {
         dbUpdateNeeded = false;
-      } else if (isTraining) {
-        // Zatrzymujemy odnawianie statystyk, ale wymuszamy zapis samego czasu (dbUpdateNeeded = true), 
-        // żeby "przepalić" tykanie zegara i zablokować darmową staminę po zakończeniu treningu!
+      } else if (isTrainingActiveRightNow) {
+        // Trening fizycznie wciąż trwa. Zamrażamy paski i przepalamy czas!
         dbUpdateNeeded = true; 
       } else {
         const finalEndurance = BigInt(baseStats.endurance) + BigInt(equipStats.endurance || '0');
