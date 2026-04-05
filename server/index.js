@@ -1087,13 +1087,22 @@ app.post('/api/missions/start', authenticateToken, requireAlive, async (req, res
     // Zapisujemy próbę dla misji One-Try
     if (mission.is_one_try === true && !newAttempted.includes(missionId)) newAttempted.push(missionId);
 
-    // SYSTEM ODBLOKOWAŃ GDD (Po ID misji - 100% niezawodne)
-    if (missionId === '00000000-0000-0000-0000-000000000005' && !newUnlockedFeatures.includes('training')) newUnlockedFeatures.push('training');
-    if (missionId === '00000000-0000-0000-0000-000000000006' && !newUnlockedFeatures.includes('work')) newUnlockedFeatures.push('work');
-    if (missionId === '00000000-0000-0000-0000-000000000010' && !newUnlockedFeatures.includes('special_tasks')) newUnlockedFeatures.push('special_tasks');
-    if (missionId === '00000000-0000-0000-0000-000000000015' && !newUnlockedFeatures.includes('laboratory')) newUnlockedFeatures.push('laboratory');
-    if (missionId === '00000000-0000-0000-0000-000000000020' && !newUnlockedFeatures.includes('meditation')) newUnlockedFeatures.push('meditation');
-    if (missionId === '00000000-0000-0000-0000-000000000025' && !newUnlockedFeatures.includes('pvp')) newUnlockedFeatures.push('pvp');
+    // SYSTEM ODBLOKOWAŃ GDD (Oparte o prawdziwe UUID z bazy - w 100% odporne na zmiany nazw)
+    const STORY_MISSIONS_IDS = {
+        TRAINING: '00000000-0000-0000-0000-000000000005', 
+        WORK: '10000000-0000-0000-0000-000000000006',
+        SPECIAL_TASKS: '10000000-0000-0000-0000-000000000010',
+        LABORATORY: '10000000-0000-0000-0000-000000000015',
+        MEDITATION: '10000000-0000-0000-0000-000000000020',
+        PVP: '00000000-0000-0000-0000-000000000025'
+    };
+
+    if (missionId === STORY_MISSIONS_IDS.TRAINING && !newUnlockedFeatures.includes('training')) newUnlockedFeatures.push('training');
+    if (missionId === STORY_MISSIONS_IDS.WORK && !newUnlockedFeatures.includes('work')) newUnlockedFeatures.push('work');
+    if (missionId === STORY_MISSIONS_IDS.SPECIAL_TASKS && !newUnlockedFeatures.includes('special_tasks')) newUnlockedFeatures.push('special_tasks');
+    if (missionId === STORY_MISSIONS_IDS.LABORATORY && !newUnlockedFeatures.includes('laboratory')) newUnlockedFeatures.push('laboratory');
+    if (missionId === STORY_MISSIONS_IDS.MEDITATION && !newUnlockedFeatures.includes('meditation')) newUnlockedFeatures.push('meditation');
+    if (missionId === STORY_MISSIONS_IDS.PVP && !newUnlockedFeatures.includes('pvp')) newUnlockedFeatures.push('pvp');
 
     await supabase.from('characters').update({
         coins: newCoins.toString(), strength: newStr.toString(), speed: newSpd.toString(), endurance: newEnd.toString(), 

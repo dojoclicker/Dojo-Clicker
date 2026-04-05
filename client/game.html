@@ -2206,14 +2206,24 @@
         function createMissionTooltip(template) {
             if (!template) return '';
             
+            const STORY_MISSIONS_IDS = {
+                TRAINING: '00000000-0000-0000-0000-000000000005', 
+                WORK: '10000000-0000-0000-0000-000000000006',
+                SPECIAL_TASKS: '10000000-0000-0000-0000-000000000010',
+                LABORATORY: '10000000-0000-0000-0000-000000000015',
+                MEDITATION: '10000000-0000-0000-0000-000000000020',
+                PVP: '00000000-0000-0000-0000-000000000025'
+            };
+
             let unlockText = '';
-            // Używamy ID misji dla 100% niezawodności
-            if (template.id === '00000000-0000-0000-0000-000000000005') unlockText = 'Sukces odblokowuje: Zakładkę Treningu 🧘‍♂️';
-            else if (template.id === '00000000-0000-0000-0000-000000000006') unlockText = 'Sukces odblokowuje: Pracę 💼';
-            else if (template.id === '00000000-0000-0000-0000-000000000010') unlockText = 'Sukces odblokowuje: Zadania Specjalne 📜';
-            else if (template.id === '00000000-0000-0000-0000-000000000015') unlockText = 'Sukces odblokowuje: Laboratorium Zwojów 🧪';
-            else if (template.id === '00000000-0000-0000-0000-000000000020') unlockText = 'Sukces odblokowuje: Głęboką Medytację 🧘‍♀️';
-            else if (template.id === '00000000-0000-0000-0000-000000000025') unlockText = 'Sukces odblokowuje: Arenę PVP ⚔️';
+            
+            // Weryfikacja tylko po stałym ID (odporna na zmianę template.name)
+            if (template.id === STORY_MISSIONS_IDS.TRAINING) unlockText = 'Sukces odblokowuje: Zakładkę Treningu 🧘‍♂️';
+            else if (template.id === STORY_MISSIONS_IDS.WORK) unlockText = 'Sukces odblokowuje: Pracę 💼';
+            else if (template.id === STORY_MISSIONS_IDS.SPECIAL_TASKS) unlockText = 'Sukces odblokowuje: Zadania Specjalne 📜';
+            else if (template.id === STORY_MISSIONS_IDS.LABORATORY) unlockText = 'Sukces odblokowuje: Laboratorium Zwojów 🧪';
+            else if (template.id === STORY_MISSIONS_IDS.MEDITATION) unlockText = 'Sukces odblokowuje: Głęboką Medytację 🧘‍♀️';
+            else if (template.id === STORY_MISSIONS_IDS.PVP) unlockText = 'Sukces odblokowuje: Arenę PVP ⚔️';
 
             let unlockHtml = unlockText ? `<div style="font-size: 0.85rem; color: #a3e635; margin-top: 8px; border-top: 1px dashed rgba(255,255,255,0.1); padding-top: 6px; text-align: center; font-weight: bold;">${unlockText}</div>` : '';
 
