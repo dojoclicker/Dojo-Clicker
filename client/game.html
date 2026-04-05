@@ -1043,24 +1043,60 @@
           hospitalInterval = setInterval(updateTimer, 1000);
         }
 
-        function lockTabsForHospital(isLocked) {
-          // Znajdź przyciski nawigacji - używamy data-tab attribute
-          const missionTab = document.querySelector('[data-tab="missions"]');
-          const equipmentTab = document.querySelector('[data-tab="equipment"]');
-          const shopTab = document.querySelector('[data-tab="shop"]');
-          const bankTab = document.querySelector('[data-tab="bank"]');
-          const trainingTab = document.querySelector('[data-tab="training"]');
-          
-          const tabsToLock = [missionTab, equipmentTab, shopTab, bankTab, trainingTab];
-          
-          tabsToLock.forEach(tab => {
-            if (!tab) return;
-            if (isLocked) {
-              tab.classList.add('tab-disabled');
-            } else {
-              tab.classList.remove('tab-disabled');
+        window.isPlayerHospitalized = false;
+        window.isPlayerTraining = false;
+
+        function updateTabsLockState() {
+            const tabs = {
+                missions: document.querySelector('[data-tab="missions"]'),
+                equipment: document.querySelector('[data-tab="equipment"]'),
+                shop: document.querySelector('[data-tab="shop"]'),
+                bank: document.querySelector('[data-tab="bank"]'),
+                hospital: document.querySelector('[data-tab="hospital"]'),
+                training: document.querySelector('[data-tab="training"]')
+            };
+
+            // Wyłączamy płynne przejścia na chwilę (likwiduje efekt fortepianu/skakania)
+            Object.values(tabs).forEach(tab => {
+                if (tab) tab.style.transition = 'none';
+            });
+
+            // Zdejmujemy tymczasowe blokady ze wszystkich
+            Object.values(tabs).forEach(tab => {
+                if (tab) tab.classList.remove('tab-disabled');
+            });
+
+            // Wspólne blokady dla Szpitala ORAZ Treningu
+            if (window.isPlayerHospitalized || window.isPlayerTraining) {
+                if (tabs.missions) tabs.missions.classList.add('tab-disabled');
+                if (tabs.equipment) tabs.equipment.classList.add('tab-disabled');
+                if (tabs.shop) tabs.shop.classList.add('tab-disabled');
+                if (tabs.bank) tabs.bank.classList.add('tab-disabled');
             }
-          });
+
+            // Unikalna blokada TYLKO dla Szpitala
+            if (window.isPlayerHospitalized) {
+                if (tabs.training) tabs.training.classList.add('tab-disabled');
+            }
+
+            // Unikalna blokada TYLKO dla Treningu
+            if (window.isPlayerTraining) {
+                if (tabs.hospital) tabs.hospital.classList.add('tab-disabled');
+            }
+
+            // Przywrócenie animacji po wyrenderowaniu klatki
+            requestAnimationFrame(() => {
+                setTimeout(() => {
+                    Object.values(tabs).forEach(tab => {
+                        if (tab) tab.style.transition = '';
+                    });
+                }, 50);
+            });
+        }
+
+        function lockTabsForHospital(isLocked) {
+            window.isPlayerHospitalized = isLocked;
+            updateTabsLockState();
         }
 
         // Pobieranie danych postaci z API
@@ -3126,10 +3162,12 @@
                 renderMentors();
 
                 if (data.activeTraining) {
+                    localStorage.setItem('is_training_active', 'true'); // <-- ZAPAMIĘTUJE
                     const [mentorId, hours] = data.activeTraining.split(':');
                     const mentor = trainingMentors.find(m => m.id === mentorId);
                     showActiveTrainingState(mentor, data.endTime);
                 } else {
+                    localStorage.setItem('is_training_active', 'false');
                     showSetupState();
                 }
             } catch (err) {
@@ -3227,26 +3265,13 @@
 
         // 5. Zarządzanie stanami UI i Zegarem
         function lockTabsForTraining(isLocked) {
-            const tabsToLock = [
-                document.querySelector('[data-tab="missions"]'),
-                document.querySelector('[data-tab="equipment"]'),
-                document.querySelector('[data-tab="shop"]'),
-                document.querySelector('[data-tab="bank"]'),
-                document.querySelector('[data-tab="hospital"]') // <-- DODANE: Szpital zablokowany podczas treningu!
-            ];
-            
-            tabsToLock.forEach(tab => {
-                if (!tab) return;
-                if (isLocked) {
-                    tab.classList.add('tab-disabled'); // Szpitalne wyszarzenie
-                } else {
-                    tab.classList.remove('tab-disabled');
-                }
-            });
+            window.isPlayerTraining = isLocked;
+            updateTabsLockState();
         }
 
         function showSetupState() {
             activeTrainingEndTime = null;
+            localStorage.setItem('is_training_active', 'false');
             clearInterval(trainingCountdownInterval);
             setupView.style.display = 'flex';
             progressView.style.display = 'none';
@@ -3313,6 +3338,11 @@
         // Błyskawiczne odblokowanie UI na podstawie pamięci lokalnej (całkowity brak "mrugania" guzika)
         if (localStorage.getItem('training_unlocked') === 'true') {
             if (navTrainingBtn) navTrainingBtn.classList.remove('disabled', 'locked');
+        }
+
+        // Błyskawiczne zablokowanie innych zakładek, jeśli w pamięci jest aktywny trening
+        if (localStorage.getItem('is_training_active') === 'true') {
+            if (typeof lockTabsForTraining === 'function') lockTabsForTraining(true);
         }
 
         // Zbuduj status w tle bez sztucznego opóźnienia
