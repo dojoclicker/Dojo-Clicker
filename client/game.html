@@ -674,6 +674,7 @@
 
             // Dynamiczne doczepianie danych o misji do znacznika na potrzeby globalnego tooltipu
             const missionTooltipData = {
+                id: mission.id, // <--- TUTAJ BRAKOWAŁO ID!
                 name: mission.name, description: mission.description, chanceColor: chanceColor,
                 chanceNum: chanceNum, stamina_cost: mission.stamina_cost, reqStatsText: reqStatsText,
                 reward_coins_min: mission.reward_coins_min, reward_coins_max: mission.reward_coins_max,
