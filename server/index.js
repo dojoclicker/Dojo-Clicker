@@ -146,6 +146,7 @@ async function getFullCharacterStats(userId) {
 // ==========================================
 // BUFOR RAM - GLOBALNY STAN SERWERA
 // ==========================================
+
 // Przechowujemy stan gry w pamięci Node.js, by chronić limity Supabase
 let globalServerState = null;
 
