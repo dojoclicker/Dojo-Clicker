@@ -1755,6 +1755,142 @@ setInterval(() => {
   }
 }, 60 * 60 * 1000);
 
+// ==========================================
+// TRYB TRENINGU IDLE (LAZY EVALUATION)
+// ==========================================
+
+const TRAINING_MENTORS = {
+  'old_master': { name: 'Stary Mistrz', emoji: '🐢', cost: 10, multiplier: 2 },
+  'cat_hermit': { name: 'Koci Pustelnik', emoji: '🐈', cost: 25, multiplier: 6 },
+  'celestial': { name: 'Pan Niebiańskiego Pałacu', emoji: '☁️', cost: 50, multiplier: 15 },
+  'time_chamber': { name: 'Sala Czasu', emoji: '⏳', cost: 100, multiplier: 40 }
+};
+
+// 1. Pobranie statusu treningu
+app.get('/api/training/status', authenticateToken, async (req, res) => {
+  const userId = req.user.id;
+
+  try {
+    const { data, error } = await supabase
+      .from('characters')
+      .select('active_training_id, training_end_time, unlocked_features')
+      .eq('profile_id', userId) // POPRAWIONE: profile_id
+      .single();
+
+    if (error) throw error;
+    
+    const isUnlocked = data.unlocked_features && data.unlocked_features.includes('training');
+    res.json({ 
+        isUnlocked: isUnlocked,
+        activeTraining: data.active_training_id, 
+        endTime: data.training_end_time,
+        mentors: Object.entries(TRAINING_MENTORS).map(([id, m]) => ({ id, ...m }))
+    });
+  } catch (err) {
+    res.status(500).json({ error: 'Błąd pobierania statusu treningu' });
+  }
+});
+
+// 2. Rozpoczęcie Treningu (Zapis w tle)
+app.post('/api/training/start', authenticateToken, async (req, res) => {
+  const userId = req.user.id;
+  const { mentorId, hours } = req.body;
+  
+  if (!mentorId || !hours) return res.status(400).json({ error: 'Brak danych' });
+  const mentor = TRAINING_MENTORS[mentorId];
+  if (!mentor) return res.status(400).json({ error: 'Nieznany mentor' });
+  
+  const totalCost = BigInt(mentor.cost * hours);
+
+  try {
+    const { data: char, error: fetchErr } = await supabase
+      .from('characters')
+      .select('stamina, active_training_id, unlocked_features')
+      .eq('profile_id', userId) // POPRAWIONE: profile_id
+      .single();
+
+    if (fetchErr) throw fetchErr;
+    if (!char.unlocked_features || !char.unlocked_features.includes('training')) {
+         return res.status(403).json({ error: 'Trening nie jest odblokowany! Ukończ Misję 5.' });
+    }
+    if (char.active_training_id) return res.status(400).json({ error: 'Już trenujesz!' });
+    if (BigInt(char.stamina || '0') < totalCost) return res.status(400).json({ error: 'Za mało staminy!' });
+
+    // Czas zakończenia = Teraz + X godzin
+    const endTime = new Date(Date.now() + hours * 60 * 60 * 1000).toISOString();
+    // Zapisujemy ID jako np. "cat_hermit:4"
+    const combinedId = `${mentorId}:${hours}`; 
+
+    const { error: updateErr } = await supabase
+      .from('characters')
+      .update({ 
+          stamina: (BigInt(char.stamina || '0') - totalCost).toString(),
+          active_training_id: combinedId,
+          training_end_time: endTime
+      })
+      .eq('profile_id', userId); // POPRAWIONE: profile_id
+
+    if (updateErr) throw updateErr;
+    res.json({ success: true, endTime });
+  } catch (err) {
+    res.status(500).json({ error: 'Błąd startu treningu' });
+  }
+});
+
+// 3. Przerwanie / Odbiór Nagrody
+app.post('/api/training/stop', authenticateToken, async (req, res) => {
+  const userId = req.user.id;
+  const { action } = req.body; // 'claim' lub 'cancel'
+
+  try {
+    const { data: char, error: fetchErr } = await supabase
+      .from('characters')
+      // POPRAWIONE NAZWY KOLUMN STATYSTYK:
+      .select('active_training_id, training_end_time, strength, speed, endurance, intelligence, mental_strength')
+      .eq('profile_id', userId) // POPRAWIONE: profile_id
+      .single();
+
+    if (fetchErr || !char.active_training_id) return res.status(400).json({ error: 'Brak aktywnego treningu' });
+
+    const [mentorId, hoursStr] = char.active_training_id.split(':');
+    const hours = parseInt(hoursStr) || 1;
+    const mentor = TRAINING_MENTORS[mentorId];
+    
+    let updates = { active_training_id: null, training_end_time: null };
+    let rewardMsg = 'Trening przerwany przed czasem. Stracono staminę!';
+
+    if (action === 'claim') {
+      const now = new Date();
+      const end = new Date(char.training_end_time);
+      if (now < end) return res.status(400).json({ error: 'Trening wciąż trwa! Musisz poczekać.' });
+
+      // OBLICZENIA NAGRODY: Mnożnik mentora * 150 pkt bazowych za każdą godzinę.
+      const totalReward = BigInt(mentor.multiplier * 150 * hours);
+      const statGain = totalReward / 5n; // Równy podział nagrody na 5 statystyk
+
+      // POPRAWIONE NAZWY KOLUMN:
+      updates.strength = (BigInt(char.strength || '1') + statGain).toString();
+      updates.speed = (BigInt(char.speed || '1') + statGain).toString();
+      updates.endurance = (BigInt(char.endurance || '1') + statGain).toString();
+      updates.intelligence = (BigInt(char.intelligence || '1') + statGain).toString();
+      updates.mental_strength = (BigInt(char.mental_strength || '1') + statGain).toString();
+      
+      rewardMsg = `Medytacja zakończona. Zyskano po +${statGain} do każdej statystyki bazowej!`;
+    }
+
+    const { error: updateErr } = await supabase
+      .from('characters')
+      .update(updates)
+      .eq('profile_id', userId); // POPRAWIONE: profile_id
+
+    if (updateErr) throw updateErr;
+    
+    res.json({ success: true, message: rewardMsg, action });
+  } catch (err) {
+    res.status(500).json({ error: 'Błąd zamykania treningu' });
+  }
+});
+
 app.listen(port, async () => {
   console.log(`[Dojo-Clicker API] Serwer nasłuchuje na porcie ${port}...`);
   await initGlobalState();

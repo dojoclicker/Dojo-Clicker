@@ -43,6 +43,10 @@
                 <div class="nav-icon">🛒</div>
                 <div class="nav-text">Sklep</div>
             </button>
+            <button class="nav-btn locked" data-tab="training" id="nav-training-btn">
+                <div class="nav-icon" id="training-nav-icon">🔒</div>
+                <div class="nav-text">Trening</div>
+            </button>
         </div>
         <div class="time-container">
             <div id="game-time" class="time-display">DC: Dzień 1 | 12:00</div>
@@ -202,7 +206,56 @@
         <!-- Widok Misji -->
         <div id="missions-view">
             <div class="missions-grid">
-                <!-- Misje będą renderowane dynamicznie przez JavaScript -->
+                </div>
+        </div> 
+            <div id="training-view" style="display: none;">
+            <div class="training-container game-panel-row">
+                
+                <div class="training-mentors-panel game-panel" style="flex: 1.5;">
+                    <div class="game-panel-header">
+                        <h4 class="game-panel-title" style="color: var(--goku-accent);">Wybór Mentora</h4>
+                        <button class="nuke-help-btn" data-tooltip="Wybierz mentora i przeznacz staminę na trening w tle (Leniwa Ewaluacja). Odblokujesz stały przyrost statystyk bazowych. Formy nie działają w tym trybie.">?</button>
+                    </div>
+                    <div class="mentors-grid" id="mentors-grid">
+                        </div>
+                </div>
+
+                <div class="training-active-panel game-panel" style="flex: 1;">
+                    <div class="game-panel-header">
+                        <h4 class="game-panel-title" style="color: #a3e635;">Aktywny Trening</h4>
+                    </div>
+                    
+                    <div id="training-setup-view" style="display: flex; flex-direction: column; flex: 1;">
+                        <div style="text-align: center; color: var(--text-muted); margin-bottom: 1rem;">Wybierz mentora z listy po lewej stronie.</div>
+                        
+                        <div id="selected-mentor-info" style="display: none; background: rgba(0,0,0,0.2); padding: 1rem; border-radius: 8px; border: 1px solid var(--goku-panel-border); margin-bottom: 1.5rem; text-align: center;">
+                            <h3 id="setup-mentor-name" style="color: var(--goku-accent); margin-bottom: 0.5rem; font-size: 1.4rem;">Nazwa</h3>
+                            <div style="font-size: 0.95rem; color: var(--text-primary); margin-bottom: 0.5rem;">Koszt: <span id="setup-mentor-cost" style="color: var(--warning); font-weight: bold;">0</span> Stamina / h</div>
+                            <div style="font-size: 0.95rem; color: var(--text-primary);">Mnożnik zysku: <span id="setup-mentor-multiplier" style="color: var(--success); font-weight: bold;">x0</span></div>
+                        </div>
+                        
+                        <div id="training-controls" style="display: none; margin-top: auto;">
+                            <label style="display: block; margin-bottom: 0.5rem; color: var(--text-secondary); text-align: center;">Czas treningu: <span id="training-hours-display" style="color: white; font-weight: bold; font-size: 1.2rem;">1</span> godzina</label>
+                            <input type="range" id="training-hours-slider" min="1" max="12" value="1" style="width: 100%; margin-bottom: 1rem;">
+                            
+                            <div style="text-align: center; font-size: 1.1rem; color: var(--text-primary); margin-bottom: 1.5rem; background: rgba(0,0,0,0.4); padding: 10px; border-radius: 6px;">
+                                Pobierze: <span id="training-total-cost" style="color: var(--warning); font-weight: bold;">0</span> Staminy
+                            </div>
+                            <button id="start-training-btn" class="upgrade-btn" style="padding: 1rem; font-size: 1.1rem;">Rozpocznij Trening</button>
+                        </div>
+                    </div>
+                    
+                    <div id="training-progress-view" style="display: none; text-align: center; flex-direction: column; justify-content: center; flex: 1;">
+                        <div style="font-size: 5rem; line-height: 1; margin-bottom: 1rem; filter: drop-shadow(0 0 15px rgba(163,230,53,0.5));">🧘‍♂️</div>
+                        <h3 id="active-mentor-name" style="color: var(--goku-accent); margin-bottom: 1rem; font-size: 1.5rem;">Mentor</h3>
+                        <div id="training-countdown" style="font-size: 3rem; font-weight: bold; color: var(--success); text-shadow: 2px 2px 4px rgba(0,0,0,0.5); margin-bottom: 1rem; font-family: monospace;">00:00:00</div>
+                        <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 2rem;">Postać medytuje w tle. <br><span style="color: var(--error);">Misje i Praca są zablokowane.</span></p>
+                        
+                        <button id="claim-training-btn" class="upgrade-btn" style="display: none; width: 100%; padding: 1rem; font-size: 1.1rem; background: linear-gradient(135deg, #16a34a, #15803d); margin-bottom: 1rem;">Zakończ i Odbierz Nagrodę</button>
+                        <button id="stop-training-btn" class="btn-header" style="background: #991b1b; width: 100%; padding: 1rem; font-size: 1rem;">Przerwij Trening (Utrata nagrody i staminy!)</button>
+                    </div>
+                </div>
+
             </div>
         </div>
 
@@ -1895,7 +1948,7 @@
             };
             return limits[level] || 10000;
         }
-// Renderowanie slotów banku
+        // Renderowanie slotów banku
         function renderBankSlots() {
             const bankGrid = document.getElementById('bank-items-grid');
             if (!bankGrid) return;
@@ -2957,6 +3010,217 @@
                 });
             }
         });
+
+        // ==========================================
+        // LOGIKA TRENINGU IDLE (LAZY EVALUATION)
+        // ==========================================
+        let trainingMentors = [];
+        let activeTrainingEndTime = null;
+        let currentSelectedMentor = null;
+        let trainingCountdownInterval = null;
+
+        const navTrainingBtn = document.getElementById('nav-training-btn');
+        const trainingNavIcon = document.getElementById('training-nav-icon');
+        const mentorsGrid = document.getElementById('mentors-grid');
+        
+        // UI Elementy Setupu
+        const setupView = document.getElementById('training-setup-view');
+        const setupMentorInfo = document.getElementById('selected-mentor-info');
+        const setupMentorName = document.getElementById('setup-mentor-name');
+        const setupMentorCost = document.getElementById('setup-mentor-cost');
+        const setupMentorMultiplier = document.getElementById('setup-mentor-multiplier');
+        const trainingControls = document.getElementById('training-controls');
+        const hoursSlider = document.getElementById('training-hours-slider');
+        const hoursDisplay = document.getElementById('training-hours-display');
+        const totalCostDisplay = document.getElementById('training-total-cost');
+        const startBtn = document.getElementById('start-training-btn');
+
+        // UI Elementy Aktywnego Treningu
+        const progressView = document.getElementById('training-progress-view');
+        const activeMentorName = document.getElementById('active-mentor-name');
+        const countdownDisplay = document.getElementById('training-countdown');
+        const claimBtn = document.getElementById('claim-training-btn');
+        const stopBtn = document.getElementById('stop-training-btn');
+
+        // 1. Pobieranie statusu z serwera (Z użyciem API Call)
+        async function fetchTrainingStatus() {
+            try {
+                const res = await apiCall('/api/training/status', 'GET');
+                if (!res || !res.success) return;
+                
+                const data = res.data;
+
+                if (data.isUnlocked) {
+                    navTrainingBtn.classList.remove('locked');
+                    trainingNavIcon.textContent = '🏋️‍♂️'; // Zdejmujemy kłódkę!
+                }
+
+                trainingMentors = data.mentors || [];
+                renderMentors();
+
+                if (data.activeTraining) {
+                    const [mentorId, hours] = data.activeTraining.split(':');
+                    const mentor = trainingMentors.find(m => m.id === mentorId);
+                    showActiveTrainingState(mentor, data.endTime);
+                } else {
+                    showSetupState();
+                }
+            } catch (err) {
+                console.error('Błąd pobierania statusu treningu:', err);
+            }
+        }
+
+        // 2. Renderowanie kart mentorów
+        function renderMentors() {
+            mentorsGrid.innerHTML = '';
+            trainingMentors.forEach(mentor => {
+                const card = document.createElement('div');
+                card.className = 'mentor-card';
+                card.innerHTML = `
+                    <div class="mentor-emoji">${mentor.emoji}</div>
+                    <div class="mentor-info">
+                        <div class="mentor-name">${mentor.name}</div>
+                        <div class="mentor-stats">
+                            <span style="color: var(--warning)">-${mentor.cost} Stam/h</span>
+                            <span style="color: var(--success)">Mnożnik: x${mentor.multiplier}</span>
+                        </div>
+                    </div>
+                `;
+                card.addEventListener('click', () => selectMentor(mentor, card));
+                mentorsGrid.appendChild(card);
+            });
+        }
+
+        // 3. Wybór mentora
+        function selectMentor(mentor, cardElement) {
+            if (activeTrainingEndTime) return; // Zablokuj klikanie, jeśli trening trwa
+
+            document.querySelectorAll('.mentor-card').forEach(c => c.classList.remove('selected'));
+            cardElement.classList.add('selected');
+            currentSelectedMentor = mentor;
+
+            setupMentorInfo.style.display = 'block';
+            trainingControls.style.display = 'block';
+            setupMentorName.textContent = mentor.name;
+            setupMentorCost.textContent = mentor.cost;
+            setupMentorMultiplier.textContent = `x${mentor.multiplier}`;
+            
+            updateTotalCost();
+        }
+
+        function updateTotalCost() {
+            if (!currentSelectedMentor) return;
+            hoursDisplay.textContent = hoursSlider.value;
+            totalCostDisplay.textContent = currentSelectedMentor.cost * hoursSlider.value;
+        }
+
+        hoursSlider.addEventListener('input', updateTotalCost);
+
+        // 4. Obsługa Przycisków Akcji (Start/Stop/Claim z użyciem apiCall i Toastów)
+        startBtn.addEventListener('click', async () => {
+            if (!currentSelectedMentor) return;
+
+            const res = await apiCall('/api/training/start', 'POST', { 
+                mentorId: currentSelectedMentor.id, 
+                hours: hoursSlider.value 
+            }, true); // true = ochrona przed wielokrotnym kliknięciem (Race Condition Lock)
+            
+            if (!res) return;
+
+            if (res.success) {
+                showSuccessMessage('Trening rozpoczęty pomyślnie!');
+                if (typeof fetchCharacterData === 'function') fetchCharacterData(); 
+                showActiveTrainingState(currentSelectedMentor, res.data.endTime);
+            } else {
+                showErrorMessage(res.error || 'Błąd startu treningu');
+            }
+        });
+
+        async function handleStopTraining(action) {
+            if (action === 'cancel' && !confirm('Na pewno? Stracisz całą wydaną staminę i nie dostaniesz nagrody!')) return;
+
+            const res = await apiCall('/api/training/stop', 'POST', { action: action }, true);
+            if (!res) return;
+
+            if (res.success) {
+                if (action === 'claim') {
+                    showSuccessMessage(res.data.message);
+                } else {
+                    showWarningMessage(res.data.message);
+                }
+                if (typeof fetchCharacterData === 'function') fetchCharacterData();
+                showSetupState();
+            } else {
+                showErrorMessage(res.error || 'Błąd zamykania treningu');
+            }
+        }
+
+        claimBtn.addEventListener('click', () => handleStopTraining('claim'));
+        stopBtn.addEventListener('click', () => handleStopTraining('cancel'));
+
+        // 5. Zarządzanie stanami UI i Zegarem
+        function showSetupState() {
+            activeTrainingEndTime = null;
+            clearInterval(trainingCountdownInterval);
+            setupView.style.display = 'flex';
+            progressView.style.display = 'none';
+            
+            // Odblokowanie misji (dostosuj jeśli blokujesz inaczej)
+            document.querySelectorAll('.mission-card button').forEach(b => b.disabled = false);
+        }
+
+        function showActiveTrainingState(mentor, endTime) {
+            activeTrainingEndTime = new Date(endTime).getTime();
+            setupView.style.display = 'none';
+            progressView.style.display = 'flex';
+            activeMentorName.textContent = `Trenujesz u: ${mentor ? mentor.name : 'Nieznany'}`;
+            
+            // Blokada misji w trakcie treningu!
+            document.querySelectorAll('.mission-card button').forEach(b => b.disabled = true);
+            
+            startCountdown();
+        }
+
+        function startCountdown() {
+            clearInterval(trainingCountdownInterval);
+            claimBtn.style.display = 'none';
+            stopBtn.style.display = 'block';
+
+            trainingCountdownInterval = setInterval(() => {
+                const now = new Date().getTime();
+                const distance = activeTrainingEndTime - now;
+
+                if (distance <= 0) {
+                    clearInterval(trainingCountdownInterval);
+                    countdownDisplay.textContent = "ZAKOŃCZONO";
+                    countdownDisplay.style.color = "var(--goku-accent)";
+                    claimBtn.style.display = 'block';
+                    stopBtn.style.display = 'none';
+                } else {
+                    const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                    const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+                    const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+                    countdownDisplay.textContent = 
+                        `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+                    countdownDisplay.style.color = "var(--success)";
+                }
+            }, 1000);
+        }
+
+        // Inicjalizacja przy ładowaniu
+        if (navTrainingBtn) {
+            navTrainingBtn.addEventListener('click', () => {
+                if (navTrainingBtn.classList.contains('locked')) {
+                    showWarningMessage('Ten tryb jest zablokowany! Ukończ Misję 5.');
+                } else {
+                    fetchTrainingStatus();
+                }
+            });
+        }
+        
+        // Zbuduj status na wejściu (jeśli postać już jest zalogowana)
+        setTimeout(fetchTrainingStatus, 1500);
+
     </script>
 <div id="global-tooltip" class="item-tooltip"></div>
 </body>
