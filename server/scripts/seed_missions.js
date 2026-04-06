@@ -184,36 +184,32 @@ const missionsData = [
         is_repeatable: false, is_one_try: false
     },
     {
-        id: "10000000-0000-0000-0000-000000000021", name: "Misja 21: Sala Czasu",
-        description: "Reinkarnacja Króla Demonów rośnie w siłę. Wejdź do Sali Czasu, gdzie jeden dzień to cały rok.",
-        stamina_cost: 80, req_stats: { "strength": "1000000", "speed": "1000000", "endurance": "1000000" },
-        reward_coins_min: 600, reward_coins_max: 800, reward_stats: { "min": "70000", "max": "100000" },
-        drop_table: [],
-        is_repeatable: true, is_one_try: false
+        id: "00000000-0000-0000-0000-000000000021", name: "Misja 21: Nadludzki Ciężar",
+        description: "Otrzymujesz od asystenta Wszechmogącego strój ważący setki kilogramów. Musisz go dogonić, gdy on porusza się z prędkością błyskawicy. To wyciśnie z ciebie maksimum szybkości i wytrzymałości.",
+        stamina_cost: 75, req_stats: { "strength": "1000000", "speed": "1000000", "endurance": "1000000" },
+        reward_coins_min: 600, reward_coins_max: 1000, reward_stats: { "min": "80000", "max": "120000" },
+        drop_table: [], is_repeatable: true
     },
     {
-        id: "10000000-0000-0000-0000-000000000022", name: "Misja 22: Własny Cień",
-        description: "Fizyczna siła to nie wszystko. Musisz stoczyć najtrudniejszą walkę ze swoim mrocznym sobowtórem.",
+        id: "00000000-0000-0000-0000-000000000022", name: "Misja 22: Własny Cień",
+        description: "Fizyczna siła to nie wszystko. Usiądź w ciszy i wejdź we własny umysł. Stocz najtrudniejszą walkę z iluzją własnego strachu i gniewu, ucieleśnioną jako twój mroczny sobowtór.",
         stamina_cost: 85, req_stats: { "strength": "1500000", "speed": "1500000", "endurance": "1500000" },
         reward_coins_min: 800, reward_coins_max: 1200, reward_stats: { "min": "150000", "max": "200000" },
-        drop_table: [],
-        is_repeatable: true, is_one_try: false
+        drop_table: [], is_repeatable: true
     },
     {
-        id: "10000000-0000-0000-0000-000000000023", name: "Misja 23: Eliminacje",
-        description: "Zapisujesz się na Wielki Turniej Sztuk Walki. Przebij się przez gąszcz zawodników do głównej drabinki.",
+        id: "00000000-0000-0000-0000-000000000023", name: "Misja 23: Podróż w Przeszłość",
+        description: "Mistrz używa Wahadła Czasu, by przenieść cię do przeszłości. Zmierz się tam z wirtualnymi widmami legendarnych wojowników z dawnych stuleci, aby pojąć prawdziwą naturę walki.",
         stamina_cost: 90, req_stats: { "strength": "2500000", "speed": "2500000", "endurance": "2500000" },
-        reward_coins_min: 1000, reward_coins_max: 1800, reward_stats: { "min": "250000", "max": "350000" },
-        drop_table: [],
-        is_repeatable: true, is_one_try: false
+        reward_coins_min: 1000, reward_coins_max: 1500, reward_stats: { "min": "250000", "max": "350000" },
+        drop_table: [], is_repeatable: true
     },
     {
-        id: "10000000-0000-0000-0000-000000000024", name: "Misja 24: Półfinały",
-        description: "Główna arena! Twój przeciwnik używa nieczystych zagrań. Udowodnij, co znaczy harmonia ciała i umysłu.",
+        id: "00000000-0000-0000-0000-000000000024", name: "Misja 24: Trening w Sali Czasu",
+        description: "Reinkarnacja Króla Demonów rośnie w siłę. Wszechmogący pozwala ci wejść do Sali Czasu, gdzie jeden dzień to cały rok. Hartuj swoje ciało do granic ludzkich możliwości!",
         stamina_cost: 95, req_stats: { "strength": "4000000", "speed": "4000000", "endurance": "4000000" },
-        reward_coins_min: 2000, reward_coins_max: 3000, reward_stats: { "min": "500000", "max": "750000" },
-        drop_table: [{ "item_id": ITEMS.KAPSULKA, "chance_pct": 3 }],
-        is_repeatable: true, is_one_try: false
+        reward_coins_min: 2000, reward_coins_max: 3000, reward_stats: { "min": "400000", "max": "600000" },
+        drop_table: [], is_repeatable: true
     },
     {
         id: "00000000-0000-0000-0000-000000000025", name: "Finał Turnieju (Jednorazowa)",
