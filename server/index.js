@@ -1819,8 +1819,12 @@ app.get('/api/training/status', authenticateToken, async (req, res) => {
 
     if (error) throw error;
     
-    let unlockedFeatures = []; try { unlockedFeatures = JSON.parse(data.unlocked_features || '[]'); } catch(e){}
-    let completedMissions = []; try { completedMissions = JSON.parse(data.completed_missions || '[]'); } catch(e){}
+    // BEZPIECZNE PARSOWANIE TABLIC (odporne na format z Supabase)
+    let unlockedFeatures = Array.isArray(data.unlocked_features) ? data.unlocked_features : [];
+    if (typeof data.unlocked_features === 'string') { try { unlockedFeatures = JSON.parse(data.unlocked_features); } catch(e){} }
+
+    let completedMissions = Array.isArray(data.completed_missions) ? data.completed_missions : [];
+    if (typeof data.completed_missions === 'string') { try { completedMissions = JSON.parse(data.completed_missions); } catch(e){} }
 
     const mentorsList = Object.entries(TRAINING_MENTORS).map(([id, m]) => ({
         id, name: m.name, emoji: m.emoji, cost: m.cost, multiplier: m.multiplier,
@@ -1828,7 +1832,6 @@ app.get('/api/training/status', authenticateToken, async (req, res) => {
         reqMission: m.reqMission
     }));
 
-    // Czysta logika z bazy: Trening odblokowany, jeśli gracz ukończył misję Starego Mistrza LUB ma wpis 'training' w cechach.
     const isDojoUnlocked = unlockedFeatures.includes('training') || completedMissions.includes(TRAINING_MENTORS['old_master'].reqMission);
 
     res.json({ 
@@ -1851,7 +1854,10 @@ app.post('/api/training/start', async (req, res) => {
     const mentor = TRAINING_MENTORS[mentorId];
     if (!mentor) return res.status(400).json({ error: 'Zły mentor' });
 
-    let completedMissions = []; try { completedMissions = JSON.parse(char.completed_missions || '[]'); } catch(e){}
+    // BEZPIECZNE PARSOWANIE TABLIC
+    let completedMissions = Array.isArray(char.completed_missions) ? char.completed_missions : [];
+    if (typeof char.completed_missions === 'string') { try { completedMissions = JSON.parse(char.completed_missions); } catch(e){} }
+
     if (mentor.reqMission && !completedMissions.includes(mentor.reqMission)) {
         return res.status(403).json({ error: 'Ukończ wymaganą misję!' });
     }
