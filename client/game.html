@@ -208,20 +208,17 @@
             <div class="missions-grid">
                 </div>
         </div> 
-            <div id="training-view" class="tab-content" style="display: none;">
-            <div class="training-container game-panel" style="padding: 20px;">
-                <div class="game-panel-header" style="margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center;">
-                    <h4 class="game-panel-title" style="color: var(--goku-accent);">🥋 Dojo Mistrzów</h4>
-                    <div style="background: rgba(0,0,0,0.3); padding: 5px 12px; border-radius: 20px; font-size: 0.85rem; cursor: help; border: 1px solid var(--goku-accent);" 
-                         title="Trening pasywny: Bonusy z ciężkiego EQ nie działają!">
-                        ❓ Info
+            <div id="training-view" style="display: none;">
+            <div class="training-container game-panel-row">
+                
+                <div class="training-mentors-panel game-panel" style="flex: 1.5;">
+                    <div class="game-panel-header">
+                        <h4 class="game-panel-title" style="color: var(--goku-accent);">Wybór Mentora</h4>
+                        <button class="nuke-help-btn" data-tooltip="Wybierz mentora i przeznacz staminę na trening w tle (Leniwa Ewaluacja). Odblokujesz stały przyrost statystyk bazowych. Formy nie działają w tym trybie.">?</button>
                     </div>
+                    <div class="mentors-grid" id="mentors-grid">
+                        </div>
                 </div>
-                <div id="training-dynamic-content">
-                    <div style="text-align: center; padding: 50px; color: var(--text-muted);">Ładowanie...</div>
-                </div>
-            </div>
-        </div>
 
                 <div class="training-active-panel game-panel" style="flex: 1;">
                     <div class="game-panel-header">
@@ -1050,29 +1047,50 @@
         window.isPlayerTraining = false;
 
         function updateTabsLockState() {
-            const isTraining = localStorage.getItem('is_training_active') === 'true';
-            const isHospitalized = localStorage.getItem('is_hospitalized') === 'true';
-            const trainingUnlocked = localStorage.getItem('training_unlocked') === 'true';
+            const tabs = {
+                missions: document.querySelector('[data-tab="missions"]'),
+                equipment: document.querySelector('[data-tab="equipment"]'),
+                shop: document.querySelector('[data-tab="shop"]'),
+                bank: document.querySelector('[data-tab="bank"]'),
+                hospital: document.querySelector('[data-tab="hospital"]'),
+                training: document.querySelector('[data-tab="training"]')
+            };
 
-            const navBtns = document.querySelectorAll('.nav-btn');
-            
-            navBtns.forEach(btn => {
-                const tab = btn.getAttribute('data-tab');
-                btn.classList.remove('disabled', 'locked');
+            // Wyłączamy płynne przejścia na chwilę (likwiduje efekt fortepianu/skakania)
+            Object.values(tabs).forEach(tab => {
+                if (tab) tab.style.transition = 'none';
+            });
 
-                if (isHospitalized) {
-                    if (tab !== 'hospital') btn.classList.add('disabled', 'locked');
-                } else if (isTraining) {
-                    // Blokuj wszystko POZA treningiem, żeby gracz mógł odebrać nagrodę
-                    if (tab !== 'training' && tab !== 'dashboard') {
-                        btn.classList.add('disabled', 'locked');
-                    }
-                } else {
-                    // Blokada Dojo przed Misją 10
-                    if (tab === 'training' && !trainingUnlocked) {
-                        btn.classList.add('disabled', 'locked');
-                    }
-                }
+            // Zdejmujemy tymczasowe blokady ze wszystkich
+            Object.values(tabs).forEach(tab => {
+                if (tab) tab.classList.remove('tab-disabled');
+            });
+
+            // Wspólne blokady dla Szpitala ORAZ Treningu
+            if (window.isPlayerHospitalized || window.isPlayerTraining) {
+                if (tabs.missions) tabs.missions.classList.add('tab-disabled');
+                if (tabs.equipment) tabs.equipment.classList.add('tab-disabled');
+                if (tabs.shop) tabs.shop.classList.add('tab-disabled');
+                if (tabs.bank) tabs.bank.classList.add('tab-disabled');
+            }
+
+            // Unikalna blokada TYLKO dla Szpitala
+            if (window.isPlayerHospitalized) {
+                if (tabs.training) tabs.training.classList.add('tab-disabled');
+            }
+
+            // Unikalna blokada TYLKO dla Treningu
+            if (window.isPlayerTraining) {
+                if (tabs.hospital) tabs.hospital.classList.add('tab-disabled');
+            }
+
+            // Przywrócenie animacji po wyrenderowaniu klatki
+            requestAnimationFrame(() => {
+                setTimeout(() => {
+                    Object.values(tabs).forEach(tab => {
+                        if (tab) tab.style.transition = '';
+                    });
+                }, 50);
             });
         }
 
@@ -3091,200 +3109,168 @@
         });
 
         // ==========================================
-        // LOGIKA TRENINGU IDLE (POPRAWIONA)
+        // LOGIKA TRENINGU IDLE (LAZY EVALUATION)
         // ==========================================
+        let trainingMentors = [];
+        let activeTrainingEndTime = null;
+        let currentSelectedMentor = null;
         let trainingCountdownInterval = null;
 
+        const navTrainingBtn = document.getElementById('nav-training-btn');
+        const trainingNavIcon = document.getElementById('training-nav-icon');
+        const mentorsGrid = document.getElementById('mentors-grid');
+        
+        // UI Elementy Setupu
+        const setupView = document.getElementById('training-setup-view');
+        const setupMentorInfo = document.getElementById('selected-mentor-info');
+        const setupMentorName = document.getElementById('setup-mentor-name');
+        const setupMentorCost = document.getElementById('setup-mentor-cost');
+        const setupMentorMultiplier = document.getElementById('setup-mentor-multiplier');
+        const trainingControls = document.getElementById('training-controls');
+        const hoursSlider = document.getElementById('training-hours-slider');
+        const hoursDisplay = document.getElementById('training-hours-display');
+        const totalCostDisplay = document.getElementById('training-total-cost');
+        const startBtn = document.getElementById('start-training-btn');
+
+        // UI Elementy Aktywnego Treningu
+        const progressView = document.getElementById('training-progress-view');
+        const activeMentorName = document.getElementById('active-mentor-name');
+        const countdownDisplay = document.getElementById('training-countdown');
+        const claimBtn = document.getElementById('claim-training-btn');
+        const stopBtn = document.getElementById('stop-training-btn');
+
+        // 1. Pobieranie statusu z serwera (Z użyciem API Call)
         async function fetchTrainingStatus() {
             try {
                 const res = await apiCall('/api/training/status', 'GET');
                 if (!res || !res.success) return;
                 
                 const data = res.data;
-                localStorage.setItem('training_unlocked', data.isUnlocked ? 'true' : 'false');
-                
-                // Aktualizujemy stan blokad przycisków
-                updateTabsLockState();
 
                 if (data.isUnlocked) {
-                    renderTrainingUI(data);
+                    navTrainingBtn.classList.remove('disabled', 'locked'); 
+                    localStorage.setItem('training_unlocked', 'true'); // Zapamiętujemy odblokowanie!
+                } else {
+                    navTrainingBtn.classList.add('disabled', 'locked'); 
+                    localStorage.setItem('training_unlocked', 'false'); // Na wypadek resetu konta z 1. dniem miesiąca
+                    
+                    // BEZPIECZNIK INTRUZA: Jeśli gracz "wpadł" do zakładki z pamięci przeglądarki, a nie ma dostępu - wyrzuć go!
+                    const trainingView = document.getElementById('training-view');
+                    if (trainingView && trainingView.style.display !== 'none') {
+                        const missionsBtn = document.querySelector('[data-tab="missions"]');
+                        if (missionsBtn) missionsBtn.click(); // Natychmiastowo przełącza widok z powrotem na Misje
+                    }
+                }
+
+                trainingMentors = data.mentors || [];
+                renderMentors();
+
+                if (data.activeTraining) {
+                    localStorage.setItem('is_training_active', 'true'); // <-- ZAPAMIĘTUJE
+                    const [mentorId, hours] = data.activeTraining.split(':');
+                    const mentor = trainingMentors.find(m => m.id === mentorId);
+                    showActiveTrainingState(mentor, data.endTime);
+                } else {
+                    localStorage.setItem('is_training_active', 'false');
+                    showSetupState();
                 }
             } catch (err) {
-                console.error(err);
+                console.error('Błąd pobierania statusu treningu:', err);
             }
         }
 
-        function renderTrainingUI(data) {
-            const container = document.getElementById('training-dynamic-content');
-            if (!container) return;
-
-            // 1. Jeśli trwa aktywny trening
-            if (data.activeTraining && data.endTime) {
-                if (localStorage.getItem('active_game_tab') !== 'training') {
-                    activateTab('training');
-                }
-                localStorage.setItem('is_training_active', 'true');
-                const [mentorId, hours, stat] = data.activeTraining.split(':');
-                const mentor = data.mentors.find(m => m.id === mentorId) || { name: 'Mistrz', emoji: '🥋' };
-                const statsPL = { balanced: 'Zbalansowany', strength: 'Siła', speed: 'Szybkość', endurance: 'Wytrzymałość' };
-
-                container.innerHTML = `
-                    <div style="text-align: center; padding: 30px; background: rgba(0,0,0,0.2); border-radius: 12px; border: 2px solid var(--goku-accent); max-width: 500px; margin: 0 auto;">
-                        <div style="font-size: 4rem; margin-bottom: 10px;">${mentor.emoji}</div>
-                        <h3 style="color: var(--goku-accent); margin-bottom: 10px;">Trenujesz u: ${mentor.name}</h3>
-                        <p style="margin-bottom: 20px;">Cel: <strong style="color: var(--success);">${statsPL[stat] || 'Zbalansowany'}</strong></p>
-                        
-                        <div style="background: #000; border-radius: 10px; height: 25px; margin-bottom: 15px; border: 1px solid #333; overflow: hidden;">
-                            <div id="training-progress-fill" style="width: 0%; height: 100%; background: var(--goku-accent); transition: width 1s linear;"></div>
+        // 2. Renderowanie kart mentorów
+        function renderMentors() {
+            mentorsGrid.innerHTML = '';
+            trainingMentors.forEach(mentor => {
+                const card = document.createElement('div');
+                card.className = 'mentor-card';
+                card.innerHTML = `
+                    <div class="mentor-emoji">${mentor.emoji}</div>
+                    <div class="mentor-info">
+                        <div class="mentor-name">${mentor.name}</div>
+                        <div class="mentor-stats">
+                            <span style="color: var(--warning)">-${mentor.cost} Stam/h</span>
+                            <span style="color: var(--success)">Mnożnik: x${mentor.multiplier}</span>
                         </div>
-                        
-                        <div id="training-countdown" style="font-size: 2.5rem; font-weight: bold; font-family: monospace; color: var(--success); margin-bottom: 20px;">00:00:00</div>
-                        
-                        <button class="upgrade-btn" id="claim-training-btn" style="display: none; width: 100%; padding: 12px; margin-bottom: 10px;">Odbierz Nagrodę</button>
-                        <button class="btn-header" onclick="handleStopTraining('cancel')" style="width: 100%; background: #991b1b;">Przerwij (Utrata nagrody i staminy)</button>
                     </div>
                 `;
-                
-                setupTrainingCountdown(new Date(data.endTime));
-                lockTabsForTraining(true);
-                return;
-            }
-
-            // 2. Wybór Mistrzów
-            localStorage.setItem('is_training_active', 'false');
-            lockTabsForTraining(false);
-            
-            let html = `<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px;">`;
-
-            data.mentors.forEach(m => {
-                const isChamberUsed = m.id === 'time_chamber' && data.dailyTimeChamberUsed;
-
-                if (m.isLocked) {
-                    // Mistrz Zablokowany (Kłódka)
-                    html += `
-                        <div class="mentor-card" style="opacity: 0.5; border: 1px dashed #444; text-align: center; padding: 20px; filter: grayscale(1);">
-                            <div style="font-size: 3rem; margin-bottom: 10px;">🔒</div>
-                            <h4 style="margin-bottom: 5px;">${m.name}</h4>
-                            <p style="color: var(--error); font-size: 0.8rem; font-weight: bold;">WYMAGA MISJI</p>
-                        </div>`;
-                } else if (isChamberUsed) {
-                    // Sala Czasu zużyta
-                    html += `
-                        <div class="mentor-card" style="border: 1px solid #ef4444; text-align: center; padding: 20px; background: rgba(239, 68, 68, 0.1);">
-                            <div style="font-size: 3rem; margin-bottom: 10px;">⏳</div>
-                            <h4 style="margin-bottom: 5px;">${m.name}</h4>
-                            <p style="color: #ef4444; font-size: 0.8rem; font-weight: bold;">LIMIT 1/DZIEŃ ZUŻYTY</p>
-                        </div>`;
-                } else {
-                    // Mistrz Dostępny
-                    html += `
-                        <div class="mentor-card game-panel" style="text-align: center; padding: 20px; border: 1px solid var(--goku-panel-border);">
-                            <div style="font-size: 3.5rem; margin-bottom: 10px;">${m.emoji}</div>
-                            <h4 style="margin-bottom: 5px; color: var(--goku-accent);">${m.name}</h4>
-                            <p style="font-size: 0.85rem; color: var(--warning); margin-bottom: 15px;">Koszt: ${m.cost} Staminy/h</p>
-                            
-                            <div style="text-align: left; margin-bottom: 15px;">
-                                <label style="font-size: 0.75rem; color: var(--text-secondary);">Czas:</label>
-                                <select id="hours-${m.id}" style="width: 100%; background: #000; color: #fff; border: 1px solid #444; padding: 5px; margin-bottom: 10px;">
-                                    <option value="1">1 Godzina</option>
-                                    <option value="2">2 Godziny</option>
-                                    <option value="4">4 Godziny</option>
-                                    ${m.id === 'time_chamber' ? '<option value="24">24 Godziny</option>' : ''}
-                                </select>
-                                
-                                <label style="font-size: 0.75rem; color: var(--text-secondary);">Skupienie:</label>
-                                <select id="stat-${m.id}" style="width: 100%; background: #000; color: #fff; border: 1px solid #444; padding: 5px;">
-                                    <option value="balanced">Zbalansowany</option>
-                                    <option value="strength">Siła 💪</option>
-                                    <option value="speed">Szybkość ⚡</option>
-                                    <option value="endurance">Wytrzymałość 🛡️</option>
-                                </select>
-                            </div>
-                            
-                            <button class="btn-header" onclick="handleStartTraining('${m.id}')" style="width: 100%; background: var(--goku-accent);">Rozpocznij</button>
-                        </div>`;
-                }
+                card.addEventListener('click', () => selectMentor(mentor, card));
+                mentorsGrid.appendChild(card);
             });
-
-            html += `</div>`;
-            container.innerHTML = html;
         }
 
-        async function handleStartTraining(mentorId) {
-            const hours = document.getElementById(`hours-${mentorId}`).value;
-            const stat = document.getElementById(`stat-${mentorId}`).value;
+        // 3. Wybór mentora
+        function selectMentor(mentor, cardElement) {
+            if (activeTrainingEndTime) return; // Zablokuj klikanie, jeśli trening trwa
+
+            document.querySelectorAll('.mentor-card').forEach(c => c.classList.remove('selected'));
+            cardElement.classList.add('selected');
+            currentSelectedMentor = mentor;
+
+            setupMentorInfo.style.display = 'block';
+            trainingControls.style.display = 'block';
+            setupMentorName.textContent = mentor.name;
+            setupMentorCost.textContent = mentor.cost;
+            setupMentorMultiplier.textContent = `x${mentor.multiplier}`;
+            
+            updateTotalCost();
+        }
+
+        function updateTotalCost() {
+            if (!currentSelectedMentor) return;
+            hoursDisplay.textContent = hoursSlider.value;
+            totalCostDisplay.textContent = currentSelectedMentor.cost * hoursSlider.value;
+        }
+
+        hoursSlider.addEventListener('input', updateTotalCost);
+
+        // 4. Obsługa Przycisków Akcji (Start/Stop/Claim z użyciem apiCall i Toastów)
+        startBtn.addEventListener('click', async () => {
+            if (!currentSelectedMentor) return;
 
             const res = await apiCall('/api/training/start', 'POST', { 
-                mentorId: mentorId, 
-                hours: parseInt(hours),
-                targetStat: stat
-            }, true);
+                mentorId: currentSelectedMentor.id, 
+                hours: hoursSlider.value 
+            }, true); // true = ochrona przed wielokrotnym kliknięciem (Race Condition Lock)
             
-            if (res && res.success) {
-                showSuccessMessage('Trening rozpoczęty!');
-                fetchTrainingStatus();
-                fetchCharacterData();
-            } else if (res) {
-                showErrorMessage(res.error || 'Błąd startu');
+            if (!res) return;
+
+            if (res.success) {
+                showSuccessMessage('Trening rozpoczęty pomyślnie!');
+                if (typeof fetchCharacterData === 'function') fetchCharacterData(); 
+                showActiveTrainingState(currentSelectedMentor, res.data.endTime);
+            } else {
+                showErrorMessage(res.error || 'Błąd startu treningu');
             }
-        }
+        });
 
         async function handleStopTraining(action) {
-            if (action === 'cancel' && !confirm('Na pewno? Stracisz staminę i nie dostaniesz nagrody!')) return;
+            if (action === 'cancel' && !confirm('Na pewno? Stracisz całą wydaną staminę i nie dostaniesz nagrody!')) return;
 
             const res = await apiCall('/api/training/stop', 'POST', { action: action }, true);
-            if (res && res.success) {
-                showNotification(action === 'claim' ? 'Sukces' : 'Uwaga', res.data.message, action === 'claim' ? 'success' : 'warning');
-                fetchTrainingStatus();
-                fetchCharacterData();
-            } else if (res) {
-                showErrorMessage(res.error || 'Błąd zamykania');
+            if (!res) return;
+
+            if (res.success) {
+                if (action === 'claim') {
+                    showSuccessMessage(res.data.message);
+                } else {
+                    showWarningMessage(res.data.message);
+                }
+                if (typeof fetchCharacterData === 'function') fetchCharacterData();
+                showSetupState();
+            } else {
+                showErrorMessage(res.error || 'Błąd zamykania treningu');
             }
         }
 
-        function setupTrainingCountdown(endTime) {
-            if (trainingCountdownInterval) clearInterval(trainingCountdownInterval);
-            
-            const timerEl = document.getElementById('training-countdown');
-            const fillEl = document.getElementById('training-progress-fill');
-            const claimBtn = document.getElementById('claim-training-btn');
+        claimBtn.addEventListener('click', () => handleStopTraining('claim'));
+        stopBtn.addEventListener('click', () => handleStopTraining('cancel'));
 
-            function update() {
-                const now = new Date();
-                const diff = endTime - now;
-
-                if (diff <= 0) {
-                    clearInterval(trainingCountdownInterval);
-                    if (timerEl) timerEl.innerText = "ZAKOŃCZONO!";
-                    if (fillEl) fillEl.style.width = "100%";
-                    if (claimBtn) {
-                        claimBtn.style.display = 'block';
-                        claimBtn.onclick = () => handleStopTraining('claim');
-                    }
-                    return;
-                }
-
-                const h = Math.floor(diff / 3600000);
-                const m = Math.floor((diff % 3600000) / 60000);
-                const s = Math.floor((diff % 60000) / 1000);
-                
-                if (timerEl) timerEl.innerText = `${h.toString().padStart(2,'0')}:${m.toString().padStart(2,'0')}:${s.toString().padStart(2,'0')}`;
-                
-                // Wizualizacja postępu (uproszczona)
-                if (fillEl) {
-                    const total = 3600000; // Tylko do efektu wizualnego
-                    const elapsed = total - (diff % total);
-                    fillEl.style.width = `${(elapsed / total) * 100}%`;
-                }
-            }
-
-            update();
-            trainingCountdownInterval = setInterval(update, 1000);
-        }
-
+        // 5. Zarządzanie stanami UI i Zegarem
         function lockTabsForTraining(isLocked) {
             window.isPlayerTraining = isLocked;
-            if (typeof updateTabsLockState === 'function') updateTabsLockState();
+            updateTabsLockState();
         }
 
         function showSetupState() {
