@@ -247,7 +247,10 @@
                             </select>
                             
                             <div style="text-align: center; font-size: 1.1rem; color: var(--text-primary); margin-bottom: 1.5rem; background: rgba(0,0,0,0.4); padding: 10px; border-radius: 6px;">
-                                Pobierze: <span id="training-total-cost" style="color: var(--warning); font-weight: bold;">0</span> Staminy
+                                Pobierze: <span id="training-total-cost" style="color: var(--warning); font-weight: bold;">0</span> Staminy<br>
+                                <div style="font-size: 0.95rem; color: var(--success); margin-top: 5px;">
+                                    Szacowany zysk: <span id="training-projected-gain" style="font-weight: bold;">0</span>
+                                </div>
                             </div>
                             <button id="start-training-btn" class="upgrade-btn" style="padding: 1rem; font-size: 1.1rem;">Rozpocznij Trening</button>
                         </div>
@@ -3255,11 +3258,39 @@
 
         function updateTotalCost() {
             if (!currentSelectedMentor) return;
-            hoursDisplay.textContent = hoursSlider.value;
-            totalCostDisplay.textContent = currentSelectedMentor.cost * hoursSlider.value;
+            const hours = parseInt(hoursSlider.value);
+            hoursDisplay.textContent = hours;
+            totalCostDisplay.textContent = currentSelectedMentor.cost * hours;
+
+            // Szacowanie nagrody (zgodnie ze wzorem z backendu)
+            // Szukamy poziomu mocy gracza w interfejsie (DOM)
+            const powerEl = document.getElementById('total-power-level') || document.getElementById('power-level');
+            let powerText = powerEl ? powerEl.innerText.replace(/\s/g, '') : '1000';
+            let effectivePower = Math.max(1000, parseInt(powerText) || 1000);
+
+            // Baza = (Moc / 100) * Mnożnik * Godziny
+            let baseGain = Math.floor((effectivePower / 100) * currentSelectedMentor.multiplier * hours);
+            const targetStat = statSelect ? statSelect.value : 'balanced';
+
+            let gainText = '';
+            if (targetStat === 'balanced') {
+                let perStat = Math.floor(baseGain / 3);
+                gainText = `po +${perStat} (Siła, Szybkość, Wytrz.)`;
+            } else {
+                gainText = `+${baseGain} pkt`;
+            }
+
+            const gainDisplay = document.getElementById('training-projected-gain');
+            if (gainDisplay) {
+                gainDisplay.textContent = gainText;
+            }
         }
 
+        // Nasłuchujemy zmian na suwaku ATAKŻE na liście rozwijanej celu!
         hoursSlider.addEventListener('input', updateTotalCost);
+        if (statSelect) {
+            statSelect.addEventListener('change', updateTotalCost);
+        }
 
         // 4. Start (wysyła statystykę z selecta)
         startBtn.addEventListener('click', async () => {
