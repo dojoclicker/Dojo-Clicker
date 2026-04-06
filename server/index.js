@@ -1845,8 +1845,9 @@ app.get('/api/training/status', authenticateToken, async (req, res) => {
 });
 
 // 2. Start
-app.post('/api/training/start', async (req, res) => {
-  const { userId, mentorId, hours, targetStat } = req.body; 
+app.post('/api/training/start', authenticateToken, async (req, res) => {
+  const userId = req.user.id || req.user.userId; // Odczytanie ID bezpiecznie z tokena sesji
+  const { mentorId, hours, targetStat } = req.body; 
   try {
     const { data: char, error: charErr } = await supabase.from('characters').select('*').eq('profile_id', userId).single();
     if (charErr || !char) return res.status(404).json({ error: 'Postać nie znaleziona' });
