@@ -1801,13 +1801,14 @@ setInterval(() => {
 // ==========================================
 
 const TRAINING_MENTORS = {
-  'old_master': { name: 'Stary Mistrz', emoji: '🐢', cost: 10, multiplier: 2, reqMission: null },
+  // Stary Mistrz przypisany na sztywno do Misji 5 (Test starego mistrza)
+  'old_master': { name: 'Stary Mistrz', emoji: '🐢', cost: 10, multiplier: 2, reqMission: '00000000-0000-0000-0000-000000000005' },
   'cat_hermit': { name: 'Koci Pustelnik', emoji: '🐈', cost: 25, multiplier: 6, reqMission: '00000000-0000-0000-0000-000000000015' },
   'celestial': { name: 'Pan Niebiańskiego Pałacu', emoji: '☁️', cost: 50, multiplier: 15, reqMission: '00000000-0000-0000-0000-000000000020' },
   'time_chamber': { name: 'Sala Czasu', emoji: '⏳', cost: 100, multiplier: 40, reqMission: '00000000-0000-0000-0000-000000000024' }
 };
 
-// 1. Pobranie statusu
+// 1. Pobranie statusu z bazy danych
 app.get('/api/training/status', authenticateToken, async (req, res) => {
   const userId = req.user.id;
   try {
@@ -1827,8 +1828,11 @@ app.get('/api/training/status', authenticateToken, async (req, res) => {
         reqMission: m.reqMission
     }));
 
+    // Czysta logika z bazy: Trening odblokowany, jeśli gracz ukończył misję Starego Mistrza LUB ma wpis 'training' w cechach.
+    const isDojoUnlocked = unlockedFeatures.includes('training') || completedMissions.includes(TRAINING_MENTORS['old_master'].reqMission);
+
     res.json({ 
-        isUnlocked: unlockedFeatures.includes('training'),
+        isUnlocked: isDojoUnlocked,
         activeTraining: data.active_training_id, 
         endTime: data.training_end_time,
         dailyTimeChamberUsed: data.daily_time_chamber_used,
