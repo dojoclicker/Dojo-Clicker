@@ -208,18 +208,17 @@
             <div class="missions-grid">
                 </div>
         </div> 
-            <div id="training-view" style="display: none;">
+            <div id="training-view" class="tab-content" style="display: none;">
             <div class="training-container game-panel" style="padding: 20px;">
                 <div class="game-panel-header" style="margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center;">
                     <h4 class="game-panel-title" style="color: var(--goku-accent);">🥋 Dojo Mistrzów</h4>
-                    <div id="training-info-hint" style="background: rgba(0,0,0,0.3); padding: 5px 12px; border-radius: 20px; font-size: 0.85rem; cursor: help; border: 1px solid var(--goku-accent);" 
-                         title="Trening u mistrzów to proces pasywny. Ciężki ekwipunek nie przyśpiesza jego efektów ani nie daje tu bonusów – zachowaj go na aktywne działania (np. Praca)!">
-                        ❓ Informacja o bonusach
+                    <div style="background: rgba(0,0,0,0.3); padding: 5px 12px; border-radius: 20px; font-size: 0.85rem; cursor: help; border: 1px solid var(--goku-accent);" 
+                         title="Trening pasywny: Bonusy z ciężkiego EQ nie działają!">
+                        ❓ Info
                     </div>
                 </div>
-
                 <div id="training-dynamic-content">
-                    <div style="text-align: center; padding: 50px; color: var(--text-muted);">Ładowanie mistrzów...</div>
+                    <div style="text-align: center; padding: 50px; color: var(--text-muted);">Ładowanie...</div>
                 </div>
             </div>
         </div>
@@ -1051,29 +1050,26 @@
         window.isPlayerTraining = false;
 
         function updateTabsLockState() {
-            const navBtns = document.querySelectorAll('.nav-btn');
             const isTraining = localStorage.getItem('is_training_active') === 'true';
             const isHospitalized = localStorage.getItem('is_hospitalized') === 'true';
+            const trainingUnlocked = localStorage.getItem('training_unlocked') === 'true';
 
+            const navBtns = document.querySelectorAll('.nav-btn');
+            
             navBtns.forEach(btn => {
                 const tab = btn.getAttribute('data-tab');
-
-                // Resetujemy klasy przed nałożeniem blokad
                 btn.classList.remove('disabled', 'locked');
 
-                if (isTraining) {
-                    // Jeśli trenuje, zablokuj wszystko POZA zakładką treningu
-                    if (tab !== 'training') {
-                        btn.classList.add('disabled', 'locked');
-                    }
-                } else if (isHospitalized) {
-                    // Jeśli w szpitalu, zablokuj wszystko POZA zakładką szpitala
-                    if (tab !== 'hospital') {
+                if (isHospitalized) {
+                    if (tab !== 'hospital') btn.classList.add('disabled', 'locked');
+                } else if (isTraining) {
+                    // Blokuj wszystko POZA treningiem, żeby gracz mógł odebrać nagrodę
+                    if (tab !== 'training' && tab !== 'dashboard') {
                         btn.classList.add('disabled', 'locked');
                     }
                 } else {
-                    // Standardowa logika odblokowywania (Misja 10 dla treningu itp.)
-                    if (tab === 'training' && localStorage.getItem('training_unlocked') !== 'true') {
+                    // Blokada Dojo przed Misją 10
+                    if (tab === 'training' && !trainingUnlocked) {
                         btn.classList.add('disabled', 'locked');
                     }
                 }
@@ -3105,25 +3101,16 @@
                 if (!res || !res.success) return;
                 
                 const data = res.data;
-                const navBtn = document.getElementById('nav-training-btn');
+                localStorage.setItem('training_unlocked', data.isUnlocked ? 'true' : 'false');
+                
+                // Aktualizujemy stan blokad przycisków
+                updateTabsLockState();
 
                 if (data.isUnlocked) {
-                    navBtn.classList.remove('disabled', 'locked'); 
-                    localStorage.setItem('training_unlocked', 'true');
-                } else {
-                    navBtn.classList.add('disabled', 'locked'); 
-                    localStorage.setItem('training_unlocked', 'false');
-                    // Jeśli gracz jest w zakładce treningu a nie ma dostępu - wyrzuć go do misji
-                    if (localStorage.getItem('active_game_tab') === 'training') {
-                        activateTab('missions');
-                    }
-                    return;
+                    renderTrainingUI(data);
                 }
-
-                renderTrainingUI(data);
-
             } catch (err) {
-                console.error('Błąd pobierania statusu treningu:', err);
+                console.error(err);
             }
         }
 
