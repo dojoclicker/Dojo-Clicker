@@ -3170,25 +3170,49 @@
                         const missionsBtn = document.querySelector('[data-tab="missions"]');
                         if (missionsBtn) missionsBtn.click();
                     }
+                    return; // Zatrzymujemy działanie, jeśli zablokowane
                 }
 
-                trainingMentors = data.mentors || [];
-                dailyTimeChamberUsed = data.dailyTimeChamberUsed; // flaga limitu sali
-                renderMentors();
-
-                if (data.activeTraining) {
-                    localStorage.setItem('is_training_active', 'true');
-                    window.isPlayerTraining = true;
-                    const [mentorId, hours, stat] = data.activeTraining.split(':');
-                    const mentor = trainingMentors.find(m => m.id === mentorId) || { name: 'Mistrz' };
-                    showActiveTrainingState(mentor, data.endTime);
-                } else {
-                    localStorage.setItem('is_training_active', 'false');
-                    window.isPlayerTraining = false;
-                    showSetupState();
-                }
+                // ==========================================
+                // NOWA LOGIKA: Zapobieganie znikaniu wybranego mistrza
+                // ==========================================
                 
-                if (typeof updateTabsLockState === 'function') updateTabsLockState();
+                // Zapisujemy w pamięci stary stan z poprzedniego zapytania (jeśli istnieje)
+                const isCurrentlyTraining = localStorage.getItem('is_training_active') === 'true';
+                const newTrainingState = !!data.activeTraining;
+                
+                trainingMentors = data.mentors || [];
+                dailyTimeChamberUsed = data.dailyTimeChamberUsed;
+                
+                // Renderujemy lewą listę mentorów tylko jeśli jeszcze ich nie ma na ekranie 
+                // LUB jeśli ktoś włączył/wyłączył trening (żeby np. kłódki się odświeżyły)
+                if (mentorsGrid.innerHTML === '' || isCurrentlyTraining !== newTrainingState) {
+                    renderMentors();
+                }
+
+                // Sprawdzamy stan prawego panelu
+                if (newTrainingState) {
+                    // Ktoś ćwiczy: wyświetlamy progress-bar (tylko jeśli go nie ma na ekranie)
+                    if (!isCurrentlyTraining || progressView.style.display === 'none') {
+                        localStorage.setItem('is_training_active', 'true');
+                        window.isPlayerTraining = true;
+                        const [mentorId, hours, stat] = data.activeTraining.split(':');
+                        const mentor = trainingMentors.find(m => m.id === mentorId) || { name: 'Mistrz' };
+                        showActiveTrainingState(mentor, data.endTime);
+                        if (typeof updateTabsLockState === 'function') updateTabsLockState();
+                    }
+                } else {
+                    // Nikt nie ćwiczy: wyświetlamy wybór mistrzów (tylko jeśli wcześniej ćwiczył)
+                    // ALE NIE resetujemy widoku (nie wywołujemy showSetupState), 
+                    // jeśli gracz właśnie sobie przegląda listę mistrzów
+                    if (isCurrentlyTraining) {
+                        localStorage.setItem('is_training_active', 'false');
+                        window.isPlayerTraining = false;
+                        showSetupState();
+                        if (typeof updateTabsLockState === 'function') updateTabsLockState();
+                    }
+                }
+
             } catch (err) { console.error('Błąd statusu treningu:', err); }
         }
 
