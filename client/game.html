@@ -3170,29 +3170,22 @@
                         const missionsBtn = document.querySelector('[data-tab="missions"]');
                         if (missionsBtn) missionsBtn.click();
                     }
-                    return; // Zatrzymujemy działanie, jeśli zablokowane
+                    return; 
                 }
 
-                // ==========================================
-                // NOWA LOGIKA: Zapobieganie znikaniu wybranego mistrza
-                // ==========================================
-                
-                // Zapisujemy w pamięci stary stan z poprzedniego zapytania (jeśli istnieje)
                 const isCurrentlyTraining = localStorage.getItem('is_training_active') === 'true';
                 const newTrainingState = !!data.activeTraining;
                 
                 trainingMentors = data.mentors || [];
                 dailyTimeChamberUsed = data.dailyTimeChamberUsed;
                 
-                // Renderujemy lewą listę mentorów tylko jeśli jeszcze ich nie ma na ekranie 
-                // LUB jeśli ktoś włączył/wyłączył trening (żeby np. kłódki się odświeżyły)
-                if (mentorsGrid.innerHTML === '' || isCurrentlyTraining !== newTrainingState) {
+                // POPRAWKA: Używamy .children.length, co jest odporne na spacje w pliku HTML
+                if (mentorsGrid.children.length === 0 || isCurrentlyTraining !== newTrainingState) {
                     renderMentors();
                 }
 
                 // Sprawdzamy stan prawego panelu
                 if (newTrainingState) {
-                    // Ktoś ćwiczy: wyświetlamy progress-bar (tylko jeśli go nie ma na ekranie)
                     if (!isCurrentlyTraining || progressView.style.display === 'none') {
                         localStorage.setItem('is_training_active', 'true');
                         window.isPlayerTraining = true;
@@ -3202,10 +3195,8 @@
                         if (typeof updateTabsLockState === 'function') updateTabsLockState();
                     }
                 } else {
-                    // Nikt nie ćwiczy: wyświetlamy wybór mistrzów (tylko jeśli wcześniej ćwiczył)
-                    // ALE NIE resetujemy widoku (nie wywołujemy showSetupState), 
-                    // jeśli gracz właśnie sobie przegląda listę mistrzów
-                    if (isCurrentlyTraining) {
+                    // Upewniamy się, że jeśli gracz nie trenuje, to NA PEWNO widzi panel setupu
+                    if (isCurrentlyTraining || setupView.style.display === 'none') {
                         localStorage.setItem('is_training_active', 'false');
                         window.isPlayerTraining = false;
                         showSetupState();
