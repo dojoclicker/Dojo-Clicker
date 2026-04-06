@@ -237,6 +237,14 @@
                         <div id="training-controls" style="display: none; margin-top: auto;">
                             <label style="display: block; margin-bottom: 0.5rem; color: var(--text-secondary); text-align: center;">Czas treningu: <span id="training-hours-display" style="color: white; font-weight: bold; font-size: 1.2rem;">1</span> godzina</label>
                             <input type="range" id="training-hours-slider" min="1" max="12" value="1" style="width: 100%; margin-bottom: 1rem;">
+
+                            <label style="display: block; margin-bottom: 0.5rem; color: var(--text-secondary); text-align: center;">Cel Treningu:</label>
+                            <select id="training-stat-select" style="width: 100%; margin-bottom: 1.5rem; background: var(--input-bg, #334155); color: #fff; border: 1px solid var(--goku-panel-border); padding: 8px; border-radius: 4px; text-align: center;">
+                                <option value="balanced">Zbalansowany (Wszystkie 3)</option>
+                                <option value="strength">Tylko Siła 💪</option>
+                                <option value="speed">Tylko Szybkość ⚡</option>
+                                <option value="endurance">Tylko Wytrzymałość 🛡️</option>
+                            </select>
                             
                             <div style="text-align: center; font-size: 1.1rem; color: var(--text-primary); margin-bottom: 1.5rem; background: rgba(0,0,0,0.4); padding: 10px; border-radius: 6px;">
                                 Pobierze: <span id="training-total-cost" style="color: var(--warning); font-weight: bold;">0</span> Staminy
@@ -3115,9 +3123,9 @@
         let activeTrainingEndTime = null;
         let currentSelectedMentor = null;
         let trainingCountdownInterval = null;
+        let dailyTimeChamberUsed = false; // Nowa flaga z backendu
 
-        const navTrainingBtn = document.getElementById('nav-training-btn');
-        const trainingNavIcon = document.getElementById('training-nav-icon');
+        const navTrainingBtn = document.querySelector('.nav-btn[data-tab="training"]');
         const mentorsGrid = document.getElementById('mentors-grid');
         
         // UI Elementy Setupu
@@ -3130,6 +3138,7 @@
         const hoursSlider = document.getElementById('training-hours-slider');
         const hoursDisplay = document.getElementById('training-hours-display');
         const totalCostDisplay = document.getElementById('training-total-cost');
+        const statSelect = document.getElementById('training-stat-select'); // Nowy element
         const startBtn = document.getElementById('start-training-btn');
 
         // UI Elementy Aktywnego Treningu
@@ -3139,7 +3148,7 @@
         const claimBtn = document.getElementById('claim-training-btn');
         const stopBtn = document.getElementById('stop-training-btn');
 
-        // 1. Pobieranie statusu z serwera (Z użyciem API Call)
+        // 1. Pobieranie statusu
         async function fetchTrainingStatus() {
             try {
                 const res = await apiCall('/api/training/status', 'GET');
@@ -3148,61 +3157,84 @@
                 const data = res.data;
 
                 if (data.isUnlocked) {
-                    navTrainingBtn.classList.remove('disabled', 'locked'); 
-                    localStorage.setItem('training_unlocked', 'true'); // Zapamiętujemy odblokowanie!
+                    if (navTrainingBtn) navTrainingBtn.classList.remove('disabled', 'locked'); 
+                    localStorage.setItem('training_unlocked', 'true');
                 } else {
-                    navTrainingBtn.classList.add('disabled', 'locked'); 
-                    localStorage.setItem('training_unlocked', 'false'); // Na wypadek resetu konta z 1. dniem miesiąca
-                    
-                    // BEZPIECZNIK INTRUZA: Jeśli gracz "wpadł" do zakładki z pamięci przeglądarki, a nie ma dostępu - wyrzuć go!
+                    if (navTrainingBtn) navTrainingBtn.classList.add('disabled', 'locked'); 
+                    localStorage.setItem('training_unlocked', 'false');
                     const trainingView = document.getElementById('training-view');
                     if (trainingView && trainingView.style.display !== 'none') {
                         const missionsBtn = document.querySelector('[data-tab="missions"]');
-                        if (missionsBtn) missionsBtn.click(); // Natychmiastowo przełącza widok z powrotem na Misje
+                        if (missionsBtn) missionsBtn.click();
                     }
                 }
 
                 trainingMentors = data.mentors || [];
+                dailyTimeChamberUsed = data.dailyTimeChamberUsed; // flaga limitu sali
                 renderMentors();
 
                 if (data.activeTraining) {
-                    localStorage.setItem('is_training_active', 'true'); // <-- ZAPAMIĘTUJE
-                    const [mentorId, hours] = data.activeTraining.split(':');
-                    const mentor = trainingMentors.find(m => m.id === mentorId);
+                    localStorage.setItem('is_training_active', 'true');
+                    window.isPlayerTraining = true;
+                    const [mentorId, hours, stat] = data.activeTraining.split(':');
+                    const mentor = trainingMentors.find(m => m.id === mentorId) || { name: 'Mistrz' };
                     showActiveTrainingState(mentor, data.endTime);
                 } else {
                     localStorage.setItem('is_training_active', 'false');
+                    window.isPlayerTraining = false;
                     showSetupState();
                 }
-            } catch (err) {
-                console.error('Błąd pobierania statusu treningu:', err);
-            }
+                
+                if (typeof updateTabsLockState === 'function') updateTabsLockState();
+            } catch (err) { console.error('Błąd statusu treningu:', err); }
         }
 
-        // 2. Renderowanie kart mentorów
+        // 2. Renderowanie kart mentorów (w Twoim panelu po lewej)
         function renderMentors() {
             mentorsGrid.innerHTML = '';
             trainingMentors.forEach(mentor => {
                 const card = document.createElement('div');
                 card.className = 'mentor-card';
-                card.innerHTML = `
-                    <div class="mentor-emoji">${mentor.emoji}</div>
-                    <div class="mentor-info">
-                        <div class="mentor-name">${mentor.name}</div>
-                        <div class="mentor-stats">
-                            <span style="color: var(--warning)">-${mentor.cost} Stam/h</span>
-                            <span style="color: var(--success)">Mnożnik: x${mentor.multiplier}</span>
-                        </div>
-                    </div>
-                `;
-                card.addEventListener('click', () => selectMentor(mentor, card));
+                
+                const isTimeChamber = mentor.id === 'time_chamber';
+                const chamberLocked = isTimeChamber && dailyTimeChamberUsed;
+
+                if (mentor.isLocked) {
+                    card.style.opacity = '0.5';
+                    card.style.filter = 'grayscale(100%)';
+                    card.innerHTML = `
+                        <div class="mentor-emoji">🔒</div>
+                        <div class="mentor-info">
+                            <div class="mentor-name">${mentor.name}</div>
+                            <div class="mentor-stats"><span style="color: var(--error);">Wymaga Misji</span></div>
+                        </div>`;
+                } else if (chamberLocked) {
+                    card.style.border = '1px solid var(--error)';
+                    card.innerHTML = `
+                        <div class="mentor-emoji">⏳</div>
+                        <div class="mentor-info">
+                            <div class="mentor-name">${mentor.name}</div>
+                            <div class="mentor-stats"><span style="color: var(--error);">Limit zużyty</span></div>
+                        </div>`;
+                } else {
+                    card.innerHTML = `
+                        <div class="mentor-emoji">${mentor.emoji}</div>
+                        <div class="mentor-info">
+                            <div class="mentor-name">${mentor.name}</div>
+                            <div class="mentor-stats">
+                                <span style="color: var(--warning)">-${mentor.cost} Stam/h</span>
+                                <span style="color: var(--success)">Mnożnik: x${mentor.multiplier}</span>
+                            </div>
+                        </div>`;
+                    card.addEventListener('click', () => selectMentor(mentor, card));
+                }
                 mentorsGrid.appendChild(card);
             });
         }
 
-        // 3. Wybór mentora
+        // 3. Wybór mentora (aktualizuje Twój panel po prawej)
         function selectMentor(mentor, cardElement) {
-            if (activeTrainingEndTime) return; // Zablokuj klikanie, jeśli trening trwa
+            if (activeTrainingEndTime) return;
 
             document.querySelectorAll('.mentor-card').forEach(c => c.classList.remove('selected'));
             cardElement.classList.add('selected');
@@ -3213,6 +3245,10 @@
             setupMentorName.textContent = mentor.name;
             setupMentorCost.textContent = mentor.cost;
             setupMentorMultiplier.textContent = `x${mentor.multiplier}`;
+            
+            // Dynamiczny suwak (Sala Czasu może trwać 24h, reszta 12h)
+            hoursSlider.max = mentor.id === 'time_chamber' ? 24 : 12;
+            if (parseInt(hoursSlider.value) > hoursSlider.max) hoursSlider.value = hoursSlider.max;
             
             updateTotalCost();
         }
@@ -3225,26 +3261,30 @@
 
         hoursSlider.addEventListener('input', updateTotalCost);
 
-        // 4. Obsługa Przycisków Akcji (Start/Stop/Claim z użyciem apiCall i Toastów)
+        // 4. Start (wysyła statystykę z selecta)
         startBtn.addEventListener('click', async () => {
             if (!currentSelectedMentor) return;
+            
+            const targetStat = statSelect ? statSelect.value : 'balanced';
 
             const res = await apiCall('/api/training/start', 'POST', { 
                 mentorId: currentSelectedMentor.id, 
-                hours: hoursSlider.value 
-            }, true); // true = ochrona przed wielokrotnym kliknięciem (Race Condition Lock)
+                hours: parseInt(hoursSlider.value),
+                targetStat: targetStat
+            }, true);
             
             if (!res) return;
 
             if (res.success) {
                 showSuccessMessage('Trening rozpoczęty pomyślnie!');
                 if (typeof fetchCharacterData === 'function') fetchCharacterData(); 
-                showActiveTrainingState(currentSelectedMentor, res.data.endTime);
+                fetchTrainingStatus(); // Odświeża UI na tryb progresu
             } else {
                 showErrorMessage(res.error || 'Błąd startu treningu');
             }
         });
 
+        // 5. Zatrzymanie / Odbiór
         async function handleStopTraining(action) {
             if (action === 'cancel' && !confirm('Na pewno? Stracisz całą wydaną staminę i nie dostaniesz nagrody!')) return;
 
@@ -3252,13 +3292,11 @@
             if (!res) return;
 
             if (res.success) {
-                if (action === 'claim') {
-                    showSuccessMessage(res.data.message);
-                } else {
-                    showWarningMessage(res.data.message);
-                }
+                if (action === 'claim') showSuccessMessage(res.data.message);
+                else showWarningMessage(res.data.message);
+                
                 if (typeof fetchCharacterData === 'function') fetchCharacterData();
-                showSetupState();
+                fetchTrainingStatus(); // Wraca do wyboru mentorów
             } else {
                 showErrorMessage(res.error || 'Błąd zamykania treningu');
             }
@@ -3267,61 +3305,48 @@
         claimBtn.addEventListener('click', () => handleStopTraining('claim'));
         stopBtn.addEventListener('click', () => handleStopTraining('cancel'));
 
-        // 5. Zarządzanie stanami UI i Zegarem
-        function lockTabsForTraining(isLocked) {
-            window.isPlayerTraining = isLocked;
-            updateTabsLockState();
-        }
-
+        // 6. Zarządzanie Stanami UI
         function showSetupState() {
             activeTrainingEndTime = null;
-            localStorage.setItem('is_training_active', 'false');
-            clearInterval(trainingCountdownInterval);
             setupView.style.display = 'flex';
             progressView.style.display = 'none';
+            if (trainingCountdownInterval) clearInterval(trainingCountdownInterval);
             
-            // Odblokowanie misji i nawigacji
-            document.querySelectorAll('.mission-card button').forEach(b => b.disabled = false);
-            lockTabsForTraining(false);
+            // Czyszczenie zaznaczenia
+            document.querySelectorAll('.mentor-card').forEach(c => c.classList.remove('selected'));
+            currentSelectedMentor = null;
+            setupMentorInfo.style.display = 'none';
+            trainingControls.style.display = 'none';
         }
 
-        function showActiveTrainingState(mentor, endTime) {
-            activeTrainingEndTime = new Date(endTime).getTime();
+        function showActiveTrainingState(mentor, endTimeStr) {
             setupView.style.display = 'none';
             progressView.style.display = 'flex';
-            activeMentorName.textContent = `Trenujesz u: ${mentor ? mentor.name : 'Nieznany'}`;
             
-            // Blokada misji i nawigacji w trakcie treningu!
-            document.querySelectorAll('.mission-card button').forEach(b => b.disabled = true);
-            lockTabsForTraining(true);
+            activeMentorName.textContent = mentor.name;
+            activeTrainingEndTime = new Date(endTimeStr);
             
-            startCountdown();
-        }
-
-        function startCountdown() {
-            clearInterval(trainingCountdownInterval);
             claimBtn.style.display = 'none';
             stopBtn.style.display = 'block';
-
-            trainingCountdownInterval = setInterval(() => {
-                const now = new Date().getTime();
-                const distance = activeTrainingEndTime - now;
-
-                if (distance <= 0) {
+            
+            if (trainingCountdownInterval) clearInterval(trainingCountdownInterval);
+            
+            function update() {
+                const diff = activeTrainingEndTime - new Date();
+                if (diff <= 0) {
                     clearInterval(trainingCountdownInterval);
-                    countdownDisplay.textContent = "ZAKOŃCZONO";
-                    countdownDisplay.style.color = "var(--goku-accent)";
+                    countdownDisplay.textContent = "00:00:00";
                     claimBtn.style.display = 'block';
                     stopBtn.style.display = 'none';
-                } else {
-                    const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-                    const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
-                    const seconds = Math.floor((distance % (1000 * 60)) / 1000);
-                    countdownDisplay.textContent = 
-                        `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-                    countdownDisplay.style.color = "var(--success)";
+                    return;
                 }
-            }, 1000);
+                const h = Math.floor(diff / 3600000).toString().padStart(2, '0');
+                const m = Math.floor((diff % 3600000) / 60000).toString().padStart(2, '0');
+                const s = Math.floor((diff % 60000) / 1000).toString().padStart(2, '0');
+                countdownDisplay.textContent = `${h}:${m}:${s}`;
+            }
+            update();
+            trainingCountdownInterval = setInterval(update, 1000);
         }
 
         // Inicjalizacja przy ładowaniu
@@ -3349,7 +3374,8 @@
 
         // Błyskawiczne zablokowanie innych zakładek, jeśli w pamięci jest aktywny trening
         if (localStorage.getItem('is_training_active') === 'true') {
-            if (typeof lockTabsForTraining === 'function') lockTabsForTraining(true);
+            window.isPlayerTraining = true;
+            if (typeof updateTabsLockState === 'function') updateTabsLockState();
         }
 
         // Błyskawiczne zablokowanie nawigacji dla Szpitala (brak skaczących guzików po wciśnięciu F5)

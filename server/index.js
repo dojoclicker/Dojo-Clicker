@@ -1797,139 +1797,126 @@ setInterval(() => {
 }, 60 * 60 * 1000);
 
 // ==========================================
-// TRYB TRENINGU IDLE (LAZY EVALUATION)
+// TRYB TRENINGU IDLE (ZAAWANSOWANY)
 // ==========================================
 
 const TRAINING_MENTORS = {
-  'old_master': { name: 'Stary Mistrz', emoji: '🐢', cost: 10, multiplier: 2 },
-  'cat_hermit': { name: 'Koci Pustelnik', emoji: '🐈', cost: 25, multiplier: 6 },
-  'celestial': { name: 'Pan Niebiańskiego Pałacu', emoji: '☁️', cost: 50, multiplier: 15 },
-  'time_chamber': { name: 'Sala Czasu', emoji: '⏳', cost: 100, multiplier: 40 }
+  'old_master': { name: 'Stary Mistrz', emoji: '🐢', cost: 10, multiplier: 2, reqMission: null },
+  'cat_hermit': { name: 'Koci Pustelnik', emoji: '🐈', cost: 25, multiplier: 6, reqMission: '00000000-0000-0000-0000-000000000015' },
+  'celestial': { name: 'Pan Niebiańskiego Pałacu', emoji: '☁️', cost: 50, multiplier: 15, reqMission: '00000000-0000-0000-0000-000000000020' },
+  'time_chamber': { name: 'Sala Czasu', emoji: '⏳', cost: 100, multiplier: 40, reqMission: '00000000-0000-0000-0000-000000000024' }
 };
 
-// 1. Pobranie statusu treningu
+// 1. Pobranie statusu
 app.get('/api/training/status', authenticateToken, async (req, res) => {
   const userId = req.user.id;
-
   try {
     const { data, error } = await supabase
       .from('characters')
-      .select('active_training_id, training_end_time, unlocked_features')
-      .eq('profile_id', userId) // POPRAWIONE: profile_id
-      .single();
+      .select('active_training_id, training_end_time, unlocked_features, completed_missions, daily_time_chamber_used')
+      .eq('profile_id', userId).single();
 
     if (error) throw error;
     
-    const isUnlocked = data.unlocked_features && data.unlocked_features.includes('training');
+    let unlockedFeatures = []; try { unlockedFeatures = JSON.parse(data.unlocked_features || '[]'); } catch(e){}
+    let completedMissions = []; try { completedMissions = JSON.parse(data.completed_missions || '[]'); } catch(e){}
+
+    const mentorsList = Object.entries(TRAINING_MENTORS).map(([id, m]) => ({
+        id, name: m.name, emoji: m.emoji, cost: m.cost, multiplier: m.multiplier,
+        isLocked: m.reqMission ? !completedMissions.includes(m.reqMission) : false,
+        reqMission: m.reqMission
+    }));
+
     res.json({ 
-        isUnlocked: isUnlocked,
+        isUnlocked: unlockedFeatures.includes('training'),
         activeTraining: data.active_training_id, 
         endTime: data.training_end_time,
-        mentors: Object.entries(TRAINING_MENTORS).map(([id, m]) => ({ id, ...m }))
+        dailyTimeChamberUsed: data.daily_time_chamber_used,
+        mentors: mentorsList
     });
-  } catch (err) {
-    res.status(500).json({ error: 'Błąd pobierania statusu treningu' });
-  }
+  } catch (err) { res.status(500).json({ error: 'Błąd statusu' }); }
 });
 
-// 2. Rozpoczęcie Treningu (Zapis w tle)
-app.post('/api/training/start', authenticateToken, async (req, res) => {
-  const userId = req.user.id;
-  const { mentorId, hours } = req.body;
-  
-  if (!mentorId || !hours) return res.status(400).json({ error: 'Brak danych' });
-  const mentor = TRAINING_MENTORS[mentorId];
-  if (!mentor) return res.status(400).json({ error: 'Nieznany mentor' });
-  
-  const totalCost = BigInt(mentor.cost * hours);
-
+// 2. Start
+app.post('/api/training/start', async (req, res) => {
+  const { userId, mentorId, hours, targetStat } = req.body; 
   try {
-    const { data: char, error: fetchErr } = await supabase
-      .from('characters')
-      .select('stamina, active_training_id, unlocked_features')
-      .eq('profile_id', userId) // POPRAWIONE: profile_id
-      .single();
+    const { data: char, error: charErr } = await supabase.from('characters').select('*').eq('profile_id', userId).single();
+    if (charErr || !char) return res.status(404).json({ error: 'Postać nie znaleziona' });
 
-    if (fetchErr) throw fetchErr;
-    if (!char.unlocked_features || !char.unlocked_features.includes('training')) {
-         return res.status(403).json({ error: 'Trening nie jest odblokowany! Ukończ Misję 5.' });
-    }
-    if (char.active_training_id) return res.status(400).json({ error: 'Już trenujesz!' });
-    if (BigInt(char.stamina || '0') < totalCost) return res.status(400).json({ error: 'Za mało staminy!' });
-
-    // Czas zakończenia = Teraz + X godzin
-    const endTime = new Date(Date.now() + hours * 60 * 60 * 1000).toISOString();
-    // Zapisujemy ID jako np. "cat_hermit:4"
-    const combinedId = `${mentorId}:${hours}`; 
-
-    const { error: updateErr } = await supabase
-      .from('characters')
-      .update({ 
-          stamina: (BigInt(char.stamina || '0') - totalCost).toString(),
-          active_training_id: combinedId,
-          training_end_time: endTime
-      })
-      .eq('profile_id', userId); // POPRAWIONE: profile_id
-
-    if (updateErr) throw updateErr;
-    res.json({ success: true, endTime });
-  } catch (err) {
-    res.status(500).json({ error: 'Błąd startu treningu' });
-  }
-});
-
-// 3. Przerwanie / Odbiór Nagrody
-app.post('/api/training/stop', authenticateToken, async (req, res) => {
-  const userId = req.user.id;
-  const { action } = req.body; // 'claim' lub 'cancel'
-
-  try {
-    const { data: char, error: fetchErr } = await supabase
-      .from('characters')
-      // POPRAWIONE NAZWY KOLUMN STATYSTYK:
-      .select('active_training_id, training_end_time, strength, speed, endurance, intelligence, mental_strength')
-      .eq('profile_id', userId) // POPRAWIONE: profile_id
-      .single();
-
-    if (fetchErr || !char.active_training_id) return res.status(400).json({ error: 'Brak aktywnego treningu' });
-
-    const [mentorId, hoursStr] = char.active_training_id.split(':');
-    const hours = parseInt(hoursStr) || 1;
     const mentor = TRAINING_MENTORS[mentorId];
-    
-    let updates = { active_training_id: null, training_end_time: null };
-    let rewardMsg = 'Trening przerwany przed czasem. Stracono staminę!';
+    if (!mentor) return res.status(400).json({ error: 'Zły mentor' });
 
-    if (action === 'claim') {
-      const now = new Date();
-      const end = new Date(char.training_end_time);
-      if (now < end) return res.status(400).json({ error: 'Trening wciąż trwa! Musisz poczekać.' });
-
-      // OBLICZENIA NAGRODY: Mnożnik mentora * 150 pkt bazowych za każdą godzinę.
-      const totalReward = BigInt(mentor.multiplier * 150 * hours);
-      const statGain = totalReward / 5n; // Równy podział nagrody na 5 statystyk
-
-      // POPRAWIONE NAZWY KOLUMN:
-      updates.strength = (BigInt(char.strength || '1') + statGain).toString();
-      updates.speed = (BigInt(char.speed || '1') + statGain).toString();
-      updates.endurance = (BigInt(char.endurance || '1') + statGain).toString();
-      updates.intelligence = (BigInt(char.intelligence || '1') + statGain).toString();
-      updates.mental_strength = (BigInt(char.mental_strength || '1') + statGain).toString();
-      
-      rewardMsg = `Medytacja zakończona. Zyskano po +${statGain} do każdej statystyki bazowej!`;
+    let completedMissions = []; try { completedMissions = JSON.parse(char.completed_missions || '[]'); } catch(e){}
+    if (mentor.reqMission && !completedMissions.includes(mentor.reqMission)) {
+        return res.status(403).json({ error: 'Ukończ wymaganą misję!' });
     }
 
-    const { error: updateErr } = await supabase
-      .from('characters')
-      .update(updates)
-      .eq('profile_id', userId); // POPRAWIONE: profile_id
+    if (mentorId === 'time_chamber' && char.daily_time_chamber_used) {
+        return res.status(400).json({ error: 'Sala Czasu raz na dobę DC!' });
+    }
 
+    const totalStaminaCost = mentor.cost * hours;
+    if (BigInt(char.stamina) < BigInt(totalStaminaCost)) return res.status(400).json({ error: 'Za mało staminy!' });
+
+    const validStat = ['strength', 'speed', 'endurance', 'balanced'].includes(targetStat) ? targetStat : 'balanced';
+    const endTime = new Date(Date.now() + hours * 60 * 60 * 1000).toISOString();
+    
+    let updates = {
+      stamina: (BigInt(char.stamina) - BigInt(totalStaminaCost)).toString(),
+      active_training_id: `${mentorId}:${hours}:${validStat}`,
+      training_end_time: endTime
+    };
+    if (mentorId === 'time_chamber') updates.daily_time_chamber_used = true;
+
+    const { error: upErr } = await supabase.from('characters').update(updates).eq('profile_id', userId);
+    if (upErr) throw upErr;
+
+    res.json({ success: true, endTime });
+  } catch (err) { res.status(500).json({ error: 'Błąd startu' }); }
+});
+
+// 3. Stop
+app.post('/api/training/stop', authenticateToken, async (req, res) => {
+  const userId = req.user.userId || req.user.id;
+  try {
+    const { data: char, error: charErr } = await supabase.from('characters').select('*').eq('profile_id', userId).single();
+    if (charErr || !char) return res.status(404).json({ error: 'Postać nie znaleziona' });
+
+    if (!char.active_training_id || !char.training_end_time) return res.status(400).json({ error: 'Brak aktywnego treningu' });
+
+    const now = new Date();
+    const endTime = new Date(char.training_end_time);
+    const [mentorId, hoursStr, targetStat] = char.active_training_id.split(':');
+    const action = now < endTime ? 'interrupted' : 'completed';
+    const mentor = TRAINING_MENTORS[mentorId];
+
+    let updates = { active_training_id: null, training_end_time: null };
+    let rewardMsg = "Trening przerwany. Straciłeś staminę.";
+
+    if (action === 'completed' && mentor) {
+      const effectivePower = Math.max(1000, parseInt(char.total_power_level || '0'));
+      const statGain = BigInt(Math.floor((effectivePower / 100) * mentor.multiplier * parseInt(hoursStr)));
+
+      if (targetStat === 'balanced') {
+        const perStat = statGain / 3n;
+        updates.strength = (BigInt(char.strength || '1') + perStat).toString();
+        updates.speed = (BigInt(char.speed || '1') + perStat).toString();
+        updates.endurance = (BigInt(char.endurance || '1') + perStat).toString();
+        rewardMsg = `Zyskano po +${perStat} do Siły, Szybkości i Wytrzymałości!`;
+      } else {
+        const safeStat = ['strength', 'speed', 'endurance'].includes(targetStat) ? targetStat : 'strength';
+        updates[safeStat] = (BigInt(char[safeStat] || '1') + statGain).toString();
+        let namePL = safeStat === 'strength' ? 'Siły' : (safeStat === 'speed' ? 'Szybkości' : 'Wytrzymałości');
+        rewardMsg = `Twoja cecha (${namePL}) wzrosła o +${statGain}!`;
+      }
+    }
+
+    const { error: updateErr } = await supabase.from('characters').update(updates).eq('profile_id', userId);
     if (updateErr) throw updateErr;
     
     res.json({ success: true, message: rewardMsg, action });
-  } catch (err) {
-    res.status(500).json({ error: 'Błąd zamykania treningu' });
-  }
+  } catch (err) { res.status(500).json({ error: 'Błąd stopu' }); }
 });
 
 app.listen(port, async () => {
@@ -1944,6 +1931,10 @@ cron.schedule('0 0,8,16 * * *', async () => {
   try {
     await supabase.from('global_server_state').update({ is_maintenance: true }).eq('id', 1);
     await delay(30000); 
+    
+    // Reset limitu Sali Czasu dla wszystkich postaci
+    await supabase.from('characters').update({ daily_time_chamber_used: false }).neq('profile_id', '00000000-0000-0000-0000-000000000000');
+    
     await supabase.from('global_server_state').update({ current_dc_day: globalServerState.current_dc_day + 1 }).eq('id', 1);
     await delay(30000);
     await supabase.from('global_server_state').update({ is_maintenance: false }).eq('id', 1);
