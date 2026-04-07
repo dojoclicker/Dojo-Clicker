@@ -761,7 +761,7 @@ body {
 .bank-items-grid {
     display: grid;
     /* Tworzy 5 kolumn o równej szerokości */
-    grid-template-columns: repeat(5, 1fr); 
+    grid-template-columns: repeat(5, auto); 
     gap: 8px;
     padding: 10px;
     background: rgba(0, 0, 0, 0.2);
@@ -769,6 +769,7 @@ body {
     /* Pozwala na przewijanie, gdyby rzędów było bardzo dużo */
     max-height: 500px;
     overflow-y: auto;
+    justify-content: center;
 }
 
 .bank-slot {
