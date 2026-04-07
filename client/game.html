@@ -447,7 +447,11 @@
     </div>
 
     <script>
-        // Konfiguracja API - detekcja środowiska
+        // ==========================================
+        // ⚙️ 1. KONFIGURACJA I CORE (API, Alerty, Auth)
+        // ==========================================
+        // Znajdź: const API_BASE_URL = ...
+        // Tu znajdują się: apiCall(), showNotification(), checkAuthentication()
         const API_BASE_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.protocol === 'file:'
             ? 'http://localhost:3000' 
             : 'https://dojo-clicker.onrender.com';
@@ -524,7 +528,11 @@
             }
         }
 
-        // Pobieranie danych misji z API
+        // ==========================================
+        // ⚔️ 2. SYSTEM MISJI
+        // ==========================================
+        // Znajdź: async function fetchMissions() { ...
+        // Tu znajdują się: renderMissions(), createMissionCard(), startMission()
         async function fetchMissions() {
             const sessionToken = localStorage.getItem('session_token');
             
@@ -928,7 +936,6 @@
                     
                     setTimeout(() => { fetchCharacterData(); }, 1000);
                     
-                    // KRYTYCZNA POPRAWKA: Zabicie ducha tooltipa misji po śmierci!
                     if (typeof window.hideAllActiveTooltips === 'function') {
                         window.hideAllActiveTooltips();
                     }
@@ -949,35 +956,10 @@
         }
 
         // ==========================================
-        // GŁÓWNA FUNKCJA ZAKŁADEK (GLOBAL SCOPE)
+        // 🏥 3. SZPITAL I REGENERACJA
         // ==========================================
-        function activateTab(tabName) {
-            localStorage.setItem('active_game_tab', tabName);
-
-            const allViews = document.querySelectorAll('[id$="-view"]');
-            allViews.forEach(view => {
-                view.style.display = 'none';
-            });
-
-            const targetView = document.getElementById(`${tabName}-view`);
-            if (targetView) {
-                // SZPITAL ma Flexbox. Pozostałe zakładki mają Block (dzięki czemu idealnie się środkują!)
-                if (tabName === 'hospital') {
-                    targetView.style.display = 'flex'; 
-                } else {
-                    targetView.style.display = 'block'; 
-                }
-            }
-
-            const navBtns = document.querySelectorAll('.nav-btn');
-            navBtns.forEach(btn => btn.classList.remove('active'));
-            
-            if (tabName !== 'dashboard') {
-                const activeBtn = document.querySelector(`[data-tab="${tabName}"]`);
-                if (activeBtn) activeBtn.classList.add('active');
-            }
-        }
-
+        // Znajdź: let hospitalInterval = null; ... function startHospitalCountdown()
+        // Tu znajdują się: Odliczanie szpitala, lockTabsForHospital()
         let hospitalInterval = null;
 
         function startHospitalCountdown(hospitalUntilStr) {
@@ -1110,7 +1092,11 @@
             updateTabsLockState();
         }
 
-        // Pobieranie danych postaci z API
+        // ==========================================
+        // 🧍‍♂️ 4. DANE POSTACI I INTERFEJS GŁÓWNY
+        // ==========================================
+        // Znajdź: async function fetchCharacterData() { ...
+        // Tu znajdują się: updateUIWithCharacterData(), updateResourceBar(), activateTab()
         async function fetchCharacterData(isBackground = false) {
             const sessionToken = localStorage.getItem('session_token');
             
@@ -1346,7 +1332,11 @@
             }
         }
 
-        // Pobieranie danych ekwipunku z API
+        // ==========================================
+        // 🎒 5. EKWIPUNEK I DRAG & DROP
+        // ==========================================
+        // Znajdź: async function fetchInventory() { ...
+        // Tu znajdują się: renderInventory(), createItemCard(), performItemSwap(), consumeItem(), initializeDragAndDrop()
         async function fetchInventory() {
             const sessionToken = localStorage.getItem('session_token');
             
@@ -1514,7 +1504,6 @@
                 renderShopBackpack();
             }
 
-            // KRYTYCZNA POPRAWKA: Automatyczna synchronizacja plecaka w banku przy łączeniu!
             const activeTab = localStorage.getItem('active_game_tab');
             if (activeTab === 'bank' && typeof renderBankBackpack === 'function') {
                 renderBankBackpack();
@@ -1690,7 +1679,11 @@
             return card;
         }
 
-        // === SKLEP ===
+        // ==========================================
+        // 🛒 6. SYSTEM SKLEPU
+        // ==========================================
+        // Znajdź: let currentShopCategory = 'consumables';
+        // Tu znajdują się: fetchShopItems(), initShop(), renderShopItems(), buyItem(), sellItem()
         let currentShopCategory = 'consumables';
         let currentShopLevel = 1;
 
@@ -1874,7 +1867,6 @@
             if (existingItem && isStackable) {
                 hasSpace = true; // Zmieści się na istniejącym stosie
             } else {
-                // [POPRAWKA] Używamy globalnej funkcji wyliczającej rozmiar plecaka!
                 hasSpace = backpackItems.length < calculateMaxBackpackSlots(); 
             }
             
@@ -1953,10 +1945,10 @@
         }
 
         // ==========================================
-        // FUNKCJE BANKU
+        // 🏦 7. SYSTEM BANKU I LOKATY
         // ==========================================
-
-        // Renderowanie widoku Banku
+        // Znajdź: function renderBank() { ...
+        // Tu znajdują się: renderBankSlots(), renderBankBackpack(), transferBankCoins(), upgradeBank()
         function renderBank() {
             if (!document.getElementById('bank-view')) return;
 
@@ -2623,9 +2615,10 @@
         }
 
         // ==========================================
-        // DASHBOARD - RANKING I CZAT (FAZA 5) - FUNKCJE GLOBALNE
+        // 💬 8. DASHBOARD (CZAT I RANKING)
         // ==========================================
-
+        // Znajdź: async function fetchRanking() { ...
+        // Tu znajdują się: renderRanking(), fetchChatMessages(), sendChatMessage(), initializeRealtimeChat()
         async function fetchRanking() {
             const rankingList = document.getElementById('ranking-list');
             try {
@@ -2775,7 +2768,6 @@
                 if (res && res.success) {
                     chatInput.value = '';
                     showNotification('Czat', res.data.message, 'success', 2000);
-                    // USUNIĘTO: fetchChatMessages(); <--- Pozbywamy się tego!
                 } else if (res) {
                     showNotification('Błąd czatu', res.error, 'error');
                 }
@@ -2894,8 +2886,10 @@
         };
 
         // ==========================================
-        // INICJALIZACJA APLIKACJI (Zdarzenia DOM)
+        // 🚀 9. GŁÓWNA INICJALIZACJA (START GRY)
         // ==========================================
+        // Znajdź: document.addEventListener('DOMContentLoaded', function() { ...
+        // Tu znajdują się: Podpinanie przycisków, obsługa tooltipów, aktualizacja zegara DC
         document.addEventListener('DOMContentLoaded', function() {
             // 1. Sprawdź autoryzację
             const sessionToken = checkAuthentication();
@@ -3120,8 +3114,10 @@
         });
 
         // ==========================================
-        // LOGIKA TRENINGU IDLE (LAZY EVALUATION)
+        // 🧘‍♂️ 10. TRENING IDLE (MEDYTACJA)
         // ==========================================
+        // Znajdź: let trainingMentors = [];
+        // Tu znajdują się: fetchTrainingStatus(), selectMentor(), updateTotalCost(), start/stop treningu
         let trainingMentors = [];
         let activeTrainingEndTime = null;
         let currentSelectedMentor = null;
@@ -3407,13 +3403,6 @@
             }
             update();
             trainingCountdownInterval = setInterval(update, 1000);
-        }
-
-        // Inicjalizacja przy ładowaniu
-        if (navTrainingBtn) {
-            navTrainingBtn.addEventListener('click', () => {
-                fetchTrainingStatus();
-            });
         }
 
         // Czyszczenie pamięci przy wylogowaniu (zapobiega mieszaniu się kont)
