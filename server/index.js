@@ -1907,7 +1907,8 @@ app.post('/api/training/stop', authenticateToken, async (req, res) => {
 
     if (action === 'completed' && mentor) {
       const effectivePower = Math.max(1000, parseInt(char.total_power_level || '0'));
-      const statGain = BigInt(Math.floor((effectivePower / 5000) * mentor.multiplier * parseInt(hoursStr)));
+      // ZŁOTY BALANS (Krzywa Pierwiastkowa): Zabezpiecza low-level i powstrzymuje high-level
+      const statGain = BigInt(Math.floor(Math.sqrt(effectivePower) * mentor.multiplier * parseInt(hoursStr) * 1.5));
 
       if (targetStat === 'balanced') {
         const perStat = statGain / 3n;

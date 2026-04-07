@@ -3289,8 +3289,8 @@
                 }
             }
 
-            // POPRAWIONY BALANS: Dzielimy przez 5000 zamiast 100
-            let baseGain = Math.floor((effectivePower / 5000) * currentSelectedMentor.multiplier * hours);
+            // ZŁOTY BALANS (Krzywa Pierwiastkowa): Pierwiastek z mocy * mnożnik * czas * współczynnik 1.5
+            let baseGain = Math.floor(Math.sqrt(effectivePower) * currentSelectedMentor.multiplier * hours * 1.5);
             const targetStat = statSelect ? statSelect.value : 'balanced';
 
             let gainText = '';
