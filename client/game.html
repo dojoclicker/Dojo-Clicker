@@ -3290,7 +3290,7 @@
             }
 
             // ZŁOTY BALANS RPG: Płaska baza dla low-level + potęga 0.65 dla płynnego skalowania high-level
-            let baseGain = Math.floor((100 + Math.pow(effectivePower, 0.65)) * currentSelectedMentor.multiplier * hours);
+            let baseGain = Math.floor((400 + Math.pow(effectivePower, 0.55)) * currentSelectedMentor.multiplier * hours);
             const targetStat = statSelect ? statSelect.value : 'balanced';
 
             let gainText = '';
