@@ -225,7 +225,7 @@
                         <h4 class="game-panel-title" style="color: #a3e635;">Aktywny Trening</h4>
                     </div>
                     
-                    <div id="training-setup-view" style="display: flex; flex-direction: column; flex: 1;">
+                    <div id="training-setup-panel" style="display: flex; flex-direction: column; flex: 1;">
                         <div style="text-align: center; color: var(--text-muted); margin-bottom: 1rem;">Wybierz mentora z listy po lewej stronie.</div>
                         
                         <div id="selected-mentor-info" style="display: none; background: rgba(0,0,0,0.2); padding: 1rem; border-radius: 8px; border: 1px solid var(--goku-panel-border); margin-bottom: 1.5rem; text-align: center;">
@@ -256,7 +256,7 @@
                         </div>
                     </div>
                     
-                    <div id="training-progress-view" style="display: none; text-align: center; flex-direction: column; justify-content: center; flex: 1;">
+                    <div id="training-progress-panel" style="display: none; text-align: center; flex-direction: column; justify-content: center; flex: 1;">
                         <div style="font-size: 5rem; line-height: 1; margin-bottom: 1rem; filter: drop-shadow(0 0 15px rgba(163,230,53,0.5));">🧘‍♂️</div>
                         <h3 id="active-mentor-name" style="color: var(--goku-accent); margin-bottom: 1rem; font-size: 1.5rem;">Mentor</h3>
                         <div id="training-countdown" style="font-size: 3rem; font-weight: bold; color: var(--success); text-shadow: 2px 2px 4px rgba(0,0,0,0.5); margin-bottom: 1rem; font-family: monospace;">00:00:00</div>
@@ -450,7 +450,6 @@
         // ==========================================
         // ⚙️ 1. KONFIGURACJA I CORE (API, Alerty, Auth)
         // ==========================================
-        // Znajdź: const API_BASE_URL = ...
         // Tu znajdują się: apiCall(), showNotification(), checkAuthentication()
         const API_BASE_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.protocol === 'file:'
             ? 'http://localhost:3000' 
@@ -531,7 +530,6 @@
         // ==========================================
         // ⚔️ 2. SYSTEM MISJI
         // ==========================================
-        // Znajdź: async function fetchMissions() { ...
         // Tu znajdują się: renderMissions(), createMissionCard(), startMission()
         async function fetchMissions() {
             const sessionToken = localStorage.getItem('session_token');
@@ -729,7 +727,6 @@
             }
         }
 
-        // UNIWERSALNY SYSTEM POWIADOMIEŃ (Toasty w prawym górnym rogu)
         // UNIWERSALNY SYSTEM POWIADOMIEŃ (Toasty w prawym górnym rogu)
         function showNotification(title, message, type = 'info', duration = 3500) {
             let container = document.getElementById('notification-container');
@@ -958,7 +955,6 @@
         // ==========================================
         // 🏥 3. SZPITAL I REGENERACJA
         // ==========================================
-        // Znajdź: let hospitalInterval = null; ... function startHospitalCountdown()
         // Tu znajdują się: Odliczanie szpitala, lockTabsForHospital()
         let hospitalInterval = null;
 
@@ -1095,7 +1091,6 @@
         // ==========================================
         // 🧍‍♂️ 4. DANE POSTACI I INTERFEJS GŁÓWNY
         // ==========================================
-        // Znajdź: async function fetchCharacterData() { ...
         // Tu znajdują się: updateUIWithCharacterData(), updateResourceBar(), activateTab()
         async function fetchCharacterData(isBackground = false) {
             const sessionToken = localStorage.getItem('session_token');
@@ -1335,7 +1330,6 @@
         // ==========================================
         // 🎒 5. EKWIPUNEK I DRAG & DROP
         // ==========================================
-        // Znajdź: async function fetchInventory() { ...
         // Tu znajdują się: renderInventory(), createItemCard(), performItemSwap(), consumeItem(), initializeDragAndDrop()
         async function fetchInventory() {
             const sessionToken = localStorage.getItem('session_token');
@@ -1682,7 +1676,6 @@
         // ==========================================
         // 🛒 6. SYSTEM SKLEPU
         // ==========================================
-        // Znajdź: let currentShopCategory = 'consumables';
         // Tu znajdują się: fetchShopItems(), initShop(), renderShopItems(), buyItem(), sellItem()
         let currentShopCategory = 'consumables';
         let currentShopLevel = 1;
@@ -1947,7 +1940,6 @@
         // ==========================================
         // 🏦 7. SYSTEM BANKU I LOKATY
         // ==========================================
-        // Znajdź: function renderBank() { ...
         // Tu znajdują się: renderBankSlots(), renderBankBackpack(), transferBankCoins(), upgradeBank()
         function renderBank() {
             if (!document.getElementById('bank-view')) return;
@@ -2617,7 +2609,6 @@
         // ==========================================
         // 💬 8. DASHBOARD (CZAT I RANKING)
         // ==========================================
-        // Znajdź: async function fetchRanking() { ...
         // Tu znajdują się: renderRanking(), fetchChatMessages(), sendChatMessage(), initializeRealtimeChat()
         async function fetchRanking() {
             const rankingList = document.getElementById('ranking-list');
@@ -2888,7 +2879,6 @@
         // ==========================================
         // 🚀 9. GŁÓWNA INICJALIZACJA (START GRY)
         // ==========================================
-        // Znajdź: document.addEventListener('DOMContentLoaded', function() { ...
         // Tu znajdują się: Podpinanie przycisków, obsługa tooltipów, aktualizacja zegara DC
         document.addEventListener('DOMContentLoaded', function() {
             // 1. Sprawdź autoryzację
@@ -3116,7 +3106,6 @@
         // ==========================================
         // 🧘‍♂️ 10. TRENING IDLE (MEDYTACJA)
         // ==========================================
-        // Znajdź: let trainingMentors = [];
         // Tu znajdują się: fetchTrainingStatus(), selectMentor(), updateTotalCost(), start/stop treningu
         let trainingMentors = [];
         let activeTrainingEndTime = null;
@@ -3128,7 +3117,7 @@
         const mentorsGrid = document.getElementById('mentors-grid');
         
         // UI Elementy Setupu
-        const setupView = document.getElementById('training-setup-view');
+        const setupView = document.getElementById('training-setup-panel');
         const setupMentorInfo = document.getElementById('selected-mentor-info');
         const setupMentorName = document.getElementById('setup-mentor-name');
         const setupMentorCost = document.getElementById('setup-mentor-cost');
@@ -3141,7 +3130,7 @@
         const startBtn = document.getElementById('start-training-btn');
 
         // UI Elementy Aktywnego Treningu
-        const progressView = document.getElementById('training-progress-view');
+        const progressView = document.getElementById('training-progress-panel');
         const activeMentorName = document.getElementById('active-mentor-name');
         const countdownDisplay = document.getElementById('training-countdown');
         const claimBtn = document.getElementById('claim-training-btn');
