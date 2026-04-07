@@ -1801,10 +1801,10 @@ setInterval(() => {
 // ==========================================
 
 const TRAINING_MENTORS = {
-  // Stary Mistrz przypisany na sztywno do Misji 5 (Test starego mistrza)
+  // Prawdziwe, dokładne ID pobrane z seed_missions.js
   'old_master': { name: 'Stary Mistrz', emoji: '🐢', cost: 10, multiplier: 2, reqMission: '00000000-0000-0000-0000-000000000005' },
-  'cat_hermit': { name: 'Koci Pustelnik', emoji: '🐈', cost: 25, multiplier: 6, reqMission: '00000000-0000-0000-0000-000000000015' },
-  'celestial': { name: 'Pan Niebiańskiego Pałacu', emoji: '☁️', cost: 50, multiplier: 15, reqMission: '00000000-0000-0000-0000-000000000020' },
+  'cat_hermit': { name: 'Koci Pustelnik', emoji: '🐈', cost: 25, multiplier: 6, reqMission: '10000000-0000-0000-0000-000000000015' },
+  'celestial': { name: 'Pan Niebiańskiego Pałacu', emoji: '☁️', cost: 50, multiplier: 15, reqMission: '10000000-0000-0000-0000-000000000020' },
   'time_chamber': { name: 'Sala Czasu', emoji: '⏳', cost: 100, multiplier: 40, reqMission: '00000000-0000-0000-0000-000000000024' }
 };
 
@@ -1907,7 +1907,7 @@ app.post('/api/training/stop', authenticateToken, async (req, res) => {
 
     if (action === 'completed' && mentor) {
       const effectivePower = Math.max(1000, parseInt(char.total_power_level || '0'));
-      const statGain = BigInt(Math.floor((effectivePower / 100) * mentor.multiplier * parseInt(hoursStr)));
+      const statGain = BigInt(Math.floor((effectivePower / 5000) * mentor.multiplier * parseInt(hoursStr)));
 
       if (targetStat === 'balanced') {
         const perStat = statGain / 3n;

@@ -3277,14 +3277,20 @@
             hoursDisplay.textContent = hours;
             totalCostDisplay.textContent = currentSelectedMentor.cost * hours;
 
-            // Szacowanie nagrody (zgodnie ze wzorem z backendu)
-            // Szukamy poziomu mocy gracza w interfejsie (DOM)
+            // Szacowanie nagrody - ZABEZPIECZONE POBIERANIE MOCY
             const powerEl = document.getElementById('total-power-level') || document.getElementById('power-level');
-            let powerText = powerEl ? powerEl.innerText.replace(/\s/g, '') : '1000';
-            let effectivePower = Math.max(1000, parseInt(powerText) || 1000);
+            
+            let effectivePower = 1000;
+            if (powerEl) {
+                const rawText = powerEl.innerText.replace(/\s/g, '');
+                const match = rawText.match(/\d+/);
+                if (match) {
+                    effectivePower = Math.max(1000, parseInt(match[0]));
+                }
+            }
 
-            // Baza = (Moc / 100) * Mnożnik * Godziny
-            let baseGain = Math.floor((effectivePower / 100) * currentSelectedMentor.multiplier * hours);
+            // POPRAWIONY BALANS: Dzielimy przez 5000 zamiast 100
+            let baseGain = Math.floor((effectivePower / 5000) * currentSelectedMentor.multiplier * hours);
             const targetStat = statSelect ? statSelect.value : 'balanced';
 
             let gainText = '';
