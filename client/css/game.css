@@ -762,7 +762,7 @@ body {
     display: grid;
     /* Tworzy 5 kolumn o równej szerokości */
     grid-template-columns: repeat(5, 1fr); 
-    gap: 10px;
+    gap: 8px;
     padding: 10px;
     background: rgba(0, 0, 0, 0.2);
     border-radius: 8px;
@@ -772,8 +772,8 @@ body {
 }
 
 .bank-slot {
-    width: 90px;
-    height: 90px;
+    width: 100px;
+    height: 100px;
     background: rgba(0, 0, 0, 0.3);
     border: 2px solid var(--goku-panel-border);
     border-radius: 4px;
