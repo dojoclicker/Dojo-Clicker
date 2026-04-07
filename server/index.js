@@ -18,6 +18,15 @@ const supabase = createClient(supabaseUrl, supabaseKey);
 const minBigInt = (a, b) => (a < b ? a : b);
 const maxBigInt = (a, b) => (a > b ? a : b);
 
+// Globalna funkcja wyliczająca maksymalną pojemność plecaka
+function calculateMaxBackpackSlots(charStats) {
+  const minPhysicalStat = minBigInt(
+    BigInt(charStats.strength || '0'), 
+    minBigInt(BigInt(charStats.speed || '0'), BigInt(charStats.endurance || '0'))
+  );
+  return Math.min(50, 5 + Number(minPhysicalStat / 10000n));
+}
+
 // ==========================================
 // SILNIK STATYSTYK ZE SPRZĘTU (FAZA 1 & 2)
 // ==========================================
@@ -1164,8 +1173,7 @@ app.post('/api/inventory/split', authenticateToken, async (req, res) => {
 
     // [POPRAWKA] Dynamiczne sprawdzanie pojemności
     const { data: charStats } = await supabase.from('characters').select('strength, speed, endurance').eq('id', character.id).single();
-    const minPhysicalStat = minBigInt(BigInt(charStats.strength || '0'), minBigInt(BigInt(charStats.speed || '0'), BigInt(charStats.endurance || '0')));
-    const maxSlots = Math.min(50, 5 + Number(minPhysicalStat / 10000n));
+    const maxSlots = calculateMaxBackpackSlots(charStats);
 
     const { data: backpackItems } = await supabase.from('inventory').select('id, backpack_index').eq('character_id', character.id).is('equipped_slot', null);
     if (backpackItems.length >= maxSlots) return res.status(400).json({ error: 'Brak miejsca w plecaku!' });
@@ -1213,8 +1221,7 @@ app.post('/api/shop/buy', authenticateToken, requireAlive, async (req, res) => {
     
     // [POPRAWKA] Dynamiczne sprawdzanie pojemności
     const { data: charStats } = await supabase.from('characters').select('strength, speed, endurance').eq('id', character.id).single();
-    const minPhysicalStat = minBigInt(BigInt(charStats.strength || '0'), minBigInt(BigInt(charStats.speed || '0'), BigInt(charStats.endurance || '0')));
-    const maxSlots = Math.min(50, 5 + Number(minPhysicalStat / 10000n));
+    const maxSlots = calculateMaxBackpackSlots(charStats);
 
     const existingItem = backpackItems.find(item => item.item_template_id === template_id);
     const isStackable = itemTemplate.category === 'consumable' || itemTemplate.category === 'special_consumable';
@@ -1485,8 +1492,7 @@ app.post('/api/bank/transfer_item', authenticateToken, requireAlive, async (req,
             } else {
                 // Obliczanie plecaka
                 const { data: charStats } = await supabase.from('characters').select('strength, speed, endurance').eq('id', character.id).single();
-                const minPhysicalStat = minBigInt(BigInt(charStats.strength || '0'), minBigInt(BigInt(charStats.speed || '0'), BigInt(charStats.endurance || '0')));
-                const maxSlots = Math.min(50, 5 + Number(minPhysicalStat / 10000n));
+                const maxSlots = calculateMaxBackpackSlots(charStats);
                 const { count } = await supabase.from('inventory').select('*', { count: 'exact', head: true }).eq('character_id', character.id).is('equipped_slot', null);
                 if (count >= maxSlots) return res.status(400).json({ error: 'Brak miejsca w plecaku!' });
             }
@@ -1634,8 +1640,7 @@ app.post('/api/bank/split', authenticateToken, requireAlive, async (req, res) =>
         hasSpace = panelItems.length < bankSlots;
     } else {
         const { data: charStats } = await supabase.from('characters').select('strength, speed, endurance').eq('id', character.id).single();
-        const minPhysicalStat = minBigInt(BigInt(charStats.strength || '0'), minBigInt(BigInt(charStats.speed || '0'), BigInt(charStats.endurance || '0')));
-        const maxSlots = Math.min(50, 5 + Number(minPhysicalStat / 10000n));
+        const maxSlots = calculateMaxBackpackSlots(charStats);
         hasSpace = panelItems.length < maxSlots;
     }
 
@@ -1819,12 +1824,9 @@ app.get('/api/training/status', authenticateToken, async (req, res) => {
 
     if (error) throw error;
     
-    // BEZPIECZNE PARSOWANIE TABLIC (odporne na format z Supabase)
-    let unlockedFeatures = Array.isArray(data.unlocked_features) ? data.unlocked_features : [];
-    if (typeof data.unlocked_features === 'string') { try { unlockedFeatures = JSON.parse(data.unlocked_features); } catch(e){} }
-
-    let completedMissions = Array.isArray(data.completed_missions) ? data.completed_missions : [];
-    if (typeof data.completed_missions === 'string') { try { completedMissions = JSON.parse(data.completed_missions); } catch(e){} }
+    // Odczyt tablic JSONB z bazy danych
+    const unlockedFeatures = data.unlocked_features || [];
+    const completedMissions = data.completed_missions || [];
 
     const mentorsList = Object.entries(TRAINING_MENTORS).map(([id, m]) => ({
         id, name: m.name, emoji: m.emoji, cost: m.cost, multiplier: m.multiplier,
@@ -1846,7 +1848,7 @@ app.get('/api/training/status', authenticateToken, async (req, res) => {
 
 // 2. Start
 app.post('/api/training/start', authenticateToken, async (req, res) => {
-  const userId = req.user.id || req.user.userId; // Odczytanie ID bezpiecznie z tokena sesji
+  const userId = req.user.id;
   const { mentorId, hours, targetStat } = req.body; 
   try {
     const { data: char, error: charErr } = await supabase.from('characters').select('*').eq('profile_id', userId).single();
@@ -1855,9 +1857,7 @@ app.post('/api/training/start', authenticateToken, async (req, res) => {
     const mentor = TRAINING_MENTORS[mentorId];
     if (!mentor) return res.status(400).json({ error: 'Zły mentor' });
 
-    // BEZPIECZNE PARSOWANIE TABLIC
-    let completedMissions = Array.isArray(char.completed_missions) ? char.completed_missions : [];
-    if (typeof char.completed_missions === 'string') { try { completedMissions = JSON.parse(char.completed_missions); } catch(e){} }
+    const completedMissions = char.completed_missions || [];
 
     if (mentor.reqMission && !completedMissions.includes(mentor.reqMission)) {
         return res.status(403).json({ error: 'Ukończ wymaganą misję!' });
@@ -1900,7 +1900,7 @@ app.post('/api/training/start', authenticateToken, async (req, res) => {
 
 // 3. Stop
 app.post('/api/training/stop', authenticateToken, async (req, res) => {
-  const userId = req.user.userId || req.user.id;
+  const userId = req.user.id;
   try {
     const { data: char, error: charErr } = await supabase.from('characters').select('*').eq('profile_id', userId).single();
     if (charErr || !char) return res.status(404).json({ error: 'Postać nie znaleziona' });
