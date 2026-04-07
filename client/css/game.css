@@ -1289,6 +1289,54 @@ input[type=range]#training-hours-slider::-webkit-slider-thumb {
     border: 2px solid #fff;
 }
 
+/* =========================================
+   6. TRYB PRACA (MINIGRA)
+   ========================================= */
+#work-view {
+    display: none;
+}
+#work-view.active {
+    display: flex; /* Złota zasada Flexbox */
+    flex-direction: row;
+    align-items: stretch;
+    gap: 15px;
+    width: 100%;
+    height: 100%;
+}
+
+/* Karta pracy na liście */
+.work-card {
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid var(--goku-panel-border);
+    padding: 12px;
+    margin: 10px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: var(--transition-fast);
+}
+.work-card:hover:not(.locked) {
+    border-color: var(--goku-accent);
+    background: rgba(255, 107, 0, 0.1);
+}
+.work-card.active {
+    border-color: var(--goku-accent);
+    box-shadow: inset 0 0 10px rgba(255, 107, 0, 0.2);
+}
+.work-card.locked {
+    opacity: 0.5;
+    filter: grayscale(100%);
+    cursor: not-allowed;
+}
+.work-card-title {
+    font-weight: bold;
+    color: var(--text-primary);
+    margin-bottom: 5px;
+}
+.work-card-req {
+    font-size: 0.85rem;
+    color: var(--warning);
+}
+
 
 /* ==========================================
    RESPONSYWNOŚĆ (SMARTFON)

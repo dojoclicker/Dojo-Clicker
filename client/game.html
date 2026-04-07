@@ -47,6 +47,10 @@
                 <div class="nav-icon">🧘‍♂️</div>
                 <div class="nav-text">Trening</div>
             </button>
+            <button class="nav-btn disabled locked" data-tab="work" id="nav-work-btn">
+                <div class="nav-icon">⛏️</div>
+                <div class="nav-text">Praca</div>
+            </button>
         </div>
         <div class="time-container">
             <div id="game-time" class="time-display">DC: Dzień 1 | 12:00</div>
@@ -264,6 +268,40 @@
                         
                         <button id="claim-training-btn" class="upgrade-btn" style="display: none; width: 100%; padding: 1rem; font-size: 1.1rem; background: linear-gradient(135deg, #16a34a, #15803d); margin-bottom: 1rem;">Zakończ i Odbierz Nagrodę</button>
                         <button id="stop-training-btn" class="btn-header" style="background: #991b1b; width: 100%; padding: 1rem; font-size: 1rem;">Przerwij Trening (Utrata nagrody i staminy!)</button>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- Widok Pracy -->
+        <div id="work-view" style="display: none;" class="view-section">
+            <div class="work-container game-panel-row" style="padding: 1rem; width: 100%;">
+                
+                <div id="work-list-panel" class="game-panel" style="flex: 1.2;">
+                    <div class="game-panel-header">
+                        <h4 class="game-panel-title" style="color: var(--goku-accent);">Dostępne Prace</h4>
+                        <button class="nuke-help-btn" data-tooltip="Wybierz pracę. Łap dobre obiekty (✅), unikaj kowadeł (❌)! Praca uaktywnia treningowy bonus z Ciężkiego Sprzętu.">?</button>
+                    </div>
+                    <div class="work-list" id="work-list-container" style="display: flex; flex-direction: column; gap: 10px; overflow-y: auto; max-height: 500px; padding-right: 5px;">
+                        </div>
+                </div>
+                
+                <div id="work-active-panel" class="game-panel" style="flex: 1;">
+                    <div id="work-details-container" style="display: flex; flex-direction: column; height: 100%; justify-content: center; align-items: center; text-align: center;">
+                        <div style="font-size: 4rem; filter: drop-shadow(0 0 10px rgba(255,107,0,0.5)); margin-bottom: 1rem;">⛏️</div>
+                        <h3 id="work-title" style="color: var(--goku-accent); font-size: 1.5rem; margin-bottom: 1rem;">Wybierz pracę z listy</h3>
+                        <div id="work-stats" style="color: var(--text-secondary); margin-bottom: 2rem; font-size: 1.1rem; line-height: 1.5;">Koszty i nagrody pojawią się tutaj.</div>
+                        <button id="start-work-btn" class="upgrade-btn disabled" style="padding: 1rem 2rem; font-size: 1.2rem; display: none;">Rozpocznij Zmianę</button>
+                    </div>
+
+                    <div id="work-canvas-container" style="display: none; flex-direction: column; align-items: center; width: 100%; height: 100%;">
+                        <div id="work-timer" style="font-size: 2.5rem; font-weight: bold; color: var(--goku-accent); margin-bottom: 10px; font-family: monospace;">Czas: 0s</div>
+                        <canvas id="workCanvas" width="300" height="400" style="background: #000; border: 2px solid var(--goku-panel-border); border-radius: 8px; user-select: none; touch-action: none; max-width: 100%;"></canvas>
+                        <div class="work-score-display" style="display: flex; gap: 30px; margin-top: 15px; font-size: 1.2rem; font-weight: bold;">
+                            <span id="work-score-good" style="color: var(--success);">✅ Złapane: 0</span>
+                            <span id="work-score-bad" style="color: var(--error);">❌ Błędy: 0</span>
+                        </div>
                     </div>
                 </div>
 
@@ -1244,6 +1282,13 @@
                     renderMissions(window.allMissions);
                     if (typeof window.refreshActiveTooltip === 'function') window.refreshActiveTooltip();
                 }
+
+                // ODBLOKOWANIE ZAKŁADKI PRACA
+                const navWorkBtn = document.getElementById('nav-work-btn');
+                if (data.unlocked_features && data.unlocked_features.includes('work')) {
+                    if (navWorkBtn) navWorkBtn.classList.remove('disabled', 'locked');
+                }
+                if (typeof renderWorkList === 'function') renderWorkList();
 
                 // Sprawdzamy na żywo czy po walce odblokowano nową mechanikę
                 if (typeof fetchTrainingStatus === 'function') fetchTrainingStatus();
@@ -3393,6 +3438,292 @@
             update();
             trainingCountdownInterval = setInterval(update, 1000);
         }
+
+
+        // ==========================================
+        // ⛏️ 11. TRYB PRACA (MINIGRA ZRĘCZNOŚCIOWA)
+        // ==========================================
+        window.isWorkMinigameActive = false;
+        let currentSelectedWorkId = null;
+        let workTimerInterval = null;
+        let workAnimationId = null;
+
+        // Twarde przypisanie UUID z bazy misji
+        const WORK_FRONTEND_DATA = [
+            { id: 'praca_mleko', name: 'Roznoszenie Mleka', reqMission: '10000000-0000-0000-0000-000000000006', reqName: 'Misję 6', costStamina: 10, costHpPct: 2, reward: 2 },
+            { id: 'praca_budowa', name: 'Praca na Budowie', reqMission: '10000000-0000-0000-0000-000000000007', reqName: 'Misję 7', costStamina: 10, costHpPct: 5, reward: 5 },
+            { id: 'praca_pole', name: 'Praca w Polu', reqMission: '10000000-0000-0000-0000-000000000008', reqName: 'Misję 8', costStamina: 15, costHpPct: 8, reward: 12 },
+            { id: 'praca_drwal', name: 'Drwal', reqMission: '10000000-0000-0000-0000-000000000009', reqName: 'Misję 9', costStamina: 15, costHpPct: 15, reward: 25 },
+            { id: 'praca_kurier', name: 'Ekstremalny Kurier', reqMission: '10000000-0000-0000-0000-000000000010', reqName: 'Misję 10', costStamina: 20, costHpPct: 25, reward: 60 },
+            { id: 'praca_rosa', name: 'Zbiór Magicznej Rosy', reqMission: '10000000-0000-0000-0000-000000000015', reqName: 'Misję 15', costStamina: 25, costHpPct: 10, reward: 150 },
+            { id: 'praca_ogrody', name: 'Boskie Ogrody', reqMission: '10000000-0000-0000-0000-000000000020', reqName: 'Misję 20', costStamina: 40, costHpPct: 15, reward: 500 }
+        ];
+
+        // Wyłącza pozostałe zakładki i guziki na czas pracy!
+        function lockTabsForWork(isWorking) {
+            window.isWorkMinigameActive = isWorking;
+            const tabs = document.querySelectorAll('.nav-btn');
+            tabs.forEach(tab => {
+                if (tab.id !== 'nav-work-btn') {
+                    if (isWorking) {
+                        tab.style.pointerEvents = 'none';
+                        tab.style.filter = 'grayscale(100%) brightness(0.5)';
+                        tab.style.opacity = '0.5';
+                    } else {
+                        tab.style.pointerEvents = '';
+                        tab.style.filter = '';
+                        tab.style.opacity = '';
+                    }
+                }
+            });
+            
+            const headerBtns = document.querySelectorAll('.header-buttons .btn-header');
+            headerBtns.forEach(btn => {
+                btn.style.pointerEvents = isWorking ? 'none' : '';
+                btn.style.opacity = isWorking ? '0.5' : '';
+            });
+        }
+
+        // Generowanie Listy (Lewy Panel)
+        function renderWorkList() {
+            const container = document.getElementById('work-list-container');
+            if (!container) return;
+            
+            const completedMissions = window.playerCompletedMissions || [];
+            container.innerHTML = '';
+            
+            WORK_FRONTEND_DATA.forEach(work => {
+                const isUnlocked = completedMissions.includes(work.reqMission);
+                const card = document.createElement('div');
+                card.className = `mentor-card ${isUnlocked ? '' : 'locked'}`; // Zapożyczamy style z kart mentora by nie powielać CSS
+                card.id = `work-card-${work.id}`;
+                
+                card.innerHTML = `
+                    <div class="mentor-emoji" style="font-size: 2rem;">${isUnlocked ? '💸' : '🔒'}</div>
+                    <div class="mentor-info">
+                        <div class="mentor-name">${work.name}</div>
+                        <div class="mentor-stats">
+                            ${isUnlocked ? `<span style="color: var(--success)">✅ Odblokowane</span>` : `<span style="color: var(--error)">Wymaga: ${work.reqName}</span>`}
+                        </div>
+                    </div>`;
+                
+                if (isUnlocked) {
+                    card.addEventListener('click', () => selectWork(work, card));
+                }
+                container.appendChild(card);
+            });
+        }
+
+        function selectWork(workObj, cardElement) {
+            if (window.isWorkMinigameActive) return; 
+            
+            currentSelectedWorkId = workObj.id;
+            
+            document.querySelectorAll('#work-list-container .mentor-card').forEach(c => c.classList.remove('selected'));
+            cardElement.classList.add('selected');
+            
+            document.getElementById('work-title').innerText = workObj.name;
+            document.getElementById('work-stats').innerHTML = `
+                <p style="margin-bottom: 5px;">🔴 Koszt: <b style="color: var(--error);">${workObj.costHpPct}% HP</b></p>
+                <p style="margin-bottom: 5px;">🟢 Koszt: <b style="color: var(--success);">${workObj.costStamina} Stamina</b></p>
+                <p style="margin-bottom: 15px;">🪙 Zarobek: <b style="color: var(--warning);">${workObj.reward} Monet / Złapany obiekt</b></p>
+                <p style="font-size: 0.85rem; color: #a3e635;">Złapane obiekty mnożą dodatkowo Twój treningowy bonus z Ciężkiego Sprzętu!</p>
+            `;
+            
+            const startBtn = document.getElementById('start-work-btn');
+            startBtn.style.display = 'inline-block';
+            startBtn.classList.remove('disabled');
+        }
+
+        // Silnik Canvas
+        const canvas = document.getElementById('workCanvas');
+        const ctx = canvas ? canvas.getContext('2d') : null;
+
+        let gameState = {
+            timeLeft: 0, caught: 0, missed: 0, objects: [],
+            player: { x: 125, y: 360, w: 50, h: 20, speed: 6 },
+            keys: { left: false, right: false }
+        };
+
+        // Sterowanie
+        window.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowLeft' || e.key === 'a') gameState.keys.left = true;
+            if (e.key === 'ArrowRight' || e.key === 'd') gameState.keys.right = true;
+        });
+        window.addEventListener('keyup', (e) => {
+            if (e.key === 'ArrowLeft' || e.key === 'a') gameState.keys.left = false;
+            if (e.key === 'ArrowRight' || e.key === 'd') gameState.keys.right = false;
+        });
+
+        if (canvas) {
+            canvas.addEventListener('mousemove', (e) => {
+                if (!window.isWorkMinigameActive) return;
+                const rect = canvas.getBoundingClientRect();
+                const scaleX = canvas.width / rect.width;
+                let x = (e.clientX - rect.left) * scaleX;
+                gameState.player.x = x - (gameState.player.w / 2);
+            });
+            canvas.addEventListener('touchmove', (e) => {
+                if (!window.isWorkMinigameActive) return;
+                e.preventDefault();
+                const rect = canvas.getBoundingClientRect();
+                const scaleX = canvas.width / rect.width;
+                let x = (e.touches[0].clientX - rect.left) * scaleX;
+                gameState.player.x = x - (gameState.player.w / 2);
+            }, { passive: false });
+        }
+
+        function spawnObject() {
+            if (!window.isWorkMinigameActive) return;
+            const isObstacle = Math.random() < 0.25; // 25% szans na zły obiekt
+            gameState.objects.push({
+                x: Math.random() * (canvas.width - 20), y: -20, w: 20, h: 20,
+                isObstacle: isObstacle, speed: 2 + Math.random() * 3
+            });
+            const nextSpawn = 400 + Math.random() * 600; 
+            setTimeout(spawnObject, nextSpawn);
+        }
+
+        function gameLoop() {
+            if (!window.isWorkMinigameActive) return;
+            
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            if (gameState.keys.left) gameState.player.x -= gameState.player.speed;
+            if (gameState.keys.right) gameState.player.x += gameState.player.speed;
+            
+            if (gameState.player.x < 0) gameState.player.x = 0;
+            if (gameState.player.x + gameState.player.w > canvas.width) gameState.player.x = canvas.width - gameState.player.w;
+            
+            ctx.fillStyle = '#ff6b00';
+            ctx.fillRect(gameState.player.x, gameState.player.y, gameState.player.w, gameState.player.h);
+            
+            for (let i = gameState.objects.length - 1; i >= 0; i--) {
+                let obj = gameState.objects[i];
+                obj.y += obj.speed;
+                
+                ctx.fillStyle = obj.isObstacle ? '#ef4444' : '#22c55e';
+                ctx.beginPath();
+                ctx.arc(obj.x + obj.w/2, obj.y + obj.h/2, obj.w/2, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // Kolizja
+                if (obj.x < gameState.player.x + gameState.player.w &&
+                    obj.x + obj.w > gameState.player.x &&
+                    obj.y < gameState.player.y + gameState.player.h &&
+                    obj.y + obj.h > gameState.player.y) {
+                    
+                    if (obj.isObstacle) {
+                        gameState.missed++;
+                        document.getElementById('work-score-bad').innerText = `❌ Błędy: ${gameState.missed}`;
+                        canvas.style.borderColor = '#ef4444';
+                        setTimeout(() => canvas.style.borderColor = 'var(--goku-panel-border)', 200);
+                    } else {
+                        gameState.caught++;
+                        document.getElementById('work-score-good').innerText = `✅ Złapane: ${gameState.caught}`;
+                    }
+                    gameState.objects.splice(i, 1);
+                    continue;
+                }
+                
+                if (obj.y > canvas.height) {
+                    gameState.objects.splice(i, 1);
+                }
+            }
+            
+            workAnimationId = requestAnimationFrame(gameLoop);
+        }
+
+        // Start i Koniec Pracy z Backendem
+        document.getElementById('start-work-btn')?.addEventListener('click', async () => {
+            if (!currentSelectedWorkId || window.isWorkMinigameActive) return;
+            
+            const res = await apiCall('/api/work/start', 'POST', { workId: currentSelectedWorkId }, true);
+            if (!res) return;
+
+            if (res.success) {
+                // START GRY
+                window.isWorkMinigameActive = true;
+                lockTabsForWork(true);
+                
+                document.getElementById('work-details-container').style.display = 'none';
+                document.getElementById('work-canvas-container').style.display = 'flex';
+                
+                gameState.caught = 0;
+                gameState.missed = 0;
+                gameState.objects = [];
+                gameState.timeLeft = res.data.duration;
+                
+                document.getElementById('work-score-good').innerText = `✅ Złapane: 0`;
+                document.getElementById('work-score-bad').innerText = `❌ Błędy: 0`;
+                document.getElementById('work-timer').innerText = `Czas: ${gameState.timeLeft}s`;
+                
+                workTimerInterval = setInterval(() => {
+                    gameState.timeLeft--;
+                    document.getElementById('work-timer').innerText = `Czas: ${gameState.timeLeft}s`;
+                    
+                    if (gameState.timeLeft <= 0) {
+                        finishWorkMinigame();
+                    }
+                }, 1000);
+                
+                spawnObject();
+                gameLoop();
+                
+                // Odśwież paski żeby pokazać ucięcie zdrowia i staminy na starcie!
+                fetchCharacterData(true);
+            } else {
+                showWarningMessage(res.error || 'Nie można rozpocząć pracy.');
+            }
+        });
+
+        async function finishWorkMinigame() {
+            window.isWorkMinigameActive = false;
+            clearInterval(workTimerInterval);
+            cancelAnimationFrame(workAnimationId);
+            
+            document.getElementById('work-timer').innerText = `Wysyłanie...`;
+            
+            const res = await apiCall('/api/work/finish', 'POST', { 
+                workId: currentSelectedWorkId,
+                goodObjectsCaught: gameState.caught,
+                obstaclesCaught: gameState.missed
+            }, true);
+            
+            if (res && res.success) {
+                const data = res.data;
+                let msg = `<div style="margin-bottom: 4px;">💰 Monety: <b style="color:#ffffff;">+${data.finalCoins}</b></div>`;
+                
+                let gains = [];
+                if (data.gains.str !== "0") gains.push(`+${data.gains.str} Siła`);
+                if (data.gains.spd !== "0") gains.push(`+${data.gains.spd} Szybkość`);
+                if (data.gains.end !== "0") gains.push(`+${data.gains.end} Wytrz.`);
+                if (data.gains.hp !== "0") gains.push(`+${data.gains.hp} Max HP`);
+                if (data.gains.mp !== "0") gains.push(`+${data.gains.mp} Max MP`);
+                
+                if (gains.length > 0) {
+                    msg += `<div style="font-size: 0.85rem; margin-top: 6px; color: #ffffff; border-top: 1px dashed rgba(255,255,255,0.3); padding-top: 6px; font-weight: bold;">🏋️ Trening: ${gains.join(', ')}</div>`;
+                }
+                if (data.penalty < 1.0) {
+                    msg += `<div style="font-size: 0.85rem; margin-top: 6px; color: #f59e0b; font-weight: bold;">⚠️ Zyski obniżone z powodu dużej potęgi</div>`;
+                }
+                if (data.drops && data.drops.length > 0) {
+                    msg += `<div style="font-size: 0.85rem; margin-top: 6px; color: #4ade80; font-weight: bold;">🎁 Zdobyto: Święta Woda!</div>`;
+                }
+                
+                showNotification('Koniec Zmiany', msg, 'success', 5000);
+                
+                fetchCharacterData();
+                fetchInventory();
+            } else {
+                showErrorMessage(res?.error || 'Błąd przy rozliczeniu pracy.');
+            }
+            
+            document.getElementById('work-details-container').style.display = 'flex';
+            document.getElementById('work-canvas-container').style.display = 'none';
+            lockTabsForWork(false);
+        }
+
 
         // Czyszczenie pamięci przy wylogowaniu (zapobiega mieszaniu się kont)
         const logoutBtnGame = document.getElementById('logout-btn');

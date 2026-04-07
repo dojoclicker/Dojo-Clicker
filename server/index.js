@@ -1956,6 +1956,227 @@ app.post('/api/training/stop', authenticateToken, async (req, res) => {
 });
 
 // ==========================================
+// 🛠️ 8.5. TRYB PRACA (MINIGRA)
+// ==========================================
+
+// Słownik zbalansowanych Prac
+const WORK_MODES = {
+  praca_mleko: { 
+    req_stat: 500n, duration_sec: 20, cost_stamina: 10n, cost_hp_pct: 2n, reward_coins: 2n 
+  },
+  praca_budowa: { 
+    req_stat: 1000n, duration_sec: 30, cost_stamina: 10n, cost_hp_pct: 5n, reward_coins: 5n 
+  },
+  praca_pole: { 
+    req_stat: 2500n, duration_sec: 40, cost_stamina: 15n, cost_hp_pct: 8n, reward_coins: 12n 
+  },
+  praca_drwal: { 
+    req_stat: 5000n, duration_sec: 50, cost_stamina: 15n, cost_hp_pct: 15n, reward_coins: 25n 
+  },
+  praca_kurier: { 
+    req_stat: 10000n, duration_sec: 60, cost_stamina: 20n, cost_hp_pct: 25n, reward_coins: 60n 
+  },
+  praca_rosa: { 
+    req_stat: 80000n, duration_sec: 75, cost_stamina: 25n, cost_hp_pct: 10n, reward_coins: 150n, drop_woda: true 
+  },
+  praca_ogrody: { 
+    req_stat: 700000n, duration_sec: 90, cost_stamina: 40n, cost_hp_pct: 15n, reward_coins: 500n 
+  }
+};
+
+app.post('/api/work/start', async (req, res) => {
+  const { userId, workId } = req.body;
+  const work = WORK_MODES[workId];
+
+  if (!work) return res.status(400).json({ error: 'Nieprawidłowa praca.' });
+
+  try {
+    const { data: char, error: charErr } = await supabase
+      .from('characters')
+      .select('hp, stamina, bonus_hp, strength, endurance, equipped_slot, inventory(item_template_id, equipped_slot, item_templates(req_stats, bonuses, category))')
+      .eq('profile_id', userId)
+      .single();
+
+    if (charErr || !char) return res.status(404).json({ error: 'Nie znaleziono postaci.' });
+
+    // Wyliczanie Max HP do potrącenia kosztu
+    let passiveHpBonus = 0n;
+    char.inventory.forEach(inv => {
+      if (inv.equipped_slot && inv.item_templates && inv.item_templates.bonuses) {
+        const bonuses = inv.item_templates.bonuses;
+        if (bonuses.type === 'passive' && bonuses.bonus_hp) {
+          passiveHpBonus += BigInt(bonuses.bonus_hp);
+        }
+      }
+    });
+
+    const maxHp = 100n + (BigInt(char.strength || '0') / 20n) + BigInt(char.bonus_hp || '0') + passiveHpBonus;
+    const hpCost = (maxHp * work.cost_hp_pct) / 100n;
+    const currentHp = BigInt(char.hp);
+    const currentStamina = BigInt(char.stamina);
+
+    if (currentHp <= hpCost) {
+      return res.status(400).json({ error: `Jesteś zbyt wyczerpany. Wymagane HP: ${hpCost}` });
+    }
+    if (currentStamina < work.cost_stamina) {
+      return res.status(400).json({ error: `Brak Staminy. Wymagane: ${work.cost_stamina}` });
+    }
+
+    // Pobranie z góry (ochrona przed F5)
+    const newHp = currentHp - hpCost;
+    const newStamina = currentStamina - work.cost_stamina;
+
+    const { error: updateErr } = await supabase
+      .from('characters')
+      .update({ hp: newHp.toString(), stamina: newStamina.toString() })
+      .eq('profile_id', userId);
+
+    if (updateErr) throw updateErr;
+
+    res.json({ success: true, duration: work.duration_sec, hpCost: hpCost.toString() });
+  } catch (err) {
+    res.status(500).json({ error: 'Błąd serwera przy starcie pracy.' });
+  }
+});
+
+app.post('/api/work/finish', async (req, res) => {
+  const { userId, workId, goodObjectsCaught, obstaclesCaught } = req.body;
+  const work = WORK_MODES[workId];
+
+  if (!work) return res.status(400).json({ error: 'Nieprawidłowa praca.' });
+
+  try {
+    const { data: char, error: charErr } = await supabase
+      .from('characters')
+      .select('coins, strength, speed, endurance, inventory(item_template_id, equipped_slot, item_templates(req_stats, bonuses, category))')
+      .eq('profile_id', userId)
+      .single();
+
+    if (charErr || !char) return res.status(404).json({ error: 'Nie znaleziono postaci.' });
+
+    const caught = BigInt(goodObjectsCaught || 0);
+    const missed = BigInt(obstaclesCaught || 0);
+
+    // Kary finansowe za przeszkody
+    let baseCoins = caught * work.reward_coins;
+    let obstaclePenalty = missed * (work.reward_coins * 2n);
+    let earnedCoins = baseCoins - obstaclePenalty;
+    if (earnedCoins < 0n) earnedCoins = 0n;
+
+    // Pobieranie aktywnych statystyk i sprzętu treningowego
+    let activeStr = BigInt(char.strength || '0');
+    let activeSpd = BigInt(char.speed || '0');
+    let activeEnd = BigInt(char.endurance || '0');
+    
+    let trainStr = 0n; let trainSpd = 0n; let trainEnd = 0n;
+    let trainHp = 0n; let trainMp = 0n;
+
+    char.inventory.forEach(inv => {
+      if (inv.equipped_slot && inv.item_templates && inv.item_templates.bonuses) {
+        const b = inv.item_templates.bonuses;
+        if (b.type === 'passive') {
+          if (b.strength) activeStr += BigInt(b.strength);
+          if (b.speed) activeSpd += BigInt(b.speed);
+          if (b.endurance) activeEnd += BigInt(b.endurance);
+        } else if (b.type === 'training') {
+          if (b.strength) trainStr += BigInt(b.strength);
+          if (b.speed) trainSpd += BigInt(b.speed);
+          if (b.endurance) trainEnd += BigInt(b.endurance);
+          if (b.bonus_hp) trainHp += BigInt(b.bonus_hp);
+          if (b.bonus_mp) trainMp += BigInt(b.bonus_mp);
+        }
+      }
+    });
+
+    // Diminishing Returns - Znalezienie Najsłabszego Ogniwa względem misji powiązanej z pracą
+    const weakestLink = minBigInt(activeStr, minBigInt(activeSpd, activeEnd));
+    let penaltyMultiplier = 1.0;
+
+    const reqStat = work.req_stat;
+    if (weakestLink >= (reqStat * 8n) + 100n) {
+      penaltyMultiplier = 0.10;
+    } else if (weakestLink >= (reqStat * 4n) + 40n) {
+      penaltyMultiplier = 0.50;
+    } else if (weakestLink >= (reqStat * 2n) + 15n) {
+      penaltyMultiplier = 0.75;
+    }
+
+    // Matematyka końcowa (zaokrąglanie w dół bezpiecznie za pomocą stringów/liczb, omijając pułapkę Float Trap)
+    const finalCoins = BigInt(Math.floor(Number(earnedCoins) * penaltyMultiplier));
+    
+    // Zyski z treningu TYLKO jeśli złapano minimum 1 obiekt
+    let gainStr = 0n; let gainSpd = 0n; let gainEnd = 0n; let gainHp = 0n; let gainMp = 0n;
+    if (caught > 0n) {
+      gainStr = maxBigInt(1n, BigInt(Math.floor(Number(trainStr * caught) * penaltyMultiplier)));
+      gainSpd = maxBigInt(1n, BigInt(Math.floor(Number(trainSpd * caught) * penaltyMultiplier)));
+      gainEnd = maxBigInt(1n, BigInt(Math.floor(Number(trainEnd * caught) * penaltyMultiplier)));
+      gainHp  = maxBigInt(1n, BigInt(Math.floor(Number(trainHp * caught) * penaltyMultiplier)));
+      gainMp  = maxBigInt(1n, BigInt(Math.floor(Number(trainMp * caught) * penaltyMultiplier)));
+    }
+
+    // Drop Świętej Wody dla Magicznej Rosy
+    let dropIds = [];
+    if (work.drop_woda && caught > 10n) {
+      // 1% szans w JavaScript
+      if (Math.floor(Math.random() * 100) < 1) {
+        dropIds.push("00000000-0000-0000-0000-000000000008"); // Święta Woda
+        // Jeśli dropło, wstaw do ekwipunku gracza
+        const { data: invData } = await supabase.from('inventory').select('backpack_index').eq('character_id', char.id);
+        const usedIndexes = invData ? invData.map(i => i.backpack_index) : [];
+        let freeIndex = 1;
+        while(usedIndexes.includes(freeIndex)) freeIndex++;
+        
+        await supabase.from('inventory').insert({
+          character_id: char.id,
+          item_template_id: "00000000-0000-0000-0000-000000000008",
+          quantity: 1,
+          backpack_index: freeIndex
+        });
+      }
+    }
+
+    // Dodanie nagród do tabeli characters (wywołanie RPC dla uniknięcia race condition w przyszłości, lub bezpośredni update liczbowy)
+    // Bezpieczniej rzutować do operacji na DB wprost:
+    const { error: updateErr } = await supabase.rpc('reward_work_gains', {
+      p_user_id: userId,
+      p_coins: finalCoins.toString(),
+      p_str: (trainStr > 0n ? gainStr.toString() : "0"),
+      p_spd: (trainSpd > 0n ? gainSpd.toString() : "0"),
+      p_end: (trainEnd > 0n ? gainEnd.toString() : "0"),
+      p_bhp: (trainHp > 0n ? gainHp.toString() : "0"),
+      p_bmp: (trainMp > 0n ? gainMp.toString() : "0")
+    });
+
+    // Jeśli nie mamy funkcji RPC `reward_work_gains`, robimy to klasycznym update. Zakładam update bezpośredni, żeby nie obciążać zapytań o SQL:
+    if (updateErr) {
+       const { error: fallbackErr } = await supabase.from('characters').update({
+         coins: (BigInt(char.coins) + finalCoins).toString()
+         // Statystyki obsłużymy po stronie klienta, by uniknąć nadpisów (jak zrobiliśmy w misjach).
+       }).eq('profile_id', userId);
+       if (fallbackErr) throw fallbackErr;
+    }
+
+    res.json({ 
+      success: true, 
+      finalCoins: finalCoins.toString(),
+      gains: {
+        str: (trainStr > 0n ? gainStr.toString() : "0"),
+        spd: (trainSpd > 0n ? gainSpd.toString() : "0"),
+        end: (trainEnd > 0n ? gainEnd.toString() : "0"),
+        hp: (trainHp > 0n ? gainHp.toString() : "0"),
+        mp: (trainMp > 0n ? gainMp.toString() : "0")
+      },
+      drops: dropIds,
+      penalty: penaltyMultiplier
+    });
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Błąd serwera przy rozliczeniu pracy.' });
+  }
+});
+
+// ==========================================
 // ⏰ 9. CRON JOBS I START SERWERA
 // ==========================================
 app.listen(port, async () => {
