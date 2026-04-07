@@ -3250,7 +3250,7 @@
             });
         }
 
-        // 3. Wybór mentora (aktualizuje Twój panel po prawej)
+        // 3. Wybór mentora
         function selectMentor(mentor, cardElement) {
             if (activeTrainingEndTime) return;
 
@@ -3264,22 +3264,43 @@
             setupMentorCost.textContent = mentor.cost;
             setupMentorMultiplier.textContent = `x${mentor.multiplier}`;
             
-            // Dynamiczny suwak (Sala Czasu może trwać 24h, reszta 12h)
-            hoursSlider.max = mentor.id === 'time_chamber' ? 24 : 12;
-            if (parseInt(hoursSlider.value) > hoursSlider.max) hoursSlider.value = hoursSlider.max;
+            // DYNAMICZNY SUWAK: Sala Czasu ma minuty, reszta godziny
+            if (mentor.id === 'time_chamber') {
+                hoursSlider.min = 5;
+                hoursSlider.max = 60;
+                hoursSlider.step = 5;
+                hoursSlider.value = 5;
+            } else {
+                hoursSlider.min = 1;
+                hoursSlider.max = 12;
+                hoursSlider.step = 1;
+                hoursSlider.value = 1;
+            }
             
             updateTotalCost();
         }
 
         function updateTotalCost() {
             if (!currentSelectedMentor) return;
-            const hours = parseInt(hoursSlider.value);
-            hoursDisplay.textContent = hours;
-            totalCostDisplay.textContent = currentSelectedMentor.cost * hours;
+            const val = parseInt(hoursSlider.value);
+            const isTimeChamber = currentSelectedMentor.id === 'time_chamber';
+            
+            // Jeśli to Sala Czasu, dzielimy przez 60, by uzyskać ułamek godziny
+            const hours = isTimeChamber ? (val / 60) : val;
+
+            hoursDisplay.textContent = val;
+            
+            // Dynamiczna zmiana napisu z "godzina" na "minut"
+            const textNode = hoursDisplay.nextSibling;
+            if (textNode) {
+                textNode.textContent = isTimeChamber ? ' minut' : ' godzin(y)';
+            }
+
+            // Math.ceil sprawia, że koszt zaokrągla się w górę do pełnych punktów staminy
+            totalCostDisplay.textContent = Math.ceil(currentSelectedMentor.cost * hours);
 
             // Szacowanie nagrody - ZABEZPIECZONE POBIERANIE MOCY
             const powerEl = document.getElementById('total-power-level') || document.getElementById('power-level');
-            
             let effectivePower = 1000;
             if (powerEl) {
                 const rawText = powerEl.innerText.replace(/\s/g, '');
@@ -3289,7 +3310,6 @@
                 }
             }
 
-            // ZŁOTY BALANS RPG: Płaska baza dla low-level + potęga 0.65 dla płynnego skalowania high-level
             let baseGain = Math.floor((400 + Math.pow(effectivePower, 0.55)) * currentSelectedMentor.multiplier * hours);
             const targetStat = statSelect ? statSelect.value : 'balanced';
 
@@ -3307,21 +3327,22 @@
             }
         }
 
-        // Nasłuchujemy zmian na suwaku ATAKŻE na liście rozwijanej celu!
         hoursSlider.addEventListener('input', updateTotalCost);
-        if (statSelect) {
-            statSelect.addEventListener('change', updateTotalCost);
-        }
+        if (statSelect) statSelect.addEventListener('change', updateTotalCost);
 
-        // 4. Start (wysyła statystykę z selecta)
+        // 4. Start
         startBtn.addEventListener('click', async () => {
             if (!currentSelectedMentor) return;
             
             const targetStat = statSelect ? statSelect.value : 'balanced';
+            const val = parseInt(hoursSlider.value);
+            
+            // Wysyłamy ułamek do bazy dla Sali Czasu
+            const hoursToSend = currentSelectedMentor.id === 'time_chamber' ? (val / 60) : val;
 
             const res = await apiCall('/api/training/start', 'POST', { 
                 mentorId: currentSelectedMentor.id, 
-                hours: parseInt(hoursSlider.value),
+                hours: hoursToSend,
                 targetStat: targetStat
             }, true);
             
@@ -3330,7 +3351,7 @@
             if (res.success) {
                 showSuccessMessage('Trening rozpoczęty pomyślnie!');
                 if (typeof fetchCharacterData === 'function') fetchCharacterData(); 
-                fetchTrainingStatus(); // Odświeża UI na tryb progresu
+                fetchTrainingStatus(); 
             } else {
                 showErrorMessage(res.error || 'Błąd startu treningu');
             }

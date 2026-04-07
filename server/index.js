@@ -1867,11 +1867,14 @@ app.post('/api/training/start', authenticateToken, async (req, res) => {
         return res.status(400).json({ error: 'Sala Czasu raz na dobę DC!' });
     }
 
-    const totalStaminaCost = mentor.cost * hours;
+    // Koszt staminy zaokrąglamy w górę
+    const totalStaminaCost = Math.ceil(mentor.cost * parseFloat(hours));
     if (BigInt(char.stamina) < BigInt(totalStaminaCost)) return res.status(400).json({ error: 'Za mało staminy!' });
 
     const validStat = ['strength', 'speed', 'endurance', 'balanced'].includes(targetStat) ? targetStat : 'balanced';
-    const endTime = new Date(Date.now() + hours * 60 * 60 * 1000).toISOString();
+    
+    // Czas używa ułamków godzin
+    const endTime = new Date(Date.now() + parseFloat(hours) * 60 * 60 * 1000).toISOString();
     
     let updates = {
       stamina: (BigInt(char.stamina) - BigInt(totalStaminaCost)).toString(),
@@ -1907,8 +1910,9 @@ app.post('/api/training/stop', authenticateToken, async (req, res) => {
 
     if (action === 'completed' && mentor) {
       const effectivePower = Math.max(1000, parseInt(char.total_power_level || '0'));
-      // ZŁOTY BALANS RPG: Płaska baza dla low-level + potęga 0.65 dla płynnego skalowania high-level
-      const statGain = BigInt(Math.floor((400 + Math.pow(effectivePower, 0.55)) * mentor.multiplier * parseInt(hoursStr)));
+      const trainingHours = parseFloat(hoursStr);
+      
+      const statGain = BigInt(Math.floor((400 + Math.pow(effectivePower, 0.55)) * mentor.multiplier * trainingHours));
 
       if (targetStat === 'balanced') {
         const perStat = statGain / 3n;
