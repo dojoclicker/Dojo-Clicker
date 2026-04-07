@@ -454,6 +454,16 @@ app.get('/api/character', authenticateToken, async (req, res) => {
       hospital_until: exactHospitalEndTime ? new Date(exactHospitalEndTime).toISOString() : (character.hospital_until ? String(character.hospital_until).trim() + 'Z' : null)
     };
 
+    // --- PATCH: ODBLOKOWANIE PRACY ---
+    let features = character.unlocked_features || [];
+    if (character.completed_missions && character.completed_missions.includes('10000000-0000-0000-0000-000000000006')) {
+        if (!features.includes('work')) {
+            features.push('work');
+            supabase.from('characters').update({ unlocked_features: features }).eq('profile_id', userId).then();
+        }
+    }
+    characterData.unlocked_features = features; // KRYTYCZNE: Teraz to faktycznie leci do frontendu!
+
     res.json(JSON.parse(JSON.stringify(characterData, bigIntReplacer)));
   } catch (err) {
     console.error('[Character] Błąd pobierania danych postaci:', err.message);
