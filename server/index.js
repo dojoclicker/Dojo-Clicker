@@ -1873,12 +1873,20 @@ app.post('/api/training/start', authenticateToken, async (req, res) => {
 
     const validStat = ['strength', 'speed', 'endurance', 'balanced'].includes(targetStat) ? targetStat : 'balanced';
     
-    // Czas używa ułamków godzin
-    const endTime = new Date(Date.now() + parseFloat(hours) * 60 * 60 * 1000).toISOString();
+    // LOGIKA CZASU:
+    // Jeśli to Sala Czasu, to każda przesłana "godzina" (hours) trwa w rzeczywistości tylko 5 minut.
+    let realDurationMinutes;
+    if (mentorId === 'time_chamber') {
+        realDurationMinutes = parseFloat(hours) * 5; // 12h efektywne -> 60 min rzeczywiste
+    } else {
+        realDurationMinutes = parseFloat(hours) * 60; // Standardowo 1h -> 60 min
+    }
+
+    const endTime = new Date(Date.now() + realDurationMinutes * 60 * 1000).toISOString();
     
     let updates = {
       stamina: (BigInt(char.stamina) - BigInt(totalStaminaCost)).toString(),
-      active_training_id: `${mentorId}:${hours}:${validStat}`,
+      active_training_id: `${mentorId}:${hours}:${validStat}`, // Zapisujemy Godziny Efektywne
       training_end_time: endTime
     };
     if (mentorId === 'time_chamber') updates.daily_time_chamber_used = true;

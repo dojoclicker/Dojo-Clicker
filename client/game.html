@@ -3285,75 +3285,59 @@
             const val = parseInt(hoursSlider.value);
             const isTimeChamber = currentSelectedMentor.id === 'time_chamber';
             
-            // Jeśli to Sala Czasu, dzielimy przez 60, by uzyskać ułamek godziny
-            const hours = isTimeChamber ? (val / 60) : val;
+            // KLUCZOWA LOGIKA: 
+            // W Sali Czasu: 5 minut rzeczywistych = 1 godzina treningu (val / 5)
+            // W innych: val = godziny treningu
+            const effectiveHours = isTimeChamber ? (val / 5) : val;
 
             hoursDisplay.textContent = val;
-            
-            // Dynamiczna zmiana napisu z "godzina" na "minut"
             const textNode = hoursDisplay.nextSibling;
             if (textNode) {
-                textNode.textContent = isTimeChamber ? ' minut' : ' godzin(y)';
+                textNode.textContent = isTimeChamber ? ' minut (rzeczywistych)' : ' godzin(y)';
             }
 
-            // Math.ceil sprawia, że koszt zaokrągla się w górę do pełnych punktów staminy
-            totalCostDisplay.textContent = Math.ceil(currentSelectedMentor.cost * hours);
+            // Koszt staminy oparty na godzinach efektywnych
+            totalCostDisplay.textContent = Math.ceil(currentSelectedMentor.cost * effectiveHours);
 
-            // Szacowanie nagrody - ZABEZPIECZONE POBIERANIE MOCY
+            // Szacowanie nagrody oparte na godzinach efektywnych
             const powerEl = document.getElementById('total-power-level') || document.getElementById('power-level');
             let effectivePower = 1000;
             if (powerEl) {
                 const rawText = powerEl.innerText.replace(/\s/g, '');
                 const match = rawText.match(/\d+/);
-                if (match) {
-                    effectivePower = Math.max(1000, parseInt(match[0]));
-                }
+                if (match) effectivePower = Math.max(1000, parseInt(match[0]));
             }
 
-            let baseGain = Math.floor((400 + Math.pow(effectivePower, 0.55)) * currentSelectedMentor.multiplier * hours);
+            let baseGain = Math.floor((400 + Math.pow(effectivePower, 0.55)) * currentSelectedMentor.multiplier * effectiveHours);
             const targetStat = statSelect ? statSelect.value : 'balanced';
 
-            let gainText = '';
-            if (targetStat === 'balanced') {
-                let perStat = Math.floor(baseGain / 3);
-                gainText = `po +${perStat} (Siła, Szybkość, Wytrz.)`;
-            } else {
-                gainText = `+${baseGain} pkt`;
-            }
+            let gainText = (targetStat === 'balanced') 
+                ? `po +${Math.floor(baseGain / 3)} (Siła, Szybkość, Wytrz.)` 
+                : `+${baseGain} pkt`;
 
-            const gainDisplay = document.getElementById('training-projected-gain');
-            if (gainDisplay) {
-                gainDisplay.textContent = gainText;
+            if (document.getElementById('training-projected-gain')) {
+                document.getElementById('training-projected-gain').textContent = gainText;
             }
         }
 
-        hoursSlider.addEventListener('input', updateTotalCost);
-        if (statSelect) statSelect.addEventListener('change', updateTotalCost);
-
-        // 4. Start
+        // Przy starcie wysyłamy DO BACKENDU "Godziny Efektywne"
         startBtn.addEventListener('click', async () => {
             if (!currentSelectedMentor) return;
-            
-            const targetStat = statSelect ? statSelect.value : 'balanced';
             const val = parseInt(hoursSlider.value);
+            const isTimeChamber = currentSelectedMentor.id === 'time_chamber';
             
-            // Wysyłamy ułamek do bazy dla Sali Czasu
-            const hoursToSend = currentSelectedMentor.id === 'time_chamber' ? (val / 60) : val;
+            // Wysyłamy ile "godzin treningu" ma policzyć serwer
+            const effectiveHours = isTimeChamber ? (val / 5) : val;
 
             const res = await apiCall('/api/training/start', 'POST', { 
                 mentorId: currentSelectedMentor.id, 
-                hours: hoursToSend,
-                targetStat: targetStat
+                hours: effectiveHours, // Serwer dostanie np. 12 (mimo że trwało to 60 min)
+                targetStat: statSelect.value
             }, true);
             
-            if (!res) return;
-
-            if (res.success) {
-                showSuccessMessage('Trening rozpoczęty pomyślnie!');
-                if (typeof fetchCharacterData === 'function') fetchCharacterData(); 
+            if (res && res.success) {
+                showSuccessMessage('Wkroczono do Sali Czasu!');
                 fetchTrainingStatus(); 
-            } else {
-                showErrorMessage(res.error || 'Błąd startu treningu');
             }
         });
 
