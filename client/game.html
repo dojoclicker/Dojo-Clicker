@@ -3285,18 +3285,18 @@
             const val = parseInt(hoursSlider.value);
             const isTimeChamber = currentSelectedMentor.id === 'time_chamber';
             
-            // KLUCZOWA LOGIKA: 
-            // W Sali Czasu: 5 minut rzeczywistych = 1 godzina treningu (val / 5)
-            // W innych: val = godziny treningu
+            // Jeśli to Sala Czasu, dzielimy przez 60, by uzyskać ułamek godziny
             const effectiveHours = isTimeChamber ? (val / 5) : val;
 
             hoursDisplay.textContent = val;
+            
+            // Dynamiczna zmiana napisu z "godzina" na "minut"
             const textNode = hoursDisplay.nextSibling;
             if (textNode) {
                 textNode.textContent = isTimeChamber ? ' minut (rzeczywistych)' : ' godzin(y)';
             }
 
-            // Koszt staminy oparty na godzinach efektywnych
+            // Math.ceil sprawia, że koszt zaokrągla się w górę do pełnych punktów staminy
             totalCostDisplay.textContent = Math.ceil(currentSelectedMentor.cost * effectiveHours);
 
             // Szacowanie nagrody oparte na godzinach efektywnych
@@ -3320,7 +3320,10 @@
             }
         }
 
-        // Przy starcie wysyłamy DO BACKENDU "Godziny Efektywne"
+        hoursSlider.addEventListener('input', updateTotalCost);
+        if (statSelect) statSelect.addEventListener('change', updateTotalCost);
+
+        // 4. Start
         startBtn.addEventListener('click', async () => {
             if (!currentSelectedMentor) return;
             const val = parseInt(hoursSlider.value);
