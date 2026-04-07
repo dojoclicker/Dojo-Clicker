@@ -14,6 +14,10 @@ const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_SERVICE_KEY;
 const supabase = createClient(supabaseUrl, supabaseKey);
 
+// ==========================================
+// ⚙️ 1. KONFIGURACJA, BAZA DANYCH I POMOCNIKI
+// ==========================================
+
 // Funkcje pomocnicze dla BigInt
 const minBigInt = (a, b) => (a < b ? a : b);
 const maxBigInt = (a, b) => (a > b ? a : b);
@@ -28,8 +32,9 @@ function calculateMaxBackpackSlots(charStats) {
 }
 
 // ==========================================
-// SILNIK STATYSTYK ZE SPRZĘTU (FAZA 1 & 2)
+// 📊 2. SILNIK STATYSTYK I AUTORYZACJA (MIDDLEWARE)
 // ==========================================
+// Tu są: getFullCharacterStats(), authenticateToken()
 
 // Reużywalna funkcja pobierająca pełne statystyki postaci z bonusami z ekwipunku
 async function getFullCharacterStats(userId) {
@@ -297,6 +302,11 @@ app.post('/api/auth/login', async (req, res) => {
     res.status(401).json({ status: 'error', message: 'Nieprawidłowy email lub hasło.' });
   }
 });
+
+// ==========================================
+// 🧍‍♂️ 3. DANE POSTACI, EKWIPUNEK I PRZEDMIOTY
+// ==========================================
+// Tu są: Odczyt postaci, consume (leczenie), split, swap ekwipunku
 
 app.get('/api/character', authenticateToken, async (req, res) => {
   try {
@@ -742,7 +752,7 @@ app.post('/api/inventory/consume', authenticateToken, async (req, res) => {
 });
 
 // ==========================================
-// SILNIK MISJI
+// ⚔️ 4. SYSTEM MISJI I DROPÓW
 // ==========================================
 app.post('/api/missions/start', authenticateToken, requireAlive, async (req, res) => {
   try {
@@ -1196,6 +1206,9 @@ app.post('/api/inventory/split', authenticateToken, async (req, res) => {
   } catch (err) { res.status(500).json({ error: 'Błąd serwera' }); }
 });
 
+// ==========================================
+// 🛒 5. SYSTEM SKLEPU (KUPOWANIE I SPRZEDAWANIE)
+// ==========================================
 app.get('/api/shop/items', authenticateToken, async (req, res) => {
   try {
     const { data } = await supabase.from('item_templates').select('*').not('buy_price_coins', 'is', null).order('buy_price_coins', { ascending: true });
@@ -1261,7 +1274,7 @@ app.post('/api/shop/sell', authenticateToken, requireAlive, async (req, res) => 
 });
 
 // ==========================================
-// SYSTEM BANKU (FAZA 1 i 2)
+// 🏦 6. SYSTEM BANKU I SKRYTKI
 // ==========================================
 
 // Cenniki i limity Banku
@@ -1664,7 +1677,7 @@ app.post('/api/bank/split', authenticateToken, requireAlive, async (req, res) =>
 });
 
 // ==========================================
-// RANKING I CZAT GLOBALNY (FAZA 5)
+// 💬 7. CZAT, RANKING I DASHBOARD
 // ==========================================
 
 // Cache dla rankingu (odświeżany co 5 minut)
@@ -1801,7 +1814,7 @@ setInterval(() => {
 }, 60 * 60 * 1000);
 
 // ==========================================
-// TRYB TRENINGU IDLE (ZAAWANSOWANY)
+// 🧘‍♂️ 8. SYSTEM TRENINGU (SALA CZASU I MISTRZOWIE)
 // ==========================================
 
 const TRAINING_MENTORS = {
@@ -1942,6 +1955,9 @@ app.post('/api/training/stop', authenticateToken, async (req, res) => {
   } catch (err) { res.status(500).json({ error: 'Błąd stopu' }); }
 });
 
+// ==========================================
+// ⏰ 9. CRON JOBS I START SERWERA
+// ==========================================
 app.listen(port, async () => {
   console.log(`[Dojo-Clicker API] Serwer nasłuchuje na porcie ${port}...`);
   await initGlobalState();
