@@ -1907,8 +1907,8 @@ app.post('/api/training/stop', authenticateToken, async (req, res) => {
 
     if (action === 'completed' && mentor) {
       const effectivePower = Math.max(1000, parseInt(char.total_power_level || '0'));
-      // ZŁOTY BALANS (Krzywa Pierwiastkowa): Zabezpiecza low-level i powstrzymuje high-level
-      const statGain = BigInt(Math.floor(Math.sqrt(effectivePower) * mentor.multiplier * parseInt(hoursStr) * 1.5));
+      // ZŁOTY BALANS RPG: Płaska baza dla low-level + potęga 0.65 dla płynnego skalowania high-level
+      const statGain = BigInt(Math.floor((100 + Math.pow(effectivePower, 0.65)) * mentor.multiplier * parseInt(hoursStr)));
 
       if (targetStat === 'balanced') {
         const perStat = statGain / 3n;

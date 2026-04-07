@@ -3289,8 +3289,8 @@
                 }
             }
 
-            // ZŁOTY BALANS (Krzywa Pierwiastkowa): Pierwiastek z mocy * mnożnik * czas * współczynnik 1.5
-            let baseGain = Math.floor(Math.sqrt(effectivePower) * currentSelectedMentor.multiplier * hours * 1.5);
+            // ZŁOTY BALANS RPG: Płaska baza dla low-level + potęga 0.65 dla płynnego skalowania high-level
+            let baseGain = Math.floor((100 + Math.pow(effectivePower, 0.65)) * currentSelectedMentor.multiplier * hours);
             const targetStat = statSelect ? statSelect.value : 'balanced';
 
             let gainText = '';
