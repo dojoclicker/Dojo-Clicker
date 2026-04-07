@@ -1024,10 +1024,8 @@ app.post('/api/missions/start', authenticateToken, requireAlive, async (req, res
     let droppedItems = [];
     let lostDrops = []; // Nowa tablica na utracone przedmioty z powodu braku miejsca
     if (mission.drop_table && mission.drop_table.length > 0 && roll <= Number(successChance)) {
-        // Obliczenie dynamicznego plecaka wg wzoru z GDD
-        const minPhysicalStat = minBigInt(currentStr, minBigInt(currentSpd, currentEnd));
-        let maxBackpackSlots = 5 + Number(minPhysicalStat / 10000n);
-        if (maxBackpackSlots > 50) maxBackpackSlots = 50;
+        // Obliczenie dynamicznego plecaka za pomocą globalnej funkcji
+        const maxBackpackSlots = calculateMaxBackpackSlots({ strength: currentStr, speed: currentSpd, endurance: currentEnd });
 
         // Pobranie aktualnego plecaka gracza
         const { data: currentInventory } = await supabase
