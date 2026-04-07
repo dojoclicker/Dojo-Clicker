@@ -716,7 +716,8 @@ app.post('/api/inventory/consume', authenticateToken, async (req, res) => {
     const hasPermanentEffects = effects.permanent_bonus || effects.bonus_stamina || ((effects.hospital_exit_recovery || effects.full_resurrection) && originalHp <= 0n);
     
     if (currentHp === originalHp && currentMp === originalMp && currentStamina === originalStamina && newBonusStamina === originalBonusStamina && !hasPermanentEffects) {
-      return res.status(400).json({ status: 'warning', message: 'Zasoby są pełne.' });
+      // Zmieniliśmy "message" na "error", aby apiCall w game.html poprawnie to odczytało!
+      return res.status(400).json({ error: 'Twoje zasoby są już w pełni odnowione, szkoda marnować przedmiotu!' });
     }
 
     if (BigInt(item.quantity) > 1n) {
