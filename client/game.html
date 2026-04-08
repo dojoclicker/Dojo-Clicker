@@ -3546,8 +3546,8 @@
             document.querySelectorAll('#work-list-container .work-card').forEach(c => c.classList.remove('selected'));
             cardElement.classList.add('selected');
             
-            // 1. Pobranie DOKŁADNYCH wymagań z danych misji (zapisanych w window.allMissionsData)
-            const mission = (window.allMissionsData || []).find(m => m.id === workObj.reqMission);
+            // 1. Pobranie DOKŁADNYCH wymagań z danych misji (zapisanych w window.allMissions)
+            const mission = (window.allMissions || []).find(m => m.id === workObj.reqMission);
             const reqs = mission ? mission.req_stats : { strength: 0, speed: 0, endurance: 0 };
 
             // 2. Pobranie Twoich aktualnych statystyk (z właściwej zmiennej characterData)
@@ -3755,35 +3755,52 @@
             
             if (res && res.success) {
                 if (isFailed) {
-                    showNotification('Wyrzucono Cię z pracy!', `Zrobiłeś 3 błędy! Kara: Utrata -${res.data.penalty.resources_pct}% Zasobów oraz -${res.data.penalty.stat_loss} Statystyk fizycznych!`, 'error', 7000);
+                    // ROZSZCZEGÓLNIONE KARY ZA PORAŻKĘ
+                    const loss = res.data.penalty.stat_loss;
+                    const pct = res.data.penalty.resources_pct;
+                    const penaltyMsg = `
+                        Zrobiłeś 3 błędy!<br><br>
+                        <div style="background: rgba(0,0,0,0.3); padding: 8px; border-radius: 6px; font-size: 0.85rem;">
+                            <div style="color:#ef4444; margin-bottom: 4px;">❤️ <b>-${pct}%</b> HP, MP, Stamina</div>
+                            <div style="color:#ffffff;">📊 <b>-${loss}</b> Siła, <b>-${loss}</b> Szybk., <b>-${loss}</b> Wytrz.</div>
+                        </div>
+                    `;
+                    showNotification('Wyrzucono Cię z pracy!', penaltyMsg, 'error', 7000);
                 } else {
                     const data = res.data;
                     let msg = `<div style="margin-bottom: 4px;">💰 Monety: <b style="color:#ffffff;">+${data.finalCoins}</b></div>`;
+                    
                     let gains = [];
                     if (data.gains.str !== "0") gains.push(`+${data.gains.str} Siła`);
-                    if (data.gains.spd !== "0") gains.push(`+${data.gains.spd} Szybkość`);
+                    if (data.gains.spd !== "0") gains.push(`+${data.gains.spd} Szybk.`);
                     if (data.gains.end !== "0") gains.push(`+${data.gains.end} Wytrz.`);
                     if (data.gains.hp !== "0") gains.push(`+${data.gains.hp} HP`);
                     if (data.gains.mp !== "0") gains.push(`+${data.gains.mp} MP`);
                     
-                    if (gains.length > 0) msg += `<div style="font-size: 0.85rem; margin-top: 6px; color: #ffffff; border-top: 1px dashed rgba(255,255,255,0.3); padding-top: 6px; font-weight: bold;">🏋️ Trening: ${gains.join(', ')}</div>`;
-                    if (data.penalty < 1.0) msg += `<div style="font-size: 0.85rem; margin-top: 6px; color: #f59e0b; font-weight: bold;">⚠️ Monety obniżone z powodu dużej potęgi.</div>`;
-                    if (data.drops && data.drops.length > 0) msg += `<div style="font-size: 0.85rem; margin-top: 6px; color: #4ade80; font-weight: bold;">🎁 Zdobyto: Święta Woda!</div>`;
+                    if (gains.length > 0) {
+                        msg += `<div style="font-size: 0.85rem; margin-top: 6px; color: #ffffff; border-top: 1px dashed rgba(255,255,255,0.3); padding-top: 6px; font-weight: bold;">🏋️ Trening: ${gains.join(', ')}</div>`;
+                    }
+                    
+                    // DYNAMICZNY TEKST KARY ZA POTĘGĘ (Identyczny jak w misjach)
                     const isWarning = data.penalty < 1.0;
-                    showNotification(isWarning ? 'Utrudniona Praca' : 'Koniec Zmiany', msg, isWarning ? 'warning' : 'success', 6000);
+                    if (isWarning) {
+                        let penaltyText = '';
+                        if (data.penalty === 0.75) penaltyText = 'Zyski obniżone o 25% (Mała kara za potęgę)';
+                        else if (data.penalty === 0.5) penaltyText = 'Zyski obniżone o 50% (Średnia kara za potęgę)';
+                        else if (data.penalty === 0.1) penaltyText = 'Zyski obniżone o 90% (Duża kara za potęgę)';
+                        
+                        msg += `<div style="font-size: 0.85rem; margin-top: 6px; color: #f59e0b; font-weight: bold;">⚠️ ${penaltyText}</div>`;
+                    }
+
+                    if (data.drops && data.drops.length > 0) {
+                        msg += `<div style="font-size: 0.85rem; margin-top: 6px; color: #4ade80; font-weight: bold;">🎁 Zdobyto: Święta Woda!</div>`;
+                    }
+                    
+                    // Naprawiony tytuł - zawsze "Koniec Zmiany", zmienia się tylko kolor ramki i ikona (isWarning)
+                    showNotification('Koniec Zmiany', msg, isWarning ? 'warning' : 'success', 6000);
                 }
             }
-            
-            setTimeout(() => {
-                fetchCharacterData(); fetchInventory();
-                document.getElementById('work-list-panel').style.display = 'block';
-                document.getElementById('work-active-panel').style.flex = '1';
-                document.getElementById('work-details-container').style.display = 'flex';
-                document.getElementById('work-canvas-container').style.display = 'none';
-                lockTabsForWork(false);
-            }, isFailed ? 2500 : 0);
         }
-
 
         // Czyszczenie pamięci przy wylogowaniu (zapobiega mieszaniu się kont)
         const logoutBtnGame = document.getElementById('logout-btn');
