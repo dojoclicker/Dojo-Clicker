@@ -1285,8 +1285,11 @@
 
                 // ODBLOKOWANIE ZAKŁADKI PRACA
                 const navWorkBtn = document.getElementById('nav-work-btn');
-                if (data.unlocked_features && data.unlocked_features.includes('work')) {
+                const maZrobionaMisje6 = data.completed_missions && data.completed_missions.includes('10000000-0000-0000-0000-000000000006');
+                
+                if ((data.unlocked_features && data.unlocked_features.includes('work')) || maZrobionaMisje6) {
                     if (navWorkBtn) navWorkBtn.classList.remove('disabled', 'locked');
+                    localStorage.setItem('work_unlocked', 'true'); // <-- Zapisujemy w przeglądarce!
                 }
                 if (typeof renderWorkList === 'function') renderWorkList();
 
@@ -3730,6 +3733,7 @@
         if (logoutBtnGame) {
             logoutBtnGame.addEventListener('click', () => {
                 localStorage.removeItem('training_unlocked');
+                localStorage.removeItem('work_unlocked');
                 localStorage.removeItem('is_training_active'); // Zdejmuje blokadę treningu w przeglądarce dla nowego konta
                 localStorage.removeItem('is_hospitalized');    // Zdejmuje blokadę szpitala w przeglądarce dla nowego konta
                 localStorage.setItem('active_game_tab', 'dashboard'); // Wymusza bezpieczny start na Stronie Głównej!
@@ -3739,6 +3743,12 @@
         // Błyskawiczne odblokowanie UI na podstawie pamięci lokalnej (całkowity brak "mrugania" guzika)
         if (localStorage.getItem('training_unlocked') === 'true') {
             if (navTrainingBtn) navTrainingBtn.classList.remove('disabled', 'locked');
+        }
+
+        // Błyskawiczne odblokowanie PRACY (brak mrugania guzika)
+        if (localStorage.getItem('work_unlocked') === 'true') {
+            const navWorkBtn = document.getElementById('nav-work-btn');
+            if (navWorkBtn) navWorkBtn.classList.remove('disabled', 'locked');
         }
 
         // Błyskawiczne zablokowanie innych zakładek, jeśli w pamięci jest aktywny trening

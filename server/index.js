@@ -1994,8 +1994,9 @@ const WORK_MODES = {
   }
 };
 
-app.post('/api/work/start', async (req, res) => {
-  const { userId, workId } = req.body;
+app.post('/api/work/start', authenticateToken, requireAlive, async (req, res) => {
+  const userId = req.user.id;
+  const { workId } = req.body;
   const work = WORK_MODES[workId];
 
   if (!work) return res.status(400).json({ error: 'Nieprawidłowa praca.' });
@@ -2049,8 +2050,9 @@ app.post('/api/work/start', async (req, res) => {
   }
 });
 
-app.post('/api/work/finish', async (req, res) => {
-  const { userId, workId, goodObjectsCaught, obstaclesCaught } = req.body;
+app.post('/api/work/finish', authenticateToken, requireAlive, async (req, res) => {
+  const userId = req.user.id;
+  const { workId, goodObjectsCaught, obstaclesCaught } = req.body;
   const work = WORK_MODES[workId];
 
   if (!work) return res.status(400).json({ error: 'Nieprawidłowa praca.' });
@@ -2098,7 +2100,7 @@ app.post('/api/work/finish', async (req, res) => {
       }
     });
 
-    // Diminishing Returns - Znalezienie Najsłabszego Ogniwa względem misji powiązanej z pracą
+    // Diminishing Returns - Znalezienie Najsłabszego Ogniwa
     const weakestLink = minBigInt(activeStr, minBigInt(activeSpd, activeEnd));
     let penaltyMultiplier = 1.0;
 
@@ -2111,10 +2113,8 @@ app.post('/api/work/finish', async (req, res) => {
       penaltyMultiplier = 0.75;
     }
 
-    // Matematyka końcowa (zaokrąglanie w dół bezpiecznie za pomocą stringów/liczb, omijając pułapkę Float Trap)
     const finalCoins = BigInt(Math.floor(Number(earnedCoins) * penaltyMultiplier));
     
-    // Zyski z treningu TYLKO jeśli złapano minimum 1 obiekt
     let gainStr = 0n; let gainSpd = 0n; let gainEnd = 0n; let gainHp = 0n; let gainMp = 0n;
     if (caught > 0n) {
       gainStr = maxBigInt(1n, BigInt(Math.floor(Number(trainStr * caught) * penaltyMultiplier)));
@@ -2124,13 +2124,10 @@ app.post('/api/work/finish', async (req, res) => {
       gainMp  = maxBigInt(1n, BigInt(Math.floor(Number(trainMp * caught) * penaltyMultiplier)));
     }
 
-    // Drop Świętej Wody dla Magicznej Rosy
     let dropIds = [];
     if (work.drop_woda && caught > 10n) {
-      // 1% szans w JavaScript
       if (Math.floor(Math.random() * 100) < 1) {
-        dropIds.push("00000000-0000-0000-0000-000000000008"); // Święta Woda
-        // Jeśli dropło, wstaw do ekwipunku gracza
+        dropIds.push("00000000-0000-0000-0000-000000000008"); 
         const { data: invData } = await supabase.from('inventory').select('backpack_index').eq('character_id', char.id);
         const usedIndexes = invData ? invData.map(i => i.backpack_index) : [];
         let freeIndex = 1;
@@ -2145,8 +2142,6 @@ app.post('/api/work/finish', async (req, res) => {
       }
     }
 
-    // Dodanie nagród do tabeli characters (wywołanie RPC dla uniknięcia race condition w przyszłości, lub bezpośredni update liczbowy)
-    // Bezpieczniej rzutować do operacji na DB wprost:
     const { error: updateErr } = await supabase.rpc('reward_work_gains', {
       p_user_id: userId,
       p_coins: finalCoins.toString(),
@@ -2157,11 +2152,9 @@ app.post('/api/work/finish', async (req, res) => {
       p_bmp: (trainMp > 0n ? gainMp.toString() : "0")
     });
 
-    // Jeśli nie mamy funkcji RPC `reward_work_gains`, robimy to klasycznym update. Zakładam update bezpośredni, żeby nie obciążać zapytań o SQL:
     if (updateErr) {
        const { error: fallbackErr } = await supabase.from('characters').update({
          coins: (BigInt(char.coins) + finalCoins).toString()
-         // Statystyki obsłużymy po stronie klienta, by uniknąć nadpisów (jak zrobiliśmy w misjach).
        }).eq('profile_id', userId);
        if (fallbackErr) throw fallbackErr;
     }
