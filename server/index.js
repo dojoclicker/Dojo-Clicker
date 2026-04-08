@@ -2057,40 +2057,37 @@ app.post('/api/work/start', authenticateToken, requireAlive, async (req, res) =>
 
 app.post('/api/work/finish', authenticateToken, requireAlive, async (req, res) => {
   const userId = req.user.id;
-  const { workId, goodObjectsCaught, obstaclesCaught } = req.body;
+  const { workId, goodObjectsCaught, obstaclesCaught, failed } = req.body;
   const work = WORK_MODES[workId];
 
   if (!work) return res.status(400).json({ error: 'Nieprawidłowa praca.' });
 
   try {
+    // JEŚLI 3 BŁĘDY (GAME OVER) -> ZWRÓĆ ZERO I PRZERWIJ (Koszty i tak ściągnięto przy /start)
+    if (failed) {
+        return res.json({ success: true, finalCoins: "0", gains: { str: "0", spd: "0", end: "0", hp: "0", mp: "0" }, drops: [], penalty: 1.0 });
+    }
+
     const { data: char, error: charErr } = await supabase
       .from('characters')
-      // POPRAWKA 1: Dodano bonus_hp i bonus_mp (bez nich statystyki zresetowałyby się do 0!)
       .select('coins, strength, speed, endurance, bonus_hp, bonus_mp, inventory(item_template_id, equipped_slot, item_templates(req_stats, bonuses, category))')
       .eq('profile_id', userId)
       .single();
 
-    if (charErr || !char) {
-        console.error("Błąd DB przy końcu pracy:", charErr);
-        return res.status(404).json({ error: 'Nie znaleziono postaci.' });
-    }
+    if (charErr || !char) return res.status(404).json({ error: 'Nie znaleziono postaci.' });
 
     const caught = BigInt(goodObjectsCaught || 0);
     const missed = BigInt(obstaclesCaught || 0);
 
-    // Kary finansowe za przeszkody
-    let baseCoins = caught * work.reward_coins;
-    let obstaclePenalty = missed * (work.reward_coins * 2n);
-    let earnedCoins = baseCoins - obstaclePenalty;
-    if (earnedCoins < 0n) earnedCoins = 0n;
+    // KRYTYCZNE: Wynik Netto (Dobre - Złe)
+    let netScore = caught - missed;
+    if (netScore < 0n) netScore = 0n;
 
-    // Pobieranie aktywnych statystyk i sprzętu treningowego
-    let activeStr = BigInt(char.strength || '0');
-    let activeSpd = BigInt(char.speed || '0');
-    let activeEnd = BigInt(char.endurance || '0');
-    
-    let trainStr = 0n; let trainSpd = 0n; let trainEnd = 0n;
-    let trainHp = 0n; let trainMp = 0n;
+    // Bazowe zarobki
+    let earnedCoins = netScore * work.reward_coins;
+
+    let activeStr = BigInt(char.strength || '0'), activeSpd = BigInt(char.speed || '0'), activeEnd = BigInt(char.endurance || '0');
+    let trainStr = 0n, trainSpd = 0n, trainEnd = 0n, trainHp = 0n, trainMp = 0n;
 
     char.inventory.forEach(inv => {
       if (inv.equipped_slot && inv.item_templates && inv.item_templates.bonuses) {
@@ -2109,28 +2106,25 @@ app.post('/api/work/finish', authenticateToken, requireAlive, async (req, res) =
       }
     });
 
-    // Diminishing Returns - Znalezienie Najsłabszego Ogniwa
     const weakestLink = minBigInt(activeStr, minBigInt(activeSpd, activeEnd));
     let penaltyMultiplier = 1.0;
-
     const reqStat = work.req_stat;
-    if (weakestLink >= (reqStat * 8n) + 100n) {
-      penaltyMultiplier = 0.10;
-    } else if (weakestLink >= (reqStat * 4n) + 40n) {
-      penaltyMultiplier = 0.50;
-    } else if (weakestLink >= (reqStat * 2n) + 15n) {
-      penaltyMultiplier = 0.75;
-    }
+    
+    if (weakestLink >= (reqStat * 8n) + 100n) penaltyMultiplier = 0.10;
+    else if (weakestLink >= (reqStat * 4n) + 40n) penaltyMultiplier = 0.50;
+    else if (weakestLink >= (reqStat * 2n) + 15n) penaltyMultiplier = 0.75;
 
+    // Kara uderza tylko w monety, nie w trening!
     const finalCoins = BigInt(Math.floor(Number(earnedCoins) * penaltyMultiplier));
     
-    let gainStr = 0n; let gainSpd = 0n; let gainEnd = 0n; let gainHp = 0n; let gainMp = 0n;
-    if (caught > 0n) {
-      gainStr = maxBigInt(1n, BigInt(Math.floor(Number(trainStr * caught) * penaltyMultiplier)));
-      gainSpd = maxBigInt(1n, BigInt(Math.floor(Number(trainSpd * caught) * penaltyMultiplier)));
-      gainEnd = maxBigInt(1n, BigInt(Math.floor(Number(trainEnd * caught) * penaltyMultiplier)));
-      gainHp  = maxBigInt(1n, BigInt(Math.floor(Number(trainHp * caught) * penaltyMultiplier)));
-      gainMp  = maxBigInt(1n, BigInt(Math.floor(Number(trainMp * caught) * penaltyMultiplier)));
+    // Twarda Matematyka Treningu bez Kar i Cięć (10 x 10 = 100)
+    let gainStr = 0n, gainSpd = 0n, gainEnd = 0n, gainHp = 0n, gainMp = 0n;
+    if (netScore > 0n) {
+      gainStr = netScore * trainStr;
+      gainSpd = netScore * trainSpd;
+      gainEnd = netScore * trainEnd;
+      gainHp  = netScore * trainHp;
+      gainMp  = netScore * trainMp;
     }
 
     let dropIds = [];
@@ -2142,23 +2136,12 @@ app.post('/api/work/finish', authenticateToken, requireAlive, async (req, res) =
         let freeIndex = 1;
         while(usedIndexes.includes(freeIndex)) freeIndex++;
         
-        await supabase.from('inventory').insert({
-          character_id: char.id,
-          item_template_id: "00000000-0000-0000-0000-000000000008",
-          quantity: 1,
-          backpack_index: freeIndex
-        });
+        await supabase.from('inventory').insert({ character_id: char.id, item_template_id: "00000000-0000-0000-0000-000000000008", quantity: 1, backpack_index: freeIndex });
       }
     }
 
     const { error: updateErr } = await supabase.rpc('reward_work_gains', {
-      p_user_id: userId,
-      p_coins: finalCoins.toString(),
-      p_str: (trainStr > 0n ? gainStr.toString() : "0"),
-      p_spd: (trainSpd > 0n ? gainSpd.toString() : "0"),
-      p_end: (trainEnd > 0n ? gainEnd.toString() : "0"),
-      p_bhp: (trainHp > 0n ? gainHp.toString() : "0"),
-      p_bmp: (trainMp > 0n ? gainMp.toString() : "0")
+      p_user_id: userId, p_coins: finalCoins.toString(), p_str: gainStr.toString(), p_spd: gainSpd.toString(), p_end: gainEnd.toString(), p_bhp: gainHp.toString(), p_bmp: gainMp.toString()
     });
 
     if (updateErr) {
@@ -2172,24 +2155,8 @@ app.post('/api/work/finish', authenticateToken, requireAlive, async (req, res) =
        }).eq('profile_id', userId);
     }
 
-    res.json({ 
-      success: true, 
-      finalCoins: finalCoins.toString(),
-      gains: {
-        str: (trainStr > 0n ? gainStr.toString() : "0"),
-        spd: (trainSpd > 0n ? gainSpd.toString() : "0"),
-        end: (trainEnd > 0n ? gainEnd.toString() : "0"),
-        hp: (trainHp > 0n ? gainHp.toString() : "0"),
-        mp: (trainMp > 0n ? gainMp.toString() : "0")
-      },
-      drops: dropIds,
-      penalty: penaltyMultiplier
-    });
-
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Błąd serwera przy rozliczeniu pracy.' });
-  }
+    res.json({ success: true, finalCoins: finalCoins.toString(), gains: { str: gainStr.toString(), spd: gainSpd.toString(), end: gainEnd.toString(), hp: gainHp.toString(), mp: gainMp.toString() }, drops: dropIds, penalty: penaltyMultiplier });
+  } catch (err) { res.status(500).json({ error: 'Błąd serwera przy rozliczeniu pracy.' }); }
 });
 
 // ==========================================

@@ -298,9 +298,14 @@
                     <div id="work-canvas-container" style="display: none; flex-direction: column; align-items: center; width: 100%; height: 100%;">
                         <div id="work-timer" style="font-size: 2.5rem; font-weight: bold; color: var(--goku-accent); margin-bottom: 10px; font-family: monospace;">Czas: 0s</div>
                         <canvas id="workCanvas" width="300" height="400" style="background: #000; border: 2px solid var(--goku-panel-border); border-radius: 8px; user-select: none; touch-action: none; max-width: 100%;"></canvas>
-                        <div class="work-score-display" style="display: flex; gap: 30px; margin-top: 15px; font-size: 1.2rem; font-weight: bold;">
+                        <div class="work-score-display" style="display: flex; gap: 30px; margin-top: 10px; font-size: 1.2rem; font-weight: bold;">
                             <span id="work-score-good" style="color: var(--success);">✅ Złapane: 0</span>
-                            <span id="work-score-bad" style="color: var(--error);">❌ Błędy: 0</span>
+                            <span id="work-score-bad" style="color: var(--error);">❌ Błędy: 0 / 3</span>
+                        </div>
+                        <div id="work-live-counter" style="margin-top: 15px; padding: 10px; background: rgba(0,0,0,0.5); border: 1px solid var(--goku-panel-border); border-radius: 8px; text-align: center; font-size: 0.95rem; line-height: 1.6; min-width: 250px;">
+                            <span style="color: var(--text-muted);">Szacowane Zyski:</span><br>
+                            <span id="live-coins" style="color: var(--warning); font-weight: bold; font-size: 1.1rem;">💰 0 Monet</span>
+                            <div id="live-stats" style="color: var(--success); font-weight: bold; margin-top: 5px;"></div>
                         </div>
                     </div>
                 </div>
@@ -3548,7 +3553,17 @@
             keys: { left: false, right: false }
         };
 
-        // Sterowanie
+        let currentWorkDifficulty = 1;
+        let currentWorkReward = 0;
+
+        // Podpinamy wybór poziomu pod statystyki trudności
+        const originalSelectWork = selectWork;
+        selectWork = function(workObj, cardElement) {
+            originalSelectWork(workObj, cardElement);
+            currentWorkReward = workObj.reward;
+            currentWorkDifficulty = WORK_FRONTEND_DATA.findIndex(w => w.id === workObj.id) + 1; // Od 1 do 7
+        };
+
         window.addEventListener('keydown', (e) => {
             if (e.key === 'ArrowLeft' || e.key === 'a') gameState.keys.left = true;
             if (e.key === 'ArrowRight' || e.key === 'd') gameState.keys.right = true;
@@ -3576,20 +3591,59 @@
             }, { passive: false });
         }
 
+        // LICZNIK NA ŻYWO (Pobiera z aktywnego plecaka!)
+        function updateLiveCounter() {
+            let netScore = Math.max(0, gameState.caught - gameState.missed);
+            let coins = netScore * currentWorkReward;
+            
+            let tStr = 0, tSpd = 0, tEnd = 0, tHp = 0, tMp = 0;
+            if (window.inventoryData) {
+                window.inventoryData.forEach(item => {
+                    if (item.equipped_slot && item.item_templates && item.item_templates.bonuses && item.item_templates.bonuses.type === 'training') {
+                        let b = item.item_templates.bonuses;
+                        if (b.strength) tStr += Number(b.strength);
+                        if (b.speed) tSpd += Number(b.speed);
+                        if (b.endurance) tEnd += Number(b.endurance);
+                        if (b.bonus_hp) tHp += Number(b.bonus_hp);
+                        if (b.bonus_mp) tMp += Number(b.bonus_mp);
+                    }
+                });
+            }
+
+            document.getElementById('live-coins').innerText = `💰 ${coins} Monet`;
+            
+            let statsHtml = [];
+            if (tStr > 0) statsHtml.push(`+${netScore * tStr} Siła`);
+            if (tSpd > 0) statsHtml.push(`+${netScore * tSpd} Szybkość`);
+            if (tEnd > 0) statsHtml.push(`+${netScore * tEnd} Wytrz.`);
+            if (tHp > 0) statsHtml.push(`+${netScore * tHp} Max HP`);
+            if (tMp > 0) statsHtml.push(`+${netScore * tMp} Max MP`);
+            
+            document.getElementById('live-stats').innerHTML = statsHtml.length > 0 ? `🏋️ ` + statsHtml.join(' | ') : `<span style="color: var(--text-muted); font-size:0.8rem;">Brak założonego ciężkiego sprzętu</span>`;
+        }
+
         function spawnObject() {
             if (!window.isWorkMinigameActive) return;
-            const isObstacle = Math.random() < 0.25; // 25% szans na zły obiekt
+            
+            // Trudność (Szansa na przeszkodę rośnie o 5% z każdym poziomem pracy)
+            let baseChance = 0.10 + (currentWorkDifficulty * 0.05); 
+            const isObstacle = Math.random() < baseChance; 
+            
+            // Prędkość spadania rośnie z trudnością
+            let speed = (2 + (currentWorkDifficulty * 0.5)) + Math.random() * 2;
+            
             gameState.objects.push({
                 x: Math.random() * (canvas.width - 20), y: -20, w: 20, h: 20,
-                isObstacle: isObstacle, speed: 2 + Math.random() * 3
+                isObstacle: isObstacle, speed: speed
             });
-            const nextSpawn = 400 + Math.random() * 600; 
+            
+            // Spawn jest coraz szybszy
+            const nextSpawn = (500 - (currentWorkDifficulty * 30)) + Math.random() * 400; 
             setTimeout(spawnObject, nextSpawn);
         }
 
         function gameLoop() {
             if (!window.isWorkMinigameActive) return;
-            
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             
             if (gameState.keys.left) gameState.player.x -= gameState.player.speed;
@@ -3610,7 +3664,6 @@
                 ctx.arc(obj.x + obj.w/2, obj.y + obj.h/2, obj.w/2, 0, Math.PI * 2);
                 ctx.fill();
                 
-                // Kolizja
                 if (obj.x < gameState.player.x + gameState.player.w &&
                     obj.x + obj.w > gameState.player.x &&
                     obj.y < gameState.player.y + gameState.player.h &&
@@ -3618,26 +3671,28 @@
                     
                     if (obj.isObstacle) {
                         gameState.missed++;
-                        document.getElementById('work-score-bad').innerText = `❌ Błędy: ${gameState.missed}`;
+                        document.getElementById('work-score-bad').innerText = `❌ Błędy: ${gameState.missed} / 3`;
                         canvas.style.borderColor = '#ef4444';
                         setTimeout(() => canvas.style.borderColor = 'var(--goku-panel-border)', 200);
+                        
+                        // KRYTYCZNA PORAŻKA (3 Błędy = Koniec)
+                        if (gameState.missed >= 3) {
+                            finishWorkMinigame(true); // true = failed
+                            return;
+                        }
                     } else {
                         gameState.caught++;
                         document.getElementById('work-score-good').innerText = `✅ Złapane: ${gameState.caught}`;
                     }
+                    updateLiveCounter();
                     gameState.objects.splice(i, 1);
                     continue;
                 }
-                
-                if (obj.y > canvas.height) {
-                    gameState.objects.splice(i, 1);
-                }
+                if (obj.y > canvas.height) gameState.objects.splice(i, 1);
             }
-            
             workAnimationId = requestAnimationFrame(gameLoop);
         }
 
-        // Start i Koniec Pracy z Backendem
         document.getElementById('start-work-btn')?.addEventListener('click', async () => {
             if (!currentSelectedWorkId || window.isWorkMinigameActive) return;
             
@@ -3645,55 +3700,52 @@
             if (!res) return;
 
             if (res.success) {
-                // START GRY
                 window.isWorkMinigameActive = true;
                 lockTabsForWork(true);
                 
                 document.getElementById('work-details-container').style.display = 'none';
                 document.getElementById('work-canvas-container').style.display = 'flex';
                 
-                gameState.caught = 0;
-                gameState.missed = 0;
-                gameState.objects = [];
+                gameState.caught = 0; gameState.missed = 0; gameState.objects = [];
                 gameState.timeLeft = res.data.duration;
                 
                 document.getElementById('work-score-good').innerText = `✅ Złapane: 0`;
-                document.getElementById('work-score-bad').innerText = `❌ Błędy: 0`;
+                document.getElementById('work-score-bad').innerText = `❌ Błędy: 0 / 3`;
                 document.getElementById('work-timer').innerText = `Czas: ${gameState.timeLeft}s`;
+                document.getElementById('work-timer').style.color = 'var(--goku-accent)';
+                updateLiveCounter();
                 
                 workTimerInterval = setInterval(() => {
                     gameState.timeLeft--;
                     document.getElementById('work-timer').innerText = `Czas: ${gameState.timeLeft}s`;
-                    
-                    if (gameState.timeLeft <= 0) {
-                        finishWorkMinigame();
-                    }
+                    if (gameState.timeLeft <= 0) finishWorkMinigame(false);
                 }, 1000);
                 
-                spawnObject();
-                gameLoop();
-                
-                // Odśwież paski żeby pokazać ucięcie zdrowia i staminy na starcie!
+                spawnObject(); gameLoop();
                 fetchCharacterData(true);
             } else {
                 showWarningMessage(res.error || 'Nie można rozpocząć pracy.');
             }
         });
 
-        async function finishWorkMinigame() {
+        async function finishWorkMinigame(isFailed = false) {
             window.isWorkMinigameActive = false;
             clearInterval(workTimerInterval);
             cancelAnimationFrame(workAnimationId);
             
-            document.getElementById('work-timer').innerText = `Wysyłanie...`;
+            if (isFailed) {
+                document.getElementById('work-timer').innerText = `PRZEGRANA!`;
+                document.getElementById('work-timer').style.color = 'var(--error)';
+                showNotification('Tragedia w pracy!', 'Złapałeś 3 błędne obiekty! Szef wyrzucił Cię z pracy bez zapłaty. Utraciłeś Staminę i HP.', 'error', 6000);
+            } else {
+                document.getElementById('work-timer').innerText = `Wysyłanie...`;
+            }
             
             const res = await apiCall('/api/work/finish', 'POST', { 
-                workId: currentSelectedWorkId,
-                goodObjectsCaught: gameState.caught,
-                obstaclesCaught: gameState.missed
+                workId: currentSelectedWorkId, goodObjectsCaught: gameState.caught, obstaclesCaught: gameState.missed, failed: isFailed
             }, true);
             
-            if (res && res.success) {
+            if (res && res.success && !isFailed) {
                 const data = res.data;
                 let msg = `<div style="margin-bottom: 4px;">💰 Monety: <b style="color:#ffffff;">+${data.finalCoins}</b></div>`;
                 
@@ -3704,27 +3756,19 @@
                 if (data.gains.hp !== "0") gains.push(`+${data.gains.hp} Max HP`);
                 if (data.gains.mp !== "0") gains.push(`+${data.gains.mp} Max MP`);
                 
-                if (gains.length > 0) {
-                    msg += `<div style="font-size: 0.85rem; margin-top: 6px; color: #ffffff; border-top: 1px dashed rgba(255,255,255,0.3); padding-top: 6px; font-weight: bold;">🏋️ Trening: ${gains.join(', ')}</div>`;
-                }
-                if (data.penalty < 1.0) {
-                    msg += `<div style="font-size: 0.85rem; margin-top: 6px; color: #f59e0b; font-weight: bold;">⚠️ Zyski obniżone z powodu dużej potęgi</div>`;
-                }
-                if (data.drops && data.drops.length > 0) {
-                    msg += `<div style="font-size: 0.85rem; margin-top: 6px; color: #4ade80; font-weight: bold;">🎁 Zdobyto: Święta Woda!</div>`;
-                }
+                if (gains.length > 0) msg += `<div style="font-size: 0.85rem; margin-top: 6px; color: #ffffff; border-top: 1px dashed rgba(255,255,255,0.3); padding-top: 6px; font-weight: bold;">🏋️ Trening: ${gains.join(', ')}</div>`;
+                if (data.penalty < 1.0) msg += `<div style="font-size: 0.85rem; margin-top: 6px; color: #f59e0b; font-weight: bold;">⚠️ Monety obniżone z powodu dużej potęgi postaci.</div>`;
+                if (data.drops && data.drops.length > 0) msg += `<div style="font-size: 0.85rem; margin-top: 6px; color: #4ade80; font-weight: bold;">🎁 Zdobyto: Święta Woda!</div>`;
                 
                 showNotification('Koniec Zmiany', msg, 'success', 5000);
-                
-                fetchCharacterData();
-                fetchInventory();
-            } else {
-                showErrorMessage(res?.error || 'Błąd przy rozliczeniu pracy.');
             }
             
-            document.getElementById('work-details-container').style.display = 'flex';
-            document.getElementById('work-canvas-container').style.display = 'none';
-            lockTabsForWork(false);
+            setTimeout(() => {
+                fetchCharacterData(); fetchInventory();
+                document.getElementById('work-details-container').style.display = 'flex';
+                document.getElementById('work-canvas-container').style.display = 'none';
+                lockTabsForWork(false);
+            }, isFailed ? 2500 : 0);
         }
 
 
