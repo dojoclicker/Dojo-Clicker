@@ -2004,11 +2004,15 @@ app.post('/api/work/start', authenticateToken, requireAlive, async (req, res) =>
   try {
     const { data: char, error: charErr } = await supabase
       .from('characters')
-      .select('hp, stamina, bonus_hp, strength, endurance, equipped_slot, inventory(item_template_id, equipped_slot, item_templates(req_stats, bonuses, category))')
+      // POPRAWKA: Usunięto stąd błędne wywołanie "equipped_slot", które wywalało bazę!
+      .select('hp, stamina, bonus_hp, strength, endurance, inventory(item_template_id, equipped_slot, item_templates(req_stats, bonuses, category))')
       .eq('profile_id', userId)
       .single();
 
-    if (charErr || !char) return res.status(404).json({ error: 'Nie znaleziono postaci.' });
+    if (charErr || !char) {
+        console.error("Błąd DB przy starcie pracy:", charErr);
+        return res.status(404).json({ error: 'Nie znaleziono postaci w bazie danych.' });
+    }
 
     // Wyliczanie Max HP do potrącenia kosztu
     let passiveHpBonus = 0n;
@@ -2046,6 +2050,7 @@ app.post('/api/work/start', authenticateToken, requireAlive, async (req, res) =>
 
     res.json({ success: true, duration: work.duration_sec, hpCost: hpCost.toString() });
   } catch (err) {
+    console.error(err);
     res.status(500).json({ error: 'Błąd serwera przy starcie pracy.' });
   }
 });
@@ -2064,7 +2069,10 @@ app.post('/api/work/finish', authenticateToken, requireAlive, async (req, res) =
       .eq('profile_id', userId)
       .single();
 
-    if (charErr || !char) return res.status(404).json({ error: 'Nie znaleziono postaci.' });
+    if (charErr || !char) {
+        console.error("Błąd DB przy końcu pracy:", charErr);
+        return res.status(404).json({ error: 'Nie znaleziono postaci.' });
+    }
 
     const caught = BigInt(goodObjectsCaught || 0);
     const missed = BigInt(obstaclesCaught || 0);
