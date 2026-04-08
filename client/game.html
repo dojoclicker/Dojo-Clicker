@@ -3681,18 +3681,40 @@
 
         function spawnObject() {
             if (!window.isWorkMinigameActive) return;
-            let baseChance = 0.12 + (currentWorkDifficulty * 0.05); 
-            let speed = (2.0 + (currentWorkDifficulty * 1.5)) + Math.random() * 2;
             
-            // Pobranie emotikon z aktualnie wybranej pracy
+            // --- FILAR 1: Sufit Prędkości (Speed Cap) ---
+            // Baza to 3.0. Z każdym poziomem rośnie łagodniej (o 0.8 zamiast 1.5).
+            // Math.min sprawia, że prędkość bazowa NIGDY nie przekroczy 10.0 (nawet na 50. poziomie).
+            let baseSpeed = Math.min(3.0 + (currentWorkDifficulty * 0.8), 10.0);
+            let speed = baseSpeed + (Math.random() * 2.0); // Losowe odchylenie dla naturalności
+            
+            // --- FILAR 2: Maksymalny próg pułapek (Traps Ratio) ---
+            // Zaczynamy od 10%. Z każdym poziomem rośnie o 3%.
+            // Math.min ucina maksymalną szansę na pułapkę na 45% (0.45), by gra była zawsze "do przejścia".
+            let trapChance = Math.min(0.10 + (currentWorkDifficulty * 0.03), 0.45);
+            let isObst = Math.random() < trapChance;
+            
+            // Pobranie odpowiednich emotikon dla aktualnej pracy
             const currentWorkData = WORK_FRONTEND_DATA.find(w => w.id === currentSelectedWorkId);
-            const isObst = Math.random() < baseChance;
             const currentEmoji = isObst ? currentWorkData.badEmoji : currentWorkData.goodEmoji;
             
-            // Wymiary zwiększone z 20 na 28 żeby hitbox pasował do dużej emotikony
-            gameState.objects.push({ x: Math.random() * (canvas.width - 28), y: -28, w: 28, h: 28, isObstacle: isObst, speed: speed, emoji: currentEmoji });
+            gameState.objects.push({ 
+                x: Math.random() * (canvas.width - 28), 
+                y: -28, 
+                w: 28, 
+                h: 28, 
+                isObstacle: isObst, 
+                speed: speed, 
+                emoji: currentEmoji 
+            });
             
-            setTimeout(spawnObject, (300 - (currentWorkDifficulty * 30)) + Math.random() * 200);
+            // --- FILAR 3: Bezpieczna podłoga częstotliwości (Spawn Floor) ---
+            // Zaczynamy od wolnych 400ms. Z każdym poziomem przyspiesza o 20ms.
+            // Math.max gwarantuje, że przerwa między przedmiotami NIGDY nie zejdzie poniżej 180ms.
+            let baseDelay = Math.max(400 - (currentWorkDifficulty * 20), 180);
+            let finalDelay = baseDelay + (Math.random() * 150); // Losowe opóźnienie, by nie spadały jak z karabinu
+            
+            setTimeout(spawnObject, finalDelay);
         }
 
         function gameLoop() {
