@@ -2035,27 +2035,41 @@ app.post('/api/work/finish', authenticateToken, requireAlive, async (req, res) =
     if (failed) {
         const pct = work.penalty_pct;
         
-        // Wyliczamy CAŁKOWITĄ pulę kary do zabrania (np. 60)
+        // 1. WIRTUALNA KOSTKA (Rozstrzał OD-DO z nagród misji)
         let totalLoss = 50n; 
-        if (mission && mission.reward_stats && mission.reward_stats.min) {
-            totalLoss = maxBigInt(1n, BigInt(mission.reward_stats.min) * 3n); 
+        if (mission && mission.reward_stats && mission.reward_stats.min && mission.reward_stats.max) {
+            const minR = Number(mission.reward_stats.min);
+            const maxR = Number(mission.reward_stats.max);
+            // Losujemy wartość z przedziału i mnożymy przez 3
+            const randomBase = Math.floor(Math.random() * (maxR - minR + 1)) + minR;
+            totalLoss = maxBigInt(1n, BigInt(randomBase) * 3n); 
+        } else if (mission && mission.reward_stats && mission.reward_stats.min) {
+            totalLoss = maxBigInt(1n, BigInt(mission.reward_stats.min) * 3n);
         } else {
             totalLoss = maxBigInt(1n, reqStat / 10n); 
         }
         
-        // POPRAWKA: Dzielimy całkowitą pulę równo na 3 statystyki!
-        const sLoss = maxBigInt(1n, totalLoss / 3n);
+        // 2. LOSOWE ROZDZIELENIE KARY NA 3 STATYSTYKI (Jak w misjach)
+        let r1 = Math.random(); let r2 = Math.random(); let r3 = Math.random();
+        const sumR = r1 + r2 + r3;
         
+        let totalLossNum = Number(totalLoss);
+        let sLossStr = BigInt(Math.max(1, Math.floor(totalLossNum * (r1 / sumR))));
+        let sLossSpd = BigInt(Math.max(1, Math.floor(totalLossNum * (r2 / sumR))));
+        let sLossEnd = totalLoss - sLossStr - sLossSpd; // Reszta z puli idzie w wytrzymałość
+        if (sLossEnd < 1n) sLossEnd = 1n;
+
         await supabase.from('characters').update({
             hp: maxBigInt(0n, BigInt(char.hp) - (BigInt(fullStats.max_hp) * pct / 100n)).toString(),
             mp: maxBigInt(0n, BigInt(char.mp) - (BigInt(fullStats.max_mp) * pct / 100n)).toString(),
             stamina: maxBigInt(0n, BigInt(char.stamina) - (BigInt(fullStats.max_stamina) * pct / 100n)).toString(),
-            strength: maxBigInt(1n, BigInt(char.strength) - sLoss).toString(),
-            speed: maxBigInt(1n, BigInt(char.speed) - sLoss).toString(),
-            endurance: maxBigInt(1n, BigInt(char.endurance) - sLoss).toString()
+            strength: maxBigInt(1n, BigInt(char.strength) - sLossStr).toString(),
+            speed: maxBigInt(1n, BigInt(char.speed) - sLossSpd).toString(),
+            endurance: maxBigInt(1n, BigInt(char.endurance) - sLossEnd).toString()
         }).eq('id', char.id);
         
-        return res.json({ success: true, failed: true, penalty: { resources_pct: pct.toString(), stat_loss: sLoss.toString() } });
+        // Zwracamy na front każdą stratę z osobna!
+        return res.json({ success: true, failed: true, penalty: { resources_pct: pct.toString(), loss_str: sLossStr.toString(), loss_spd: sLossSpd.toString(), loss_end: sLossEnd.toString() } });
     }
 
     const netScore = maxBigInt(0n, BigInt(goodObjectsCaught) - BigInt(obstaclesCaught));
