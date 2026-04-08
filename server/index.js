@@ -437,9 +437,9 @@ app.get('/api/character', authenticateToken, async (req, res) => {
       username: profile.username,
       power_level: powerLevel.toString(),
       coins: character.coins ?? '0',
-      bank_coins: character.bank_coins ?? '0', // DODANO
-      bank_coin_limit_level: character.bank_coin_limit_level ?? 1, // DODANO
-      bank_slots_unlocked: character.bank_slots_unlocked ?? 5, // DODANO
+      bank_coins: character.bank_coins ?? '0',
+      bank_coin_limit_level: character.bank_coin_limit_level ?? 1,
+      bank_slots_unlocked: character.bank_slots_unlocked ?? 5,
       current_form: character.current_form ?? 'Stan Podstawowy',
       current_hp: current_hp.toString(),
       current_mp: current_mp.toString(),
@@ -451,7 +451,8 @@ app.get('/api/character', authenticateToken, async (req, res) => {
       equip_stats: equipStats, 
       completed_missions: character.completed_missions || [],
       attempted_one_try_missions: character.attempted_one_try_missions || [],
-      hospital_until: exactHospitalEndTime ? new Date(exactHospitalEndTime).toISOString() : (character.hospital_until ? String(character.hospital_until).trim() + 'Z' : null)
+      hospital_until: exactHospitalEndTime ? new Date(exactHospitalEndTime).toISOString() : (character.hospital_until ? String(character.hospital_until).trim() + 'Z' : null),
+      hospital_reason: character.last_death_penalty ? character.last_death_penalty.source : null
     };
 
     // --- PATCH: ODBLOKOWANIE PRACY ---
@@ -957,7 +958,8 @@ app.post('/api/missions/start', authenticateToken, requireAlive, async (req, res
                 endurance: deathEndLoss.toString(),
                 intelligence: deathIntLoss.toString(),
                 mental_strength: deathMenLoss.toString(),
-                hospital_end_ms: exactEndMs.toString()
+                hospital_end_ms: exactEndMs.toString(),
+                source: 'mission'
             };
 
             await supabase.from('characters').update({
@@ -2117,7 +2119,8 @@ app.post('/api/work/finish', authenticateToken, requireAlive, async (req, res) =
                 endurance: sLossEnd.toString(),
                 intelligence: '0',
                 mental_strength: '0',
-                hospital_end_ms: exactEndMs.toString()
+                hospital_end_ms: exactEndMs.toString(),
+                source: 'work'
             };
         }
 
