@@ -3733,13 +3733,18 @@
             if (res.success) {
                 window.isWorkMinigameActive = true; lockTabsForWork(true);
                 
-                // POPRAWNE ID - Prawdziwe chowanie listy prac i centrowanie ekranu
-                document.getElementById('work-list-container').style.display = 'none';
-                document.getElementById('work-details-container').style.display = 'none';
+                // PANCERNE UKRYWANIE ELEMENTÓW - Odcina listę prac z lewej strony!
+                const listPanel = document.getElementById('work-list-panel');
+                if (listPanel) listPanel.style.display = 'none';
+                
+                const detailsContainer = document.getElementById('work-details-container');
+                if (detailsContainer) detailsContainer.style.display = 'none';
                 
                 const canvasBox = document.getElementById('work-canvas-container');
-                canvasBox.style.display = 'flex';
-                canvasBox.style.width = '100%'; 
+                if (canvasBox) {
+                    canvasBox.style.display = 'flex';
+                    canvasBox.style.width = '100%'; 
+                }
                 
                 gameState.caught = 0; gameState.missed = 0; gameState.objects = [];
                 // Dopasowanie pozycji gracza do nowego wymiaru (wysokość 500)
@@ -3820,15 +3825,21 @@
                 }
             }
 
-            // POPRAWNE ID - Powrót do normalnego układu dwóch paneli
+            // PANCERNE PRZYWRACANIE ELEMENTÓW PO ZAKOŃCZENIU PRACY
             setTimeout(() => {
                 fetchCharacterData(); fetchInventory();
-                document.getElementById('work-list-container').style.display = 'flex';
-                document.getElementById('work-details-container').style.display = 'flex';
+                
+                const listPanel = document.getElementById('work-list-panel');
+                if (listPanel) listPanel.style.display = 'block';
+                
+                const detailsContainer = document.getElementById('work-details-container');
+                if (detailsContainer) detailsContainer.style.display = 'flex';
                 
                 const canvasBox = document.getElementById('work-canvas-container');
-                canvasBox.style.display = 'none';
-                canvasBox.style.width = '';
+                if (canvasBox) {
+                    canvasBox.style.display = 'none';
+                    canvasBox.style.width = '';
+                }
                 
                 lockTabsForWork(false);
             }, isFailed ? 2500 : 0);
