@@ -2035,13 +2035,16 @@ app.post('/api/work/finish', authenticateToken, requireAlive, async (req, res) =
     if (failed) {
         const pct = work.penalty_pct;
         
-        // NOWA LOGIKA: Kara zależy od nagrody z misji (jak w prawdziwych misjach: 3 * nagroda minimalna)
-        let sLoss = 50n; // Wartość domyślna
+        // Wyliczamy CAŁKOWITĄ pulę kary do zabrania (np. 60)
+        let totalLoss = 50n; 
         if (mission && mission.reward_stats && mission.reward_stats.min) {
-            sLoss = maxBigInt(1n, BigInt(mission.reward_stats.min) * 3n); 
+            totalLoss = maxBigInt(1n, BigInt(mission.reward_stats.min) * 3n); 
         } else {
-            sLoss = maxBigInt(1n, reqStat / 10n); // Zapasowa logika, jeśli misja nie ma nagród
+            totalLoss = maxBigInt(1n, reqStat / 10n); 
         }
+        
+        // POPRAWKA: Dzielimy całkowitą pulę równo na 3 statystyki!
+        const sLoss = maxBigInt(1n, totalLoss / 3n);
         
         await supabase.from('characters').update({
             hp: maxBigInt(0n, BigInt(char.hp) - (BigInt(fullStats.max_hp) * pct / 100n)).toString(),
@@ -2051,6 +2054,7 @@ app.post('/api/work/finish', authenticateToken, requireAlive, async (req, res) =
             speed: maxBigInt(1n, BigInt(char.speed) - sLoss).toString(),
             endurance: maxBigInt(1n, BigInt(char.endurance) - sLoss).toString()
         }).eq('id', char.id);
+        
         return res.json({ success: true, failed: true, penalty: { resources_pct: pct.toString(), stat_loss: sLoss.toString() } });
     }
 
