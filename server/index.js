@@ -2024,8 +2024,9 @@ app.post('/api/work/finish', authenticateToken, requireAlive, async (req, res) =
     const fullStats = await getFullCharacterStats(userId);
     const char = fullStats.character;
     
-    // 1. DOKŁADNE POBRANIE WYMAGAŃ MISJI
-    const { data: mission } = await supabase.from('missions').select('req_stats').eq('id', work.req_mission).single();
+    // Pobranie danych misji w celu wyliczenia kary wzorem z misji
+    const { data: mission } = await supabase.from('missions').select('req_stats, reward_stats').eq('id', work.req_mission).single();
+    
     let reqStat = 1n;
     if (mission && mission.req_stats) {
         reqStat = BigInt(mission.req_stats.strength || mission.req_stats.speed || mission.req_stats.endurance || 1);
@@ -2033,8 +2034,14 @@ app.post('/api/work/finish', authenticateToken, requireAlive, async (req, res) =
 
     if (failed) {
         const pct = work.penalty_pct;
-        // 2. BOLESNA KARA ZA PORAŻKĘ (Wymóg / 10, czyli dla Mleka 500/10 = 50 statystyk straty!)
-        const sLoss = maxBigInt(1n, reqStat / 10n); 
+        
+        // NOWA LOGIKA: Kara zależy od nagrody z misji (jak w prawdziwych misjach: 3 * nagroda minimalna)
+        let sLoss = 50n; // Wartość domyślna
+        if (mission && mission.reward_stats && mission.reward_stats.min) {
+            sLoss = maxBigInt(1n, BigInt(mission.reward_stats.min) * 3n); 
+        } else {
+            sLoss = maxBigInt(1n, reqStat / 10n); // Zapasowa logika, jeśli misja nie ma nagród
+        }
         
         await supabase.from('characters').update({
             hp: maxBigInt(0n, BigInt(char.hp) - (BigInt(fullStats.max_hp) * pct / 100n)).toString(),
@@ -2049,7 +2056,6 @@ app.post('/api/work/finish', authenticateToken, requireAlive, async (req, res) =
 
     const netScore = maxBigInt(0n, BigInt(goodObjectsCaught) - BigInt(obstaclesCaught));
     
-    // 3. PRAWIDŁOWE ZLICZENIE POTĘGI GRACZA (Baza + Ekwipunek) DO KARY FINANSOWEJ
     let activeStr = BigInt(fullStats.baseStats.strength || 0) + BigInt(fullStats.equipStats.strength || 0);
     let activeSpd = BigInt(fullStats.baseStats.speed || 0) + BigInt(fullStats.equipStats.speed || 0);
     let activeEnd = BigInt(fullStats.baseStats.endurance || 0) + BigInt(fullStats.equipStats.endurance || 0);
@@ -2057,12 +2063,20 @@ app.post('/api/work/finish', authenticateToken, requireAlive, async (req, res) =
     let penaltyMultiplier = 1.0;
     const weakest = minBigInt(activeStr, minBigInt(activeSpd, activeEnd));
     
-    // Matematyka tnie zyski, jeśli najsłabsza statystyka jest za wysoka!
-    if (weakest >= (reqStat * 8n) + 100n) penaltyMultiplier = 0.10;
-    else if (weakest >= (reqStat * 4n) + 40n) penaltyMultiplier = 0.50;
-    else if (weakest >= (reqStat * 2n) + 15n) penaltyMultiplier = 0.75;
+    // Twarde przypisanie tekstu w backendzie, by ominąć problemy na froncie
+    let serverWarningText = null; 
 
-    // KARY NAKŁADANE NA MONETY I TRENING
+    if (weakest >= (reqStat * 8n) + 100n) {
+        penaltyMultiplier = 0.10;
+        serverWarningText = 'Zyski obniżone o 90% (Duża kara za potęgę)';
+    } else if (weakest >= (reqStat * 4n) + 40n) {
+        penaltyMultiplier = 0.50;
+        serverWarningText = 'Zyski obniżone o 50% (Średnia kara za potęgę)';
+    } else if (weakest >= (reqStat * 2n) + 15n) {
+        penaltyMultiplier = 0.75;
+        serverWarningText = 'Zyski obniżone o 25% (Mała kara za potęgę)';
+    }
+
     const finalCoins = BigInt(Math.floor(Number(netScore * work.reward_coins) * penaltyMultiplier));
     const applyPenalty = (val) => BigInt(Math.floor(Number(netScore * val) * penaltyMultiplier));
 
@@ -2071,6 +2085,15 @@ app.post('/api/work/finish', authenticateToken, requireAlive, async (req, res) =
     const gEnd = applyPenalty(BigInt(fullStats.trainingStats.endurance || 0));
     const gHp = applyPenalty(BigInt(fullStats.trainingStats.bonus_hp || 0));
     const gMp = applyPenalty(BigInt(fullStats.trainingStats.bonus_mp || 0));
+
+    let dropIds = [];
+    if (work.drop_woda && netScore > 10n && Math.floor(Math.random() * 100) < 1) {
+        dropIds.push("00000000-0000-0000-0000-000000000008"); 
+        const { data: invData } = await supabase.from('inventory').select('backpack_index').eq('character_id', char.id).is('equipped_slot', null);
+        const usedIndexes = invData ? invData.map(i => i.backpack_index) : [];
+        let freeIndex = 1; while(usedIndexes.includes(freeIndex)) freeIndex++;
+        await supabase.from('inventory').insert({ character_id: char.id, item_template_id: "00000000-0000-0000-0000-000000000008", quantity: 1, backpack_index: freeIndex });
+    }
 
     await supabase.from('characters').update({
         coins: (BigInt(char.coins) + finalCoins).toString(),
@@ -2081,7 +2104,8 @@ app.post('/api/work/finish', authenticateToken, requireAlive, async (req, res) =
         bonus_mp: (BigInt(char.bonus_mp) + gMp).toString()
     }).eq('id', char.id);
 
-    res.json({ success: true, finalCoins: finalCoins.toString(), gains: { str: gStr.toString(), spd: gSpd.toString(), end: gEnd.toString(), hp: gHp.toString(), mp: gMp.toString() }, penalty: penaltyMultiplier });
+    // Wysyłamy tekst kary wprost z serwera
+    res.json({ success: true, finalCoins: finalCoins.toString(), gains: { str: gStr.toString(), spd: gSpd.toString(), end: gEnd.toString(), hp: gHp.toString(), mp: gMp.toString() }, drops: dropIds, server_warning: serverWarningText });
   } catch (err) { res.status(500).json({ error: 'Błąd serwera' }); }
 });
 

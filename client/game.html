@@ -303,15 +303,19 @@
                                 <canvas id="workCanvas" width="900" height="500" style="background: #000; border: 2px solid var(--goku-panel-border); border-radius: 8px; user-select: none; touch-action: none; max-width: 100%;"></canvas>
                             </div>
 
-                            <div class="work-hud-wrapper" style="min-width: 280px; display: flex; flex-direction: column; justify-content: space-between; height: 500px; padding: 15px;">
+                            <div class="work-canvas-wrapper" style="flex: 0 0 auto;">
+                                <canvas id="workCanvas" width="800" height="420" style="background: #000; border: 2px solid var(--goku-panel-border); border-radius: 8px; user-select: none; touch-action: none; max-width: 100%;"></canvas>
+                            </div>
+
+                            <div class="work-hud-wrapper" style="flex: 1; display: flex; flex-direction: column; justify-content: flex-start; height: 420px; padding: 10px; overflow: hidden;">
                                 
-                                <div class="work-hud-box" style="padding: 20px 10px; background: rgba(0,0,0,0.6); border: 1px solid rgba(255,107,0,0.2);">
-                                    <div style="font-size: 0.85rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 5px;">Pozostały Czas</div>
-                                    <div id="work-timer" style="font-size: 3.2rem; font-weight: bold; color: var(--goku-accent); font-family: monospace; text-shadow: 0 0 15px rgba(255,107,0,0.5);">0s</div>
+                                <div class="work-hud-box" style="padding: 10px; background: rgba(0,0,0,0.6); border: 1px solid rgba(255,107,0,0.2); margin-bottom: 10px;">
+                                    <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px;">Pozostały Czas</div>
+                                    <div id="work-timer" style="font-size: 2.2rem; font-weight: bold; color: var(--goku-accent); font-family: monospace;">0s</div>
                                 </div>
                                 
-                                <div class="work-hud-box" style="font-size: 1.1rem; font-weight: bold; padding: 15px; background: rgba(0,0,0,0.6); border: 1px solid rgba(255,107,0,0.2);">
-                                    <div id="work-score-good" style="color: var(--success); margin-bottom: 10px; display: flex; justify-content: space-between; border-bottom: 1px dashed rgba(255,255,255,0.1); padding-bottom: 10px;">
+                                <div class="work-hud-box" style="font-size: 0.95rem; font-weight: bold; padding: 10px; background: rgba(0,0,0,0.6); border: 1px solid rgba(255,107,0,0.2); margin-bottom: 10px;">
+                                    <div id="work-score-good" style="color: var(--success); margin-bottom: 5px; display: flex; justify-content: space-between; border-bottom: 1px dashed rgba(255,255,255,0.1); padding-bottom: 5px;">
                                         <span>✅ Złapane:</span> <span>0</span>
                                     </div>
                                     <div id="work-score-bad" style="color: var(--error); display: flex; justify-content: space-between;">
@@ -319,15 +323,15 @@
                                     </div>
                                 </div>
 
-                                <div class="work-hud-box" style="flex-grow: 1; display: flex; flex-direction: column; padding: 15px; background: rgba(0,0,0,0.6); border: 1px solid rgba(255,107,0,0.2);">
-                                    <div style="color: var(--text-muted); font-size: 0.85rem; text-transform: uppercase; letter-spacing: 1px; border-bottom: 1px solid var(--goku-panel-border); padding-bottom: 8px; margin-bottom: 15px;">Przewidywane Zyski</div>
+                                <div class="work-hud-box" style="flex: 1; display: flex; flex-direction: column; padding: 10px; background: rgba(0,0,0,0.6); border: 1px solid rgba(255,107,0,0.2); overflow: hidden;">
+                                    <div style="color: var(--text-muted); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1px; border-bottom: 1px solid var(--goku-panel-border); padding-bottom: 4px; margin-bottom: 8px;">Przewidywane Zyski</div>
                                     
-                                    <div id="live-coins" style="color: #fbbf24; font-weight: bold; font-size: 1.6rem; margin-bottom: 15px; text-shadow: 0 0 10px rgba(251,191,36,0.3);">
+                                    <div id="live-coins" style="color: #fbbf24; font-weight: bold; font-size: 1.2rem; margin-bottom: 8px;">
                                         💰 0 Monet
                                     </div>
 
-                                    <div id="live-stats" style="color: var(--success); font-weight: bold; font-size: 0.95rem; text-align: left; background: rgba(0,0,0,0.3); padding: 10px; border-radius: 6px; flex-grow: 1; display: flex; flex-direction: column; justify-content: center;">
-                                        </div>
+                                    <div id="live-stats" style="color: var(--success); font-weight: bold; font-size: 0.8rem; text-align: left; background: rgba(0,0,0,0.3); padding: 6px; border-radius: 6px; overflow-y: auto; flex: 1;">
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -3800,25 +3804,19 @@
                         msg += `<div style="font-size: 0.85rem; margin-top: 6px; color: #ffffff; border-top: 1px dashed rgba(255,255,255,0.3); padding-top: 6px; font-weight: bold;">🏋️ Trening: ${gains.join(', ')}</div>`;
                     }
                     
-                    // PANCERNY TEKST KARY ZA POTĘGĘ
-                    const responseData = res.data || res; // Zabezpieczenie przed zachowaniem przeglądarki
-                    const pen = parseFloat(responseData.penalty);
-                    
-                    const isWarning = !isNaN(pen) && pen < 1.0;
-                    if (isWarning) {
-                        const reduction = Math.round((1 - pen) * 100);
-                        let penText = 'Mała';
-                        if (reduction >= 90) penText = 'Duża';
-                        else if (reduction >= 50) penText = 'Średnia';
-                        
-                        msg += `<div style="font-size: 0.85rem; margin-top: 8px; color: #f59e0b; font-weight: bold; border-top: 1px dashed rgba(255,255,255,0.3); padding-top: 8px;">⚠️ Zyski obniżone o ${reduction}% (${penText} kara za potęgę)</div>`;
+                    // ZMIANA 2B: Odbiór twardego komunikatu prosto z backendu!
+                    if (data.server_warning) {
+                        msg += `<div style="font-size: 0.85rem; margin-top: 8px; color: #f59e0b; font-weight: bold; border-top: 1px dashed rgba(255,255,255,0.3); padding-top: 8px;">⚠️ ${data.server_warning}</div>`;
+                    }
+
+                    if (data.drops && data.drops.length > 0) {
+                        msg += `<div style="font-size: 0.85rem; margin-top: 6px; color: #4ade80; font-weight: bold;">🎁 Zdobyto: Święta Woda!</div>`;
                     }
                     
-                    showNotification('Koniec Zmiany', msg, isWarning ? 'warning' : 'success', 6000);
+                    showNotification('Koniec Zmiany', msg, data.server_warning ? 'warning' : 'success', 6000);
                 }
             }
 
-            // Tego u Ciebie brakowało - przywraca widoki paneli do normy po pracy
             setTimeout(() => {
                 fetchCharacterData(); fetchInventory();
                 document.getElementById('work-list-panel').style.display = 'block';
@@ -3828,7 +3826,7 @@
                 lockTabsForWork(false);
             }, isFailed ? 2500 : 0);
         }
-
+        
         // Czyszczenie pamięci przy wylogowaniu (zapobiega mieszaniu się kont)
         const logoutBtnGame = document.getElementById('logout-btn');
         if (logoutBtnGame) {
