@@ -3480,15 +3480,15 @@
         let workTimerInterval = null;
         let workAnimationId = null;
 
-        // Twarde przypisanie UUID z bazy misji
+        // Twarde przypisanie UUID z bazy misji oraz tematyczne emotikony
         const WORK_FRONTEND_DATA = [
-            { id: 'praca_mleko', name: 'Roznoszenie Mleka', reqMission: '10000000-0000-0000-0000-000000000006', reqName: 'Misję 6', costStamina: 10, costHpPct: 2, reward: 2, reqStatValue: 500 },
-            { id: 'praca_budowa', name: 'Praca na Budowie', reqMission: '10000000-0000-0000-0000-000000000007', reqName: 'Misję 7', costStamina: 10, costHpPct: 5, reward: 5, reqStatValue: 1000 },
-            { id: 'praca_pole', name: 'Praca w Polu', reqMission: '10000000-0000-0000-0000-000000000008', reqName: 'Misję 8', costStamina: 15, costHpPct: 8, reward: 12, reqStatValue: 2500 },
-            { id: 'praca_drwal', name: 'Drwal', reqMission: '10000000-0000-0000-0000-000000000009', reqName: 'Misję 9', costStamina: 15, costHpPct: 15, reward: 25, reqStatValue: 5000 },
-            { id: 'praca_kurier', name: 'Ekstremalny Kurier', reqMission: '10000000-0000-0000-0000-000000000010', reqName: 'Misję 10', costStamina: 20, costHpPct: 25, reward: 60, reqStatValue: 10000 },
-            { id: 'praca_rosa', name: 'Zbiór Magicznej Rosy', reqMission: '10000000-0000-0000-0000-000000000015', reqName: 'Misję 15', costStamina: 25, costHpPct: 10, reward: 150, reqStatValue: 80000 },
-            { id: 'praca_ogrody', name: 'Boskie Ogrody', reqMission: '10000000-0000-0000-0000-000000000020', reqName: 'Misję 20', costStamina: 40, costHpPct: 15, reward: 500, reqStatValue: 700000 }
+            { id: 'praca_mleko', name: 'Roznoszenie Mleka', reqMission: '10000000-0000-0000-0000-000000000006', reqName: 'Misję 6', costStamina: 10, costHpPct: 2, reward: 2, reqStatValue: 500, goodEmoji: '🍼', badEmoji: '🫙' },
+            { id: 'praca_budowa', name: 'Praca na Budowie', reqMission: '10000000-0000-0000-0000-000000000007', reqName: 'Misję 7', costStamina: 10, costHpPct: 5, reward: 5, reqStatValue: 1000, goodEmoji: '🧱', badEmoji: '🧨' },
+            { id: 'praca_pole', name: 'Praca w Polu', reqMission: '10000000-0000-0000-0000-000000000008', reqName: 'Misję 8', costStamina: 15, costHpPct: 8, reward: 12, reqStatValue: 2500, goodEmoji: '🌱', badEmoji: '🐛' },
+            { id: 'praca_drwal', name: 'Drwal', reqMission: '10000000-0000-0000-0000-000000000009', reqName: 'Misję 9', costStamina: 15, costHpPct: 15, reward: 25, reqStatValue: 5000, goodEmoji: '🪵', badEmoji: '🪓' },
+            { id: 'praca_kurier', name: 'Ekstremalny Kurier', reqMission: '10000000-0000-0000-0000-000000000010', reqName: 'Misję 10', costStamina: 20, costHpPct: 25, reward: 60, reqStatValue: 10000, goodEmoji: '📦', badEmoji: '🦈' },
+            { id: 'praca_rosa', name: 'Zbiór Magicznej Rosy', reqMission: '10000000-0000-0000-0000-000000000015', reqName: 'Misję 15', costStamina: 25, costHpPct: 10, reward: 150, reqStatValue: 80000, goodEmoji: '💧', badEmoji: '🕷️' },
+            { id: 'praca_ogrody', name: 'Boskie Ogrody', reqMission: '10000000-0000-0000-0000-000000000020', reqName: 'Misję 20', costStamina: 40, costHpPct: 15, reward: 500, reqStatValue: 700000, goodEmoji: '🌸', badEmoji: '🐝' }
         ];
 
         // Wyłącza pozostałe zakładki i guziki na czas pracy!
@@ -3583,6 +3583,9 @@
 
             document.getElementById('work-title').innerText = workObj.name;
             document.getElementById('work-stats').innerHTML = `
+                <div style="margin-bottom: 15px; font-size: 1.2rem; background: rgba(0,0,0,0.4); padding: 10px; border-radius: 8px; border: 1px dashed var(--goku-panel-border);">
+                    Złap: <span style="font-size: 1.8rem; vertical-align: middle;">${workObj.goodEmoji}</span> &nbsp;|&nbsp; Unikaj: <span style="font-size: 1.8rem; vertical-align: middle;">${workObj.badEmoji}</span>
+                </div>
                 <p style="margin-bottom: 5px;">🔴 Koszt: <b style="color: var(--error);">${workObj.costHpPct}% HP</b></p>
                 <p style="margin-bottom: 5px;">🟢 Koszt: <b style="color: var(--success);">${workObj.costStamina} Stamina</b></p>
                 <p style="margin-bottom: 15px;">🪙 Zarobek: <b style="color: var(--warning);">${workObj.reward} Monet / Złapany obiekt</b></p>
@@ -3680,9 +3683,14 @@
             let baseChance = 0.12 + (currentWorkDifficulty * 0.05); 
             let speed = (2.0 + (currentWorkDifficulty * 1.5)) + Math.random() * 2;
             
-            gameState.objects.push({ x: Math.random() * (canvas.width - 20), y: -20, w: 20, h: 20, isObstacle: Math.random() < baseChance, speed: speed });
+            // Pobranie emotikon z aktualnie wybranej pracy
+            const currentWorkData = WORK_FRONTEND_DATA.find(w => w.id === currentSelectedWorkId);
+            const isObst = Math.random() < baseChance;
+            const currentEmoji = isObst ? currentWorkData.badEmoji : currentWorkData.goodEmoji;
             
-            // ZNACZNIE GĘSTSZY SPAWN z racji szerokiego na 700px ekranu
+            // Wymiary zwiększone z 20 na 28 żeby hitbox pasował do dużej emotikony
+            gameState.objects.push({ x: Math.random() * (canvas.width - 28), y: -28, w: 28, h: 28, isObstacle: isObst, speed: speed, emoji: currentEmoji });
+            
             setTimeout(spawnObject, (300 - (currentWorkDifficulty * 30)) + Math.random() * 200);
         }
 
@@ -3703,8 +3711,11 @@
                 let obj = gameState.objects[i];
                 obj.y += obj.speed;
                 
-                ctx.fillStyle = obj.isObstacle ? '#ef4444' : '#22c55e';
-                ctx.beginPath(); ctx.arc(obj.x + obj.w/2, obj.y + obj.h/2, obj.w/2, 0, Math.PI * 2); ctx.fill();
+                // Rysowanie emotikon zamiast kółek
+                ctx.font = "26px Arial"; 
+                ctx.textAlign = "center";
+                ctx.textBaseline = "middle";
+                ctx.fillText(obj.emoji, obj.x + obj.w/2, obj.y + obj.h/2);
                 
                 if (obj.x < gameState.player.x + gameState.player.w && obj.x + obj.w > gameState.player.x && obj.y < gameState.player.y + gameState.player.h && obj.y + obj.h > gameState.player.y) {
                     if (obj.isObstacle) {
