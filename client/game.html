@@ -1117,7 +1117,8 @@
                 shop: document.querySelector('[data-tab="shop"]'),
                 bank: document.querySelector('[data-tab="bank"]'),
                 hospital: document.querySelector('[data-tab="hospital"]'),
-                training: document.querySelector('[data-tab="training"]')
+                training: document.querySelector('[data-tab="training"]'),
+                work: document.querySelector('[data-tab="work"]')
             };
 
             // Wyłączamy płynne przejścia na chwilę (likwiduje efekt fortepianu/skakania)
@@ -1136,6 +1137,7 @@
                 if (tabs.equipment) tabs.equipment.classList.add('tab-disabled');
                 if (tabs.shop) tabs.shop.classList.add('tab-disabled');
                 if (tabs.bank) tabs.bank.classList.add('tab-disabled');
+                if (tabs.work) tabs.work.classList.add('tab-disabled');
             }
 
             // Unikalna blokada TYLKO dla Szpitala
