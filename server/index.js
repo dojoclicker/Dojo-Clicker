@@ -2086,16 +2086,44 @@ app.post('/api/work/finish', authenticateToken, requireAlive, async (req, res) =
         let sLossSpd = BigInt(Math.max(1, guaranteedPerStat + randSpd));
         let sLossEnd = BigInt(Math.max(1, guaranteedPerStat + guaranteedRemainder + randEnd));
 
-        await supabase.from('characters').update({
-            hp: maxBigInt(0n, BigInt(char.hp) - (BigInt(fullStats.max_hp) * pct / 100n)).toString(),
-            mp: maxBigInt(0n, BigInt(char.mp) - (BigInt(fullStats.max_mp) * pct / 100n)).toString(),
-            stamina: maxBigInt(0n, BigInt(char.stamina) - (BigInt(fullStats.max_stamina) * pct / 100n)).toString(),
+        // 3. OBLICZAMY NOWE ZASOBY I SPRAWDZAMY CZY GRACZ PRZEŻYŁ
+        let newHp = maxBigInt(0n, BigInt(char.hp) - (BigInt(fullStats.max_hp) * pct / 100n));
+        let newMp = maxBigInt(0n, BigInt(char.mp) - (BigInt(fullStats.max_mp) * pct / 100n));
+        let newStamina = maxBigInt(0n, BigInt(char.stamina) - (BigInt(fullStats.max_stamina) * pct / 100n));
+        
+        let isDead = newHp <= 0n;
+        
+        let updateData = {
+            hp: newHp.toString(),
+            mp: newMp.toString(),
+            stamina: newStamina.toString(),
             strength: maxBigInt(1n, BigInt(char.strength) - sLossStr).toString(),
             speed: maxBigInt(1n, BigInt(char.speed) - sLossSpd).toString(),
             endurance: maxBigInt(1n, BigInt(char.endurance) - sLossEnd).toString()
-        }).eq('id', char.id);
+        };
+
+        // Jeśli praca wyzerowała HP -> Wysyłamy do Szpitala!
+        if (isDead) {
+            const pl = BigInt(fullStats.powerLevel);
+            const hospitalMinutes = Math.min(120, 5 + Math.floor(Math.pow(Number(pl), 0.25)));
+            const exactEndMs = Date.now() + hospitalMinutes * 60000;
+            
+            updateData.hospital_until = new Date(exactEndMs).toISOString();
+            updateData.current_form = 'Stan Podstawowy';
+            // Zapisujemy karę z pracy jako karę śmierci, żeby szpital mógł prawidłowo przywrócić statystyki po uleczeniu
+            updateData.last_death_penalty = {
+                strength: sLossStr.toString(),
+                speed: sLossSpd.toString(),
+                endurance: sLossEnd.toString(),
+                intelligence: '0',
+                mental_strength: '0',
+                hospital_end_ms: exactEndMs.toString()
+            };
+        }
+
+        await supabase.from('characters').update(updateData).eq('id', char.id);
         
-        return res.json({ success: true, failed: true, penalty: { resources_pct: pct.toString(), loss_str: sLossStr.toString(), loss_spd: sLossSpd.toString(), loss_end: sLossEnd.toString() } });
+        return res.json({ success: true, failed: true, isDead: isDead, penalty: { resources_pct: pct.toString(), loss_str: sLossStr.toString(), loss_spd: sLossSpd.toString(), loss_end: sLossEnd.toString() } });
     }
 
     const netScore = maxBigInt(0n, BigInt(goodObjectsCaught) - BigInt(obstaclesCaught));
