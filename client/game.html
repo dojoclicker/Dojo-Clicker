@@ -289,7 +289,7 @@
                 
                 <div id="work-active-panel" class="game-panel" style="flex: 1;">
                     <div id="work-details-container" style="display: flex; flex-direction: column; height: 100%; justify-content: center; align-items: center; text-align: center;">
-                        <div style="font-size: 4rem; filter: drop-shadow(0 0 10px rgba(255,107,0,0.5)); margin-bottom: 1rem;">⛏️</div>
+                        <div id="work-main-emoji" style="font-size: 4rem; filter: drop-shadow(0 0 10px rgba(255,107,0,0.5)); margin-bottom: 1rem;">⛏️</div>
                         <h3 id="work-title" style="color: var(--goku-accent); font-size: 1.5rem; margin-bottom: 1rem;">Wybierz pracę z listy</h3>
                         <div id="work-stats" style="color: var(--text-secondary); margin-bottom: 2rem; font-size: 1.1rem; line-height: 1.5;">Koszty i nagrody pojawią się tutaj.</div>
                         <button id="start-work-btn" class="upgrade-btn disabled" style="padding: 1rem 2rem; font-size: 1.2rem; display: none;">Rozpocznij Zmianę</button>
@@ -3581,6 +3581,7 @@
                 <span style="color: ${canEnd ? 'var(--success)' : 'var(--error)'}">Wytrz.: ${reqs.endurance}</span>
             `;
 
+            document.getElementById('work-main-emoji').innerText = workObj.goodEmoji;
             document.getElementById('work-title').innerText = workObj.name;
             document.getElementById('work-stats').innerHTML = `
                 <div style="margin-bottom: 15px; font-size: 1.2rem; background: rgba(0,0,0,0.4); padding: 10px; border-radius: 8px; border: 1px dashed var(--goku-panel-border);">
