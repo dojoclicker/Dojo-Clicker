@@ -1337,6 +1337,42 @@ input[type=range]#training-hours-slider::-webkit-slider-thumb {
     color: var(--warning);
 }
 
+/* Układ minigry Praca (Side-by-Side) - Ekran właściwej gry */
+.work-game-area {
+    display: flex;
+    flex-direction: row;
+    gap: 20px;
+    width: 100%;
+    align-items: stretch;
+    justify-content: center;
+}
+/* Magiczna klasa - wystarczy ją dodać w HTML, by zamienić lewą stronę z prawą! */
+.work-game-area.reverse-layout {
+    flex-direction: row-reverse;
+}
+.work-canvas-wrapper {
+    flex: 1;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+.work-hud-wrapper {
+    min-width: 250px;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    background: rgba(0,0,0,0.3);
+    padding: 15px;
+    border-radius: 8px;
+    border: 1px solid var(--goku-panel-border);
+}
+.work-hud-box {
+    text-align: center;
+    background: rgba(0,0,0,0.5);
+    padding: 10px;
+    border-radius: 6px;
+}
+
 
 /* ==========================================
    RESPONSYWNOŚĆ (SMARTFON)

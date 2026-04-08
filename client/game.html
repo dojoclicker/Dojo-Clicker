@@ -296,17 +296,31 @@
                     </div>
 
                     <div id="work-canvas-container" style="display: none; flex-direction: column; align-items: center; width: 100%; height: 100%;">
-                        <div id="work-timer" style="font-size: 2.5rem; font-weight: bold; color: var(--goku-accent); margin-bottom: 10px; font-family: monospace;">Czas: 0s</div>
-                        <canvas id="workCanvas" width="300" height="400" style="background: #000; border: 2px solid var(--goku-panel-border); border-radius: 8px; user-select: none; touch-action: none; max-width: 100%;"></canvas>
-                        <div class="work-score-display" style="display: flex; gap: 30px; margin-top: 10px; font-size: 1.2rem; font-weight: bold;">
-                            <span id="work-score-good" style="color: var(--success);">✅ Złapane: 0</span>
-                            <span id="work-score-bad" style="color: var(--error);">❌ Błędy: 0 / 3</span>
+                        
+                        <div class="work-game-area">
+                            
+                            <div class="work-canvas-wrapper">
+                                <canvas id="workCanvas" width="300" height="420" style="background: #000; border: 2px solid var(--goku-panel-border); border-radius: 8px; user-select: none; touch-action: none; max-width: 100%;"></canvas>
+                            </div>
+
+                            <div class="work-hud-wrapper">
+                                <div class="work-hud-box">
+                                    <div id="work-timer" style="font-size: 2.2rem; font-weight: bold; color: var(--goku-accent); font-family: monospace;">Czas: 0s</div>
+                                </div>
+                                
+                                <div class="work-hud-box" style="font-size: 1.1rem; font-weight: bold;">
+                                    <div id="work-score-good" style="color: var(--success); margin-bottom: 5px;">✅ Złapane: 0</div>
+                                    <div id="work-score-bad" style="color: var(--error);">❌ Błędy: 0 / 3</div>
+                                </div>
+
+                                <div class="work-hud-box">
+                                    <span style="color: var(--text-muted); font-size: 0.9rem;">Wynik Netto:</span><br>
+                                    <span id="live-coins" style="color: var(--warning); font-weight: bold; font-size: 1.2rem;">💰 0 Monet</span>
+                                    <div id="live-stats" style="color: var(--success); font-weight: bold; margin-top: 10px; font-size: 0.9rem;"></div>
+                                </div>
+                            </div>
                         </div>
-                        <div id="work-live-counter" style="margin-top: 15px; padding: 10px; background: rgba(0,0,0,0.5); border: 1px solid var(--goku-panel-border); border-radius: 8px; text-align: center; font-size: 0.95rem; line-height: 1.6; min-width: 250px;">
-                            <span style="color: var(--text-muted);">Szacowane Zyski:</span><br>
-                            <span id="live-coins" style="color: var(--warning); font-weight: bold; font-size: 1.1rem;">💰 0 Monet</span>
-                            <div id="live-stats" style="color: var(--success); font-weight: bold; margin-top: 5px;"></div>
-                        </div>
+
                     </div>
                 </div>
 
@@ -3543,55 +3557,40 @@
             startBtn.classList.remove('disabled');
         }
 
-        // Silnik Canvas
+        // ==========================================
+        // SILNIK CANVAS I LOGIKA PRACY
+        // ==========================================
         const canvas = document.getElementById('workCanvas');
         const ctx = canvas ? canvas.getContext('2d') : null;
 
-        let gameState = {
-            timeLeft: 0, caught: 0, missed: 0, objects: [],
-            player: { x: 125, y: 360, w: 50, h: 20, speed: 6 },
-            keys: { left: false, right: false }
-        };
-
+        let gameState = { timeLeft: 0, caught: 0, missed: 0, objects: [], player: { x: 125, y: 380, w: 50, h: 20, speed: 6 }, keys: { left: false, right: false } };
         let currentWorkDifficulty = 1;
         let currentWorkReward = 0;
 
-        // Podpinamy wybór poziomu pod statystyki trudności
+        // Podpinamy wybór trudności z bazy UI
         const originalSelectWork = selectWork;
         selectWork = function(workObj, cardElement) {
             originalSelectWork(workObj, cardElement);
             currentWorkReward = workObj.reward;
-            currentWorkDifficulty = WORK_FRONTEND_DATA.findIndex(w => w.id === workObj.id) + 1; // Od 1 do 7
+            currentWorkDifficulty = WORK_FRONTEND_DATA.findIndex(w => w.id === workObj.id) + 1; // Pozwala grze skalować trudność od 1 do 7
         };
 
-        window.addEventListener('keydown', (e) => {
-            if (e.key === 'ArrowLeft' || e.key === 'a') gameState.keys.left = true;
-            if (e.key === 'ArrowRight' || e.key === 'd') gameState.keys.right = true;
-        });
-        window.addEventListener('keyup', (e) => {
-            if (e.key === 'ArrowLeft' || e.key === 'a') gameState.keys.left = false;
-            if (e.key === 'ArrowRight' || e.key === 'd') gameState.keys.right = false;
-        });
+        window.addEventListener('keydown', (e) => { if (e.key === 'ArrowLeft' || e.key === 'a') gameState.keys.left = true; if (e.key === 'ArrowRight' || e.key === 'd') gameState.keys.right = true; });
+        window.addEventListener('keyup', (e) => { if (e.key === 'ArrowLeft' || e.key === 'a') gameState.keys.left = false; if (e.key === 'ArrowRight' || e.key === 'd') gameState.keys.right = false; });
 
         if (canvas) {
             canvas.addEventListener('mousemove', (e) => {
                 if (!window.isWorkMinigameActive) return;
-                const rect = canvas.getBoundingClientRect();
-                const scaleX = canvas.width / rect.width;
-                let x = (e.clientX - rect.left) * scaleX;
-                gameState.player.x = x - (gameState.player.w / 2);
+                const rect = canvas.getBoundingClientRect(); const scaleX = canvas.width / rect.width;
+                gameState.player.x = ((e.clientX - rect.left) * scaleX) - (gameState.player.w / 2);
             });
             canvas.addEventListener('touchmove', (e) => {
-                if (!window.isWorkMinigameActive) return;
-                e.preventDefault();
-                const rect = canvas.getBoundingClientRect();
-                const scaleX = canvas.width / rect.width;
-                let x = (e.touches[0].clientX - rect.left) * scaleX;
-                gameState.player.x = x - (gameState.player.w / 2);
+                if (!window.isWorkMinigameActive) return; e.preventDefault();
+                const rect = canvas.getBoundingClientRect(); const scaleX = canvas.width / rect.width;
+                gameState.player.x = ((e.touches[0].clientX - rect.left) * scaleX) - (gameState.player.w / 2);
             }, { passive: false });
         }
 
-        // LICZNIK NA ŻYWO (Pobiera z aktywnego plecaka!)
         function updateLiveCounter() {
             let netScore = Math.max(0, gameState.caught - gameState.missed);
             let coins = netScore * currentWorkReward;
@@ -3599,7 +3598,8 @@
             let tStr = 0, tSpd = 0, tEnd = 0, tHp = 0, tMp = 0;
             if (window.inventoryData) {
                 window.inventoryData.forEach(item => {
-                    if (item.equipped_slot && item.item_templates && item.item_templates.bonuses && item.item_templates.bonuses.type === 'training') {
+                    // KRYTYCZNE: Bezpiecznik przed czytaniem przedmiotów z banku
+                    if (item.equipped_slot && item.equipped_slot !== 'bank' && item.item_templates && item.item_templates.bonuses && item.item_templates.bonuses.type === 'training') {
                         let b = item.item_templates.bonuses;
                         if (b.strength) tStr += Number(b.strength);
                         if (b.speed) tSpd += Number(b.speed);
@@ -3613,33 +3613,23 @@
             document.getElementById('live-coins').innerText = `💰 ${coins} Monet`;
             
             let statsHtml = [];
-            if (tStr > 0) statsHtml.push(`+${netScore * tStr} Siła`);
-            if (tSpd > 0) statsHtml.push(`+${netScore * tSpd} Szybkość`);
-            if (tEnd > 0) statsHtml.push(`+${netScore * tEnd} Wytrz.`);
-            if (tHp > 0) statsHtml.push(`+${netScore * tHp} Max HP`);
-            if (tMp > 0) statsHtml.push(`+${netScore * tMp} Max MP`);
+            if (tStr > 0) statsHtml.push(`+${netScore * tStr} Sił`);
+            if (tSpd > 0) statsHtml.push(`+${netScore * tSpd} Szy`);
+            if (tEnd > 0) statsHtml.push(`+${netScore * tEnd} Wyt`);
+            if (tHp > 0) statsHtml.push(`+${netScore * tHp} HP`);
+            if (tMp > 0) statsHtml.push(`+${netScore * tMp} MP`);
             
-            document.getElementById('live-stats').innerHTML = statsHtml.length > 0 ? `🏋️ ` + statsHtml.join(' | ') : `<span style="color: var(--text-muted); font-size:0.8rem;">Brak założonego ciężkiego sprzętu</span>`;
+            document.getElementById('live-stats').innerHTML = statsHtml.length > 0 ? `🏋️ ` + statsHtml.join('<br>') : `<span style="color: var(--text-muted);">Brak sprzętu trening.</span>`;
         }
 
         function spawnObject() {
             if (!window.isWorkMinigameActive) return;
+            // Trudność rośnie z poziomem pracy
+            let baseChance = 0.15 + (currentWorkDifficulty * 0.04); 
+            let speed = (2.5 + (currentWorkDifficulty * 0.4)) + Math.random() * 2;
             
-            // Trudność (Szansa na przeszkodę rośnie o 5% z każdym poziomem pracy)
-            let baseChance = 0.10 + (currentWorkDifficulty * 0.05); 
-            const isObstacle = Math.random() < baseChance; 
-            
-            // Prędkość spadania rośnie z trudnością
-            let speed = (2 + (currentWorkDifficulty * 0.5)) + Math.random() * 2;
-            
-            gameState.objects.push({
-                x: Math.random() * (canvas.width - 20), y: -20, w: 20, h: 20,
-                isObstacle: isObstacle, speed: speed
-            });
-            
-            // Spawn jest coraz szybszy
-            const nextSpawn = (500 - (currentWorkDifficulty * 30)) + Math.random() * 400; 
-            setTimeout(spawnObject, nextSpawn);
+            gameState.objects.push({ x: Math.random() * (canvas.width - 20), y: -20, w: 20, h: 20, isObstacle: Math.random() < baseChance, speed: speed });
+            setTimeout(spawnObject, (450 - (currentWorkDifficulty * 25)) + Math.random() * 300);
         }
 
         function gameLoop() {
@@ -3660,26 +3650,14 @@
                 obj.y += obj.speed;
                 
                 ctx.fillStyle = obj.isObstacle ? '#ef4444' : '#22c55e';
-                ctx.beginPath();
-                ctx.arc(obj.x + obj.w/2, obj.y + obj.h/2, obj.w/2, 0, Math.PI * 2);
-                ctx.fill();
+                ctx.beginPath(); ctx.arc(obj.x + obj.w/2, obj.y + obj.h/2, obj.w/2, 0, Math.PI * 2); ctx.fill();
                 
-                if (obj.x < gameState.player.x + gameState.player.w &&
-                    obj.x + obj.w > gameState.player.x &&
-                    obj.y < gameState.player.y + gameState.player.h &&
-                    obj.y + obj.h > gameState.player.y) {
-                    
+                if (obj.x < gameState.player.x + gameState.player.w && obj.x + obj.w > gameState.player.x && obj.y < gameState.player.y + gameState.player.h && obj.y + obj.h > gameState.player.y) {
                     if (obj.isObstacle) {
                         gameState.missed++;
                         document.getElementById('work-score-bad').innerText = `❌ Błędy: ${gameState.missed} / 3`;
-                        canvas.style.borderColor = '#ef4444';
-                        setTimeout(() => canvas.style.borderColor = 'var(--goku-panel-border)', 200);
-                        
-                        // KRYTYCZNA PORAŻKA (3 Błędy = Koniec)
-                        if (gameState.missed >= 3) {
-                            finishWorkMinigame(true); // true = failed
-                            return;
-                        }
+                        canvas.style.borderColor = '#ef4444'; setTimeout(() => canvas.style.borderColor = 'var(--goku-panel-border)', 200);
+                        if (gameState.missed >= 3) { finishWorkMinigame(true); return; }
                     } else {
                         gameState.caught++;
                         document.getElementById('work-score-good').innerText = `✅ Złapane: ${gameState.caught}`;
@@ -3695,14 +3673,11 @@
 
         document.getElementById('start-work-btn')?.addEventListener('click', async () => {
             if (!currentSelectedWorkId || window.isWorkMinigameActive) return;
-            
             const res = await apiCall('/api/work/start', 'POST', { workId: currentSelectedWorkId }, true);
             if (!res) return;
 
             if (res.success) {
-                window.isWorkMinigameActive = true;
-                lockTabsForWork(true);
-                
+                window.isWorkMinigameActive = true; lockTabsForWork(true);
                 document.getElementById('work-details-container').style.display = 'none';
                 document.getElementById('work-canvas-container').style.display = 'flex';
                 
@@ -3723,44 +3698,40 @@
                 
                 spawnObject(); gameLoop();
                 fetchCharacterData(true);
-            } else {
-                showWarningMessage(res.error || 'Nie można rozpocząć pracy.');
-            }
+            } else { showWarningMessage(res.error || 'Nie można rozpocząć pracy.'); }
         });
 
         async function finishWorkMinigame(isFailed = false) {
             window.isWorkMinigameActive = false;
-            clearInterval(workTimerInterval);
-            cancelAnimationFrame(workAnimationId);
+            clearInterval(workTimerInterval); cancelAnimationFrame(workAnimationId);
             
             if (isFailed) {
-                document.getElementById('work-timer').innerText = `PRZEGRANA!`;
+                document.getElementById('work-timer').innerText = `GAME OVER`;
                 document.getElementById('work-timer').style.color = 'var(--error)';
-                showNotification('Tragedia w pracy!', 'Złapałeś 3 błędne obiekty! Szef wyrzucił Cię z pracy bez zapłaty. Utraciłeś Staminę i HP.', 'error', 6000);
             } else {
-                document.getElementById('work-timer').innerText = `Wysyłanie...`;
+                document.getElementById('work-timer').innerText = `Raport...`;
             }
             
-            const res = await apiCall('/api/work/finish', 'POST', { 
-                workId: currentSelectedWorkId, goodObjectsCaught: gameState.caught, obstaclesCaught: gameState.missed, failed: isFailed
-            }, true);
+            const res = await apiCall('/api/work/finish', 'POST', { workId: currentSelectedWorkId, goodObjectsCaught: gameState.caught, obstaclesCaught: gameState.missed, failed: isFailed }, true);
             
-            if (res && res.success && !isFailed) {
-                const data = res.data;
-                let msg = `<div style="margin-bottom: 4px;">💰 Monety: <b style="color:#ffffff;">+${data.finalCoins}</b></div>`;
-                
-                let gains = [];
-                if (data.gains.str !== "0") gains.push(`+${data.gains.str} Siła`);
-                if (data.gains.spd !== "0") gains.push(`+${data.gains.spd} Szybkość`);
-                if (data.gains.end !== "0") gains.push(`+${data.gains.end} Wytrz.`);
-                if (data.gains.hp !== "0") gains.push(`+${data.gains.hp} Max HP`);
-                if (data.gains.mp !== "0") gains.push(`+${data.gains.mp} Max MP`);
-                
-                if (gains.length > 0) msg += `<div style="font-size: 0.85rem; margin-top: 6px; color: #ffffff; border-top: 1px dashed rgba(255,255,255,0.3); padding-top: 6px; font-weight: bold;">🏋️ Trening: ${gains.join(', ')}</div>`;
-                if (data.penalty < 1.0) msg += `<div style="font-size: 0.85rem; margin-top: 6px; color: #f59e0b; font-weight: bold;">⚠️ Monety obniżone z powodu dużej potęgi postaci.</div>`;
-                if (data.drops && data.drops.length > 0) msg += `<div style="font-size: 0.85rem; margin-top: 6px; color: #4ade80; font-weight: bold;">🎁 Zdobyto: Święta Woda!</div>`;
-                
-                showNotification('Koniec Zmiany', msg, 'success', 5000);
+            if (res && res.success) {
+                if (isFailed) {
+                    showNotification('Wyrzucono Cię z pracy!', `Zrobiłeś 3 błędy! Kara: Utrata -${res.data.penalty.resources_pct}% Zasobów oraz -${res.data.penalty.stat_loss} Statystyk fizycznych!`, 'error', 7000);
+                } else {
+                    const data = res.data;
+                    let msg = `<div style="margin-bottom: 4px;">💰 Monety: <b style="color:#ffffff;">+${data.finalCoins}</b></div>`;
+                    let gains = [];
+                    if (data.gains.str !== "0") gains.push(`+${data.gains.str} Siła`);
+                    if (data.gains.spd !== "0") gains.push(`+${data.gains.spd} Szybkość`);
+                    if (data.gains.end !== "0") gains.push(`+${data.gains.end} Wytrz.`);
+                    if (data.gains.hp !== "0") gains.push(`+${data.gains.hp} HP`);
+                    if (data.gains.mp !== "0") gains.push(`+${data.gains.mp} MP`);
+                    
+                    if (gains.length > 0) msg += `<div style="font-size: 0.85rem; margin-top: 6px; color: #ffffff; border-top: 1px dashed rgba(255,255,255,0.3); padding-top: 6px; font-weight: bold;">🏋️ Trening: ${gains.join(', ')}</div>`;
+                    if (data.penalty < 1.0) msg += `<div style="font-size: 0.85rem; margin-top: 6px; color: #f59e0b; font-weight: bold;">⚠️ Monety obniżone z powodu dużej potęgi.</div>`;
+                    if (data.drops && data.drops.length > 0) msg += `<div style="font-size: 0.85rem; margin-top: 6px; color: #4ade80; font-weight: bold;">🎁 Zdobyto: Święta Woda!</div>`;
+                    showNotification('Koniec Zmiany', msg, 'success', 6000);
+                }
             }
             
             setTimeout(() => {

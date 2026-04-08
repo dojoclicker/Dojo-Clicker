@@ -1969,191 +1969,138 @@ app.post('/api/training/stop', authenticateToken, async (req, res) => {
 // 🛠️ 8.5. TRYB PRACA (MINIGRA)
 // ==========================================
 
-// Słownik zbalansowanych Prac
+// Nowy zaktualizowany słownik - łączy pracę z tabelą `missions` przez ID (aby zaciągnąć req_stats automatycznie) i definiuje rosnące kary procentowe (Game Over)
 const WORK_MODES = {
-  praca_mleko: { 
-    req_stat: 500n, duration_sec: 20, cost_stamina: 10n, cost_hp_pct: 2n, reward_coins: 2n 
-  },
-  praca_budowa: { 
-    req_stat: 1000n, duration_sec: 30, cost_stamina: 10n, cost_hp_pct: 5n, reward_coins: 5n 
-  },
-  praca_pole: { 
-    req_stat: 2500n, duration_sec: 40, cost_stamina: 15n, cost_hp_pct: 8n, reward_coins: 12n 
-  },
-  praca_drwal: { 
-    req_stat: 5000n, duration_sec: 50, cost_stamina: 15n, cost_hp_pct: 15n, reward_coins: 25n 
-  },
-  praca_kurier: { 
-    req_stat: 10000n, duration_sec: 60, cost_stamina: 20n, cost_hp_pct: 25n, reward_coins: 60n 
-  },
-  praca_rosa: { 
-    req_stat: 80000n, duration_sec: 75, cost_stamina: 25n, cost_hp_pct: 10n, reward_coins: 150n, drop_woda: true 
-  },
-  praca_ogrody: { 
-    req_stat: 700000n, duration_sec: 90, cost_stamina: 40n, cost_hp_pct: 15n, reward_coins: 500n 
-  }
+  praca_mleko:  { req_mission: '10000000-0000-0000-0000-000000000006', duration_sec: 25, cost_stamina: 10n, cost_hp_pct: 2n, reward_coins: 2n, penalty_pct: 10n },
+  praca_budowa: { req_mission: '10000000-0000-0000-0000-000000000007', duration_sec: 35, cost_stamina: 10n, cost_hp_pct: 5n, reward_coins: 5n, penalty_pct: 12n },
+  praca_pole:   { req_mission: '10000000-0000-0000-0000-000000000008', duration_sec: 45, cost_stamina: 15n, cost_hp_pct: 8n, reward_coins: 12n, penalty_pct: 15n },
+  praca_drwal:  { req_mission: '10000000-0000-0000-0000-000000000009', duration_sec: 55, cost_stamina: 15n, cost_hp_pct: 15n, reward_coins: 25n, penalty_pct: 18n },
+  praca_kurier: { req_mission: '10000000-0000-0000-0000-000000000010', duration_sec: 65, cost_stamina: 20n, cost_hp_pct: 25n, reward_coins: 60n, penalty_pct: 22n },
+  praca_rosa:   { req_mission: '10000000-0000-0000-0000-000000000015', duration_sec: 80, cost_stamina: 25n, cost_hp_pct: 10n, reward_coins: 150n, penalty_pct: 25n, drop_woda: true },
+  praca_ogrody: { req_mission: '10000000-0000-0000-0000-000000000020', duration_sec: 100, cost_stamina: 40n, cost_hp_pct: 15n, reward_coins: 500n, penalty_pct: 30n }
 };
 
 app.post('/api/work/start', authenticateToken, requireAlive, async (req, res) => {
   const userId = req.user.id;
   const { workId } = req.body;
   const work = WORK_MODES[workId];
-
   if (!work) return res.status(400).json({ error: 'Nieprawidłowa praca.' });
 
   try {
-    const { data: char, error: charErr } = await supabase
-      .from('characters')
-      // POPRAWKA: Usunięto stąd błędne wywołanie "equipped_slot", które wywalało bazę!
-      .select('hp, stamina, bonus_hp, strength, endurance, inventory(item_template_id, equipped_slot, item_templates(req_stats, bonuses, category))')
-      .eq('profile_id', userId)
-      .single();
+    // Używamy globalnej funkcji - wyciąga z automatu MAX HP z ekwipunkiem i upewnia się, że bank jest ignorowany!
+    const fullStats = await getFullCharacterStats(userId);
+    const char = fullStats.character;
 
-    if (charErr || !char) {
-        console.error("Błąd DB przy starcie pracy:", charErr);
-        return res.status(404).json({ error: 'Nie znaleziono postaci w bazie danych.' });
-    }
+    const hpCost = (BigInt(fullStats.max_hp) * work.cost_hp_pct) / 100n;
+    const currentHp = BigInt(char.hp || '100');
+    const currentStamina = BigInt(char.stamina || '100');
 
-    // Wyliczanie Max HP do potrącenia kosztu
-    let passiveHpBonus = 0n;
-    char.inventory.forEach(inv => {
-      if (inv.equipped_slot && inv.item_templates && inv.item_templates.bonuses) {
-        const bonuses = inv.item_templates.bonuses;
-        if (bonuses.type === 'passive' && bonuses.bonus_hp) {
-          passiveHpBonus += BigInt(bonuses.bonus_hp);
-        }
-      }
-    });
+    if (currentHp <= hpCost) return res.status(400).json({ error: `Jesteś zbyt wyczerpany. Wymagane HP: ${hpCost}` });
+    if (currentStamina < work.cost_stamina) return res.status(400).json({ error: `Brak Staminy. Wymagane: ${work.cost_stamina}` });
 
-    const maxHp = 100n + (BigInt(char.strength || '0') / 20n) + BigInt(char.bonus_hp || '0') + passiveHpBonus;
-    const hpCost = (maxHp * work.cost_hp_pct) / 100n;
-    const currentHp = BigInt(char.hp);
-    const currentStamina = BigInt(char.stamina);
-
-    if (currentHp <= hpCost) {
-      return res.status(400).json({ error: `Jesteś zbyt wyczerpany. Wymagane HP: ${hpCost}` });
-    }
-    if (currentStamina < work.cost_stamina) {
-      return res.status(400).json({ error: `Brak Staminy. Wymagane: ${work.cost_stamina}` });
-    }
-
-    // Pobranie z góry (ochrona przed F5)
-    const newHp = currentHp - hpCost;
-    const newStamina = currentStamina - work.cost_stamina;
-
-    const { error: updateErr } = await supabase
-      .from('characters')
-      .update({ hp: newHp.toString(), stamina: newStamina.toString() })
-      .eq('profile_id', userId);
-
-    if (updateErr) throw updateErr;
+    await supabase.from('characters').update({ 
+        hp: (currentHp - hpCost).toString(), 
+        stamina: (currentStamina - work.cost_stamina).toString() 
+    }).eq('id', char.id);
 
     res.json({ success: true, duration: work.duration_sec, hpCost: hpCost.toString() });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Błąd serwera przy starcie pracy.' });
-  }
+  } catch (err) { res.status(500).json({ error: 'Błąd serwera przy starcie pracy.' }); }
 });
 
 app.post('/api/work/finish', authenticateToken, requireAlive, async (req, res) => {
   const userId = req.user.id;
   const { workId, goodObjectsCaught, obstaclesCaught, failed } = req.body;
   const work = WORK_MODES[workId];
-
   if (!work) return res.status(400).json({ error: 'Nieprawidłowa praca.' });
 
   try {
-    // JEŚLI 3 BŁĘDY (GAME OVER) -> ZWRÓĆ ZERO I PRZERWIJ (Koszty i tak ściągnięto przy /start)
-    if (failed) {
-        return res.json({ success: true, finalCoins: "0", gains: { str: "0", spd: "0", end: "0", hp: "0", mp: "0" }, drops: [], penalty: 1.0 });
+    // Pobieramy absolutnie szczelne statystyki
+    const fullStats = await getFullCharacterStats(userId);
+    const char = fullStats.character;
+
+    // Pobranie wymagań wprost z bazy danych Misji!
+    const { data: mission } = await supabase.from('missions').select('req_stats').eq('id', work.req_mission).single();
+    let reqStat = 1n;
+    if (mission && mission.req_stats) {
+        // Bierze najważniejszą wymaganą statystykę, tak samo jak w logice misji
+        reqStat = BigInt(mission.req_stats.strength || mission.req_stats.speed || mission.req_stats.endurance || 1);
     }
 
-    const { data: char, error: charErr } = await supabase
-      .from('characters')
-      .select('coins, strength, speed, endurance, bonus_hp, bonus_mp, inventory(item_template_id, equipped_slot, item_templates(req_stats, bonuses, category))')
-      .eq('profile_id', userId)
-      .single();
+    if (failed) {
+        // TWARDA KARA ZA 3 BŁĘDY
+        const hpLoss = (BigInt(fullStats.max_hp) * work.penalty_pct) / 100n;
+        const mpLoss = (BigInt(fullStats.max_mp) * work.penalty_pct) / 100n;
+        const staminaLoss = (BigInt(fullStats.max_stamina) * work.penalty_pct) / 100n;
 
-    if (charErr || !char) return res.status(404).json({ error: 'Nie znaleziono postaci.' });
+        // Kara statystyk (np. praca za 500 pkt = utrata 5)
+        const statLoss = maxBigInt(1n, reqStat / 100n);
 
+        const newHp = maxBigInt(0n, BigInt(char.hp || '0') - hpLoss);
+        const newMp = maxBigInt(0n, BigInt(char.mp || '0') - mpLoss);
+        const newStam = maxBigInt(0n, BigInt(char.stamina || '0') - staminaLoss);
+
+        const newStr = maxBigInt(1n, BigInt(char.strength || '1') - statLoss);
+        const newSpd = maxBigInt(1n, BigInt(char.speed || '1') - statLoss);
+        const newEnd = maxBigInt(1n, BigInt(char.endurance || '1') - statLoss);
+
+        await supabase.from('characters').update({
+            hp: newHp.toString(), mp: newMp.toString(), stamina: newStam.toString(),
+            strength: newStr.toString(), speed: newSpd.toString(), endurance: newEnd.toString()
+        }).eq('id', char.id);
+
+        return res.json({ success: true, failed: true, penalty: { resources_pct: work.penalty_pct.toString(), stat_loss: statLoss.toString() } });
+    }
+
+    // SUKCES I MATEMATYKA NETTO
     const caught = BigInt(goodObjectsCaught || 0);
     const missed = BigInt(obstaclesCaught || 0);
+    let netScore = maxBigInt(0n, caught - missed);
 
-    // KRYTYCZNE: Wynik Netto (Dobre - Złe)
-    let netScore = caught - missed;
-    if (netScore < 0n) netScore = 0n;
-
-    // Bazowe zarobki
     let earnedCoins = netScore * work.reward_coins;
+    
+    let activeStr = BigInt(fullStats.baseStats.strength) + BigInt(fullStats.equipStats.strength || '0');
+    let activeSpd = BigInt(fullStats.baseStats.speed) + BigInt(fullStats.equipStats.speed || '0');
+    let activeEnd = BigInt(fullStats.baseStats.endurance) + BigInt(fullStats.equipStats.endurance || '0');
 
-    let activeStr = BigInt(char.strength || '0'), activeSpd = BigInt(char.speed || '0'), activeEnd = BigInt(char.endurance || '0');
-    let trainStr = 0n, trainSpd = 0n, trainEnd = 0n, trainHp = 0n, trainMp = 0n;
-
-    char.inventory.forEach(inv => {
-      if (inv.equipped_slot && inv.item_templates && inv.item_templates.bonuses) {
-        const b = inv.item_templates.bonuses;
-        if (b.type === 'passive') {
-          if (b.strength) activeStr += BigInt(b.strength);
-          if (b.speed) activeSpd += BigInt(b.speed);
-          if (b.endurance) activeEnd += BigInt(b.endurance);
-        } else if (b.type === 'training') {
-          if (b.strength) trainStr += BigInt(b.strength);
-          if (b.speed) trainSpd += BigInt(b.speed);
-          if (b.endurance) trainEnd += BigInt(b.endurance);
-          if (b.bonus_hp) trainHp += BigInt(b.bonus_hp);
-          if (b.bonus_mp) trainMp += BigInt(b.bonus_mp);
-        }
-      }
-    });
-
+    // Diminishing Returns - Spadek zarobków gdy jesteśmy za silni do słabej pracy
     const weakestLink = minBigInt(activeStr, minBigInt(activeSpd, activeEnd));
     let penaltyMultiplier = 1.0;
-    const reqStat = work.req_stat;
-    
     if (weakestLink >= (reqStat * 8n) + 100n) penaltyMultiplier = 0.10;
     else if (weakestLink >= (reqStat * 4n) + 40n) penaltyMultiplier = 0.50;
     else if (weakestLink >= (reqStat * 2n) + 15n) penaltyMultiplier = 0.75;
 
-    // Kara uderza tylko w monety, nie w trening!
     const finalCoins = BigInt(Math.floor(Number(earnedCoins) * penaltyMultiplier));
     
-    // Twarda Matematyka Treningu bez Kar i Cięć (10 x 10 = 100)
-    let gainStr = 0n, gainSpd = 0n, gainEnd = 0n, gainHp = 0n, gainMp = 0n;
-    if (netScore > 0n) {
-      gainStr = netScore * trainStr;
-      gainSpd = netScore * trainSpd;
-      gainEnd = netScore * trainEnd;
-      gainHp  = netScore * trainHp;
-      gainMp  = netScore * trainMp;
-    }
+    // Trening nie dostaje kar potęgi, ale używa wyniku Netto
+    let tStr = BigInt(fullStats.trainingStats.strength || '0');
+    let tSpd = BigInt(fullStats.trainingStats.speed || '0');
+    let tEnd = BigInt(fullStats.trainingStats.endurance || '0');
+    let tHp = BigInt(fullStats.trainingStats.bonus_hp || '0');
+    let tMp = BigInt(fullStats.trainingStats.bonus_mp || '0');
+
+    let gainStr = netScore * tStr;
+    let gainSpd = netScore * tSpd;
+    let gainEnd = netScore * tEnd;
+    let gainHp = netScore * tHp;
+    let gainMp = netScore * tMp;
 
     let dropIds = [];
-    if (work.drop_woda && caught > 10n) {
-      if (Math.floor(Math.random() * 100) < 1) {
+    if (work.drop_woda && caught > 10n && Math.floor(Math.random() * 100) < 1) {
         dropIds.push("00000000-0000-0000-0000-000000000008"); 
-        const { data: invData } = await supabase.from('inventory').select('backpack_index').eq('character_id', char.id);
+        const { data: invData } = await supabase.from('inventory').select('backpack_index').eq('character_id', char.id).is('equipped_slot', null);
         const usedIndexes = invData ? invData.map(i => i.backpack_index) : [];
-        let freeIndex = 1;
-        while(usedIndexes.includes(freeIndex)) freeIndex++;
-        
+        let freeIndex = 1; while(usedIndexes.includes(freeIndex)) freeIndex++;
         await supabase.from('inventory').insert({ character_id: char.id, item_template_id: "00000000-0000-0000-0000-000000000008", quantity: 1, backpack_index: freeIndex });
-      }
     }
 
-    const { error: updateErr } = await supabase.rpc('reward_work_gains', {
-      p_user_id: userId, p_coins: finalCoins.toString(), p_str: gainStr.toString(), p_spd: gainSpd.toString(), p_end: gainEnd.toString(), p_bhp: gainHp.toString(), p_bmp: gainMp.toString()
-    });
-
-    if (updateErr) {
-       await supabase.from('characters').update({
-         coins: (BigInt(char.coins || '0') + finalCoins).toString(),
-         strength: (BigInt(char.strength || '0') + gainStr).toString(),
-         speed: (BigInt(char.speed || '0') + gainSpd).toString(),
-         endurance: (BigInt(char.endurance || '0') + gainEnd).toString(),
-         bonus_hp: (BigInt(char.bonus_hp || '0') + gainHp).toString(),
-         bonus_mp: (BigInt(char.bonus_mp || '0') + gainMp).toString()
-       }).eq('profile_id', userId);
-    }
+    await supabase.from('characters').update({
+        coins: (BigInt(char.coins || '0') + finalCoins).toString(),
+        strength: (BigInt(char.strength || '1') + gainStr).toString(),
+        speed: (BigInt(char.speed || '1') + gainSpd).toString(),
+        endurance: (BigInt(char.endurance || '1') + gainEnd).toString(),
+        bonus_hp: (BigInt(char.bonus_hp || '0') + gainHp).toString(),
+        bonus_mp: (BigInt(char.bonus_mp || '0') + gainMp).toString()
+    }).eq('id', char.id);
 
     res.json({ success: true, finalCoins: finalCoins.toString(), gains: { str: gainStr.toString(), spd: gainSpd.toString(), end: gainEnd.toString(), hp: gainHp.toString(), mp: gainMp.toString() }, drops: dropIds, penalty: penaltyMultiplier });
   } catch (err) { res.status(500).json({ error: 'Błąd serwera przy rozliczeniu pracy.' }); }
