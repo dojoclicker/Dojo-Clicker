@@ -877,14 +877,29 @@ app.post('/api/missions/start', authenticateToken, requireAlive, async (req, res
           penaltyMultiplier = 4n; // Duża kara
       }
       
-      // Obliczanie utraty statystyk fizycznych (dzielone równo na 3)
+      // HYBRYDOWY PODZIAŁ KARY (50% sztywne, 50% losowe)
       const baseReward = maxBigInt(1n, BigInt(mission.reward_stats?.min || '1'));
-      const totalStatLoss = baseReward * penaltyMultiplier;
-      const lossPerStat = maxBigInt(1n, totalStatLoss / 3n);
+      const totalStatLossNum = Number(baseReward * penaltyMultiplier);
       
-      const strLoss = lossPerStat;
-      const spdLoss = lossPerStat;
-      const endLoss = lossPerStat;
+      // Wyliczamy bezpieczną bazę (50% całości podzielone na 3 statystyki)
+      let guaranteedPool = Math.floor(totalStatLossNum * 0.5); 
+      let randomPool = totalStatLossNum - guaranteedPool;
+      
+      let guaranteedPerStat = Math.floor(guaranteedPool / 3);
+      let guaranteedRemainder = guaranteedPool - (guaranteedPerStat * 3);
+
+      // Losujemy resztę z "wirtualnego worka"
+      let r1 = Math.random(); let r2 = Math.random(); let r3 = Math.random();
+      const sumR = r1 + r2 + r3;
+      
+      let randStr = Math.floor(randomPool * (r1 / sumR));
+      let randSpd = Math.floor(randomPool * (r2 / sumR));
+      let randEnd = randomPool - randStr - randSpd;
+
+      // Sumujemy gwarantowane + losowe (i rzutujemy z powrotem na BigInt dla bazy)
+      const strLoss = BigInt(Math.max(1, guaranteedPerStat + randStr));
+      const spdLoss = BigInt(Math.max(1, guaranteedPerStat + randSpd));
+      const endLoss = BigInt(Math.max(1, guaranteedPerStat + guaranteedRemainder + randEnd));
       
       // Utrata monet
       const baseCoinsReward = maxBigInt(1n, BigInt(mission.reward_coins_min || '1'));
@@ -2035,12 +2050,11 @@ app.post('/api/work/finish', authenticateToken, requireAlive, async (req, res) =
     if (failed) {
         const pct = work.penalty_pct;
         
-        // 1. WIRTUALNA KOSTKA (Rozstrzał OD-DO z nagród misji)
+        // 1. WIRTUALNA KOSTKA (Całkowita pula kary)
         let totalLoss = 50n; 
         if (mission && mission.reward_stats && mission.reward_stats.min && mission.reward_stats.max) {
             const minR = Number(mission.reward_stats.min);
             const maxR = Number(mission.reward_stats.max);
-            // Losujemy wartość z przedziału i mnożymy przez 3
             const randomBase = Math.floor(Math.random() * (maxR - minR + 1)) + minR;
             totalLoss = maxBigInt(1n, BigInt(randomBase) * 3n); 
         } else if (mission && mission.reward_stats && mission.reward_stats.min) {
@@ -2049,15 +2063,28 @@ app.post('/api/work/finish', authenticateToken, requireAlive, async (req, res) =
             totalLoss = maxBigInt(1n, reqStat / 10n); 
         }
         
-        // 2. LOSOWE ROZDZIELENIE KARY NA 3 STATYSTYKI (Jak w misjach)
+        // 2. HYBRYDOWY PODZIAŁ KARY (50% sztywne, 50% losowe)
+        let totalLossNum = Number(totalLoss);
+        
+        // Wyliczamy bezpieczną bazę (50% całości podzielone na 3 statystyki)
+        let guaranteedPool = Math.floor(totalLossNum * 0.5); 
+        let randomPool = totalLossNum - guaranteedPool;
+        
+        let guaranteedPerStat = Math.floor(guaranteedPool / 3);
+        let guaranteedRemainder = guaranteedPool - (guaranteedPerStat * 3); // Zabezpieczenie przed ułamkami
+
+        // Losujemy resztę z "wirtualnego worka"
         let r1 = Math.random(); let r2 = Math.random(); let r3 = Math.random();
         const sumR = r1 + r2 + r3;
         
-        let totalLossNum = Number(totalLoss);
-        let sLossStr = BigInt(Math.max(1, Math.floor(totalLossNum * (r1 / sumR))));
-        let sLossSpd = BigInt(Math.max(1, Math.floor(totalLossNum * (r2 / sumR))));
-        let sLossEnd = totalLoss - sLossStr - sLossSpd; // Reszta z puli idzie w wytrzymałość
-        if (sLossEnd < 1n) sLossEnd = 1n;
+        let randStr = Math.floor(randomPool * (r1 / sumR));
+        let randSpd = Math.floor(randomPool * (r2 / sumR));
+        let randEnd = randomPool - randStr - randSpd;
+
+        // Sumujemy gwarantowane + losowe
+        let sLossStr = BigInt(Math.max(1, guaranteedPerStat + randStr));
+        let sLossSpd = BigInt(Math.max(1, guaranteedPerStat + randSpd));
+        let sLossEnd = BigInt(Math.max(1, guaranteedPerStat + guaranteedRemainder + randEnd));
 
         await supabase.from('characters').update({
             hp: maxBigInt(0n, BigInt(char.hp) - (BigInt(fullStats.max_hp) * pct / 100n)).toString(),
@@ -2068,7 +2095,6 @@ app.post('/api/work/finish', authenticateToken, requireAlive, async (req, res) =
             endurance: maxBigInt(1n, BigInt(char.endurance) - sLossEnd).toString()
         }).eq('id', char.id);
         
-        // Zwracamy na front każdą stratę z osobna!
         return res.json({ success: true, failed: true, penalty: { resources_pct: pct.toString(), loss_str: sLossStr.toString(), loss_spd: sLossSpd.toString(), loss_end: sLossEnd.toString() } });
     }
 

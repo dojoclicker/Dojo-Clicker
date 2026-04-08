@@ -3682,20 +3682,23 @@
         function spawnObject() {
             if (!window.isWorkMinigameActive) return;
             
-            // --- FILAR 1: Sufit Prędkości (Speed Cap) ---
-            // Baza to 3.0. Z każdym poziomem rośnie łagodniej (o 0.8 zamiast 1.5).
-            // Math.min sprawia, że prędkość bazowa NIGDY nie przekroczy 10.0 (nawet na 50. poziomie).
-            let baseSpeed = Math.min(3.0 + (currentWorkDifficulty * 0.8), 10.0);
-            let speed = baseSpeed + (Math.random() * 2.0); // Losowe odchylenie dla naturalności
+            // 1. TABLICA LUT (Twoje czasy spadania w sekundach od 1 do 15 pracy)
+            const dropTimesLUT = [8.0, 6.0, 5.0, 4.5, 4.0, 3.5, 3.0, 2.5, 2.0, 1.8, 1.6, 1.4, 1.2, 1.0, 1.0];
             
-            // --- FILAR 2: Maksymalny próg pułapek (Traps Ratio) ---
-            // Zaczynamy od 10%. Z każdym poziomem rośnie o 3%.
-            // Math.min ucina maksymalną szansę na pułapkę na 45% (0.45), by gra była zawsze "do przejścia".
-            let trapChance = Math.min(0.10 + (currentWorkDifficulty * 0.03), 0.45);
+            // Znajdujemy, która to praca z kolei (żeby dopasować ją do indeksu tabeli)
+            const workIndex = WORK_FRONTEND_DATA.findIndex(w => w.id === currentSelectedWorkId);
+            const safeIndex = Math.max(0, Math.min(workIndex, dropTimesLUT.length - 1));
+            const targetTimeSeconds = dropTimesLUT[safeIndex];
+            
+            // Przeliczamy Twoje sekundy na piksele na klatkę (zakładając canvas ~500px wys. i gre ~60fps)
+            let baseSpeed = 500 / (targetTimeSeconds * 60);
+            let speed = baseSpeed + (Math.random() * (baseSpeed * 0.15)); // +15% odchylenia by nie spadały zbyt mechanicznie
+            
+            // 2. SZANSA NA PUŁAPKĘ (od 10% do max 45%)
+            let trapChance = Math.min(0.10 + (safeIndex * 0.03), 0.45);
             let isObst = Math.random() < trapChance;
             
-            // Pobranie odpowiednich emotikon dla aktualnej pracy
-            const currentWorkData = WORK_FRONTEND_DATA.find(w => w.id === currentSelectedWorkId);
+            const currentWorkData = WORK_FRONTEND_DATA[safeIndex];
             const currentEmoji = isObst ? currentWorkData.badEmoji : currentWorkData.goodEmoji;
             
             gameState.objects.push({ 
@@ -3708,11 +3711,9 @@
                 emoji: currentEmoji 
             });
             
-            // --- FILAR 3: Bezpieczna podłoga częstotliwości (Spawn Floor) ---
-            // Zaczynamy od wolnych 400ms. Z każdym poziomem przyspiesza o 20ms.
-            // Math.max gwarantuje, że przerwa między przedmiotami NIGDY nie zejdzie poniżej 180ms.
-            let baseDelay = Math.max(400 - (currentWorkDifficulty * 20), 180);
-            let finalDelay = baseDelay + (Math.random() * 150); // Losowe opóźnienie, by nie spadały jak z karabinu
+            // 3. OPÓŹNIENIE (Im mniejszy index pracy, tym rzadziej lecą obiekty)
+            let baseDelay = Math.max(800 - (safeIndex * 50), 250); 
+            let finalDelay = baseDelay + (Math.random() * 150);
             
             setTimeout(spawnObject, finalDelay);
         }
@@ -3807,9 +3808,17 @@
             window.isWorkMinigameActive = false;
             clearInterval(workTimerInterval); cancelAnimationFrame(workAnimationId);
             
+            // --- MASKOWANIE WIZUALNE PRZY PORAŻCE ---
             if (isFailed) {
-                document.getElementById('work-timer').innerText = `GAME OVER`;
+                document.getElementById('work-timer').innerText = `OBLICZANIE KARY...`;
                 document.getElementById('work-timer').style.color = 'var(--error)';
+                
+                // Czerwony, pulsujący blur na ekranie gry!
+                const canvasBox = document.getElementById('workCanvas');
+                if (canvasBox) {
+                    canvasBox.style.transition = 'all 0.3s ease';
+                    canvasBox.style.filter = 'blur(6px) sepia(1) hue-rotate(315deg) saturate(5)';
+                }
             } else {
                 document.getElementById('work-timer').innerText = `Raport...`;
             }
@@ -3862,6 +3871,13 @@
             // PANCERNE PRZYWRACANIE ELEMENTÓW PO ZAKOŃCZENIU PRACY
             setTimeout(() => {
                 fetchCharacterData(); fetchInventory();
+                
+                // --- CZYSZCZENIE EFEKTÓW WIZUALNYCH ---
+                const workCanvasElement = document.getElementById('workCanvas');
+                if (workCanvasElement) {
+                    workCanvasElement.style.filter = 'none';
+                    workCanvasElement.style.transition = 'none';
+                }
                 
                 const listPanel = document.getElementById('work-list-panel');
                 if (listPanel) listPanel.style.display = 'block';
