@@ -3541,7 +3541,7 @@
                 card.id = `work-card-${work.id}`;
                 
                 card.innerHTML = `
-                    <div class="mentor-emoji" style="font-size: 2rem;">${isUnlocked ? '💸' : '🔒'}</div>
+                    <div class="mentor-emoji" style="font-size: 2rem;">${isUnlocked ? work.goodEmoji : '🔒'}</div>
                     <div class="mentor-info">
                         <div class="mentor-name">${work.name}</div>
                         <div class="mentor-stats">
@@ -3597,6 +3597,11 @@
                 <div style="margin-bottom: 15px; font-size: 1.2rem; background: rgba(0,0,0,0.4); padding: 10px; border-radius: 8px; border: 1px dashed var(--goku-panel-border);">
                     Złap: <span style="font-size: 1.8rem; vertical-align: middle;">${workObj.goodEmoji}</span> &nbsp;|&nbsp; Unikaj: <span style="font-size: 1.8rem; vertical-align: middle;">${workObj.badEmoji}</span>
                 </div>
+                <div style="margin-bottom: 15px; padding: 10px; background: rgba(0,0,0,0.3); border-radius: 4px; border: 1px dashed #fbbf24;">
+                    <p style="font-weight: bold; margin-bottom: 5px; color: #fbbf24;">✨ Zdarzenia Specjalne:</p>
+                    <p style="font-size: 0.95rem;">Złap <b>💸</b> (+3x Zysk) | Unikaj <b>🦹‍♂️</b> (-3x Zysk lub Utrata HP!)</p>
+                    <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 3px;"><i>(Te obiekty spadają znacznie szybciej!)</i></p>
+                </div>
                 <p style="margin-bottom: 5px;">🔴 Koszt: <b style="color: var(--error);">${workObj.costHpPct}% HP</b></p>
                 <p style="margin-bottom: 5px;">🟢 Koszt: <b style="color: var(--success);">${workObj.costStamina} Stamina</b></p>
                 <p style="margin-bottom: 15px;">🪙 Zarobek: <b style="color: var(--warning);">${workObj.reward} Monet / Złapany obiekt</b></p>
@@ -3627,7 +3632,13 @@
         const canvas = document.getElementById('workCanvas');
         const ctx = canvas ? canvas.getContext('2d') : null;
 
-        let gameState = { timeLeft: 0, caught: 0, missed: 0, objects: [], player: { x: 125, y: 380, w: 50, h: 20, speed: 6 }, keys: { left: false, right: false } };
+        let gameState = { 
+            timeLeft: 0, caught: 0, missed: 0, objects: [], 
+            floatingTexts: [], extraHpPenalty: 0, 
+            bonusSpawned: 0, maxBonus: 0, 
+            thiefSpawned: 0, maxThief: 0, trapsSpawned: 0,
+            player: { x: 125, y: 380, w: 50, h: 20, speed: 6 }, keys: { left: false, right: false } 
+        };
         let currentWorkDifficulty = 1;
         let currentWorkReward = 0;
 
@@ -3636,7 +3647,7 @@
         selectWork = function(workObj, cardElement) {
             originalSelectWork(workObj, cardElement);
             currentWorkReward = workObj.reward;
-            currentWorkDifficulty = WORK_FRONTEND_DATA.findIndex(w => w.id === workObj.id) + 1; // Pozwala grze skalować trudność od 1 do 7
+            currentWorkDifficulty = WORK_FRONTEND_DATA.findIndex(w => w.id === workObj.id) + 1; 
         };
 
         window.addEventListener('keydown', (e) => { if (e.key === 'ArrowLeft' || e.key === 'a') gameState.keys.left = true; if (e.key === 'ArrowRight' || e.key === 'd') gameState.keys.right = true; });
@@ -3662,7 +3673,6 @@
             let tStr = 0, tSpd = 0, tEnd = 0, tHp = 0, tMp = 0;
             if (window.inventoryData) {
                 window.inventoryData.forEach(item => {
-                    // KRYTYCZNE: Bezpiecznik przed czytaniem przedmiotów z banku
                     if (item.equipped_slot && item.equipped_slot !== 'bank' && item.item_templates && item.item_templates.bonuses && item.item_templates.bonuses.type === 'training') {
                         let b = item.item_templates.bonuses;
                         if (b.strength) tStr += Number(b.strength);
@@ -3677,22 +3687,25 @@
             document.getElementById('live-coins').innerText = `💰 ${coins} Monet`;
             
             let statsHtml = [];
-            // Bardzo cienkie marginesy, żeby gwarantować brak suwaków nawet przy 5 statystykach
             if (tStr > 0) statsHtml.push(`<div style="display:flex; justify-content:space-between; margin-bottom:3px;"><span>💪 Siła:</span> <span>+${netScore * tStr}</span></div>`);
             if (tSpd > 0) statsHtml.push(`<div style="display:flex; justify-content:space-between; margin-bottom:3px;"><span>⚡ Szyb:</span> <span>+${netScore * tSpd}</span></div>`);
             if (tEnd > 0) statsHtml.push(`<div style="display:flex; justify-content:space-between; margin-bottom:3px;"><span>🛡️ Wytrz:</span> <span>+${netScore * tEnd}</span></div>`);
             if (tHp > 0)  statsHtml.push(`<div style="display:flex; justify-content:space-between; margin-bottom:3px;"><span>❤️ Max HP:</span> <span>+${netScore * tHp}</span></div>`);
             if (tMp > 0)  statsHtml.push(`<div style="display:flex; justify-content:space-between;"><span>💧 Max MP:</span> <span>+${netScore * tMp}</span></div>`);
             
-            document.getElementById('live-stats').innerHTML = statsHtml.length > 0 
+            let hpPenaltyHtml = '';
+            if (gameState.extraHpPenalty > 0) {
+                hpPenaltyHtml = `<div style="color: #ef4444; font-weight: bold; margin-top: 10px; text-align: center;">🩸 Utracono: ${gameState.extraHpPenalty}% Max HP!</div>`;
+            }
+
+            document.getElementById('live-stats').innerHTML = (statsHtml.length > 0 
                 ? `<div style="text-align: center; margin-bottom: 6px; color: #fff; font-size: 0.9rem;">🏋️ Trening:</div>` + statsHtml.join('') 
-                : `<div style="color: var(--text-muted); text-align: center; margin-top: auto; margin-bottom: auto;">Brak sprzętu trening.</div>`;
+                : `<div style="color: var(--text-muted); text-align: center; margin-top: auto; margin-bottom: auto;">Brak sprzętu trening.</div>`) + hpPenaltyHtml;
         }
 
         function spawnObject() {
             if (!window.isWorkMinigameActive) return;
             
-            // 1. TWOJA NOWA TABLICA LUT (Prędkość od 1.9s do 0.5s)
             const dropTimesLUT = [1.9, 1.8, 1.7, 1.6, 1.5, 1.4, 1.3, 1.2, 1.1, 1.0, 0.9, 0.8, 0.7, 0.6, 0.5];
             
             const workIndex = WORK_FRONTEND_DATA.findIndex(w => w.id === currentSelectedWorkId);
@@ -3702,31 +3715,51 @@
             let baseSpeed = 500 / (targetTimeSeconds * 60);
             let speed = baseSpeed + (Math.random() * (baseSpeed * 0.1));
             
-            // 2. SZANSA NA PUŁAPKĘ + GWARANCJA MINIMUM 3
-            // Podnosimy bazową szansę na 15% na start
             let trapChance = Math.min(0.15 + (safeIndex * 0.03), 0.50);
-            let isObst = Math.random() < trapChance;
             
-            // Logika gwarancji: jeśli zostało mało czasu, a pułapek było mało - wymuś pułapkę
-            if (gameState.timeLeft < 6 && gameState.trapsSpawned < 3) {
-                isObst = true;
+            let isObst = false;
+            let isBonus = false;
+            let isThief = false;
+            
+            let r = Math.random();
+            let hasSpecials = (gameState.bonusSpawned < gameState.maxBonus) || (gameState.thiefSpawned < gameState.maxThief);
+            
+            // 10% szans, że spadnie obiekt specjalny (jeśli nie wyczerpano limitu)
+            if (hasSpecials && r < 0.10) { 
+                let canSpawnBonus = gameState.bonusSpawned < gameState.maxBonus;
+                let canSpawnThief = gameState.thiefSpawned < gameState.maxThief;
+                
+                if (canSpawnBonus && canSpawnThief) {
+                    if (Math.random() < 0.33) isBonus = true; // Złodziej leci 2x częściej
+                    else isThief = true;
+                } else if (canSpawnBonus) {
+                    isBonus = true;
+                } else {
+                    isThief = true;
+                }
+            } else {
+                isObst = Math.random() < trapChance;
+                if (gameState.timeLeft < 6 && gameState.trapsSpawned < 3) isObst = true;
             }
             
-            if (isObst) gameState.trapsSpawned++;
-            
-            const currentWorkData = WORK_FRONTEND_DATA[safeIndex];
-            const currentEmoji = isObst ? currentWorkData.badEmoji : currentWorkData.goodEmoji;
-            
+            let currentEmoji = WORK_FRONTEND_DATA[safeIndex].goodEmoji;
+            let type = 'normal';
+            let finalSpeed = speed;
+
+            if (isBonus) {
+                currentEmoji = '💸'; type = 'bonus'; finalSpeed = speed * 1.4; gameState.bonusSpawned++;
+            } else if (isThief) {
+                currentEmoji = '🦹‍♂️'; type = 'thief'; finalSpeed = speed * 1.4; gameState.thiefSpawned++;
+            } else if (isObst) {
+                currentEmoji = WORK_FRONTEND_DATA[safeIndex].badEmoji; type = 'obstacle'; gameState.trapsSpawned++;
+            }
+
             gameState.objects.push({ 
                 x: Math.random() * (canvas.width - 28), 
                 y: -28, w: 28, h: 28, 
-                isObstacle: isObst, 
-                speed: speed, 
-                emoji: currentEmoji 
+                type: type, speed: finalSpeed, emoji: currentEmoji 
             });
             
-            // 3. ZWIĘKSZONA GĘSTOŚĆ (Zagęszczanie elementów w każdej pracy)
-            // Startujemy od 600ms, schodzimy do 150ms w 15. pracy
             let baseDelay = Math.max(600 - (safeIndex * 32), 150); 
             let finalDelay = baseDelay + (Math.random() * 100);
             
@@ -3750,18 +3783,33 @@
                 let obj = gameState.objects[i];
                 obj.y += obj.speed;
                 
-                // Rysowanie emotikon zamiast kółek
                 ctx.font = "26px Arial"; 
                 ctx.textAlign = "center";
                 ctx.textBaseline = "middle";
                 ctx.fillText(obj.emoji, obj.x + obj.w/2, obj.y + obj.h/2);
                 
                 if (obj.x < gameState.player.x + gameState.player.w && obj.x + obj.w > gameState.player.x && obj.y < gameState.player.y + gameState.player.h && obj.y + obj.h > gameState.player.y) {
-                    if (obj.isObstacle) {
+                    if (obj.type === 'obstacle') {
                         gameState.missed++;
                         document.getElementById('work-score-bad').innerText = `❌ Błędy: ${gameState.missed} / 3`;
                         canvas.style.borderColor = '#ef4444'; setTimeout(() => canvas.style.borderColor = 'var(--goku-panel-border)', 200);
                         if (gameState.missed >= 3) { finishWorkMinigame(true); return; }
+                    } else if (obj.type === 'bonus') {
+                        gameState.caught += 3;
+                        gameState.floatingTexts.push({x: obj.x + obj.w/2, y: obj.y, text: "+3 Łupy!", color: "#fbbf24", life: 50});
+                    } else if (obj.type === 'thief') {
+                        let lost = 0; let hpPenalty = 0;
+                        if (gameState.caught >= 3) { gameState.caught -= 3; lost = 3; } 
+                        else if (gameState.caught === 2) { gameState.caught = 0; lost = 2; hpPenalty = 10; } 
+                        else if (gameState.caught === 1) { gameState.caught = 0; lost = 1; hpPenalty = 20; } 
+                        else { hpPenalty = 30; }
+
+                        gameState.extraHpPenalty += hpPenalty;
+                        let text = lost > 0 ? `-${lost} Łup!` : "";
+                        if (hpPenalty > 0) text += (text ? " " : "") + `-${hpPenalty}% HP!`;
+                        
+                        gameState.floatingTexts.push({x: obj.x + obj.w/2, y: obj.y, text: text, color: "#ef4444", life: 50});
+                        canvas.style.borderColor = '#ef4444'; setTimeout(() => canvas.style.borderColor = 'var(--goku-panel-border)', 200);
                     } else {
                         gameState.caught++;
                         document.getElementById('work-score-good').innerText = `✅ Złapane: ${gameState.caught}`;
@@ -3772,6 +3820,21 @@
                 }
                 if (obj.y > canvas.height) gameState.objects.splice(i, 1);
             }
+            
+            // Rysowanie animowanych, latających napisów!
+            for (let i = gameState.floatingTexts.length - 1; i >= 0; i--) {
+                let ft = gameState.floatingTexts[i];
+                ctx.font = "bold 16px Arial";
+                ctx.fillStyle = ft.color;
+                ctx.textAlign = "center";
+                ctx.globalAlpha = ft.life / 50; 
+                ctx.fillText(ft.text, ft.x, ft.y);
+                ctx.globalAlpha = 1.0;
+                ft.y -= 1.5; 
+                ft.life--;
+                if (ft.life <= 0) gameState.floatingTexts.splice(i, 1);
+            }
+
             workAnimationId = requestAnimationFrame(gameLoop);
         }
 
@@ -3797,6 +3860,9 @@
                 }
                 
                 gameState.caught = 0; gameState.missed = 0; gameState.objects = []; gameState.trapsSpawned = 0;
+                gameState.floatingTexts = []; gameState.extraHpPenalty = 0;
+                gameState.bonusSpawned = 0; gameState.maxBonus = currentWorkDifficulty;
+                gameState.thiefSpawned = 0; gameState.maxThief = currentWorkDifficulty * 2;
                 // Dopasowanie pozycji gracza do nowego wymiaru (wysokość 500)
                 gameState.player = { x: canvas.width / 2 - 25, y: canvas.height - 40, w: 50, h: 20, speed: 8 }; 
                 
@@ -3838,7 +3904,7 @@
                 document.getElementById('work-timer').innerText = `Raport...`;
             }
             
-            const res = await apiCall('/api/work/finish', 'POST', { workId: currentSelectedWorkId, goodObjectsCaught: gameState.caught, obstaclesCaught: gameState.missed, failed: isFailed }, true);
+            const res = await apiCall('/api/work/finish', 'POST', { workId: currentSelectedWorkId, goodObjectsCaught: gameState.caught, obstaclesCaught: gameState.missed, failed: isFailed, extraHpPenaltyPct: gameState.extraHpPenalty }, true);
             
             if (res && res.success) {
                 if (isFailed) {
@@ -3856,30 +3922,35 @@
                     `;
                     showNotification('Wyrzucono Cię z pracy!', penaltyMsg, 'error', 7000);
                 } else {
-                    const data = res.data;
-                    let msg = `<div style="margin-bottom: 4px;">💰 Monety: <b style="color:#ffffff;">+${data.finalCoins}</b></div>`;
-                    
-                    let gains = [];
-                    if (data.gains.str !== "0") gains.push(`+${data.gains.str} Siła`);
-                    if (data.gains.spd !== "0") gains.push(`+${data.gains.spd} Szybk.`);
-                    if (data.gains.end !== "0") gains.push(`+${data.gains.end} Wytrz.`);
-                    if (data.gains.hp !== "0") gains.push(`+${data.gains.hp} HP`);
-                    if (data.gains.mp !== "0") gains.push(`+${data.gains.mp} MP`);
-                    
-                    if (gains.length > 0) {
-                        msg += `<div style="font-size: 0.85rem; margin-top: 6px; color: #ffffff; border-top: 1px dashed rgba(255,255,255,0.3); padding-top: 6px; font-weight: bold;">🏋️ Trening: ${gains.join(', ')}</div>`;
-                    }
-                    
-                    // ZMIANA 2B: Odbiór twardego komunikatu prosto z backendu!
-                    if (data.server_warning) {
-                        msg += `<div style="font-size: 0.85rem; margin-top: 8px; color: #ffffff; font-weight: bold; border-top: 1px dashed rgba(255,255,255,0.3); padding-top: 8px;">⚠️ ${data.server_warning}</div>`;
-                    }
+                    // NOWE: Sprawdzamy czy przetrwaliśmy zmianę, ale Złodziej nas zabił!
+                    if (res.data.isDead) {
+                        showNotification('Szpital!', `Przetrwałeś zmianę, ale ataki Złodziei całkowicie Cię wycieńczyły! Trafiasz do szpitala.`, 'death', 7000);
+                    } else {
+                        // Standardowy raport ze zmiany
+                        const data = res.data;
+                        let msg = `<div style="margin-bottom: 4px;">💰 Monety: <b style="color:#ffffff;">+${data.finalCoins}</b></div>`;
+                        
+                        let gains = [];
+                        if (data.gains.str !== "0") gains.push(`+${data.gains.str} Siła`);
+                        if (data.gains.spd !== "0") gains.push(`+${data.gains.spd} Szybk.`);
+                        if (data.gains.end !== "0") gains.push(`+${data.gains.end} Wytrz.`);
+                        if (data.gains.hp !== "0") gains.push(`+${data.gains.hp} HP`);
+                        if (data.gains.mp !== "0") gains.push(`+${data.gains.mp} MP`);
+                        
+                        if (gains.length > 0) {
+                            msg += `<div style="font-size: 0.85rem; margin-top: 6px; color: #ffffff; border-top: 1px dashed rgba(255,255,255,0.3); padding-top: 6px; font-weight: bold;">🏋️ Trening: ${gains.join(', ')}</div>`;
+                        }
+                        
+                        if (data.server_warning) {
+                            msg += `<div style="font-size: 0.85rem; margin-top: 8px; color: #ffffff; font-weight: bold; border-top: 1px dashed rgba(255,255,255,0.3); padding-top: 8px;">⚠️ ${data.server_warning}</div>`;
+                        }
 
-                    if (data.drops && data.drops.length > 0) {
-                        msg += `<div style="font-size: 0.85rem; margin-top: 6px; color: #4ade80; font-weight: bold;">🎁 Zdobyto: Święta Woda!</div>`;
+                        if (data.drops && data.drops.length > 0) {
+                            msg += `<div style="font-size: 0.85rem; margin-top: 6px; color: #4ade80; font-weight: bold;">🎁 Zdobyto: Święta Woda!</div>`;
+                        }
+                        
+                        showNotification('Koniec Zmiany', msg, data.server_warning ? 'warning' : 'success', 6000);
                     }
-                    
-                    showNotification('Koniec Zmiany', msg, data.server_warning ? 'warning' : 'success', 6000);
                 }
             }
 
@@ -3908,7 +3979,7 @@
                 
                 lockTabsForWork(false);
             }, isFailed ? 2500 : 0);
-        }
+        } 
 
         // Czyszczenie pamięci przy wylogowaniu (zapobiega mieszaniu się kont)
         const logoutBtnGame = document.getElementById('logout-btn');

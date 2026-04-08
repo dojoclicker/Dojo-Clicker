@@ -2089,7 +2089,10 @@ app.post('/api/work/finish', authenticateToken, requireAlive, async (req, res) =
         let sLossEnd = BigInt(Math.max(1, guaranteedPerStat + guaranteedRemainder + randEnd));
 
         // 3. OBLICZAMY NOWE ZASOBY I SPRAWDZAMY CZY GRACZ PRZEŻYŁ
+        const extraHpPct = BigInt(req.body.extraHpPenaltyPct || 0); // <--- Odbiór kradzieży Złodzieja!
         let newHp = maxBigInt(0n, BigInt(char.hp) - (BigInt(fullStats.max_hp) * pct / 100n));
+        newHp = maxBigInt(0n, newHp - (BigInt(fullStats.max_hp) * extraHpPct / 100n));
+        
         let newMp = maxBigInt(0n, BigInt(char.mp) - (BigInt(fullStats.max_mp) * pct / 100n));
         let newStamina = maxBigInt(0n, BigInt(char.stamina) - (BigInt(fullStats.max_stamina) * pct / 100n));
         
@@ -2131,6 +2134,17 @@ app.post('/api/work/finish', authenticateToken, requireAlive, async (req, res) =
 
     const netScore = maxBigInt(0n, BigInt(goodObjectsCaught) - BigInt(obstaclesCaught));
     
+    // NOWE: Odejmowanie HP przez Złodzieja nawet przy "wygranej" pracy!
+    const extraHpPct = BigInt(req.body.extraHpPenaltyPct || 0);
+    let newHp = BigInt(char.hp);
+    let isDead = false;
+    let exactEndMs = null;
+
+    if (extraHpPct > 0n) {
+        newHp = maxBigInt(0n, newHp - (BigInt(fullStats.max_hp) * extraHpPct / 100n));
+        isDead = newHp <= 0n;
+    }
+
     let activeStr = BigInt(fullStats.baseStats.strength || 0) + BigInt(fullStats.equipStats.strength || 0);
     let activeSpd = BigInt(fullStats.baseStats.speed || 0) + BigInt(fullStats.equipStats.speed || 0);
     let activeEnd = BigInt(fullStats.baseStats.endurance || 0) + BigInt(fullStats.equipStats.endurance || 0);
@@ -2138,19 +2152,11 @@ app.post('/api/work/finish', authenticateToken, requireAlive, async (req, res) =
     let penaltyMultiplier = 1.0;
     const weakest = minBigInt(activeStr, minBigInt(activeSpd, activeEnd));
     
-    // Twarde przypisanie tekstu w backendzie, by ominąć problemy na froncie
     let serverWarningText = null; 
 
-    if (weakest >= (reqStat * 8n) + 100n) {
-        penaltyMultiplier = 0.10;
-        serverWarningText = 'Zyski obniżone o 90% (Duża kara za potęgę)';
-    } else if (weakest >= (reqStat * 4n) + 40n) {
-        penaltyMultiplier = 0.50;
-        serverWarningText = 'Zyski obniżone o 50% (Średnia kara za potęgę)';
-    } else if (weakest >= (reqStat * 2n) + 15n) {
-        penaltyMultiplier = 0.75;
-        serverWarningText = 'Zyski obniżone o 25% (Mała kara za potęgę)';
-    }
+    if (weakest >= (reqStat * 8n) + 100n) { penaltyMultiplier = 0.10; serverWarningText = 'Zyski obniżone o 90% (Duża kara za potęgę)'; } 
+    else if (weakest >= (reqStat * 4n) + 40n) { penaltyMultiplier = 0.50; serverWarningText = 'Zyski obniżone o 50% (Średnia kara za potęgę)'; } 
+    else if (weakest >= (reqStat * 2n) + 15n) { penaltyMultiplier = 0.75; serverWarningText = 'Zyski obniżone o 25% (Mała kara za potęgę)'; }
 
     const finalCoins = BigInt(Math.floor(Number(netScore * work.reward_coins) * penaltyMultiplier));
     const applyPenalty = (val) => BigInt(Math.floor(Number(netScore * val) * penaltyMultiplier));
@@ -2170,17 +2176,33 @@ app.post('/api/work/finish', authenticateToken, requireAlive, async (req, res) =
         await supabase.from('inventory').insert({ character_id: char.id, item_template_id: "00000000-0000-0000-0000-000000000008", quantity: 1, backpack_index: freeIndex });
     }
 
-    await supabase.from('characters').update({
+    let updateData = {
         coins: (BigInt(char.coins) + finalCoins).toString(),
         strength: (BigInt(char.strength) + gStr).toString(),
         speed: (BigInt(char.speed) + gSpd).toString(),
         endurance: (BigInt(char.endurance) + gEnd).toString(),
         bonus_hp: (BigInt(char.bonus_hp) + gHp).toString(),
-        bonus_mp: (BigInt(char.bonus_mp) + gMp).toString()
-    }).eq('id', char.id);
+        bonus_mp: (BigInt(char.bonus_mp) + gMp).toString(),
+        hp: newHp.toString() // <--- ZAKTUALIZOWANE HP
+    };
 
-    // Wysyłamy tekst kary wprost z serwera
-    res.json({ success: true, finalCoins: finalCoins.toString(), gains: { str: gStr.toString(), spd: gSpd.toString(), end: gEnd.toString(), hp: gHp.toString(), mp: gMp.toString() }, drops: dropIds, server_warning: serverWarningText });
+    if (isDead) {
+        const pl = BigInt(fullStats.powerLevel);
+        const hospitalMinutes = Math.min(120, 5 + Math.floor(Math.pow(Number(pl), 0.25)));
+        exactEndMs = Date.now() + hospitalMinutes * 60000;
+        
+        updateData.hospital_until = new Date(exactEndMs).toISOString();
+        updateData.current_form = 'Stan Podstawowy';
+        updateData.last_death_penalty = {
+            strength: '0', speed: '0', endurance: '0', intelligence: '0', mental_strength: '0',
+            hospital_end_ms: exactEndMs.toString(),
+            source: 'work'
+        };
+    }
+
+    await supabase.from('characters').update(updateData).eq('id', char.id);
+
+    res.json({ success: true, isDead: isDead, finalCoins: finalCoins.toString(), gains: { str: gStr.toString(), spd: gSpd.toString(), end: gEnd.toString(), hp: gHp.toString(), mp: gMp.toString() }, drops: dropIds, server_warning: serverWarningText });
   } catch (err) { res.status(500).json({ error: 'Błąd serwera' }); }
 });
 
