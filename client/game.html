@@ -48,7 +48,7 @@
                 <div class="nav-text">Trening</div>
             </button>
             <button class="nav-btn disabled locked" data-tab="work" id="nav-work-btn">
-                <div class="nav-icon">⛏️</div>
+                <div class="nav-icon">💼</div>
                 <div class="nav-text">Praca</div>
             </button>
         </div>
@@ -3552,8 +3552,8 @@
             currentWorkReward = workObj.reward;
             currentWorkDifficulty = WORK_FRONTEND_DATA.findIndex(w => w.id === workObj.id) + 1;
             
-            // Bezpieczne odznaczanie wszystkich kart i zaznaczenie nowej
-            document.querySelectorAll('.work-card').forEach(c => c.classList.remove('selected'));
+            // Prawidłowe odznaczanie kart używających pożyczonego stylu mentor-card
+            document.querySelectorAll('#work-list-container .mentor-card').forEach(c => c.classList.remove('selected'));
             cardElement.classList.add('selected');
             
             // 1. Pobranie DOKŁADNYCH wymagań z danych misji (zapisanych w window.allMissions)
