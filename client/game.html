@@ -295,26 +295,22 @@
                         <button id="start-work-btn" class="upgrade-btn disabled" style="padding: 1rem 2rem; font-size: 1.2rem; display: none;">Rozpocznij Zmianę</button>
                     </div>
 
-                    <div id="work-canvas-container" style="display: none; flex-direction: column; align-items: center; width: 100%; height: 100%;">
+                    <div id="work-canvas-container" class="panel-right" style="display: none; flex-direction: column; align-items: center; width: 100%; height: 100%; justify-content: center;">
                         
-                        <div class="work-game-area">
+                        <div class="work-game-area" style="width: 900px; max-width: 100%;">
                             
-                            <div class="work-canvas-wrapper">
-                                <canvas id="workCanvas" width="900" height="500" style="background: #000; border: 2px solid var(--goku-panel-border); border-radius: 8px; user-select: none; touch-action: none; max-width: 100%;"></canvas>
-                            </div>
-
                             <div class="work-canvas-wrapper" style="flex: 0 0 auto;">
-                                <canvas id="workCanvas" width="800" height="420" style="background: #000; border: 2px solid var(--goku-panel-border); border-radius: 8px; user-select: none; touch-action: none; max-width: 100%;"></canvas>
+                                <canvas id="workCanvas" width="650" height="500" style="background: #000; border: 2px solid var(--goku-panel-border); border-radius: 8px; user-select: none; touch-action: none; max-width: 100%;"></canvas>
                             </div>
 
-                            <div class="work-hud-wrapper" style="flex: 1; display: flex; flex-direction: column; justify-content: flex-start; height: 420px; padding: 10px; overflow: hidden;">
+                            <div class="work-hud-wrapper" style="flex: 1; display: flex; flex-direction: column; justify-content: space-between; height: 500px; padding: 12px; overflow: hidden; min-width: 250px;">
                                 
-                                <div class="work-hud-box" style="padding: 10px; background: rgba(0,0,0,0.6); border: 1px solid rgba(255,107,0,0.2); margin-bottom: 10px;">
+                                <div class="work-hud-box" style="padding: 10px; background: rgba(0,0,0,0.6); border: 1px solid rgba(255,107,0,0.2);">
                                     <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px;">Pozostały Czas</div>
                                     <div id="work-timer" style="font-size: 2.2rem; font-weight: bold; color: var(--goku-accent); font-family: monospace;">0s</div>
                                 </div>
                                 
-                                <div class="work-hud-box" style="font-size: 0.95rem; font-weight: bold; padding: 10px; background: rgba(0,0,0,0.6); border: 1px solid rgba(255,107,0,0.2); margin-bottom: 10px;">
+                                <div class="work-hud-box" style="font-size: 0.95rem; font-weight: bold; padding: 10px; background: rgba(0,0,0,0.6); border: 1px solid rgba(255,107,0,0.2);">
                                     <div id="work-score-good" style="color: var(--success); margin-bottom: 5px; display: flex; justify-content: space-between; border-bottom: 1px dashed rgba(255,255,255,0.1); padding-bottom: 5px;">
                                         <span>✅ Złapane:</span> <span>0</span>
                                     </div>
@@ -323,19 +319,18 @@
                                     </div>
                                 </div>
 
-                                <div class="work-hud-box" style="flex: 1; display: flex; flex-direction: column; padding: 10px; background: rgba(0,0,0,0.6); border: 1px solid rgba(255,107,0,0.2); overflow: hidden;">
+                                <div class="work-hud-box" style="flex: 1; display: flex; flex-direction: column; padding: 10px; background: rgba(0,0,0,0.6); border: 1px solid rgba(255,107,0,0.2); overflow: hidden; margin-top: 15px;">
                                     <div style="color: var(--text-muted); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1px; border-bottom: 1px solid var(--goku-panel-border); padding-bottom: 4px; margin-bottom: 8px;">Przewidywane Zyski</div>
                                     
-                                    <div id="live-coins" style="color: #fbbf24; font-weight: bold; font-size: 1.2rem; margin-bottom: 8px;">
+                                    <div id="live-coins" style="color: #fbbf24; font-weight: bold; font-size: 1.3rem; margin-bottom: 8px;">
                                         💰 0 Monet
                                     </div>
 
-                                    <div id="live-stats" style="color: var(--success); font-weight: bold; font-size: 0.8rem; text-align: left; background: rgba(0,0,0,0.3); padding: 6px; border-radius: 6px; overflow-y: auto; flex: 1;">
-                                    </div>
+                                    <div id="live-stats" style="color: var(--success); font-weight: bold; font-size: 0.85rem; text-align: left; background: rgba(0,0,0,0.3); padding: 8px; border-radius: 6px; overflow: hidden; flex: 1; display: flex; flex-direction: column; justify-content: center;">
+                                        </div>
                                 </div>
                             </div>
                         </div>
-
                     </div>
                 </div>
 
@@ -3668,15 +3663,16 @@
             document.getElementById('live-coins').innerText = `💰 ${coins} Monet`;
             
             let statsHtml = [];
-            if (tStr > 0) statsHtml.push(`<div style="display:flex; justify-content:space-between; margin-bottom:6px; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom:4px;"><span>💪 Siła:</span> <span>+${netScore * tStr}</span></div>`);
-            if (tSpd > 0) statsHtml.push(`<div style="display:flex; justify-content:space-between; margin-bottom:6px; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom:4px;"><span>⚡ Szybk:</span> <span>+${netScore * tSpd}</span></div>`);
-            if (tEnd > 0) statsHtml.push(`<div style="display:flex; justify-content:space-between; margin-bottom:6px; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom:4px;"><span>🛡️ Wytrz:</span> <span>+${netScore * tEnd}</span></div>`);
-            if (tHp > 0) statsHtml.push(`<div style="display:flex; justify-content:space-between; margin-bottom:6px; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom:4px;"><span>❤️ Max HP:</span> <span>+${netScore * tHp}</span></div>`);
-            if (tMp > 0) statsHtml.push(`<div style="display:flex; justify-content:space-between;"><span>💧 Max MP:</span> <span>+${netScore * tMp}</span></div>`);
+            // Bardzo cienkie marginesy, żeby gwarantować brak suwaków nawet przy 5 statystykach
+            if (tStr > 0) statsHtml.push(`<div style="display:flex; justify-content:space-between; margin-bottom:3px;"><span>💪 Siła:</span> <span>+${netScore * tStr}</span></div>`);
+            if (tSpd > 0) statsHtml.push(`<div style="display:flex; justify-content:space-between; margin-bottom:3px;"><span>⚡ Szyb:</span> <span>+${netScore * tSpd}</span></div>`);
+            if (tEnd > 0) statsHtml.push(`<div style="display:flex; justify-content:space-between; margin-bottom:3px;"><span>🛡️ Wytrz:</span> <span>+${netScore * tEnd}</span></div>`);
+            if (tHp > 0)  statsHtml.push(`<div style="display:flex; justify-content:space-between; margin-bottom:3px;"><span>❤️ Max HP:</span> <span>+${netScore * tHp}</span></div>`);
+            if (tMp > 0)  statsHtml.push(`<div style="display:flex; justify-content:space-between;"><span>💧 Max MP:</span> <span>+${netScore * tMp}</span></div>`);
             
             document.getElementById('live-stats').innerHTML = statsHtml.length > 0 
-                ? `<div style="text-align: center; margin-bottom: 8px; color: #fff;">🏋️ Trening:</div>` + statsHtml.join('') 
-                : `<div style="color: var(--text-muted); text-align: center; margin-top: auto; margin-bottom: auto;">Brak założonego ciężkiego sprzętu</div>`;
+                ? `<div style="text-align: center; margin-bottom: 6px; color: #fff; font-size: 0.9rem;">🏋️ Trening:</div>` + statsHtml.join('') 
+                : `<div style="color: var(--text-muted); text-align: center; margin-top: auto; margin-bottom: auto;">Brak sprzętu trening.</div>`;
         }
 
         function spawnObject() {
@@ -3736,17 +3732,24 @@
 
             if (res.success) {
                 window.isWorkMinigameActive = true; lockTabsForWork(true);
-                document.getElementById('work-list-panel').style.display = 'none';
-                document.getElementById('work-active-panel').style.flex = '1 1 100%';
+                
+                // POPRAWNE ID - Prawdziwe chowanie listy prac i centrowanie ekranu
+                document.getElementById('work-list-container').style.display = 'none';
                 document.getElementById('work-details-container').style.display = 'none';
-                document.getElementById('work-canvas-container').style.display = 'flex';
+                
+                const canvasBox = document.getElementById('work-canvas-container');
+                canvasBox.style.display = 'flex';
+                canvasBox.style.width = '100%'; 
                 
                 gameState.caught = 0; gameState.missed = 0; gameState.objects = [];
+                // Dopasowanie pozycji gracza do nowego wymiaru (wysokość 500)
+                gameState.player = { x: canvas.width / 2 - 25, y: canvas.height - 40, w: 50, h: 20, speed: 8 }; 
+                
                 gameState.timeLeft = res.data.duration;
                 
-                document.getElementById('work-score-good').innerText = `✅ Złapane: 0`;
-                document.getElementById('work-score-bad').innerText = `❌ Błędy: 0 / 3`;
-                document.getElementById('work-timer').innerText = `Czas: ${gameState.timeLeft}s`;
+                document.getElementById('work-score-good').innerHTML = `<span>✅ Złapane:</span> <span>0</span>`;
+                document.getElementById('work-score-bad').innerHTML = `<span>❌ Błędy:</span> <span>0 / 3</span>`;
+                document.getElementById('work-timer').innerText = `${gameState.timeLeft}s`;
                 document.getElementById('work-timer').style.color = 'var(--goku-accent)';
                 updateLiveCounter();
                 
@@ -3817,16 +3820,20 @@
                 }
             }
 
+            // POPRAWNE ID - Powrót do normalnego układu dwóch paneli
             setTimeout(() => {
                 fetchCharacterData(); fetchInventory();
-                document.getElementById('work-list-panel').style.display = 'block';
-                document.getElementById('work-active-panel').style.flex = '1';
+                document.getElementById('work-list-container').style.display = 'flex';
                 document.getElementById('work-details-container').style.display = 'flex';
-                document.getElementById('work-canvas-container').style.display = 'none';
+                
+                const canvasBox = document.getElementById('work-canvas-container');
+                canvasBox.style.display = 'none';
+                canvasBox.style.width = '';
+                
                 lockTabsForWork(false);
             }, isFailed ? 2500 : 0);
         }
-        
+
         // Czyszczenie pamięci przy wylogowaniu (zapobiega mieszaniu się kont)
         const logoutBtnGame = document.getElementById('logout-btn');
         if (logoutBtnGame) {
