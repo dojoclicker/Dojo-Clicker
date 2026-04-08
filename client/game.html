@@ -758,11 +758,18 @@
 
             // Dynamiczne doczepianie danych o misji do znacznika na potrzeby globalnego tooltipu
             const missionTooltipData = {
-                id: mission.id, // <--- TUTAJ BRAKOWAŁO ID!
-                name: mission.name, description: mission.description, chanceColor: chanceColor,
-                chanceNum: chanceNum, stamina_cost: mission.stamina_cost, reqStatsText: reqStatsText,
-                reward_coins_min: mission.reward_coins_min, reward_coins_max: mission.reward_coins_max,
-                rewardStatsText: rewardStatsText, dropsText: dropsText, unlockInfoText: unlockInfoText
+                id: mission.id,
+                name: mission.name, 
+                description: mission.description, 
+                chanceColor: chanceColor,
+                chanceNum: chanceNum, 
+                stamina_cost: mission.stamina_cost, 
+                reqStatsText: reqStatsText,
+                reward_coins_min: mission.reward_coins_min, 
+                reward_coins_max: mission.reward_coins_max,
+                rewardStatsText: rewardStatsText, 
+                dropsText: dropsText, 
+                is_repeatable: mission.is_repeatable // <-- PRZEKAZUJEMY TYP MISJI BEZPOŚREDNIO
             };
             card.setAttribute('data-mission-template', encodeURIComponent(JSON.stringify(missionTooltipData)));
 
@@ -2328,30 +2335,50 @@
         // Tworzenie tooltipu dla misji
         function createMissionTooltip(template) {
             if (!template) return '';
-            
-            const STORY_MISSIONS_IDS = {
-                TRAINING: '00000000-0000-0000-0000-000000000005', 
-                WORK: '10000000-0000-0000-0000-000000000006',
-                SPECIAL_TASKS: '10000000-0000-0000-0000-000000000010',
-                LABORATORY: '10000000-0000-0000-0000-000000000015',
-                MEDITATION: '10000000-0000-0000-0000-000000000020',
-                PVP: '00000000-0000-0000-0000-000000000025'
+
+            // Słownik odblokowań GDD (Twarde UUID -> Co odblokowuje dana misja)
+            const unlocks = {
+                '00000000-0000-0000-0000-000000000005': { tab: 'Trening 🧘‍♂️', mentor: 'Stary Mistrz 👴' },
+                '10000000-0000-0000-0000-000000000006': { tab: 'Praca 💼', work: 'Roznoszenie Mleka 🥛' },
+                '10000000-0000-0000-0000-000000000007': { work: 'Praca na Budowie 🧱' },
+                '10000000-0000-0000-0000-000000000008': { work: 'Praca w Polu 🌱' },
+                '10000000-0000-0000-0000-000000000009': { work: 'Drwal 🪵' },
+                '10000000-0000-0000-0000-000000000010': { tab: 'Zadania Specjalne 📜', work: 'Ekstremalny Kurier 📦' },
+                '10000000-0000-0000-0000-000000000015': { tab: 'Laboratorium Zwojów 🧪', work: 'Zbiór Magicznej Rosy 💧', mentor: 'Koci Pustelnik 🐈' },
+                '10000000-0000-0000-0000-000000000020': { tab: 'Głęboka Medytacja 🧘‍♀️', work: 'Boskie Ogrody 🌸', mentor: 'Pan Niebiańskiego Pałacu ☁️' },
+                '00000000-0000-0000-0000-000000000024': { mentor: 'Sala Czasu ⏳' },
+                '00000000-0000-0000-0000-000000000025': { tab: 'Arena PVP ⚔️' }
             };
 
-            let unlockText = '';
+            const unlockInfo = unlocks[template.id] || {};
             
-            // Weryfikacja tylko po stałym ID (odporna na zmianę template.name)
-            if (template.id === STORY_MISSIONS_IDS.TRAINING) unlockText = 'Sukces odblokowuje: Zakładkę Treningu 🧘‍♂️';
-            else if (template.id === STORY_MISSIONS_IDS.WORK) unlockText = 'Sukces odblokowuje: Pracę 💼';
-            else if (template.id === STORY_MISSIONS_IDS.SPECIAL_TASKS) unlockText = 'Sukces odblokowuje: Zadania Specjalne 📜';
-            else if (template.id === STORY_MISSIONS_IDS.LABORATORY) unlockText = 'Sukces odblokowuje: Laboratorium Zwojów 🧪';
-            else if (template.id === STORY_MISSIONS_IDS.MEDITATION) unlockText = 'Sukces odblokowuje: Głęboką Medytację 🧘‍♀️';
-            else if (template.id === STORY_MISSIONS_IDS.PVP) unlockText = 'Sukces odblokowuje: Arenę PVP ⚔️';
+            // Generowanie sekcji "Sukces odblokowuje"
+            let unlockHtml = `
+                <div style="font-size: 0.85rem; margin-top: 10px; border-top: 1px dashed rgba(255,255,255,0.2); padding-top: 8px; text-align: left;">
+                    <span style="color: #ffffff; font-weight: bold; margin-bottom: 4px; display: block;">Sukces odblokowuje:</span>
+                    <ul style="margin: 0; padding-left: 20px; list-style-type: disc;">
+                        <li style="color: #94a3b8; font-weight: bold; margin-bottom: 2px;">Kolejną Misję</li>`;
 
-            let unlockHtml = unlockText ? `<div style="font-size: 0.85rem; color: #a3e635; margin-top: 8px; border-top: 1px dashed rgba(255,255,255,0.1); padding-top: 6px; text-align: center; font-weight: bold;">${unlockText}</div>` : '';
+            if (unlockInfo.tab) {
+                unlockHtml += `<li style="color: #4ade80; margin-bottom: 2px;">Zakładkę: <b>${unlockInfo.tab}</b></li>`;
+            }
+            if (unlockInfo.work) {
+                unlockHtml += `<li style="color: #3b82f6; margin-bottom: 2px;">Pracę: <b>${unlockInfo.work}</b></li>`;
+            }
+            if (unlockInfo.mentor) {
+                unlockHtml += `<li style="color: #fbbf24; font-weight: bold; margin-bottom: 2px;">Mentor: ${unlockInfo.mentor}</li>`;
+            }
+            
+            unlockHtml += `</ul></div>`;
+
+            // Oznaczenie typu misji na samej górze
+            const isRepeatable = template.is_repeatable !== false; // Domyślnie true
+            const typeText = isRepeatable ? 'Misja Powtarzalna' : 'Misja Jednorazowa';
+            const typeColor = isRepeatable ? '#94a3b8' : '#fbbf24'; // Złoty dla jednorazowych, szary dla powtarzalnych
 
             return `
                 <div class="tooltip-title">${template.name}</div>
+                <div style="font-size: 0.8rem; color: ${typeColor}; font-weight: bold; text-align: center; margin-bottom: 6px; letter-spacing: 0.5px; text-transform: uppercase;">${typeText}</div>
                 <div style="font-size: 0.85rem; margin-bottom: 0.5rem; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 0.5rem; text-align: center;"><i>${template.description || ''}</i></div>
                 <div style="font-size: 0.95rem; margin-bottom: 0.75rem; text-align: center; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 0.5rem;">Szansa na sukces: <span style="color: ${template.chanceColor}; font-weight: bold;">${template.chanceNum}%</span></div>
                 <div style="font-size: 0.85rem; color: var(--goku-accent); font-weight: bold;">Koszt Staminy: ${template.stamina_cost}</div>
@@ -2359,7 +2386,6 @@
                 <div style="font-size: 0.85rem; margin-top: 4px;"><b>Nagroda Monety:</b> ${template.reward_coins_min || '0'} - ${template.reward_coins_max || '0'}</div>
                 <div style="font-size: 0.85rem; margin-top: 4px;"><b>Statystyki:</b> ${template.rewardStatsText}</div>
                 <div style="font-size: 0.85rem; margin-top: 4px;"><b>Dodatkowe Drop:</b> ${template.dropsText}</div>
-                <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 8px; border-top: 1px dashed rgba(255,255,255,0.1); padding-top: 6px; text-align: center;">${template.unlockInfoText}</div>
                 ${unlockHtml}
             `;
         }
