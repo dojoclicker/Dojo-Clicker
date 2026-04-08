@@ -1023,6 +1023,7 @@
         // 🏥 3. SZPITAL I REGENERACJA
         // ==========================================
         // Tu znajdują się: Odliczanie szpitala, lockTabsForHospital()
+        let hospitalInterval = null;
         function startHospitalCountdown(hospitalUntilStr, reason = null) {
           if (hospitalInterval) clearInterval(hospitalInterval);
           
