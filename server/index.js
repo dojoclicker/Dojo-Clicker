@@ -2162,17 +2162,14 @@ app.post('/api/work/finish', authenticateToken, requireAlive, async (req, res) =
     });
 
     if (updateErr) {
-       // POPRAWKA 2: Dodano fizyczny zapis każdej statystyki (zamiast samych monet)
-       const { error: fallbackErr } = await supabase.from('characters').update({
+       await supabase.from('characters').update({
          coins: (BigInt(char.coins || '0') + finalCoins).toString(),
-         strength: (BigInt(char.strength || '0') + (trainStr > 0n ? gainStr : 0n)).toString(),
-         speed: (BigInt(char.speed || '0') + (trainSpd > 0n ? gainSpd : 0n)).toString(),
-         endurance: (BigInt(char.endurance || '0') + (trainEnd > 0n ? gainEnd : 0n)).toString(),
-         bonus_hp: (BigInt(char.bonus_hp || '0') + (trainHp > 0n ? gainHp : 0n)).toString(),
-         bonus_mp: (BigInt(char.bonus_mp || '0') + (trainMp > 0n ? gainMp : 0n)).toString()
+         strength: (BigInt(char.strength || '0') + gainStr).toString(),
+         speed: (BigInt(char.speed || '0') + gainSpd).toString(),
+         endurance: (BigInt(char.endurance || '0') + gainEnd).toString(),
+         bonus_hp: (BigInt(char.bonus_hp || '0') + gainHp).toString(),
+         bonus_mp: (BigInt(char.bonus_mp || '0') + gainMp).toString()
        }).eq('profile_id', userId);
-       
-       if (fallbackErr) throw fallbackErr;
     }
 
     res.json({ 
