@@ -3682,38 +3682,43 @@
         function spawnObject() {
             if (!window.isWorkMinigameActive) return;
             
-            // 1. TABLICA LUT (Twoje nowe, dopracowane czasy spadania od 1 do 15 pracy)
-            const dropTimesLUT = [3.5, 3.2, 3.0, 2.8, 2.7, 2.6, 2.5, 2.4, 2.3, 2.2, 2.1, 2.0, 1.8, 1.5, 1.2];
+            // 1. TWOJA NOWA TABLICA LUT (Prędkość od 2.5s do 1.1s)
+            const dropTimesLUT = [2.5, 2.4, 2.3, 2.2, 2.1, 2.0, 1.9, 1.8, 1.7, 1.6, 1.5, 1.4, 1.3, 1.2, 1.1];
             
-            // Znajdujemy, która to praca z kolei (żeby dopasować ją do indeksu tabeli)
             const workIndex = WORK_FRONTEND_DATA.findIndex(w => w.id === currentSelectedWorkId);
             const safeIndex = Math.max(0, Math.min(workIndex, dropTimesLUT.length - 1));
             const targetTimeSeconds = dropTimesLUT[safeIndex];
             
-            // Przeliczamy Twoje sekundy na piksele na klatkę (zakładając canvas ~500px wys. i gre ~60fps)
             let baseSpeed = 500 / (targetTimeSeconds * 60);
-            let speed = baseSpeed + (Math.random() * (baseSpeed * 0.15)); // +15% odchylenia by nie spadały zbyt mechanicznie
+            let speed = baseSpeed + (Math.random() * (baseSpeed * 0.1));
             
-            // 2. SZANSA NA PUŁAPKĘ (od 10% do max 45%)
-            let trapChance = Math.min(0.10 + (safeIndex * 0.03), 0.45);
+            // 2. SZANSA NA PUŁAPKĘ + GWARANCJA MINIMUM 3
+            // Podnosimy bazową szansę na 15% na start
+            let trapChance = Math.min(0.15 + (safeIndex * 0.03), 0.50);
             let isObst = Math.random() < trapChance;
+            
+            // Logika gwarancji: jeśli zostało mało czasu, a pułapek było mało - wymuś pułapkę
+            if (gameState.timeLeft < 6 && gameState.trapsSpawned < 3) {
+                isObst = true;
+            }
+            
+            if (isObst) gameState.trapsSpawned++;
             
             const currentWorkData = WORK_FRONTEND_DATA[safeIndex];
             const currentEmoji = isObst ? currentWorkData.badEmoji : currentWorkData.goodEmoji;
             
             gameState.objects.push({ 
                 x: Math.random() * (canvas.width - 28), 
-                y: -28, 
-                w: 28, 
-                h: 28, 
+                y: -28, w: 28, h: 28, 
                 isObstacle: isObst, 
                 speed: speed, 
                 emoji: currentEmoji 
             });
             
-            // 3. OPÓŹNIENIE (Im mniejszy index pracy, tym rzadziej lecą obiekty)
-            let baseDelay = Math.max(800 - (safeIndex * 50), 250); 
-            let finalDelay = baseDelay + (Math.random() * 150);
+            // 3. ZWIĘKSZONA GĘSTOŚĆ (Zagęszczanie elementów w każdej pracy)
+            // Startujemy od 600ms, schodzimy do 150ms w 15. pracy
+            let baseDelay = Math.max(600 - (safeIndex * 32), 150); 
+            let finalDelay = baseDelay + (Math.random() * 100);
             
             setTimeout(spawnObject, finalDelay);
         }
@@ -3781,7 +3786,7 @@
                     canvasBox.style.width = '100%'; 
                 }
                 
-                gameState.caught = 0; gameState.missed = 0; gameState.objects = [];
+                gameState.caught = 0; gameState.missed = 0; gameState.objects = []; gameState.trapsSpawned = 0;
                 // Dopasowanie pozycji gracza do nowego wymiaru (wysokość 500)
                 gameState.player = { x: canvas.width / 2 - 25, y: canvas.height - 40, w: 50, h: 20, speed: 8 }; 
                 
