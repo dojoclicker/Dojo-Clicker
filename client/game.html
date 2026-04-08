@@ -3800,6 +3800,16 @@
                     showNotification('Koniec Zmiany', msg, isWarning ? 'warning' : 'success', 6000);
                 }
             }
+
+            // Tego u Ciebie brakowało - przywraca widoki paneli do normy po pracy
+            setTimeout(() => {
+                fetchCharacterData(); fetchInventory();
+                document.getElementById('work-list-panel').style.display = 'block';
+                document.getElementById('work-active-panel').style.flex = '1';
+                document.getElementById('work-details-container').style.display = 'flex';
+                document.getElementById('work-canvas-container').style.display = 'none';
+                lockTabsForWork(false);
+            }, isFailed ? 2500 : 0);
         }
 
         // Czyszczenie pamięci przy wylogowaniu (zapobiega mieszaniu się kont)
