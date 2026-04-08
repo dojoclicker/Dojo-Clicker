@@ -3542,31 +3542,57 @@
             currentWorkReward = workObj.reward;
             currentWorkDifficulty = WORK_FRONTEND_DATA.findIndex(w => w.id === workObj.id) + 1;
             
-            document.querySelectorAll('#work-list-container .mentor-card').forEach(c => c.classList.remove('selected'));
+            // Zaznaczanie karty
+            document.querySelectorAll('#work-list-container .work-card').forEach(c => c.classList.remove('selected'));
             cardElement.classList.add('selected');
             
-            // Pobranie statystyk gracza z GŁÓWNYCH danych postaci (i konwersja na BigInt dla bezpieczeństwa)
+            // 1. Pobranie DOKŁADNYCH wymagań z danych misji (zapisanych w window.allMissionsData)
+            const mission = (window.allMissionsData || []).find(m => m.id === workObj.reqMission);
+            const reqs = mission ? mission.req_stats : { strength: 0, speed: 0, endurance: 0 };
+
+            // 2. Pobranie Twoich aktualnych statystyk (z właściwej zmiennej characterData)
             const char = window.characterData || {};
             const pStr = BigInt(char.strength || 0);
             const pSpd = BigInt(char.speed || 0);
             const pEnd = BigInt(char.endurance || 0);
-            const reqBig = BigInt(workObj.reqStatValue || 0);
-            
-            const canWork = (pStr >= reqBig && pSpd >= reqBig && pEnd >= reqBig);
-            const reqText = `${workObj.reqStatValue} Siły, Szybkości i Wytrz.`;
 
+            // 3. Sprawdzenie warunków dla każdej statystyki osobno
+            const canStr = pStr >= BigInt(reqs.strength || 0);
+            const canSpd = pSpd >= BigInt(reqs.speed || 0);
+            const canEnd = pEnd >= BigInt(reqs.endurance || 0);
+            const canWork = canStr && canSpd && canEnd;
+
+            // 4. Budowa dynamicznego tekstu wymagań
+            const reqHtml = `
+                <span style="color: ${canStr ? 'var(--success)' : 'var(--error)'}">Siła: ${reqs.strength}</span>, 
+                <span style="color: ${canSpd ? 'var(--success)' : 'var(--error)'}">Szybkość: ${reqs.speed}</span>, 
+                <span style="color: ${canEnd ? 'var(--success)' : 'var(--error)'}">Wytrz.: ${reqs.endurance}</span>
+            `;
+
+            document.getElementById('work-title').innerText = workObj.name;
             document.getElementById('work-stats').innerHTML = `
                 <p style="margin-bottom: 5px;">🔴 Koszt: <b style="color: var(--error);">${workObj.costHpPct}% HP</b></p>
                 <p style="margin-bottom: 5px;">🟢 Koszt: <b style="color: var(--success);">${workObj.costStamina} Stamina</b></p>
                 <p style="margin-bottom: 15px;">🪙 Zarobek: <b style="color: var(--warning);">${workObj.reward} Monet / Złapany obiekt</b></p>
-                <p style="margin-top:10px; color: ${canWork ? 'var(--success)' : 'var(--error)'}; font-weight: bold;">
-                    ${canWork ? '✅ Spełniasz wymagania (Min. ' + reqText + ')' : '❌ Wymagane: Min. ' + reqText}
-                </p>
+                <div style="margin-top:10px; padding: 10px; background: rgba(0,0,0,0.2); border-radius: 4px;">
+                    <p style="font-weight: bold; margin-bottom: 5px;">Wymagania pracy:</p>
+                    <p style="font-size: 0.95rem;">${reqHtml}</p>
+                    <p style="margin-top: 8px; font-weight: bold; color: ${canWork ? 'var(--success)' : 'var(--error)'}">
+                        ${canWork ? '✅ Spełniasz wymagania' : '❌ Masz zbyt niskie statystyki'}
+                    </p>
+                </div>
             `;
             
             const startBtn = document.getElementById('start-work-btn');
             startBtn.style.display = 'inline-block';
-            canWork ? startBtn.classList.remove('disabled') : startBtn.classList.add('disabled');
+            
+            if (canWork) {
+                startBtn.classList.remove('disabled');
+                startBtn.removeAttribute('disabled');
+            } else {
+                startBtn.classList.add('disabled');
+                startBtn.setAttribute('disabled', 'true');
+            }
         }
 
         // ==========================================
