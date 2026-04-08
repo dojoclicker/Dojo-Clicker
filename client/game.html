@@ -3552,8 +3552,8 @@
             currentWorkReward = workObj.reward;
             currentWorkDifficulty = WORK_FRONTEND_DATA.findIndex(w => w.id === workObj.id) + 1;
             
-            // Zaznaczanie karty
-            document.querySelectorAll('#work-list-container .work-card').forEach(c => c.classList.remove('selected'));
+            // Bezpieczne odznaczanie wszystkich kart i zaznaczenie nowej
+            document.querySelectorAll('.work-card').forEach(c => c.classList.remove('selected'));
             cardElement.classList.add('selected');
             
             // 1. Pobranie DOKŁADNYCH wymagań z danych misji (zapisanych w window.allMissions)
