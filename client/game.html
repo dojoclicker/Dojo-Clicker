@@ -3682,8 +3682,8 @@
         function spawnObject() {
             if (!window.isWorkMinigameActive) return;
             
-            // 1. TABLICA LUT (Twoje czasy spadania w sekundach od 1 do 15 pracy)
-            const dropTimesLUT = [8.0, 6.0, 5.0, 4.5, 4.0, 3.5, 3.0, 2.5, 2.0, 1.8, 1.6, 1.4, 1.2, 1.0, 1.0];
+            // 1. TABLICA LUT (Twoje nowe, dopracowane czasy spadania od 1 do 15 pracy)
+            const dropTimesLUT = [3.5, 3.2, 3.0, 2.8, 2.7, 2.6, 2.5, 2.4, 2.3, 2.2, 2.1, 2.0, 1.8, 1.5, 1.2];
             
             // Znajdujemy, która to praca z kolei (żeby dopasować ją do indeksu tabeli)
             const workIndex = WORK_FRONTEND_DATA.findIndex(w => w.id === currentSelectedWorkId);
