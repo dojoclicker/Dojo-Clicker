@@ -3472,13 +3472,13 @@
 
         // Twarde przypisanie UUID z bazy misji
         const WORK_FRONTEND_DATA = [
-            { id: 'praca_mleko', name: 'Roznoszenie Mleka', reqMission: '10000000-0000-0000-0000-000000000006', reqName: 'Misję 6', costStamina: 10, costHpPct: 2, reward: 2 },
-            { id: 'praca_budowa', name: 'Praca na Budowie', reqMission: '10000000-0000-0000-0000-000000000007', reqName: 'Misję 7', costStamina: 10, costHpPct: 5, reward: 5 },
-            { id: 'praca_pole', name: 'Praca w Polu', reqMission: '10000000-0000-0000-0000-000000000008', reqName: 'Misję 8', costStamina: 15, costHpPct: 8, reward: 12 },
-            { id: 'praca_drwal', name: 'Drwal', reqMission: '10000000-0000-0000-0000-000000000009', reqName: 'Misję 9', costStamina: 15, costHpPct: 15, reward: 25 },
-            { id: 'praca_kurier', name: 'Ekstremalny Kurier', reqMission: '10000000-0000-0000-0000-000000000010', reqName: 'Misję 10', costStamina: 20, costHpPct: 25, reward: 60 },
-            { id: 'praca_rosa', name: 'Zbiór Magicznej Rosy', reqMission: '10000000-0000-0000-0000-000000000015', reqName: 'Misję 15', costStamina: 25, costHpPct: 10, reward: 150 },
-            { id: 'praca_ogrody', name: 'Boskie Ogrody', reqMission: '10000000-0000-0000-0000-000000000020', reqName: 'Misję 20', costStamina: 40, costHpPct: 15, reward: 500 }
+            { id: 'praca_mleko', name: 'Roznoszenie Mleka', reqMission: '10000000-0000-0000-0000-000000000006', reqName: 'Misję 6', costStamina: 10, costHpPct: 2, reward: 2, reqStatValue: 500 },
+            { id: 'praca_budowa', name: 'Praca na Budowie', reqMission: '10000000-0000-0000-0000-000000000007', reqName: 'Misję 7', costStamina: 10, costHpPct: 5, reward: 5, reqStatValue: 1000 },
+            { id: 'praca_pole', name: 'Praca w Polu', reqMission: '10000000-0000-0000-0000-000000000008', reqName: 'Misję 8', costStamina: 15, costHpPct: 8, reward: 12, reqStatValue: 2500 },
+            { id: 'praca_drwal', name: 'Drwal', reqMission: '10000000-0000-0000-0000-000000000009', reqName: 'Misję 9', costStamina: 15, costHpPct: 15, reward: 25, reqStatValue: 5000 },
+            { id: 'praca_kurier', name: 'Ekstremalny Kurier', reqMission: '10000000-0000-0000-0000-000000000010', reqName: 'Misję 10', costStamina: 20, costHpPct: 25, reward: 60, reqStatValue: 10000 },
+            { id: 'praca_rosa', name: 'Zbiór Magicznej Rosy', reqMission: '10000000-0000-0000-0000-000000000015', reqName: 'Misję 15', costStamina: 25, costHpPct: 10, reward: 150, reqStatValue: 80000 },
+            { id: 'praca_ogrody', name: 'Boskie Ogrody', reqMission: '10000000-0000-0000-0000-000000000020', reqName: 'Misję 20', costStamina: 40, costHpPct: 15, reward: 500, reqStatValue: 700000 }
         ];
 
         // Wyłącza pozostałe zakładki i guziki na czas pracy!
@@ -3538,23 +3538,30 @@
 
         function selectWork(workObj, cardElement) {
             if (window.isWorkMinigameActive) return; 
-            
             currentSelectedWorkId = workObj.id;
+            currentWorkReward = workObj.reward;
+            currentWorkDifficulty = WORK_FRONTEND_DATA.findIndex(w => w.id === workObj.id) + 1;
             
             document.querySelectorAll('#work-list-container .mentor-card').forEach(c => c.classList.remove('selected'));
             cardElement.classList.add('selected');
             
-            document.getElementById('work-title').innerText = workObj.name;
+            // Pobranie statystyk gracza z okna globalnego
+            const s = window.playerStats || { strength: 0, speed: 0, endurance: 0 };
+            const req = workObj.reqStatValue || 0;
+            const canWork = (s.strength >= req && s.speed >= req && s.endurance >= req);
+
             document.getElementById('work-stats').innerHTML = `
                 <p style="margin-bottom: 5px;">🔴 Koszt: <b style="color: var(--error);">${workObj.costHpPct}% HP</b></p>
                 <p style="margin-bottom: 5px;">🟢 Koszt: <b style="color: var(--success);">${workObj.costStamina} Stamina</b></p>
                 <p style="margin-bottom: 15px;">🪙 Zarobek: <b style="color: var(--warning);">${workObj.reward} Monet / Złapany obiekt</b></p>
-                <p style="font-size: 0.85rem; color: #a3e635;">Złapane obiekty mnożą dodatkowo Twój treningowy bonus z Ciężkiego Sprzętu!</p>
+                <p style="margin-top:10px; color: ${canWork ? 'var(--success)' : 'var(--error)'}; font-weight: bold;">
+                    ${canWork ? '✅ Spełniasz wymagania (Min. '+req+')' : '❌ Wymagane statystyki: Min. '+req}
+                </p>
             `;
             
             const startBtn = document.getElementById('start-work-btn');
             startBtn.style.display = 'inline-block';
-            startBtn.classList.remove('disabled');
+            canWork ? startBtn.classList.remove('disabled') : startBtn.classList.add('disabled');
         }
 
         // ==========================================
@@ -3624,12 +3631,11 @@
 
         function spawnObject() {
             if (!window.isWorkMinigameActive) return;
-            // Trudność rośnie z poziomem pracy
-            let baseChance = 0.15 + (currentWorkDifficulty * 0.04); 
-            let speed = (2.5 + (currentWorkDifficulty * 0.4)) + Math.random() * 2;
+            let baseChance = 0.12 + (currentWorkDifficulty * 0.05); 
+            let speed = (3.0 + (currentWorkDifficulty * 0.6)) + Math.random() * 2;
             
             gameState.objects.push({ x: Math.random() * (canvas.width - 20), y: -20, w: 20, h: 20, isObstacle: Math.random() < baseChance, speed: speed });
-            setTimeout(spawnObject, (450 - (currentWorkDifficulty * 25)) + Math.random() * 300);
+            setTimeout(spawnObject, (400 - (currentWorkDifficulty * 35)) + Math.random() * 250);
         }
 
         function gameLoop() {
@@ -3678,6 +3684,8 @@
 
             if (res.success) {
                 window.isWorkMinigameActive = true; lockTabsForWork(true);
+                document.getElementById('work-list-panel').style.display = 'none';
+                document.getElementById('work-active-panel').style.flex = '1 1 100%';
                 document.getElementById('work-details-container').style.display = 'none';
                 document.getElementById('work-canvas-container').style.display = 'flex';
                 
@@ -3730,12 +3738,15 @@
                     if (gains.length > 0) msg += `<div style="font-size: 0.85rem; margin-top: 6px; color: #ffffff; border-top: 1px dashed rgba(255,255,255,0.3); padding-top: 6px; font-weight: bold;">🏋️ Trening: ${gains.join(', ')}</div>`;
                     if (data.penalty < 1.0) msg += `<div style="font-size: 0.85rem; margin-top: 6px; color: #f59e0b; font-weight: bold;">⚠️ Monety obniżone z powodu dużej potęgi.</div>`;
                     if (data.drops && data.drops.length > 0) msg += `<div style="font-size: 0.85rem; margin-top: 6px; color: #4ade80; font-weight: bold;">🎁 Zdobyto: Święta Woda!</div>`;
-                    showNotification('Koniec Zmiany', msg, 'success', 6000);
+                    const isWarning = data.penalty < 1.0;
+                    showNotification(isWarning ? 'Utrudniona Praca' : 'Koniec Zmiany', msg, isWarning ? 'warning' : 'success', 6000);
                 }
             }
             
             setTimeout(() => {
                 fetchCharacterData(); fetchInventory();
+                document.getElementById('work-list-panel').style.display = 'block';
+                document.getElementById('work-active-panel').style.flex = '1';
                 document.getElementById('work-details-container').style.display = 'flex';
                 document.getElementById('work-canvas-container').style.display = 'none';
                 lockTabsForWork(false);
