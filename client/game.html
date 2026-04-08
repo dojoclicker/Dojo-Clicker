@@ -300,7 +300,7 @@
                         <div class="work-game-area">
                             
                             <div class="work-canvas-wrapper">
-                                <canvas id="workCanvas" width="450" height="420" style="background: #000; border: 2px solid var(--goku-panel-border); border-radius: 8px; user-select: none; touch-action: none; max-width: 100%;"></canvas>
+                                <canvas id="workCanvas" width="700" height="420" style="background: #000; border: 2px solid var(--goku-panel-border); border-radius: 8px; user-select: none; touch-action: none; max-width: 100%;"></canvas>
                             </div>
 
                             <div class="work-hud-wrapper">
@@ -3665,14 +3665,12 @@
         function spawnObject() {
             if (!window.isWorkMinigameActive) return;
             let baseChance = 0.12 + (currentWorkDifficulty * 0.05); 
-            
-            // KRYTYCZNA ZMIANA: Mnożnik prędkości zwiększony z 0.6 na 1.5. Różnica będzie drastyczna!
             let speed = (2.0 + (currentWorkDifficulty * 1.5)) + Math.random() * 2;
             
             gameState.objects.push({ x: Math.random() * (canvas.width - 20), y: -20, w: 20, h: 20, isObstacle: Math.random() < baseChance, speed: speed });
             
-            // Odstępy między obiektami ulegają znacznemu skróceniu na wyższych poziomach
-            setTimeout(spawnObject, (450 - (currentWorkDifficulty * 45)) + Math.random() * 250);
+            // ZNACZNIE GĘSTSZY SPAWN z racji szerokiego na 700px ekranu
+            setTimeout(spawnObject, (300 - (currentWorkDifficulty * 30)) + Math.random() * 200);
         }
 
         function gameLoop() {

@@ -2023,12 +2023,19 @@ app.post('/api/work/finish', authenticateToken, requireAlive, async (req, res) =
   try {
     const fullStats = await getFullCharacterStats(userId);
     const char = fullStats.character;
+    
+    // 1. DOKŁADNE POBRANIE WYMAGAŃ MISJI
     const { data: mission } = await supabase.from('missions').select('req_stats').eq('id', work.req_mission).single();
-    let reqStat = BigInt(mission?.req_stats?.strength || 1);
+    let reqStat = 1n;
+    if (mission && mission.req_stats) {
+        reqStat = BigInt(mission.req_stats.strength || mission.req_stats.speed || mission.req_stats.endurance || 1);
+    }
 
     if (failed) {
         const pct = work.penalty_pct;
-        const sLoss = maxBigInt(1n, reqStat / 100n);
+        // 2. BOLESNA KARA ZA PORAŻKĘ (Wymóg / 10, czyli dla Mleka 500/10 = 50 statystyk straty!)
+        const sLoss = maxBigInt(1n, reqStat / 10n); 
+        
         await supabase.from('characters').update({
             hp: maxBigInt(0n, BigInt(char.hp) - (BigInt(fullStats.max_hp) * pct / 100n)).toString(),
             mp: maxBigInt(0n, BigInt(char.mp) - (BigInt(fullStats.max_mp) * pct / 100n)).toString(),
@@ -2041,13 +2048,21 @@ app.post('/api/work/finish', authenticateToken, requireAlive, async (req, res) =
     }
 
     const netScore = maxBigInt(0n, BigInt(goodObjectsCaught) - BigInt(obstaclesCaught));
+    
+    // 3. PRAWIDŁOWE ZLICZENIE POTĘGI GRACZA (Baza + Ekwipunek) DO KARY FINANSOWEJ
+    let activeStr = BigInt(fullStats.baseStats.strength || 0) + BigInt(fullStats.equipStats.strength || 0);
+    let activeSpd = BigInt(fullStats.baseStats.speed || 0) + BigInt(fullStats.equipStats.speed || 0);
+    let activeEnd = BigInt(fullStats.baseStats.endurance || 0) + BigInt(fullStats.equipStats.endurance || 0);
+
     let penaltyMultiplier = 1.0;
-    const weakest = minBigInt(BigInt(char.strength), minBigInt(BigInt(char.speed), BigInt(char.endurance)));
+    const weakest = minBigInt(activeStr, minBigInt(activeSpd, activeEnd));
+    
+    // Matematyka tnie zyski, jeśli najsłabsza statystyka jest za wysoka!
     if (weakest >= (reqStat * 8n) + 100n) penaltyMultiplier = 0.10;
     else if (weakest >= (reqStat * 4n) + 40n) penaltyMultiplier = 0.50;
     else if (weakest >= (reqStat * 2n) + 15n) penaltyMultiplier = 0.75;
 
-    // KARA NAKŁADANA NA MONETY I TRENING
+    // KARY NAKŁADANE NA MONETY I TRENING
     const finalCoins = BigInt(Math.floor(Number(netScore * work.reward_coins) * penaltyMultiplier));
     const applyPenalty = (val) => BigInt(Math.floor(Number(netScore * val) * penaltyMultiplier));
 
