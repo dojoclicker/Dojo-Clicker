@@ -295,23 +295,23 @@
                         <button id="start-work-btn" class="upgrade-btn disabled" style="padding: 1rem 2rem; font-size: 1.2rem; display: none;">Rozpocznij Zmianę</button>
                     </div>
 
-                    <div id="work-canvas-container" class="panel-right" style="display: none; flex-direction: column; align-items: center; width: 100%; height: 100%; justify-content: center;">
+                    <div id="work-canvas-container" style="display: none; flex-direction: column; align-items: center; width: 100%; height: 100%; justify-content: center; overflow: hidden;">
                         
-                        <div class="work-game-area" style="width: 900px; max-width: 100%;">
+                        <div class="work-game-area" style="display: flex; flex-direction: row; gap: 20px; width: 100%; max-width: 950px; justify-content: center; align-items: stretch;">
                             
-                            <div class="work-canvas-wrapper" style="flex: 0 0 auto;">
-                                <canvas id="workCanvas" width="650" height="500" style="background: #000; border: 2px solid var(--goku-panel-border); border-radius: 8px; user-select: none; touch-action: none; max-width: 100%;"></canvas>
+                            <div class="work-canvas-wrapper" style="flex: 0 0 600px;">
+                                <canvas id="workCanvas" width="600" height="500" style="background: #000; border: 2px solid var(--goku-panel-border); border-radius: 8px; display: block; box-sizing: border-box;"></canvas>
                             </div>
 
-                            <div class="work-hud-wrapper" style="flex: 1; display: flex; flex-direction: column; justify-content: space-between; height: 500px; padding: 12px; overflow: hidden; min-width: 250px;">
+                            <div class="work-hud-wrapper" style="flex: 0 0 300px; display: flex; flex-direction: column; height: 500px; padding: 15px; box-sizing: border-box; background: rgba(0,0,0,0.3); border: 1px solid var(--goku-panel-border); border-radius: 8px; gap: 15px; margin: 0;">
                                 
-                                <div class="work-hud-box" style="padding: 10px; background: rgba(0,0,0,0.6); border: 1px solid rgba(255,107,0,0.2);">
+                                <div class="work-hud-box" style="flex: 0 0 auto; padding: 15px 10px; background: rgba(0,0,0,0.6); border: 1px solid rgba(255,107,0,0.2); border-radius: 6px; text-align: center;">
                                     <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px;">Pozostały Czas</div>
-                                    <div id="work-timer" style="font-size: 2.2rem; font-weight: bold; color: var(--goku-accent); font-family: monospace;">0s</div>
+                                    <div id="work-timer" style="font-size: 2.2rem; font-weight: bold; color: var(--goku-accent); font-family: monospace; margin-top: 5px;">0s</div>
                                 </div>
                                 
-                                <div class="work-hud-box" style="font-size: 0.95rem; font-weight: bold; padding: 10px; background: rgba(0,0,0,0.6); border: 1px solid rgba(255,107,0,0.2);">
-                                    <div id="work-score-good" style="color: var(--success); margin-bottom: 5px; display: flex; justify-content: space-between; border-bottom: 1px dashed rgba(255,255,255,0.1); padding-bottom: 5px;">
+                                <div class="work-hud-box" style="flex: 0 0 auto; font-size: 0.95rem; font-weight: bold; padding: 15px; background: rgba(0,0,0,0.6); border: 1px solid rgba(255,107,0,0.2); border-radius: 6px;">
+                                    <div id="work-score-good" style="color: var(--success); margin-bottom: 10px; display: flex; justify-content: space-between; border-bottom: 1px dashed rgba(255,255,255,0.1); padding-bottom: 10px;">
                                         <span>✅ Złapane:</span> <span>0</span>
                                     </div>
                                     <div id="work-score-bad" style="color: var(--error); display: flex; justify-content: space-between;">
@@ -319,14 +319,14 @@
                                     </div>
                                 </div>
 
-                                <div class="work-hud-box" style="flex: 1; display: flex; flex-direction: column; padding: 10px; background: rgba(0,0,0,0.6); border: 1px solid rgba(255,107,0,0.2); overflow: hidden; margin-top: 15px;">
-                                    <div style="color: var(--text-muted); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1px; border-bottom: 1px solid var(--goku-panel-border); padding-bottom: 4px; margin-bottom: 8px;">Przewidywane Zyski</div>
+                                <div class="work-hud-box" style="flex: 1; display: flex; flex-direction: column; padding: 15px; background: rgba(0,0,0,0.6); border: 1px solid rgba(255,107,0,0.2); border-radius: 6px; overflow: hidden; min-height: 0;">
+                                    <div style="color: var(--text-muted); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1px; border-bottom: 1px solid var(--goku-panel-border); padding-bottom: 8px; margin-bottom: 10px; text-align: center; flex: 0 0 auto;">Przewidywane Zyski</div>
                                     
-                                    <div id="live-coins" style="color: #fbbf24; font-weight: bold; font-size: 1.3rem; margin-bottom: 8px;">
+                                    <div id="live-coins" style="color: #fbbf24; font-weight: bold; font-size: 1.3rem; text-align: center; margin-bottom: 10px; flex: 0 0 auto;">
                                         💰 0 Monet
                                     </div>
 
-                                    <div id="live-stats" style="color: var(--success); font-weight: bold; font-size: 0.85rem; text-align: left; background: rgba(0,0,0,0.3); padding: 8px; border-radius: 6px; overflow: hidden; flex: 1; display: flex; flex-direction: column; justify-content: center;">
+                                    <div id="live-stats" style="color: var(--success); font-weight: bold; font-size: 0.85rem; background: rgba(0,0,0,0.3); padding: 10px; border-radius: 6px; flex: 1; overflow-y: auto; display: flex; flex-direction: column; justify-content: center;">
                                         </div>
                                 </div>
                             </div>
