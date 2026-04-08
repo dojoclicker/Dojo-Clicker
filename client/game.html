@@ -3550,11 +3550,13 @@
             const mission = (window.allMissions || []).find(m => m.id === workObj.reqMission);
             const reqs = mission ? mission.req_stats : { strength: 0, speed: 0, endurance: 0 };
 
-            // 2. Pobranie Twoich aktualnych statystyk (z właściwej zmiennej characterData)
-            const char = window.characterData || {};
-            const pStr = BigInt(char.strength || 0);
-            const pSpd = BigInt(char.speed || 0);
-            const pEnd = BigInt(char.endurance || 0);
+            // 2. Pobranie Twoich aktualnych statystyk (Baza + Ekwipunek)
+            const baseStats = window.playerCurrentStats || {};
+            const equipStats = window.playerEquipStats || {};
+            
+            const pStr = BigInt(baseStats.strength || 0) + BigInt(equipStats.strength || 0);
+            const pSpd = BigInt(baseStats.speed || 0) + BigInt(equipStats.speed || 0);
+            const pEnd = BigInt(baseStats.endurance || 0) + BigInt(equipStats.endurance || 0);
 
             // 3. Sprawdzenie warunków dla każdej statystyki osobno
             const canStr = pStr >= BigInt(reqs.strength || 0);
