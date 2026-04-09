@@ -75,23 +75,23 @@
             <!-- Sekcja 5 Statystyk Postaci -->
             <div class="character-stats" style="margin: 1rem 0; display: flex; flex-direction: column; gap: 0.5rem; font-size: 0.9rem; color: var(--text-secondary); background: rgba(0,0,0,0.2); padding: 1rem; border-radius: 8px; border: 1px solid var(--goku-panel-border);">
                 <div style="display: flex; justify-content: space-between;">
-                    <span>Siła</span>
+                    <span>💪 Siła</span>
                     <span id="stat-strength" style="color: var(--text-primary); font-weight: bold;">-</span>
                 </div>
                 <div style="display: flex; justify-content: space-between;">
-                    <span>Szybkość</span>
+                    <span>⚡ Szybkość</span>
                     <span id="stat-speed" style="color: var(--text-primary); font-weight: bold;">-</span>
                 </div>
                 <div style="display: flex; justify-content: space-between;">
-                    <span>Wytrzymałość</span>
+                    <span>🛡️ Wytrzymałość</span>
                     <span id="stat-endurance" style="color: var(--text-primary); font-weight: bold;">-</span>
                 </div>
                 <div style="display: flex; justify-content: space-between;">
-                    <span>Inteligencja</span>
+                    <span>🧠 Inteligencja</span>
                     <span id="stat-intelligence" style="color: var(--text-primary); font-weight: bold;">-</span>
                 </div>
                 <div style="display: flex; justify-content: space-between;">
-                    <span>Siła Mentalna</span>
+                    <span>🌀 Siła Mentalna</span>
                     <span id="stat-mental_strength" style="color: var(--text-primary); font-weight: bold;">-</span>
                 </div>
             </div>
@@ -103,7 +103,7 @@
         <div class="resource-bars">
             <div class="resource-bar hp-bar">
                 <div class="resource-header">
-                    <span class="resource-name">HP</span>
+                    <span class="resource-name">❤️ HP</span>
                     <span class="resource-value">-- / --</span>
                 </div>
                 <div class="bar-container">
@@ -113,7 +113,7 @@
 
             <div class="resource-bar mp-bar">
                 <div class="resource-header">
-                    <span class="resource-name">MP</span>
+                    <span class="resource-name">💧 MP</span>
                     <span class="resource-value">-- / --</span>
                 </div>
                 <div class="bar-container">
@@ -123,7 +123,7 @@
 
             <div class="resource-bar stamina-bar">
                 <div class="resource-header">
-                    <span class="resource-name">Stamina</span>
+                    <span class="resource-name">🟢 Stamina</span>
                     <span class="resource-value">-- / --</span>
                 </div>
                 <div class="bar-container">
@@ -752,7 +752,7 @@
             card.innerHTML = `
                 <div class="mission-icon">${icon}</div>
                 <div class="mission-title" style="${titleColor}">${titlePrefix}${mission.name}</div>
-                <div class="mission-cost">⚡ ${mission.stamina_cost} Stamina</div>
+                <div class="mission-cost">🟢 ${mission.stamina_cost} Stamina</div>
                 
                 `; // Zakończenie HTML dla karty (Usunięto mission-tooltip)
 
@@ -977,7 +977,7 @@
                     notifMsg = `
                         <div style="font-size: 0.85rem; margin-bottom: 6px;">${data.message}</div>
                         <div style="background: rgba(0,0,0,0.25); padding: 8px; border-radius: 6px; font-size: 0.85rem; font-weight: 500;">
-                            <div style="color:#ffffff;">❤️ <b style="color:#ffffff;">-${data.damage.hp}</b> HP | 💙 <b style="color:#ffffff;">-${data.damage.mp}</b> MP | ⚡ <b style="color:#ffffff;">-${data.damage.stamina}</b> Sta</div>
+                            <div style="color:#ffffff;">❤️ <b style="color:#ffffff;">-${data.damage.hp}</b> HP | 💧 <b style="color:#ffffff;">-${data.damage.mp}</b> MP | 🟢 <b style="color:#ffffff;">-${data.damage.stamina}</b> Sta</div>
                             <div style="color:#fbbf24; margin-top:4px;">💰 Utrata monet: <b style="color:#fbbf24;">-${data.penalty?.coins_lost || 0}</b></div>
                             ${statsLostHtml}
                         </div>
@@ -3628,9 +3628,9 @@
                     <p style="font-size: 0.95rem;">Złap <b>💸</b> (+3x Zysk) | Unikaj <b>🦹‍♂️</b> (-3x Zysk lub Utrata HP!)</p>
                     <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 3px;"><i>(Te obiekty spadają znacznie szybciej!)</i></p>
                 </div>
-                <p style="margin-bottom: 5px;">🔴 Koszt: <b style="color: var(--error);">${workObj.costHpPct}% HP</b></p>
+                <p style="margin-bottom: 5px;">❤️ Koszt: <b style="color: var(--error);">${workObj.costHpPct}% HP</b></p>
                 <p style="margin-bottom: 5px;">🟢 Koszt: <b style="color: var(--success);">${workObj.costStamina} Stamina</b></p>
-                <p style="margin-bottom: 15px;">🪙 Zarobek: <b style="color: var(--warning);">${workObj.reward} Monet / Złapany obiekt</b></p>
+                <p style="margin-bottom: 15px;">💰 Zarobek: <b style="color: var(--warning);">${workObj.reward} Monet / Złapany obiekt</b></p>
                 <div style="margin-top:10px; padding: 10px; background: rgba(0,0,0,0.2); border-radius: 4px;">
                     <p style="font-weight: bold; margin-bottom: 5px;">Wymagania pracy:</p>
                     <p style="font-size: 0.95rem;">${reqHtml}</p>
@@ -3942,7 +3942,7 @@
                         <div style="background: rgba(0,0,0,0.3); padding: 8px; border-radius: 6px; font-size: 0.85rem;">
                             <div style="color:#ef4444; margin-bottom: 2px;">❤️ <b>-${pct}%</b> HP</div>
                             <div style="color:#3b82f6; margin-bottom: 2px;">💧 <b>-${pct}%</b> MP</div>
-                            <div style="color:#84cc16; margin-bottom: 6px;">⚡ <b>-${pct}%</b> Stamina</div>
+                            <div style="color:#84cc16; margin-bottom: 6px;">🟢 <b>-${pct}%</b> Stamina</div>
                             <div style="color:#ffffff; border-top: 1px dashed rgba(255,255,255,0.2); padding-top: 6px;">📊 <b>-${p.loss_str}</b> Siła, <b>-${p.loss_spd}</b> Szybk., <b>-${p.loss_end}</b> Wytrz.</div>
                         </div>
                     `;
