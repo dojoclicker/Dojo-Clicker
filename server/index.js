@@ -130,6 +130,7 @@ async function getFullCharacterStats(userId) {
         strength: baseStats.strength.toString(),
         speed: baseStats.speed.toString(),
         endurance: baseStats.endurance.toString(),
+        technique: baseStats.technique.toString(),
         intelligence: baseStats.intelligence.toString(),
         mental_strength: baseStats.mental_strength.toString(),
         bonus_hp: baseStats.bonus_hp.toString(),
@@ -140,20 +141,25 @@ async function getFullCharacterStats(userId) {
         strength: equipBonuses.strength.toString(),
         speed: equipBonuses.speed.toString(),
         endurance: equipBonuses.endurance.toString(),
+        technique: equipBonuses.technique.toString(),
         intelligence: equipBonuses.intelligence.toString(),
         mental_strength: equipBonuses.mental_strength.toString(),
         bonus_hp: equipBonuses.bonus_hp.toString(),
         bonus_mp: equipBonuses.bonus_mp.toString(),
+        bonus_coins_pct: equipBonuses.bonus_coins_pct.toString(), // <--- BRAKUJĄCA LINIJKA
+        bonus_coins: equipBonuses.bonus_coins.toString(), // <--- BRAKUJĄCA LINIJKA
         breakdown: equipBreakdown
       },
       trainingStats: {
         strength: trainingBonuses.strength.toString(),
         speed: trainingBonuses.speed.toString(),
         endurance: trainingBonuses.endurance.toString(),
+        technique: trainingBonuses.technique.toString(), // <--- BRAKUJĄCA LINIJKA
         intelligence: trainingBonuses.intelligence.toString(),
         mental_strength: trainingBonuses.mental_strength.toString(),
         bonus_hp: trainingBonuses.bonus_hp.toString(),
-        bonus_mp: trainingBonuses.bonus_mp.toString()
+        bonus_mp: trainingBonuses.bonus_mp.toString(),
+        bonus_coins_pct: trainingBonuses.bonus_coins_pct.toString()
       }
     };
 
