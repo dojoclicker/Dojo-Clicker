@@ -928,10 +928,19 @@
                         if (Number(tg.strength) > 0) trainingTextList.push(`+${tg.strength} Siła`);
                         if (Number(tg.speed) > 0) trainingTextList.push(`+${tg.speed} Szybk.`);
                         if (Number(tg.endurance) > 0) trainingTextList.push(`+${tg.endurance} Wytrz.`);
-                        if (Number(tg.technique) > 0) trainingTextList.push(`+${tg.technique} Tech.`); // Dodaj tę linijkę
+                        if (Number(tg.technique) > 0) trainingTextList.push(`+${tg.technique} Tech.`);
                         if (Number(tg.bonus_hp) > 0) trainingTextList.push(`+${tg.bonus_hp} Max HP`);
                         if (Number(tg.bonus_mp) > 0) trainingTextList.push(`+${tg.bonus_mp} Max MP`);
                     }
+                    
+                    // NOWE: Dodajemy monety z ekwipunku do sekcji Trening!
+                    if (data.rewards.bonus_coins_training && data.rewards.bonus_coins_training !== "0") {
+                        trainingTextList.push(`+${data.rewards.bonus_coins_training} Monet (Trening)`);
+                    }
+                    if (data.rewards.bonus_coins_passive && data.rewards.bonus_coins_passive !== "0") {
+                        trainingTextList.push(`+${data.rewards.bonus_coins_passive} Monet (Pasyw)`);
+                    }
+
                     const hasTrainingGains = trainingTextList.length > 0;
 
                     const boredomDmg = data.rewards.boredom_damage ? BigInt(data.rewards.boredom_damage) : 0n;
@@ -951,8 +960,9 @@
                         lostDropsHtml = `<div style="font-size: 0.85rem; margin-top: 6px; color: #ef4444; font-weight: bold;">❌ Pełny plecak! Utracono: ${lostStrings.join(', ')}</div>`;
                     }
 
+                    // Zmiana: Wyświetlamy base_coins zamiast zsumowanych coins
                     notifMsg = `
-                        <div style="margin-bottom: 4px;">💰 Monety: <b style="color:#ffffff;">+${data.rewards.coins}</b></div>
+                        <div style="margin-bottom: 4px;">💰 Monety: <b style="color:#ffffff;">+${data.rewards.base_coins || data.rewards.coins}</b></div>
                         <div style="margin-bottom: 4px;">📊 <b style="color:#ffffff;">+${data.rewards.gains.strength}</b> Siła, <b style="color:#ffffff;">+${data.rewards.gains.speed}</b> Szybk., <b style="color:#ffffff;">+${data.rewards.gains.endurance}</b> Wytrz., <b style="color:#ffffff;">+${data.rewards.gains.technique}</b> Tech.</div>
                         ${hasTrainingGains ? `<div style="font-size: 0.85rem; margin-top: 6px; color: #ffffff; border-top: 1px dashed rgba(255,255,255,0.3); padding-top: 6px; font-weight: bold;">🏋️ Trening: ${trainingTextList.join(', ')}</div>` : ''}
                         ${penaltyText}
@@ -3991,7 +4001,7 @@
                     } else {
                         // Standardowy raport ze zmiany
                         const data = res.data;
-                        let msg = `<div style="margin-bottom: 4px;">💰 Monety: <b style="color:#ffffff;">+${data.finalCoins}</b></div>`;
+                        let msg = `<div style="margin-bottom: 4px;">💰 Monety: <b style="color:#ffffff;">+${data.baseCoins || data.finalCoins}</b></div>`;
                         
                         let gains = [];
                         if (data.gains.str !== "0") gains.push(`+${data.gains.str} Siła`);

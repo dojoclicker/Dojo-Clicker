@@ -1240,7 +1240,11 @@ app.post('/api/missions/start', authenticateToken, requireAlive, async (req, res
     res.json({ 
       result: 'success', message: 'Sukces!', multiplier: Number(rewardMultiplier),
       rewards: { 
-        coins: finalCoins.toString(), stats_gained: finalStats.toString(),
+        coins: finalCoins.toString(), 
+        base_coins: finalCoinsBase.toString(), 
+        bonus_coins_passive: equipCoinBonusFlat.toString(), 
+        bonus_coins_training: trainingCoinBonusValue.toString(), 
+        stats_gained: finalStats.toString(),
         boredom_damage: appliedBoredomDamage.toString(),
         dropped_items: droppedItems, 
         lost_items: lostDrops,
@@ -2282,6 +2286,7 @@ app.post('/api/work/finish', authenticateToken, requireAlive, async (req, res) =
         success: true, 
         isDead: isDead, 
         finalCoins: finalCoins.toString(), 
+        baseCoins: finalCoinsBase.toString(), 
         bonusCoinsFlat: equipCoinBonusFlat.toString(),
         bonusCoinsPct: trainingCoinBonusValue.toString(),
         gains: { str: gStr.toString(), spd: gSpd.toString(), end: gEnd.toString(), tech: gTech.toString(), hp: gHp.toString(), mp: gMp.toString() }, 
