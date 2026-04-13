@@ -760,8 +760,8 @@ app.post('/api/inventory/consume', authenticateToken, async (req, res) => {
     const originalBonusStamina = BigInt(character.bonus_stamina ?? '0');
     const hasPermanentEffects = effects.permanent_bonus || effects.bonus_stamina || ((effects.hospital_exit_recovery || effects.full_resurrection) && originalHp <= 0n);
     
-    if (effectMessages.length === 0 && currentHp === originalHp && currentMp === originalMp && currentStamina === originalStamina && currentCoins === BigInt(character.coins || '0') && !hasPermanentEffects) {
-      return res.status(400).json({ error: 'Twoje zasoby są już w pełni odnowione, szkoda marnować przedmiotu!' });
+    if (currentHp === originalHp && currentMp === originalMp && currentStamina === originalStamina && currentCoins === BigInt(character.coins || '0') && !hasPermanentEffects) {
+      return res.json({ success: false, status: 'warning', message: 'Twoje zasoby są już w pełni odnowione, szkoda marnować przedmiotu!' });
     }
 
     if (BigInt(item.quantity) > 1n) {
