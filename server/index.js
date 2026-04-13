@@ -123,14 +123,12 @@ async function getFullCharacterStats(userId) {
     const currentPowerStr = String(character.base_power_level || '0');
     const newPowerStr = powerLevel.toString();
 
-    // ⚡ OPTYMALIZACJA I NAPRAWA: Zapis w tle (nie blokuje ładowania gry) i lepsze dopasowanie klucza
+    // ⚡ TWARDY ZAPIS: Czekamy na zapis (await), aby uniknąć konfliktów (Race Condition) w bazie!
+    // Ponieważ zoptymalizowaliśmy zapytania wyżej (Promise.all), ten await nie spowoduje lagów.
     if (currentPowerStr !== newPowerStr) {
-        supabase.from('characters')
+        await supabase.from('characters')
             .update({ base_power_level: newPowerStr })
-            .eq('profile_id', userId) // Używamy najpewniejszego klucza
-            .then(({ error }) => {
-                if (error) console.error('[Stats] Błąd zapisu Poziomu Mocy w bazie danych:', error.message);
-            });
+            .eq('id', character.id);
     }
 
     return {
