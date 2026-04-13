@@ -2129,19 +2129,21 @@ app.post('/api/work/finish', authenticateToken, requireAlive, async (req, res) =
         let guaranteedPool = Math.floor(totalLossNum * 0.5); 
         let randomPool = totalLossNum - guaranteedPool;
         
-        let guaranteedPerStat = Math.floor(guaranteedPool / 3);
-        let guaranteedRemainder = guaranteedPool - (guaranteedPerStat * 3); 
+        let guaranteedPerStat = Math.floor(guaranteedPool / 4);
+        let guaranteedRemainder = guaranteedPool - (guaranteedPerStat * 4); 
 
-        let r1 = Math.random(); let r2 = Math.random(); let r3 = Math.random();
-        const sumR = r1 + r2 + r3;
+        let r1 = Math.random(); let r2 = Math.random(); let r3 = Math.random(); let r4 = Math.random();
+        const sumR = r1 + r2 + r3 + r4;
         
         let randStr = Math.floor(randomPool * (r1 / sumR));
         let randSpd = Math.floor(randomPool * (r2 / sumR));
-        let randEnd = randomPool - randStr - randSpd;
+        let randEnd = Math.floor(randomPool * (r3 / sumR));
+        let randTech = randomPool - randStr - randSpd - randEnd;
 
         let sLossStr = BigInt(Math.max(1, guaranteedPerStat + randStr));
         let sLossSpd = BigInt(Math.max(1, guaranteedPerStat + randSpd));
-        let sLossEnd = BigInt(Math.max(1, guaranteedPerStat + guaranteedRemainder + randEnd));
+        let sLossEnd = BigInt(Math.max(1, guaranteedPerStat + randEnd));
+        let sLossTech = BigInt(Math.max(1, guaranteedPerStat + guaranteedRemainder + randTech));
 
         // 3. OBLICZAMY NOWE ZASOBY I SPRAWDZAMY CZY GRACZ PRZEŻYŁ
         const extraHpPct = BigInt(req.body.extraHpPenaltyPct || 0); 
@@ -2159,7 +2161,8 @@ app.post('/api/work/finish', authenticateToken, requireAlive, async (req, res) =
             stamina: newStamina.toString(),
             strength: maxBigInt(1n, BigInt(char.strength) - sLossStr).toString(),
             speed: maxBigInt(1n, BigInt(char.speed) - sLossSpd).toString(),
-            endurance: maxBigInt(1n, BigInt(char.endurance) - sLossEnd).toString()
+            endurance: maxBigInt(1n, BigInt(char.endurance) - sLossEnd).toString(),
+            technique: maxBigInt(1n, BigInt(char.technique || '1') - sLossTech).toString()
         };
 
         if (isDead) {
@@ -2173,6 +2176,7 @@ app.post('/api/work/finish', authenticateToken, requireAlive, async (req, res) =
                 strength: sLossStr.toString(),
                 speed: sLossSpd.toString(),
                 endurance: sLossEnd.toString(),
+                technique: sLossTech.toString(),
                 intelligence: '0',
                 mental_strength: '0',
                 hospital_end_ms: exactEndMs.toString(),
@@ -2182,7 +2186,7 @@ app.post('/api/work/finish', authenticateToken, requireAlive, async (req, res) =
 
         await supabase.from('characters').update(updateData).eq('id', char.id);
         
-        return res.json({ success: true, failed: true, isDead: isDead, penalty: { resources_pct: pct.toString(), loss_str: sLossStr.toString(), loss_spd: sLossSpd.toString(), loss_end: sLossEnd.toString() } });
+        return res.json({ success: true, failed: true, isDead: isDead, penalty: { resources_pct: pct.toString(), loss_str: sLossStr.toString(), loss_spd: sLossSpd.toString(), loss_end: sLossEnd.toString(), loss_tech: sLossTech.toString() } });
     }
 
     // --- BLOK SUKCESU PRACY ---
