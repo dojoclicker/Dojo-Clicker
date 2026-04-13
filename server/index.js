@@ -124,12 +124,14 @@ async function getFullCharacterStats(userId) {
     const stats_sum = baseStats.strength + baseStats.speed + baseStats.endurance + baseStats.technique + baseStats.intelligence + baseStats.mental_strength;
     const powerLevel = stats_sum + baseStats.bonus_hp + (baseStats.bonus_mp * 2n) + (baseStats.bonus_stamina * 5n);
 
-    // Cicha aktualizacja Poziomu Mocy w bazie danych (aby Ranking był zawsze aktualny!)
-    if (character.base_power_level !== powerLevel.toString()) {
-        supabase.from('characters')
-            .update({ base_power_level: powerLevel.toString() })
-            .eq('id', character.id)
-            .then();
+    const currentPowerStr = String(character.base_power_level || '0');
+    const newPowerStr = powerLevel.toString();
+
+    // Gwarantowana aktualizacja Poziomu Mocy (naprawia zawieszony Ranking Top 10)
+    if (currentPowerStr !== newPowerStr) {
+        await supabase.from('characters')
+            .update({ base_power_level: newPowerStr })
+            .eq('id', character.id);
     }
 
     return {
@@ -480,7 +482,7 @@ app.get('/api/character', authenticateToken, async (req, res) => {
     if (character.completed_missions && character.completed_missions.includes('10000000-0000-0000-0000-000000000006')) {
         if (!features.includes('work')) {
             features.push('work');
-            supabase.from('characters').update({ unlocked_features: features }).eq('profile_id', userId).then();
+            await supabase.from('characters').update({ unlocked_features: features }).eq('profile_id', userId);
         }
     }
     characterData.unlocked_features = features; // KRYTYCZNE: Teraz to faktycznie leci do frontendu!

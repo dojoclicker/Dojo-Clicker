@@ -22,9 +22,9 @@ const itemsData = [
     { id: generateId(6), name: "Duża Kapsułka Med.", category: "consumable", slot: null, buy_price_coins: "6000", sell_price_coins: "3000", consumable_effect: { "restore_hp_pct": 100 } },
 
     // --- MP (Eliksiry Skupienia / Kapsułki Many) ---
-    { id: generateId(7), name: "Mały Eliksir Skup.", category: "consumable", slot: null, buy_price_coins: "50", sell_price_coins: "25", consumable_effect: { "restore_mp": "10" } },
-    { id: generateId(8), name: "Średni Eliksir Skup.", category: "consumable", slot: null, buy_price_coins: "120", sell_price_coins: "60", consumable_effect: { "restore_mp": "25" } },
-    { id: generateId(9), name: "Duży Eliksir Skup.", category: "consumable", slot: null, buy_price_coins: "250", sell_price_coins: "125", consumable_effect: { "restore_mp": "50" } },
+    { id: generateId(7), name: "Magiczne Ziele", category: "consumable", slot: null, buy_price_coins: "50", sell_price_coins: "25", consumable_effect: { "restore_mp": "10" } },
+    { id: generateId(8), name: "Magiczne Zioła", category: "consumable", slot: null, buy_price_coins: "120", sell_price_coins: "60", consumable_effect: { "restore_mp": "25" } },
+    { id: generateId(9), name: "Magiczny Kwiat", category: "consumable", slot: null, buy_price_coins: "250", sell_price_coins: "125", consumable_effect: { "restore_mp": "50" } },
     { id: generateId(10), name: "Mała Kapsułka Many", category: "consumable", slot: null, buy_price_coins: "1000", sell_price_coins: "500", consumable_effect: { "restore_mp_pct": 25 } },
     { id: generateId(11), name: "Średnia Kapsułka Many", category: "consumable", slot: null, buy_price_coins: "2500", sell_price_coins: "1250", consumable_effect: { "restore_mp_pct": 50 } },
     { id: generateId(12), name: "Duża Kapsułka Many", category: "consumable", slot: null, buy_price_coins: "6000", sell_price_coins: "3000", consumable_effect: { "restore_mp_pct": 100 } },
