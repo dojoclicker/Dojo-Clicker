@@ -39,21 +39,17 @@ function calculateMaxBackpackSlots(charStats) {
 // Reużywalna funkcja pobierająca pełne statystyki postaci z bonusami z ekwipunku
 async function getFullCharacterStats(userId) {
   try {
-    const { data: profile, error: profileError } = await supabase
-      .from('profiles')
-      .select('username')
-      .eq('id', userId)
-      .single();
+    // ⚡ OPTYMALIZACJA: Równoległe pobieranie Profilu i Postaci skraca czas ładowania o połowę!
+    const [profileRes, characterRes] = await Promise.all([
+      supabase.from('profiles').select('username').eq('id', userId).single(),
+      supabase.from('characters').select('*').eq('profile_id', userId).single()
+    ]);
 
-    if (profileError || !profile) throw new Error('Nie znaleziono profilu gracza');
+    if (profileRes.error || !profileRes.data) throw new Error('Nie znaleziono profilu gracza');
+    if (characterRes.error || !characterRes.data) throw new Error('Nie znaleziono postaci gracza');
 
-    const { data: character, error: characterError } = await supabase
-      .from('characters')
-      .select('*')
-      .eq('profile_id', userId)
-      .single();
-
-    if (characterError || !character) throw new Error('Nie znaleziono postaci gracza');
+    const profile = profileRes.data;
+    const character = characterRes.data;
 
     let { data: equippedItems, error: equipmentError } = await supabase
       .from('inventory')
@@ -127,11 +123,14 @@ async function getFullCharacterStats(userId) {
     const currentPowerStr = String(character.base_power_level || '0');
     const newPowerStr = powerLevel.toString();
 
-    // Gwarantowana aktualizacja Poziomu Mocy (naprawia zawieszony Ranking Top 10)
+    // ⚡ OPTYMALIZACJA I NAPRAWA: Zapis w tle (nie blokuje ładowania gry) i lepsze dopasowanie klucza
     if (currentPowerStr !== newPowerStr) {
-        await supabase.from('characters')
+        supabase.from('characters')
             .update({ base_power_level: newPowerStr })
-            .eq('id', character.id);
+            .eq('profile_id', userId) // Używamy najpewniejszego klucza
+            .then(({ error }) => {
+                if (error) console.error('[Stats] Błąd zapisu Poziomu Mocy w bazie danych:', error.message);
+            });
     }
 
     return {

@@ -4064,6 +4064,14 @@ function getItemImage(itemName, category) {
 
         // Zbuduj status w tle bez sztucznego opóźnienia
         fetchTrainingStatus();
+        
+        // 🔄 NOWE: Automatycznie odświeżaj listę Top 10 co 60 sekund (jeśli gracz jest na Stronie Głównej)
+        setInterval(() => {
+            const activeTab = localStorage.getItem('active_game_tab');
+            if (activeTab === 'dashboard') {
+                fetchRanking();
+            }
+        }, 60000);
 
     </script>
 <div id="global-tooltip" class="item-tooltip"></div>
