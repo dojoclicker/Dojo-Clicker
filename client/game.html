@@ -248,7 +248,7 @@
 
                             <label style="display: block; margin-bottom: 0.5rem; color: var(--text-secondary); text-align: center;">Cel Treningu:</label>
                             <select id="training-stat-select" style="width: 100%; margin-bottom: 1.5rem; background: var(--input-bg, #334155); color: #fff; border: 1px solid var(--goku-panel-border); padding: 8px; border-radius: 4px; text-align: center;">
-                                <option value="balanced">Zbalansowany (Wszystkie 3)</option>
+                                <option value="balanced">Zbalansowany (Wszystkie 4)</option>
                                 <option value="strength">Tylko Siła 💪</option>
                                 <option value="speed">Tylko Szybkość ⚡</option>
                                 <option value="endurance">Tylko Wytrzymałość 🛡️</option>
@@ -715,7 +715,7 @@
             let reqCount = 0n;
             
             if (window.playerCurrentStats) {
-                ['strength', 'speed', 'endurance'].forEach(key => {
+                ['strength', 'speed', 'endurance', 'technique'].forEach(key => {
                     if (reqs[key] && Number(reqs[key]) > 0) {
                         const baseStat = BigInt(window.playerCurrentStats[key] || '1');
                         const equipBonus = BigInt((window.playerEquipStats && window.playerEquipStats[key]) ? window.playerEquipStats[key] : '0');
@@ -2414,7 +2414,7 @@
                 tooltipHTML += '<div class="tooltip-section"><span class="tooltip-section-title">Efekt w szpitalu:</span><span class="tooltip-bullet">• Leczy 100% zasobów, zdejmuje karę czasu i przywraca statystyki</span></div>';
             }
 
-            const statNamesPL = { strength: 'Siła', speed: 'Szybkość', endurance: 'Wytrzymałość', technique: 'Technika', intelligence: 'Inteligencja', mental_strength: 'Siła Mentalna', bonus_hp: 'Max HP', bonus_mp: 'Max MP', bonus_coins_pct: '% Monet (Praca)', bonus_coins: 'Monety (Pasywnie)' };
+            const statNamesPL = { strength: 'Siła', speed: 'Szybkość', endurance: 'Wytrzymałość', technique: 'Technika', intelligence: 'Inteligencja', mental_strength: 'Siła Mentalna', bonus_hp: 'Max HP', bonus_mp: 'Max MP', bonus_coins_pct: '% Monet', bonus_coins: 'Monety (Pasywnie)' };
 
             if (template.slot) {
                 const slotNamesPL = { head: 'Głowa', chest: 'Tors', legs: 'Nogi', feet: 'Stopy', hands: 'Ręce', ear_l: 'L. Kolczyk', ear_r: 'P. Kolczyk', ring_l: 'L. Pierścień', ring_r: 'P. Pierścień', necklace: 'Naszyjnik' };
@@ -3704,7 +3704,7 @@
             let netScore = Math.max(0, gameState.caught - gameState.missed);
             let coins = netScore * currentWorkReward;
             
-            let tStr = 0, tSpd = 0, tEnd = 0, tHp = 0, tMp = 0;
+            let tStr = 0, tSpd = 0, tEnd = 0, tTech = 0, tHp = 0, tMp = 0; // <--- DODANO tTech
             if (window.inventoryData) {
                 window.inventoryData.forEach(item => {
                     if (item.equipped_slot && item.equipped_slot !== 'bank' && item.item_templates && item.item_templates.bonuses && item.item_templates.bonuses.type === 'training') {
@@ -3712,6 +3712,7 @@
                         if (b.strength) tStr += Number(b.strength);
                         if (b.speed) tSpd += Number(b.speed);
                         if (b.endurance) tEnd += Number(b.endurance);
+                        if (b.technique) tTech += Number(b.technique);
                         if (b.bonus_hp) tHp += Number(b.bonus_hp);
                         if (b.bonus_mp) tMp += Number(b.bonus_mp);
                     }
@@ -3724,6 +3725,7 @@
             if (tStr > 0) statsHtml.push(`<div style="display:flex; justify-content:space-between; margin-bottom:3px;"><span>💪 Siła:</span> <span>+${netScore * tStr}</span></div>`);
             if (tSpd > 0) statsHtml.push(`<div style="display:flex; justify-content:space-between; margin-bottom:3px;"><span>⚡ Szyb:</span> <span>+${netScore * tSpd}</span></div>`);
             if (tEnd > 0) statsHtml.push(`<div style="display:flex; justify-content:space-between; margin-bottom:3px;"><span>🛡️ Wytrz:</span> <span>+${netScore * tEnd}</span></div>`);
+            if (tTech > 0) statsHtml.push(`<div style="display:flex; justify-content:space-between; margin-bottom:3px;"><span>🎯 Tech:</span> <span>+${netScore * tTech}</span></div>`);
             if (tHp > 0)  statsHtml.push(`<div style="display:flex; justify-content:space-between; margin-bottom:3px;"><span>❤️ Max HP:</span> <span>+${netScore * tHp}</span></div>`);
             if (tMp > 0)  statsHtml.push(`<div style="display:flex; justify-content:space-between;"><span>💧 Max MP:</span> <span>+${netScore * tMp}</span></div>`);
             
@@ -3968,6 +3970,7 @@
                         if (data.gains.str !== "0") gains.push(`+${data.gains.str} Siła`);
                         if (data.gains.spd !== "0") gains.push(`+${data.gains.spd} Szybk.`);
                         if (data.gains.end !== "0") gains.push(`+${data.gains.end} Wytrz.`);
+                        if (data.gains.tech !== "0") gains.push(`+${data.gains.tech} Tech.`);
                         if (data.gains.hp !== "0") gains.push(`+${data.gains.hp} HP`);
                         if (data.gains.mp !== "0") gains.push(`+${data.gains.mp} MP`);
                         

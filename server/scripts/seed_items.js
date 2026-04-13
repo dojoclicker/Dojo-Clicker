@@ -105,7 +105,8 @@ const itemsData = [
     },
     {
         id: generateId(81), name: "Ciężka Skorupa", category: "equipment", slot: "chest",
-        buy_price_coins: "5000", sell_price_coins: "2500", req_stats: { "technique": "200", "endurance": "100" },
+        buy_price_coins: "5000", sell_price_coins: "2500", 
+        req_stats: { "technique": "100" }, // Wymaga tylko Techniki
         bonuses: { "type": "training", "technique": "1" }
     },
 
@@ -119,7 +120,7 @@ const itemsData = [
     {
         id: generateId(83), name: "Ciężka Opaska", category: "equipment", slot: "head",
         buy_price_coins: "5000", sell_price_coins: "2500", req_stats: { "endurance": "100", "strength": "100" },
-        bonuses: { "type": "training", "bonus_coins_pct": "15" } // Daje +15% monet
+        bonuses: { "type": "training", "bonus_coins_pct": "1" }
     },
 
     // Dłonie (Hands) -> Siła
@@ -142,8 +143,8 @@ const itemsData = [
     },
     {
         id: generateId(87), name: "Ciężkie Spodnie", category: "equipment", slot: "legs",
-        buy_price_coins: "15000", sell_price_coins: "7500", req_stats: { "endurance": "150" },
-        bonuses: { "type": "training", "endurance": "10" }
+        buy_price_coins: "5000", sell_price_coins: "2500", req_stats: { "endurance": "100" },
+        bonuses: { "type": "training", "endurance": "1" }
     },
 
     // Stopy (Feet) -> Szybkość
@@ -153,24 +154,24 @@ const itemsData = [
         bonuses: { "type": "passive", "speed": "50" }
     },
     {
-        id: generateId(89), name: "Obciążone Buty", category: "equipment", slot: "feet",
-        buy_price_coins: "10000", sell_price_coins: "5000", req_stats: { "speed": "150" },
-        bonuses: { "type": "training", "speed": "10" }
+        id: generateId(89), name: "Ciężkie Buty", category: "equipment", slot: "feet",
+        buy_price_coins: "5000", sell_price_coins: "2500", req_stats: { "speed": "100" },
+        bonuses: { "type": "training", "speed": "1" }
     },
 
     // Biżuteria (Bez zmian)
     {
-        id: generateId(90), name: "Kolczyk Umysłu", category: "equipment", slot: "ear_l",
+        id: generateId(25), name: "Kolczyk Umysłu", category: "equipment", slot: "ear_l",
         buy_price_coins: "25000", sell_price_coins: "12500", req_stats: { "intelligence": "400" },
         bonuses: { "type": "passive", "intelligence": "400" }
     },
     {
-        id: generateId(91), name: "Pierścień Ducha", category: "equipment", slot: "ring_l",
+        id: generateId(26), name: "Pierścień Ducha", category: "equipment", slot: "ring_l",
         buy_price_coins: "30000", sell_price_coins: "15000", req_stats: { "mental_strength": "400" },
         bonuses: { "type": "passive", "mental_strength": "400" }
     },
     {
-        id: generateId(92), name: "Rzemyk Harmonii", category: "equipment", slot: "necklace",
+        id: generateId(27), name: "Rzemyk Harmonii", category: "equipment", slot: "necklace",
         buy_price_coins: "20000", sell_price_coins: "10000", req_stats: { "intelligence": "400", "mental_strength": "400" },
         bonuses: { "type": "passive", "intelligence": "400", "mental_strength": "400" }
     }

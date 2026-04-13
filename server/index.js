@@ -818,12 +818,13 @@ app.post('/api/missions/start', authenticateToken, requireAlive, async (req, res
     let lowestRawPlayerStat = -1n;
     let reqStatForThreshold = 1n;
 
-    ['strength', 'speed', 'endurance'].forEach(stat => {
+    ['strength', 'speed', 'endurance', 'technique'].forEach(stat => {
       if (reqStats[stat] && reqStats[stat] > 0) {
         let playerStat = 1n;
         if (stat === 'strength') playerStat = effectiveStr;
         if (stat === 'speed') playerStat = effectiveSpd;
         if (stat === 'endurance') playerStat = effectiveEnd;
+        if (stat === 'technique') playerStat = BigInt(fullStats.baseStats.technique) + BigInt(fullStats.equipStats.technique || '0');
         
         const reqStat = BigInt(reqStats[stat]);
         const rawRatio = (playerStat * 100n) / reqStat;
@@ -2094,14 +2095,12 @@ app.post('/api/work/finish', authenticateToken, requireAlive, async (req, res) =
         // 2. HYBRYDOWY PODZIAŁ KARY (50% sztywne, 50% losowe)
         let totalLossNum = Number(totalLoss);
         
-        // Wyliczamy bezpieczną bazę (50% całości podzielone na 3 statystyki)
         let guaranteedPool = Math.floor(totalLossNum * 0.5); 
         let randomPool = totalLossNum - guaranteedPool;
         
         let guaranteedPerStat = Math.floor(guaranteedPool / 3);
-        let guaranteedRemainder = guaranteedPool - (guaranteedPerStat * 3); // Zabezpieczenie przed ułamkami
+        let guaranteedRemainder = guaranteedPool - (guaranteedPerStat * 3); 
 
-        // Losujemy resztę z "wirtualnego worka"
         let r1 = Math.random(); let r2 = Math.random(); let r3 = Math.random();
         const sumR = r1 + r2 + r3;
         
@@ -2109,20 +2108,14 @@ app.post('/api/work/finish', authenticateToken, requireAlive, async (req, res) =
         let randSpd = Math.floor(randomPool * (r2 / sumR));
         let randEnd = randomPool - randStr - randSpd;
 
-        // Sumujemy gwarantowane + losowe
         let sLossStr = BigInt(Math.max(1, guaranteedPerStat + randStr));
         let sLossSpd = BigInt(Math.max(1, guaranteedPerStat + randSpd));
         let sLossEnd = BigInt(Math.max(1, guaranteedPerStat + guaranteedRemainder + randEnd));
 
         // 3. OBLICZAMY NOWE ZASOBY I SPRAWDZAMY CZY GRACZ PRZEŻYŁ
-        const extraHpPct = BigInt(req.body.extraHpPenaltyPct || 0); // <--- Odbiór kradzieży Złodzieja!
+        const extraHpPct = BigInt(req.body.extraHpPenaltyPct || 0); 
         let newHp = maxBigInt(0n, BigInt(char.hp) - (BigInt(fullStats.max_hp) * pct / 100n));
         newHp = maxBigInt(0n, newHp - (BigInt(fullStats.max_hp) * extraHpPct / 100n));
-
-        const equipCoinBonusFlat = BigInt(fullStats.equipStats.bonus_coins || '0');
-        const trainingCoinBonusPct = BigInt(fullStats.trainingStats.bonus_coins_pct || '0');
-        let finalCoinsBase = BigInt(Math.floor(Number(netScore * work.reward_coins) * penaltyMultiplier));
-        const finalCoins = finalCoinsBase + ((finalCoinsBase * trainingCoinBonusPct) / 100n) + equipCoinBonusFlat;
         
         let newMp = maxBigInt(0n, BigInt(char.mp) - (BigInt(fullStats.max_mp) * pct / 100n));
         let newStamina = maxBigInt(0n, BigInt(char.stamina) - (BigInt(fullStats.max_stamina) * pct / 100n));
@@ -2138,7 +2131,6 @@ app.post('/api/work/finish', authenticateToken, requireAlive, async (req, res) =
             endurance: maxBigInt(1n, BigInt(char.endurance) - sLossEnd).toString()
         };
 
-        // Jeśli praca wyzerowała HP -> Wysyłamy do Szpitala!
         if (isDead) {
             const pl = BigInt(fullStats.powerLevel);
             const hospitalMinutes = Math.min(120, 5 + Math.floor(Math.pow(Number(pl), 0.25)));
@@ -2146,7 +2138,6 @@ app.post('/api/work/finish', authenticateToken, requireAlive, async (req, res) =
             
             updateData.hospital_until = new Date(exactEndMs).toISOString();
             updateData.current_form = 'Stan Podstawowy';
-            // Zapisujemy karę z pracy jako karę śmierci, żeby szpital mógł prawidłowo przywrócić statystyki po uleczeniu
             updateData.last_death_penalty = {
                 strength: sLossStr.toString(),
                 speed: sLossSpd.toString(),
@@ -2163,9 +2154,9 @@ app.post('/api/work/finish', authenticateToken, requireAlive, async (req, res) =
         return res.json({ success: true, failed: true, isDead: isDead, penalty: { resources_pct: pct.toString(), loss_str: sLossStr.toString(), loss_spd: sLossSpd.toString(), loss_end: sLossEnd.toString() } });
     }
 
+    // --- BLOK SUKCESU PRACY ---
     const netScore = maxBigInt(0n, BigInt(goodObjectsCaught) - BigInt(obstaclesCaught));
     
-    // NOWE: Odejmowanie HP przez Złodzieja nawet przy "wygranej" pracy!
     const extraHpPct = BigInt(req.body.extraHpPenaltyPct || 0);
     let newHp = BigInt(char.hp);
     let isDead = false;
@@ -2189,12 +2180,18 @@ app.post('/api/work/finish', authenticateToken, requireAlive, async (req, res) =
     else if (weakest >= (reqStat * 4n) + 40n) { penaltyMultiplier = 0.50; serverWarningText = 'Zyski obniżone o 50% (Średnia kara za potęgę)'; } 
     else if (weakest >= (reqStat * 2n) + 15n) { penaltyMultiplier = 0.75; serverWarningText = 'Zyski obniżone o 25% (Mała kara za potęgę)'; }
 
-    const finalCoins = BigInt(Math.floor(Number(netScore * work.reward_coins) * penaltyMultiplier));
+    // WYLICZANIE MONET Z EKWIPUNKU
+    let finalCoinsBase = BigInt(Math.floor(Number(netScore * work.reward_coins) * penaltyMultiplier));
+    const equipCoinBonusFlat = BigInt(fullStats.equipStats.bonus_coins || '0');
+    const trainingCoinBonusPct = BigInt(fullStats.trainingStats.bonus_coins_pct || '0');
+    const finalCoins = finalCoinsBase + ((finalCoinsBase * trainingCoinBonusPct) / 100n) + equipCoinBonusFlat;
+
     const applyPenalty = (val) => BigInt(Math.floor(Number(netScore * val) * penaltyMultiplier));
 
     const gStr = applyPenalty(BigInt(fullStats.trainingStats.strength || 0));
     const gSpd = applyPenalty(BigInt(fullStats.trainingStats.speed || 0));
     const gEnd = applyPenalty(BigInt(fullStats.trainingStats.endurance || 0));
+    const gTech = applyPenalty(BigInt(fullStats.trainingStats.technique || 0)); 
     const gHp = applyPenalty(BigInt(fullStats.trainingStats.bonus_hp || 0));
     const gMp = applyPenalty(BigInt(fullStats.trainingStats.bonus_mp || 0));
 
@@ -2212,9 +2209,10 @@ app.post('/api/work/finish', authenticateToken, requireAlive, async (req, res) =
         strength: (BigInt(char.strength) + gStr).toString(),
         speed: (BigInt(char.speed) + gSpd).toString(),
         endurance: (BigInt(char.endurance) + gEnd).toString(),
+        technique: (BigInt(char.technique) + gTech).toString(), 
         bonus_hp: (BigInt(char.bonus_hp) + gHp).toString(),
         bonus_mp: (BigInt(char.bonus_mp) + gMp).toString(),
-        hp: newHp.toString() // <--- ZAKTUALIZOWANE HP
+        hp: newHp.toString()
     };
 
     if (isDead) {
@@ -2233,7 +2231,7 @@ app.post('/api/work/finish', authenticateToken, requireAlive, async (req, res) =
 
     await supabase.from('characters').update(updateData).eq('id', char.id);
 
-    res.json({ success: true, isDead: isDead, finalCoins: finalCoins.toString(), gains: { str: gStr.toString(), spd: gSpd.toString(), end: gEnd.toString(), hp: gHp.toString(), mp: gMp.toString() }, drops: dropIds, server_warning: serverWarningText });
+    res.json({ success: true, isDead: isDead, finalCoins: finalCoins.toString(), gains: { str: gStr.toString(), spd: gSpd.toString(), end: gEnd.toString(), tech: gTech.toString(), hp: gHp.toString(), mp: gMp.toString() }, drops: dropIds, server_warning: serverWarningText });
   } catch (err) { res.status(500).json({ error: 'Błąd serwera' }); }
 });
 
