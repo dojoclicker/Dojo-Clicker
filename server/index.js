@@ -124,6 +124,14 @@ async function getFullCharacterStats(userId) {
     const stats_sum = baseStats.strength + baseStats.speed + baseStats.endurance + baseStats.technique + baseStats.intelligence + baseStats.mental_strength;
     const powerLevel = stats_sum + baseStats.bonus_hp + (baseStats.bonus_mp * 2n) + (baseStats.bonus_stamina * 5n);
 
+    // Cicha aktualizacja Poziomu Mocy w bazie danych (aby Ranking był zawsze aktualny!)
+    if (character.base_power_level !== powerLevel.toString()) {
+        supabase.from('characters')
+            .update({ base_power_level: powerLevel.toString() })
+            .eq('id', character.id)
+            .then();
+    }
+
     return {
       character, profile, powerLevel, max_hp, max_mp, max_stamina,
       baseStats: {
@@ -1768,10 +1776,10 @@ app.post('/api/bank/split', authenticateToken, requireAlive, async (req, res) =>
 // 💬 7. CZAT, RANKING I DASHBOARD
 // ==========================================
 
-// Cache dla rankingu (odświeżany co 5 minut)
+// Cache dla rankingu (odświeżany co 1 minutę)
 let rankingCache = null;
 let rankingCacheTime = 0;
-const RANKING_CACHE_TTL = 5 * 60 * 1000; // 5 minut
+const RANKING_CACHE_TTL = 1 * 60 * 1000; // 1 minuta
 
 // Rate-limiting dla czatu (1 wiadomość na 3 sekundy na profil)
 const chatRateLimitMap = new Map();
@@ -2017,7 +2025,7 @@ app.post('/api/training/stop', authenticateToken, async (req, res) => {
     let rewardMsg = "Trening przerwany. Straciłeś staminę.";
 
     if (action === 'completed' && mentor) {
-      const effectivePower = Math.max(1000, parseInt(char.total_power_level || '0'));
+      const effectivePower = Math.max(1000, parseInt(char.base_power_level || '0'));
       const trainingHours = parseFloat(hoursStr);
       
       const statGain = BigInt(Math.floor((400 + Math.pow(effectivePower, 0.55)) * mentor.multiplier * trainingHours));
