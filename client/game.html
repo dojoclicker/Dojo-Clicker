@@ -3422,7 +3422,7 @@
             const targetStat = statSelect ? statSelect.value : 'balanced';
 
             let gainText = (targetStat === 'balanced') 
-                ? `po +${Math.floor(baseGain / 3)} (Siła, Szybkość, Wytrz.)` 
+                ? `po +${Math.floor(baseGain / 4)} (Siła, Szybkość, Wytrz., Tech.)` 
                 : `+${baseGain} pkt`;
 
             if (document.getElementById('training-projected-gain')) {
@@ -3615,18 +3615,21 @@
             const pStr = BigInt(baseStats.strength || 0) + BigInt(equipStats.strength || 0);
             const pSpd = BigInt(baseStats.speed || 0) + BigInt(equipStats.speed || 0);
             const pEnd = BigInt(baseStats.endurance || 0) + BigInt(equipStats.endurance || 0);
+            const pTech = BigInt(baseStats.technique || 0) + BigInt(equipStats.technique || 0);
 
             // 3. Sprawdzenie warunków dla każdej statystyki osobno
             const canStr = pStr >= BigInt(reqs.strength || 0);
             const canSpd = pSpd >= BigInt(reqs.speed || 0);
             const canEnd = pEnd >= BigInt(reqs.endurance || 0);
-            const canWork = canStr && canSpd && canEnd;
+            const canTech = pTech >= BigInt(reqs.technique || 0);
+            const canWork = canStr && canSpd && canEnd && canTech;
 
             // 4. Budowa dynamicznego tekstu wymagań
             const reqHtml = `
-                <span style="color: ${canStr ? 'var(--success)' : 'var(--error)'}">Siła: ${reqs.strength}</span>, 
-                <span style="color: ${canSpd ? 'var(--success)' : 'var(--error)'}">Szybkość: ${reqs.speed}</span>, 
-                <span style="color: ${canEnd ? 'var(--success)' : 'var(--error)'}">Wytrz.: ${reqs.endurance}</span>
+                <span style="color: ${canStr ? 'var(--success)' : 'var(--error)'}">Siła: ${reqs.strength || 0}</span>, 
+                <span style="color: ${canSpd ? 'var(--success)' : 'var(--error)'}">Szybk.: ${reqs.speed || 0}</span>, 
+                <span style="color: ${canEnd ? 'var(--success)' : 'var(--error)'}">Wytrz.: ${reqs.endurance || 0}</span>,
+                <span style="color: ${canTech ? 'var(--success)' : 'var(--error)'}">Tech.: ${reqs.technique || 0}</span>
             `;
 
             document.getElementById('work-main-emoji').innerText = workObj.goodEmoji;
@@ -3968,7 +3971,16 @@
                     } else {
                         // Standardowy raport ze zmiany
                         const data = res.data;
-                        let msg = `<div style="margin-bottom: 4px;">💰 Monety: <b style="color:#ffffff;">+${data.finalCoins}</b></div>`;
+                        let msg = `<div style="margin-bottom: 4px;">💰 Monety: <b style="color:#ffffff;">+${data.finalCoins}</b>`;
+                        
+                        let coinDetails = [];
+                        if (data.bonusCoinsPct && data.bonusCoinsPct !== "0") coinDetails.push(`+${data.bonusCoinsPct} z Treningu`);
+                        if (data.bonusCoinsFlat && data.bonusCoinsFlat !== "0") coinDetails.push(`+${data.bonusCoinsFlat} ze Sprzętu`);
+                        
+                        if (coinDetails.length > 0) {
+                            msg += ` <span style="font-size: 0.8rem; color: #fbbf24;">(${coinDetails.join(', ')})</span>`;
+                        }
+                        msg += `</div>`;
                         
                         let gains = [];
                         if (data.gains.str !== "0") gains.push(`+${data.gains.str} Siła`);

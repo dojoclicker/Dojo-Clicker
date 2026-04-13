@@ -2219,7 +2219,15 @@ app.post('/api/work/finish', authenticateToken, requireAlive, async (req, res) =
     let finalCoinsBase = BigInt(Math.floor(Number(netScore * work.reward_coins) * penaltyMultiplier));
     const equipCoinBonusFlat = BigInt(fullStats.equipStats.bonus_coins || '0');
     const trainingCoinBonusPct = BigInt(fullStats.trainingStats.bonus_coins_pct || '0');
-    const finalCoins = finalCoinsBase + ((finalCoinsBase * trainingCoinBonusPct) / 100n) + equipCoinBonusFlat;
+    
+    let trainingCoinBonusValue = 0n;
+    if (trainingCoinBonusPct > 0n && finalCoinsBase > 0n) {
+        trainingCoinBonusValue = (finalCoinsBase * trainingCoinBonusPct) / 100n;
+        // Zabezpieczenie przed ucinaniem ułamków (wymusza minimum +1 zysku)
+        if (trainingCoinBonusValue === 0n) trainingCoinBonusValue = 1n; 
+    }
+    
+    const finalCoins = finalCoinsBase + trainingCoinBonusValue + equipCoinBonusFlat;
 
     const applyPenalty = (val) => BigInt(Math.floor(Number(netScore * val) * penaltyMultiplier));
 
@@ -2266,7 +2274,16 @@ app.post('/api/work/finish', authenticateToken, requireAlive, async (req, res) =
 
     await supabase.from('characters').update(updateData).eq('id', char.id);
 
-    res.json({ success: true, isDead: isDead, finalCoins: finalCoins.toString(), gains: { str: gStr.toString(), spd: gSpd.toString(), end: gEnd.toString(), tech: gTech.toString(), hp: gHp.toString(), mp: gMp.toString() }, drops: dropIds, server_warning: serverWarningText });
+    res.json({ 
+        success: true, 
+        isDead: isDead, 
+        finalCoins: finalCoins.toString(), 
+        bonusCoinsFlat: equipCoinBonusFlat.toString(),
+        bonusCoinsPct: trainingCoinBonusValue.toString(),
+        gains: { str: gStr.toString(), spd: gSpd.toString(), end: gEnd.toString(), tech: gTech.toString(), hp: gHp.toString(), mp: gMp.toString() }, 
+        drops: dropIds, 
+        server_warning: serverWarningText 
+    });
   } catch (err) { res.status(500).json({ error: 'Błąd serwera' }); }
 });
 
