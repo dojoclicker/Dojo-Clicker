@@ -868,6 +868,7 @@ app.post('/api/missions/start', authenticateToken, requireAlive, async (req, res
 
     const currentInt = BigInt(fullStats.baseStats.intelligence);
     const currentMen = BigInt(fullStats.baseStats.mental_strength);
+    const currentTech = BigInt(fullStats.baseStats.technique);
     
     let newStamina = BigInt(character.stamina || '0') - BigInt(mission.stamina_cost);
     const roll = Math.random() * 100;
@@ -898,25 +899,27 @@ app.post('/api/missions/start', authenticateToken, requireAlive, async (req, res
       const baseReward = maxBigInt(1n, BigInt(mission.reward_stats?.min || '1'));
       const totalStatLossNum = Number(baseReward * penaltyMultiplier);
       
-      // Wyliczamy bezpieczną bazę (50% całości podzielone na 3 statystyki)
+      // Wyliczamy bezpieczną bazę (50% całości podzielone na 4 statystyki)
       let guaranteedPool = Math.floor(totalStatLossNum * 0.5); 
       let randomPool = totalStatLossNum - guaranteedPool;
       
-      let guaranteedPerStat = Math.floor(guaranteedPool / 3);
-      let guaranteedRemainder = guaranteedPool - (guaranteedPerStat * 3);
+      let guaranteedPerStat = Math.floor(guaranteedPool / 4);
+      let guaranteedRemainder = guaranteedPool - (guaranteedPerStat * 4);
 
       // Losujemy resztę z "wirtualnego worka"
-      let r1 = Math.random(); let r2 = Math.random(); let r3 = Math.random();
-      const sumR = r1 + r2 + r3;
+      let r1 = Math.random(); let r2 = Math.random(); let r3 = Math.random(); let r4 = Math.random();
+      const sumR = r1 + r2 + r3 + r4;
       
       let randStr = Math.floor(randomPool * (r1 / sumR));
       let randSpd = Math.floor(randomPool * (r2 / sumR));
-      let randEnd = randomPool - randStr - randSpd;
+      let randEnd = Math.floor(randomPool * (r3 / sumR));
+      let randTech = randomPool - randStr - randSpd - randEnd;
 
       // Sumujemy gwarantowane + losowe (i rzutujemy z powrotem na BigInt dla bazy)
       const strLoss = BigInt(Math.max(1, guaranteedPerStat + randStr));
       const spdLoss = BigInt(Math.max(1, guaranteedPerStat + randSpd));
-      const endLoss = BigInt(Math.max(1, guaranteedPerStat + guaranteedRemainder + randEnd));
+      const endLoss = BigInt(Math.max(1, guaranteedPerStat + randEnd));
+      const techLoss = BigInt(Math.max(1, guaranteedPerStat + guaranteedRemainder + randTech)); // <-- TECHNIKA
       
       // Utrata monet
       const baseCoinsReward = maxBigInt(1n, BigInt(mission.reward_coins_min || '1'));
@@ -926,13 +929,14 @@ app.post('/api/missions/start', authenticateToken, requireAlive, async (req, res
       const finalStr = maxBigInt(1n, currentStr - strLoss);
       const finalSpd = maxBigInt(1n, currentSpd - spdLoss);
       const finalEnd = maxBigInt(1n, currentEnd - endLoss);
+      const finalTech = maxBigInt(1n, currentTech - techLoss); // <-- TECHNIKA
       const finalInt = currentInt; // Inteligencja nie jest tracona przy porażce
       const finalMen = currentMen; // Siła Mentalna nie jest tracona przy porażce
 
       const statsLostLog = {
           strength: strLoss.toString(), speed: spdLoss.toString(),
-          endurance: endLoss.toString(), intelligence: '0',
-          mental_strength: '0'
+          endurance: endLoss.toString(), technique: techLoss.toString(), // <-- TECHNIKA
+          intelligence: '0', mental_strength: '0'
       };
 
       const isDead = newHp <= 0n;
@@ -951,16 +955,18 @@ app.post('/api/missions/start', authenticateToken, requireAlive, async (req, res
             const deathCoinsLost = currentCoinsBeforeLoss > 0n ? maxBigInt(1n, (currentCoinsBeforeLoss * 10n) / 100n) : 0n;
             const deathNewCoins = currentCoinsBeforeLoss - deathCoinsLost;
 
-            // 2. Utrata procentowa ze WSZYSTKICH 5 statystyk bazowych
+            // 2. Utrata procentowa ze WSZYSTKICH 5 statystyk bazowych + Techniki
             const deathStrLoss = (currentStr * deathPenaltyPct) / 100n;
             const deathSpdLoss = (currentSpd * deathPenaltyPct) / 100n;
             const deathEndLoss = (currentEnd * deathPenaltyPct) / 100n;
+            const deathTechLoss = (currentTech * deathPenaltyPct) / 100n; // <-- TECHNIKA
             const deathIntLoss = (currentInt * deathPenaltyPct) / 100n;
             const deathMenLoss = (currentMen * deathPenaltyPct) / 100n;
 
             const deathFinalStr = maxBigInt(1n, currentStr - deathStrLoss);
             const deathFinalSpd = maxBigInt(1n, currentSpd - deathSpdLoss);
             const deathFinalEnd = maxBigInt(1n, currentEnd - deathEndLoss);
+            const deathFinalTech = maxBigInt(1n, currentTech - deathTechLoss); // <-- TECHNIKA
             const deathFinalInt = maxBigInt(1n, currentInt - deathIntLoss);
             const deathFinalMen = maxBigInt(1n, currentMen - deathMenLoss);
 
@@ -972,6 +978,7 @@ app.post('/api/missions/start', authenticateToken, requireAlive, async (req, res
                 strength: deathStrLoss.toString(),
                 speed: deathSpdLoss.toString(),
                 endurance: deathEndLoss.toString(),
+                technique: deathTechLoss.toString(), // <-- TECHNIKA
                 intelligence: deathIntLoss.toString(),
                 mental_strength: deathMenLoss.toString(),
                 hospital_end_ms: exactEndMs.toString(),
@@ -981,6 +988,7 @@ app.post('/api/missions/start', authenticateToken, requireAlive, async (req, res
             await supabase.from('characters').update({
                 hp: '0', mp: '0', stamina: newStamina.toString(), coins: deathNewCoins.toString(),
                 strength: deathFinalStr.toString(), speed: deathFinalSpd.toString(), endurance: deathFinalEnd.toString(),
+                technique: deathFinalTech.toString(), // <-- TECHNIKA
                 intelligence: deathFinalInt.toString(), mental_strength: deathFinalMen.toString(),
                 last_death_penalty: deathStatsLostLog, hospital_until: hospitalUntilUTC, current_form: 'Stan Podstawowy',
                 attempted_one_try_missions: (mission.is_one_try === true && !attemptedOneTry.includes(missionId)) ? [...attemptedOneTry, missionId] : attemptedOneTry
@@ -1000,6 +1008,7 @@ app.post('/api/missions/start', authenticateToken, requireAlive, async (req, res
         await supabase.from('characters').update({
             hp: newHp.toString(), mp: newMp.toString(), stamina: newStamina.toString(), coins: newCoins.toString(),
             strength: finalStr.toString(), speed: finalSpd.toString(), endurance: finalEnd.toString(),
+            technique: finalTech.toString(), // <-- TECHNIKA
             intelligence: finalInt.toString(), mental_strength: finalMen.toString(),
             attempted_one_try_missions: (mission.is_one_try === true && !attemptedOneTry.includes(missionId)) ? [...attemptedOneTry, missionId] : attemptedOneTry
         }).eq('profile_id', userId);
@@ -1019,7 +1028,14 @@ app.post('/api/missions/start', authenticateToken, requireAlive, async (req, res
     const trainingCoinBonusPct = BigInt(fullStats.trainingStats.bonus_coins_pct || '0'); // Bonus % (np. Ciężka Opaska)
 
     // Finalna kwota: (Baza + Bonus % za ciężki sprzęt) + Płaski bonus za sprzęt pasywny
-    const finalCoins = finalCoinsBase + ((finalCoinsBase * trainingCoinBonusPct) / 100n) + equipCoinBonusFlat;
+    let trainingCoinBonusValue = 0n;
+    if (trainingCoinBonusPct > 0n) {
+        trainingCoinBonusValue = (finalCoinsBase * trainingCoinBonusPct) / 100n;
+        // Gwarantujemy minimum 1 monetę bonusu, by zniwelować ucinanie przez BigInt
+        if (trainingCoinBonusValue === 0n) trainingCoinBonusValue = 1n; 
+    }
+    
+    const finalCoins = finalCoinsBase + trainingCoinBonusValue + equipCoinBonusFlat;
     const newCoins = BigInt(character.coins || '0') + finalCoins;
 
     const minS = BigInt(mission.reward_stats?.min || '0'); const maxS = BigInt(mission.reward_stats?.max || '0');
@@ -1028,29 +1044,41 @@ app.post('/api/missions/start', authenticateToken, requireAlive, async (req, res
     let lowestStat = 'strength'; let minVal = currentStr;
     if (currentSpd < minVal) { lowestStat = 'speed'; minVal = currentSpd; }
     if (currentEnd < minVal) { lowestStat = 'endurance'; minVal = currentEnd; }
+    if (currentTech < minVal) { lowestStat = 'technique'; minVal = currentTech; }
 
-    let gainStr = 0n; let gainSpd = 0n; let gainEnd = 0n;
+    let gainStr = 0n; let gainSpd = 0n; let gainEnd = 0n; let gainTech = 0n;
     if (finalStats < 10n) {
-        const baseGain = finalStats / 3n; gainStr = baseGain; gainSpd = baseGain; gainEnd = baseGain;
-        const localRem = Number(finalStats % 3n);
+        const baseGain = finalStats / 4n; 
+        gainStr = baseGain; gainSpd = baseGain; gainEnd = baseGain; gainTech = baseGain;
+        const localRem = Number(finalStats % 4n);
         if (localRem > 0) {
-            let targets = [0, 1, 2].sort(() => 0.5 - Math.random());
+            let targets = [0, 1, 2, 3].sort(() => 0.5 - Math.random());
             if (lowestStat === 'strength') targets = [0, ...targets.filter(t => t !== 0)];
             else if (lowestStat === 'speed') targets = [1, ...targets.filter(t => t !== 1)];
-            else targets = [2, ...targets.filter(t => t !== 2)];
-            for (let i = 0; i < localRem; i++) { if (targets[i] === 0) gainStr += 1n; else if (targets[i] === 1) gainSpd += 1n; else if (targets[i] === 2) gainEnd += 1n; }
+            else if (lowestStat === 'endurance') targets = [2, ...targets.filter(t => t !== 2)];
+            else targets = [3, ...targets.filter(t => t !== 3)];
+            for (let i = 0; i < localRem; i++) { 
+                if (targets[i] === 0) gainStr += 1n; 
+                else if (targets[i] === 1) gainSpd += 1n; 
+                else if (targets[i] === 2) gainEnd += 1n; 
+                else if (targets[i] === 3) gainTech += 1n; 
+            }
         }
     } else {
-        const sumW = BigInt((lowestStat === 'strength' ? 100 : 50) + (lowestStat === 'speed' ? 100 : 50) + (lowestStat === 'endurance' ? 100 : 50));
+        const sumW = BigInt((lowestStat === 'strength' ? 100 : 50) + (lowestStat === 'speed' ? 100 : 50) + (lowestStat === 'endurance' ? 100 : 50) + (lowestStat === 'technique' ? 100 : 50));
         gainStr = (finalStats * BigInt(lowestStat === 'strength' ? 100 : 50)) / sumW;
         gainSpd = (finalStats * BigInt(lowestStat === 'speed' ? 100 : 50)) / sumW;
         gainEnd = (finalStats * BigInt(lowestStat === 'endurance' ? 100 : 50)) / sumW;
-        const rem = finalStats - (gainStr + gainSpd + gainEnd);
-        if (lowestStat === 'strength') gainStr += rem; else if (lowestStat === 'speed') gainSpd += rem; else gainEnd += rem;
+        gainTech = (finalStats * BigInt(lowestStat === 'technique' ? 100 : 50)) / sumW;
+        const rem = finalStats - (gainStr + gainSpd + gainEnd + gainTech);
+        if (lowestStat === 'strength') gainStr += rem; 
+        else if (lowestStat === 'speed') gainSpd += rem; 
+        else if (lowestStat === 'endurance') gainEnd += rem;
+        else gainTech += rem;
     }
 
     // Sprzęt treningowy nie nalicza bonusów w przypadku porażki
-    let trainGainStr = 0n; let trainGainSpd = 0n; let trainGainEnd = 0n;
+    let trainGainStr = 0n; let trainGainSpd = 0n; let trainGainEnd = 0n; let trainGainTech = 0n;
     let trainGainBonusHp = 0n; let trainGainBonusMp = 0n;
     
     // Tylko przy sukcesie naliczamy bonusy treningowe
@@ -1058,6 +1086,7 @@ app.post('/api/missions/start', authenticateToken, requireAlive, async (req, res
         if (BigInt(fullStats.trainingStats.strength || '0') > 0n) trainGainStr = maxBigInt(1n, (BigInt(fullStats.trainingStats.strength) * rewardMultiplier) / 100n);
         if (BigInt(fullStats.trainingStats.speed || '0') > 0n) trainGainSpd = maxBigInt(1n, (BigInt(fullStats.trainingStats.speed) * rewardMultiplier) / 100n);
         if (BigInt(fullStats.trainingStats.endurance || '0') > 0n) trainGainEnd = maxBigInt(1n, (BigInt(fullStats.trainingStats.endurance) * rewardMultiplier) / 100n);
+        if (BigInt(fullStats.trainingStats.technique || '0') > 0n) trainGainTech = maxBigInt(1n, (BigInt(fullStats.trainingStats.technique) * rewardMultiplier) / 100n);
         if (BigInt(fullStats.trainingStats.bonus_hp || '0') > 0n) trainGainBonusHp = maxBigInt(1n, (BigInt(fullStats.trainingStats.bonus_hp) * rewardMultiplier) / 100n);
         if (BigInt(fullStats.trainingStats.bonus_mp || '0') > 0n) trainGainBonusMp = maxBigInt(1n, (BigInt(fullStats.trainingStats.bonus_mp) * rewardMultiplier) / 100n);
     }
@@ -1065,6 +1094,7 @@ app.post('/api/missions/start', authenticateToken, requireAlive, async (req, res
     const newStr = currentStr + gainStr + trainGainStr;
     const newSpd = currentSpd + gainSpd + trainGainSpd;
     const newEnd = currentEnd + gainEnd + trainGainEnd;
+    const newTech = currentTech + gainTech + trainGainTech;
     const newBonusHp = BigInt(character.bonus_hp || '0') + trainGainBonusHp;
     const newBonusMp = BigInt(character.bonus_mp || '0') + trainGainBonusMp;
 
@@ -1199,11 +1229,12 @@ app.post('/api/missions/start', authenticateToken, requireAlive, async (req, res
 
     await supabase.from('characters').update({
         coins: newCoins.toString(), strength: newStr.toString(), speed: newSpd.toString(), endurance: newEnd.toString(), 
+        technique: newTech.toString(),
         hp: finalHp.toString(), mp: finalMp.toString(), stamina: finalStamina.toString(),
         bonus_hp: newBonusHp.toString(), bonus_mp: newBonusMp.toString(),
         completed_missions: newCompleted,
         attempted_one_try_missions: newAttempted,
-        unlocked_features: newUnlockedFeatures // <--- ZAPISUJEMY ODBLOKOWANIA W BAZIE!
+        unlocked_features: newUnlockedFeatures 
       }).eq('profile_id', userId);
 
     res.json({ 
@@ -1213,9 +1244,9 @@ app.post('/api/missions/start', authenticateToken, requireAlive, async (req, res
         boredom_damage: appliedBoredomDamage.toString(),
         dropped_items: droppedItems, 
         lost_items: lostDrops,
-        gains: { strength: gainStr.toString(), speed: gainSpd.toString(), endurance: gainEnd.toString() },
+        gains: { strength: gainStr.toString(), speed: gainSpd.toString(), endurance: gainEnd.toString(), technique: gainTech.toString() },
         training_gains: { 
-            strength: trainGainStr.toString(), speed: trainGainSpd.toString(), endurance: trainGainEnd.toString(),
+            strength: trainGainStr.toString(), speed: trainGainSpd.toString(), endurance: trainGainEnd.toString(), technique: trainGainTech.toString(),
             bonus_hp: trainGainBonusHp.toString(), bonus_mp: trainGainBonusMp.toString()
         }
       }

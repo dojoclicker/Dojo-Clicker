@@ -927,6 +927,7 @@
                         if (Number(tg.strength) > 0) trainingTextList.push(`+${tg.strength} Siła`);
                         if (Number(tg.speed) > 0) trainingTextList.push(`+${tg.speed} Szybk.`);
                         if (Number(tg.endurance) > 0) trainingTextList.push(`+${tg.endurance} Wytrz.`);
+                        if (Number(tg.technique) > 0) trainingTextList.push(`+${tg.technique} Tech.`); // Dodaj tę linijkę
                         if (Number(tg.bonus_hp) > 0) trainingTextList.push(`+${tg.bonus_hp} Max HP`);
                         if (Number(tg.bonus_mp) > 0) trainingTextList.push(`+${tg.bonus_mp} Max MP`);
                     }
@@ -951,7 +952,7 @@
 
                     notifMsg = `
                         <div style="margin-bottom: 4px;">💰 Monety: <b style="color:#ffffff;">+${data.rewards.coins}</b></div>
-                        <div style="margin-bottom: 4px;">📊 <b style="color:#ffffff;">+${data.rewards.gains.strength}</b> Siła, <b style="color:#ffffff;">+${data.rewards.gains.speed}</b> Szybkość, <b style="color:#ffffff;">+${data.rewards.gains.endurance}</b> Wytrz.</div>
+                        <div style="margin-bottom: 4px;">📊 <b style="color:#ffffff;">+${data.rewards.gains.strength}</b> Siła, <b style="color:#ffffff;">+${data.rewards.gains.speed}</b> Szybk., <b style="color:#ffffff;">+${data.rewards.gains.endurance}</b> Wytrz., <b style="color:#ffffff;">+${data.rewards.gains.technique}</b> Tech.</div>
                         ${hasTrainingGains ? `<div style="font-size: 0.85rem; margin-top: 6px; color: #ffffff; border-top: 1px dashed rgba(255,255,255,0.3); padding-top: 6px; font-weight: bold;">🏋️ Trening: ${trainingTextList.join(', ')}</div>` : ''}
                         ${penaltyText}
                         ${boredomHtml}
@@ -972,6 +973,7 @@
                     if (Number(statsLost.strength) > 0) lostList.push(`-${statsLost.strength} Siła`);
                     if (Number(statsLost.speed) > 0) lostList.push(`-${statsLost.speed} Szybk.`);
                     if (Number(statsLost.endurance) > 0) lostList.push(`-${statsLost.endurance} Wytrz.`);
+                    if (Number(statsLost.technique) > 0) lostList.push(`-${statsLost.technique} Tech.`); // <-- DODAJ TĘ LINIJKĘ
                     if (Number(statsLost.intelligence) > 0) lostList.push(`-${statsLost.intelligence} Int.`);
                     if (Number(statsLost.mental_strength) > 0) lostList.push(`-${statsLost.mental_strength} Ment.`);
 
@@ -997,6 +999,7 @@
                     if (statsLost.strength && statsLost.strength !== '0') statsList.push(`-${statsLost.strength} Siła`);
                     if (statsLost.speed && statsLost.speed !== '0') statsList.push(`-${statsLost.speed} Szybk.`);
                     if (statsLost.endurance && statsLost.endurance !== '0') statsList.push(`-${statsLost.endurance} Wytrz.`);
+                    if (statsLost.technique && statsLost.technique !== '0') statsList.push(`-${statsLost.technique} Tech.`); // <-- DODAJ TĘ LINIJKĘ
                     if (statsLost.intelligence && statsLost.intelligence !== '0') statsList.push(`-${statsLost.intelligence} Int.`);
                     if (statsLost.mental_strength && statsLost.mental_strength !== '0') statsList.push(`-${statsLost.mental_strength} Ment.`);
                     
