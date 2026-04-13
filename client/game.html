@@ -1618,58 +1618,26 @@
             }
         }
 
-        // Funkcja do pobierania emotikony dla przedmiotu
-        function getItemEmoji(itemName, category) {
-            // Słownik emotikon dla konkretnych przedmiotów
-            const itemEmojis = {
-                // Używalne
-                'Mięso': '🍖',
-                'Jagody': '🫐',
-                'Magiczna Fasolka': '🫘',
-                'Kapsułka Energii': '💊',
-                'Kropla Krwi Smoka': '🩸',
-                'Woda Źródlana': '💦',
-                'Eliksir Mocy': '🧪',
-                'Ziołowy Napar': '🍵',
-                'Energiczny Napój': '⚡',
-                'Odzyskujący Eliksir': '🧪',
-                
-                // Pasywne sprzęt
-                'Podstawowe Gi': '🥋',
-                'Ciężka Skorupa': '🐢',
-                'Wygodne Spodnie': '👖',
-                'Ciężkie Spodnie': '👖',
-                'Trampki': '👟',
-                'Obciążone Buty': '👟',
-                'Opaska Nowicjusza': '🪢',
-                'Ciężka Opaska': '🪢',
-                'Rękawice Treningowe': '🥊',
-                'Ciężkie Rękawice': '🥊',
-                'Kolczyk Umysłu': '✨',
-                'Naszyjnik Mocy': '📿',
-                'Pierścień Ducha': '💍',
-                'Rzemyk Harmonii': '📿',
-                'Pas Mistrza': '🎗️',
-                'Buty Szybkości': '👟',
-                'Hełm Ochronny': '⛑️',
-                'Zbroja Lekka': '🛡️',
-                'Zbroja Ciężka': '🛡️'
-            };
+        // Inteligentna funkcja: sama tworzy nazwę pliku na podstawie nazwy przedmiotu
+function getItemImage(itemName, category) {
+    if (!itemName) return 'img/items/default_box.png';
 
-            // Najpierw sprawdź dokładną nazwę
-            if (itemEmojis[itemName]) {
-                return itemEmojis[itemName];
-            }
+    // 1. Zamiana na małe litery i usunięcie zbędnych spacji
+    let slug = itemName.toLowerCase().trim();
 
-            // Jeśli nie znaleziono, użyj domyślnej emotikony wg kategorii
-            if (category === 'consumable' || category === 'special_consumable') {
-                return '🧪'; // Domyślna dla używalnych
-            } else if (category === 'equipment') {
-                return '🛡️'; // Domyślna dla sprzętu
-            }
+    // 2. Zamiana polskich znaków na łacińskie
+    const polishChars = {'ą':'a','ć':'c','ę':'e','ł':'l','ń':'n','ó':'o','ś':'s','ź':'z','ż':'z'};
+    slug = slug.split('').map(char => polishChars[char] || char).join('');
 
-            return '📦'; // Ostateczna domyślna
-        }
+    // 3. Zamiana spacji i kropek na podkreślniki, usunięcie znaków specjalnych
+    slug = slug.replace(/[\s\.]+/g, '_') // spacje i kropki -> _
+               .replace(/[^a-z0-9_]/g, ''); // wszystko co nie jest litera, cyfra lub _
+
+    // 4. Usunięcie podwójnych podkreślników
+    slug = slug.replace(/_+/g, '_');
+
+    return `img/items/${slug}.png`;
+}
 
         // Obliczanie limitu plecaka
         function calculateMaxBackpackSlots() {
@@ -1699,11 +1667,11 @@
             
             card.draggable = true;
 
-            const emoji = getItemEmoji(item.item_templates?.name, item.item_templates?.category);
+            const imagePath = getItemImage(item.item_templates?.name, item.item_templates?.category);
             const quantity = item.quantity || '1';
             
             card.innerHTML = `
-                <div class="item-emoji">${emoji}</div>
+                <img src="${imagePath}" alt="Ikona" style="width: 44px; height: 44px; object-fit: contain; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));">
                 ${(item.item_templates?.category === 'consumable' || item.item_templates?.category === 'special_consumable') ? `<div class="item-quantity">${quantity}</div>` : ''}
             `;
 
@@ -1840,8 +1808,8 @@
 
                     // Przekazuj pełny szablon, a nie okrojoną wersję
                     const shopItem = {
-                        ...template, // Przekaż wszystkie właściwości szablonu
-                        emoji: getItemEmoji(template.name, template.category),
+                        ...template, 
+                        imagePath: getItemImage(template.name, template.category),
                         description: template.slot ? 'Miejsce: ' + (slotNamesPL[template.slot] || template.slot) : 'Przedmiot',
                         price: template.buy_price_coins
                     };
@@ -1981,9 +1949,11 @@
             
             card.innerHTML = `
                 <div class="shop-item-content">
-                    <div class="shop-item-emoji">${item.emoji}</div>
-                    <div class="shop-item-name">${item.name}</div>
-                    <div class="shop-item-description">${item.description}</div>
+                    <img src="${item.imagePath}" alt="${item.name}" style="width: 48px; height: 48px; object-fit: contain; margin-right: 10px; flex-shrink: 0; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));">
+                    <div style="display: flex; flex-direction: column;">
+                        <div class="shop-item-name">${item.name}</div>
+                        <div class="shop-item-description">${item.description}</div>
+                    </div>
                 </div>
                 <div class="shop-item-bottom">
                     <div class="shop-item-price">
