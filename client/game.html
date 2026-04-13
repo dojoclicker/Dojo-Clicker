@@ -87,6 +87,10 @@
                     <span id="stat-endurance" style="color: var(--text-primary); font-weight: bold;">-</span>
                 </div>
                 <div style="display: flex; justify-content: space-between;">
+                    <span>🎯 Technika</span>
+                    <span id="stat-technique" style="color: var(--text-primary); font-weight: bold;">-</span>
+                </div>
+                <div style="display: flex; justify-content: space-between;">
                     <span>🧠 Inteligencja</span>
                     <span id="stat-intelligence" style="color: var(--text-primary); font-weight: bold;">-</span>
                 </div>
@@ -248,6 +252,7 @@
                                 <option value="strength">Tylko Siła 💪</option>
                                 <option value="speed">Tylko Szybkość ⚡</option>
                                 <option value="endurance">Tylko Wytrzymałość 🛡️</option>
+                                <option value="technique">Tylko Technika 🎯</option>
                             </select>
                             
                             <div style="text-align: center; font-size: 1.1rem; color: var(--text-primary); margin-bottom: 1.5rem; background: rgba(0,0,0,0.4); padding: 10px; border-radius: 6px;">
@@ -1310,11 +1315,12 @@
                     }
                 };
 
-                // Zaktualizuj 5 głównych statystyk z uwzględnieniem bonusów
+                // Zaktualizuj 6 głównych statystyk z uwzględnieniem bonusów
                 if (data.equip_stats) {
                     updateStatDisplay('stat-strength', data.stats.strength, data.equip_stats.strength, data.equip_stats.breakdown?.strength || []);
                     updateStatDisplay('stat-speed', data.stats.speed, data.equip_stats.speed, data.equip_stats.breakdown?.speed || []);
                     updateStatDisplay('stat-endurance', data.stats.endurance, data.equip_stats.endurance, data.equip_stats.breakdown?.endurance || []);
+                    updateStatDisplay('stat-technique', data.stats.technique, data.equip_stats.technique, data.equip_stats.breakdown?.technique || []); // <--- NOWE
                     updateStatDisplay('stat-intelligence', data.stats.intelligence, data.equip_stats.intelligence, data.equip_stats.breakdown?.intelligence || []);
                     updateStatDisplay('stat-mental_strength', data.stats.mental_strength, data.equip_stats.mental_strength, data.equip_stats.breakdown?.mental_strength || []);
                 }
@@ -2408,7 +2414,7 @@
                 tooltipHTML += '<div class="tooltip-section"><span class="tooltip-section-title">Efekt w szpitalu:</span><span class="tooltip-bullet">• Leczy 100% zasobów, zdejmuje karę czasu i przywraca statystyki</span></div>';
             }
 
-            const statNamesPL = { strength: 'Siła', speed: 'Szybkość', endurance: 'Wytrzymałość', intelligence: 'Inteligencja', mental_strength: 'Siła Mentalna', bonus_hp: 'Max HP', bonus_mp: 'Max MP' };
+            const statNamesPL = { strength: 'Siła', speed: 'Szybkość', endurance: 'Wytrzymałość', technique: 'Technika', intelligence: 'Inteligencja', mental_strength: 'Siła Mentalna', bonus_hp: 'Max HP', bonus_mp: 'Max MP', bonus_coins_pct: '% Zdobywanych Monet' };
 
             if (template.slot) {
                 const slotNamesPL = { head: 'Głowa', chest: 'Tors', legs: 'Nogi', feet: 'Stopy', hands: 'Ręce', ear_l: 'L. Kolczyk', ear_r: 'P. Kolczyk', ring_l: 'L. Pierścień', ring_r: 'P. Pierścień', necklace: 'Naszyjnik' };
@@ -2451,6 +2457,7 @@
                     else if (effect === 'temporary_buff') displayEffect = 'Tymczasowe błogosławieństwo';
                     else if (effect === 'restore_hp_pct') displayEffect = `Przywraca ${val}% HP`;
                     else if (effect === 'restore_mp_pct') displayEffect = `Przywraca ${val}% MP`;
+                    else if (effect === 'add_coins') displayEffect = `Otrzymujesz ${val} Monet 💰`;
                     tooltipHTML += `<span class="tooltip-bullet">• ${displayEffect}</span><br>`;
                 }
                 tooltipHTML += '</div>';
