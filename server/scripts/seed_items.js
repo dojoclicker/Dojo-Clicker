@@ -109,16 +109,17 @@ const itemsData = [
         bonuses: { "type": "training", "technique": "1" }
     },
 
-    // Głowa (Head) -> Daje BONUS DO MONET
+    // Głowa (Head) -> Opaska Nowicjusza (Pasywna - płaskie sztuki monet)
     {
         id: generateId(82), name: "Opaska Nowicjusza", category: "equipment", slot: "head",
         buy_price_coins: "1500", sell_price_coins: "750", req_stats: { "strength": "50", "endurance": "50" },
-        bonuses: { "type": "passive", "bonus_coins": "5" } // <-- Pasywnie +5 monet do zysku
+        bonuses: { "type": "passive", "bonus_coins": "5" } // Daje +5 monet do każdej misji/pracy
     },
+    // Głowa (Head) -> Ciężka Opaska (Treningowa - procenty)
     {
         id: generateId(83), name: "Ciężka Opaska", category: "equipment", slot: "head",
         buy_price_coins: "5000", sell_price_coins: "2500", req_stats: { "endurance": "100", "strength": "100" },
-        bonuses: { "type": "training", "bonus_coins_pct": "15" } // <-- Treningowo +15% monet
+        bonuses: { "type": "training", "bonus_coins_pct": "15" } // Daje +15% monet
     },
 
     // Dłonie (Hands) -> Siła

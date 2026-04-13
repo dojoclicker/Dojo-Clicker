@@ -1007,8 +1007,18 @@ app.post('/api/missions/start', authenticateToken, requireAlive, async (req, res
       }
     }
 
-    const minC = BigInt(mission.reward_coins_min || '0'); const maxC = BigInt(mission.reward_coins_max || '0');
-    const finalCoins = ((minC + BigInt(Math.floor(Math.random() * Number(maxC - minC + 1n)))) * rewardMultiplier) / 100n;
+    const minC = BigInt(mission.reward_coins_min || '0'); 
+    const maxC = BigInt(mission.reward_coins_max || '0');
+    
+    // Obliczamy bazę (z uwzględnieniem ewentualnej kary za potęgę z rewardMultiplier)
+    let finalCoinsBase = ((minC + BigInt(Math.floor(Math.random() * Number(maxC - minC + 1n)))) * rewardMultiplier) / 100n;
+
+    // Pobieramy bonusy z ekwipunku do zarobków
+    const equipCoinBonusFlat = BigInt(fullStats.equipStats.bonus_coins || '0'); // Płaski bonus (np. Opaska Nowicjusza)
+    const trainingCoinBonusPct = BigInt(fullStats.trainingStats.bonus_coins_pct || '0'); // Bonus % (np. Ciężka Opaska)
+
+    // Finalna kwota: (Baza + Bonus % za ciężki sprzęt) + Płaski bonus za sprzęt pasywny
+    const finalCoins = finalCoinsBase + ((finalCoinsBase * trainingCoinBonusPct) / 100n) + equipCoinBonusFlat;
     const newCoins = BigInt(character.coins || '0') + finalCoins;
 
     const minS = BigInt(mission.reward_stats?.min || '0'); const maxS = BigInt(mission.reward_stats?.max || '0');
@@ -1977,11 +1987,11 @@ app.post('/api/training/stop', authenticateToken, async (req, res) => {
       const statGain = BigInt(Math.floor((400 + Math.pow(effectivePower, 0.55)) * mentor.multiplier * trainingHours));
 
       if (targetStat === 'balanced') {
-        const perStat = statGain / 4n; // Dzielimy na 4!
+        const perStat = statGain / 4n; // Dzielimy na 4 statystyki: Siła, Szybk, Wytrz, Technika
         updates.strength = (BigInt(char.strength || '1') + perStat).toString();
         updates.speed = (BigInt(char.speed || '1') + perStat).toString();
         updates.endurance = (BigInt(char.endurance || '1') + perStat).toString();
-        updates.technique = (BigInt(char.technique || '1') + perStat).toString(); // <--- NOWE
+        updates.technique = (BigInt(char.technique || '1') + perStat).toString(); // <--- DODANO TECHNIKĘ
         rewardMsg = `Zyskano po +${perStat} do Siły, Szybk., Wytrz. i Techniki!`;
       } else {
         const safeStat = ['strength', 'speed', 'endurance', 'technique'].includes(targetStat) ? targetStat : 'strength';
