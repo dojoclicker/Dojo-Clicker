@@ -6,29 +6,13 @@ const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_SERVICE_KEY;
 const supabase = createClient(supabaseUrl, supabaseKey);
 
-// Słownik ID Przedmiotów
-const ITEMS = {
-    MIESO: "00000000-0000-0000-0000-000000000001",              // Kawałek Mięsa
-    JAGODY: "00000000-0000-0000-0000-000000000007",             // Mały Eliksir Skupienia (Zastępuje Jagody - MP)
-    NAPOJ: "00000000-0000-0000-0000-000000000013",              // Mały Napój Sportowy
-    FASOLKA: "00000000-0000-0000-0000-000000000019",            // Magiczna Fasolka
-    KAPSULKA: "00000000-0000-0000-0000-000000000004",           // Mała Kapsułka Medyczna (HP)
-    WODA: "00000000-0000-0000-0000-000000000030",               // Święta Woda
-    KROPLA: "00000000-0000-0000-0000-000000000033",             // Kropla Krwi Smoka
-    ZWOJ_MOCY_KI: "00000000-0000-0000-0000-000000000040",       // Strona Księgi Siły (Zastępuje Zwój)
-    ZWOJ_SZYBKOSCI: "00000000-0000-0000-0000-000000000044",     // Strona Księgi Szybkości (Zastępuje Zwój)
-    CIEZKA_SKORUPA: "00000000-0000-0000-0000-000000000081",     // Ciężka Skorupa
-    OPASKA_NOWICJUSZA: "00000000-0000-0000-0000-000000000082",  // Opaska Nowicjusza
-    CIEZKI_MIECZ: "00000000-0000-0000-0000-000000000085"        // Ciężkie Rękawice (Zastępuje Ciężki Miecz)
-};
-
 const missionsData = [
     {
         id: "00000000-0000-0000-0000-000000000001", name: "Trening w pobliskim lesie",
         description: "Wzmocnij swoje statystyki, trenując rąbanie drewna i bieganie.",
         stamina_cost: 2, req_stats: { "strength": "1", "speed": "1", "endurance": "1", "technique": "1" },
         reward_coins_min: 0, reward_coins_max: 1, reward_stats: { "min": "2", "max": "3" },
-        drop_table: [{ "item_id": ITEMS.JAGODY, "chance_pct": 20 }], 
+        drop_table: [], 
         is_repeatable: true, is_one_try: false
     },
     {
@@ -36,7 +20,7 @@ const missionsData = [
         description: "Z nieba niespodziewanie pikuje na ciebie gigantyczna, wygłodniała bestia. Odeprzyj atak!",
         stamina_cost: 3, req_stats: { "strength": "15", "speed": "15", "endurance": "15", "technique": "15" },
         reward_coins_min: 0, reward_coins_max: 2, reward_stats: { "min": "3", "max": "5" },
-        drop_table: [{ "item_id": ITEMS.MIESO, "chance_pct": 20 }], 
+        drop_table: [], 
         is_repeatable: true, is_one_try: false
     },
     {
@@ -52,7 +36,7 @@ const missionsData = [
         description: "Tuż przed celem drogę zachodzi wam potężny rabuś dzierżący wielki miecz. Pokaż mu siłę swoich pięści.",
         stamina_cost: 5, req_stats: { "strength": "100", "speed": "100", "endurance": "100", "technique": "100" },
         reward_coins_min: 1, reward_coins_max: 4, reward_stats: { "min": "10", "max": "15" },
-        drop_table: [{ "item_id": ITEMS.CIEZKI_MIECZ, "chance_pct": 15 }],
+        drop_table: [],
         is_repeatable: true, is_one_try: false
     },
     {
@@ -60,7 +44,7 @@ const missionsData = [
         description: "Mistrz zgadza się wziąć cię pod swoje skrzydła. Udowodnij swój potencjał w sparingu.",
         stamina_cost: 10, req_stats: { "strength": "250", "speed": "250", "endurance": "250", "technique": "250" },
         reward_coins_min: 2, reward_coins_max: 6, reward_stats: { "min": "15", "max": "25" },
-        drop_table: [{ "item_id": ITEMS.CIEZKA_SKORUPA, "chance_pct": 100 }, { "item_id": ITEMS.NAPOJ, "chance_pct": 10 }],
+        drop_table: [],
         is_repeatable: false, is_one_try: false
     },
     {
@@ -68,7 +52,7 @@ const missionsData = [
         description: "Mistrz zmusza cię do biegania z ciężkimi skrzynkami pełnymi mleka na wschód słońca.",
         stamina_cost: 10, req_stats: { "strength": "500", "speed": "500", "endurance": "500", "technique": "500" },
         reward_coins_min: 3, reward_coins_max: 7, reward_stats: { "min": "20", "max": "35" },
-        drop_table: [{ "item_id": ITEMS.NAPOJ, "chance_pct": 1 }],
+        drop_table: [],
         is_repeatable: true, is_one_try: false
     },
     {
@@ -76,7 +60,7 @@ const missionsData = [
         description: "Mistrz wysyła cię na wielki plac budowy. Przenoszenie betonu gołymi rękami hartuje ciało.",
         stamina_cost: 10, req_stats: { "strength": "1000", "speed": "1000", "endurance": "1000", "technique": "1000" },
         reward_coins_min: 4, reward_coins_max: 8, reward_stats: { "min": "30", "max": "50" },
-        drop_table: [{ "item_id": ITEMS.NAPOJ, "chance_pct": 1 }],
+        drop_table: [],
         is_repeatable: true, is_one_try: false
     },
     {
@@ -84,7 +68,7 @@ const missionsData = [
         description: "Czas pomóc rolnikom. Musisz zaorać ogromne pole używając tylko własnych rąk!",
         stamina_cost: 15, req_stats: { "strength": "2500", "speed": "2500", "endurance": "2500", "technique": "2500" },
         reward_coins_min: 10, reward_coins_max: 12, reward_stats: { "min": "50", "max": "80" },
-        drop_table: [{ "item_id": ITEMS.NAPOJ, "chance_pct": 2 }],
+        drop_table: [],
         is_repeatable: true, is_one_try: false
     },
     {
@@ -92,7 +76,7 @@ const missionsData = [
         description: "Czas pomóc drwalom. Musisz wycinać ogromne drzewa używając tylko własnych rąk!",
         stamina_cost: 15, req_stats: { "strength": "5000", "speed": "5000", "endurance": "5000", "technique": "5000" },
         reward_coins_min: 15, reward_coins_max: 20, reward_stats: { "min": "60", "max": "100" },
-        drop_table: [{ "item_id": ITEMS.NAPOJ, "chance_pct": 5 }],
+        drop_table: [],
         is_repeatable: true, is_one_try: false
     },
     {
@@ -100,7 +84,7 @@ const missionsData = [
         description: "Czas pomóc kurierom. Musisz przynieść paczki w czasie używając tylko własnych rąk!",
         stamina_cost: 20, req_stats: { "strength": "10000", "speed": "10000", "endurance": "10000", "technique": "10000" },
         reward_coins_min: 20, reward_coins_max: 25, reward_stats: { "min": "100", "max": "150" },
-        drop_table: [{ "item_id": ITEMS.NAPOJ, "chance_pct": 10 }],
+        drop_table: [],
         is_repeatable: true, is_one_try: false
     },
     {
@@ -108,7 +92,7 @@ const missionsData = [
         description: "Masz tylko jedną szansę! W finale czeka na ciebie dziwny starzec w peruce.",
         stamina_cost: 25, req_stats: { "strength": "15000", "speed": "15000", "endurance": "15000", "technique": "15000" },
         reward_coins_min: 500, reward_coins_max: 1500, reward_stats: { "min": "1500", "max": "2000" },
-        drop_table: [{ "item_id": ITEMS.KROPLA, "chance_pct": 100 }],
+        drop_table: [],
         is_repeatable: false, is_one_try: true
     },
     {
@@ -116,7 +100,7 @@ const missionsData = [
         description: "Natrafiasz na oddział zbrojny. Ich bezwzględny oficer niszczy twój transport. Czas dać mu nauczkę!",
         stamina_cost: 30, req_stats: { "strength": "20000", "speed": "20000", "endurance": "20000", "technique": "20000" },
         reward_coins_min: 25, reward_coins_max: 50, reward_stats: { "min": "400", "max": "600" },
-        drop_table: [{ "item_id": ITEMS.KAPSULKA, "chance_pct": 5 }],
+        drop_table: [],
         is_repeatable: true, is_one_try: false
     },
     {
@@ -124,7 +108,7 @@ const missionsData = [
         description: "Docierasz do ufortyfikowanej wieży Armii. Przebij się przez strażników i wielkiego cyborga na szczycie!",
         stamina_cost: 35, req_stats: { "strength": "35000", "speed": "35000", "endurance": "35000", "technique": "35000" },
         reward_coins_min: 40, reward_coins_max: 80, reward_stats: { "min": "800", "max": "1200" },
-        drop_table: [{ "item_id": ITEMS.OPASKA_NOWICJUSZA, "chance_pct": 3 }],
+        drop_table: [],
         is_repeatable: true, is_one_try: false
     },
     {
@@ -132,7 +116,7 @@ const missionsData = [
         description: "Przeciwnik przyleciał na kamiennym filarze. Jego technika to śmiercionośny promień z palca!",
         stamina_cost: 40, req_stats: { "strength": "55000", "speed": "55000", "endurance": "55000", "technique": "55000" },
         reward_coins_min: 80, reward_coins_max: 100, reward_stats: { "min": "1500", "max": "2500" },
-        drop_table: [{ "item_id": ITEMS.ZWOJ_MOCY_KI, "chance_pct": 2 }, { "item_id": ITEMS.KAPSULKA, "chance_pct": 5 }],
+        drop_table: [],
         is_repeatable: true, is_one_try: false
     },
     {
@@ -140,7 +124,7 @@ const missionsData = [
         description: "Wspinasz się na legendarną wieżę sięgającą chmur do Kociego Pustelnika, by zdobyć magiczną wodę.",
         stamina_cost: 50, req_stats: { "strength": "80000", "speed": "80000", "endurance": "80000", "technique": "80000" },
         reward_coins_min: 90, reward_coins_max: 150, reward_stats: { "min": "3000", "max": "5000" },
-        drop_table: [{ "item_id": ITEMS.FASOLKA, "chance_pct": 5 }, { "item_id": ITEMS.WODA, "chance_pct": 1 }],
+        drop_table: [],
         is_repeatable: false, is_one_try: false
     },
     {
@@ -164,7 +148,7 @@ const missionsData = [
         description: "Drogę do zamku zagradza zmutowany wojownik stworzony, by zabijać mistrzów.",
         stamina_cost: 65, req_stats: { "strength": "280000", "speed": "280000", "endurance": "280000", "technique": "280000" },
         reward_coins_min: 300, reward_coins_max: 400, reward_stats: { "min": "12000", "max": "18000" },
-        drop_table: [{ "item_id": ITEMS.KAPSULKA, "chance_pct": 15 }],
+        drop_table: [],
         is_repeatable: true, is_one_try: false
     },
     {
@@ -180,7 +164,7 @@ const missionsData = [
         description: "Używając magicznego kija docierasz do latającego Pałacu Wszechmogącego. Pokonaj Strażnika!",
         stamina_cost: 75, req_stats: { "strength": "700000", "speed": "700000", "endurance": "700000", "technique": "700000" },
         reward_coins_min: 500, reward_coins_max: 600, reward_stats: { "min": "35000", "max": "50000" },
-        drop_table: [{ "item_id": ITEMS.WODA, "chance_pct": 100 }],
+        drop_table: [],
         is_repeatable: false, is_one_try: false
     },
     {
@@ -188,35 +172,39 @@ const missionsData = [
         description: "Otrzymujesz od asystenta Wszechmogącego strój ważący setki kilogramów. Musisz go dogonić, gdy on porusza się z prędkością błyskawicy. To wyciśnie z ciebie maksimum szybkości i wytrzymałości.",
         stamina_cost: 75, req_stats: { "strength": "1000000", "speed": "1000000", "endurance": "1000000", "technique": "1000000" },
         reward_coins_min: 600, reward_coins_max: 1000, reward_stats: { "min": "80000", "max": "120000" },
-        drop_table: [], is_repeatable: true
+        drop_table: [],
+        is_repeatable: true, is_one_try: false
     },
     {
         id: "00000000-0000-0000-0000-000000000022", name: "Misja 22: Własny Cień",
         description: "Fizyczna siła to nie wszystko. Usiądź w ciszy i wejdź we własny umysł. Stocz najtrudniejszą walkę z iluzją własnego strachu i gniewu, ucieleśnioną jako twój mroczny sobowtór.",
         stamina_cost: 85, req_stats: { "strength": "1500000", "speed": "1500000", "endurance": "1500000", "technique": "1500000" },
         reward_coins_min: 800, reward_coins_max: 1200, reward_stats: { "min": "150000", "max": "200000" },
-        drop_table: [], is_repeatable: true
+        drop_table: [],
+        is_repeatable: true, is_one_try: false
     },
     {
         id: "00000000-0000-0000-0000-000000000023", name: "Misja 23: Podróż w Przeszłość",
         description: "Mistrz używa Wahadła Czasu, by przenieść cię do przeszłości. Zmierz się tam z wirtualnymi widmami legendarnych wojowników z dawnych stuleci, aby pojąć prawdziwą naturę walki.",
         stamina_cost: 90, req_stats: { "strength": "2500000", "speed": "2500000", "endurance": "2500000", "technique": "2500000" },
         reward_coins_min: 1000, reward_coins_max: 1500, reward_stats: { "min": "250000", "max": "350000" },
-        drop_table: [], is_repeatable: true
+        drop_table: [],
+        is_repeatable: true, is_one_try: false
     },
     {
         id: "00000000-0000-0000-0000-000000000024", name: "Misja 24: Trening w Sali Czasu",
         description: "Reinkarnacja Króla Demonów rośnie w siłę. Wszechmogący pozwala ci wejść do Sali Czasu, gdzie jeden dzień to cały rok. Hartuj swoje ciało do granic ludzkich możliwości!",
         stamina_cost: 95, req_stats: { "strength": "4000000", "speed": "4000000", "endurance": "4000000", "technique": "4000000" },
         reward_coins_min: 2000, reward_coins_max: 3000, reward_stats: { "min": "400000", "max": "600000" },
-        drop_table: [], is_repeatable: true
+        drop_table: [], 
+        is_repeatable: true, is_one_try: false
     },
     {
         id: "00000000-0000-0000-0000-000000000025", name: "Finał Turnieju (Jednorazowa)",
         description: "Finał! Przed tobą staje reinkarnacja Króla Demonów. Stawką jest los całego świata.",
         stamina_cost: 100, req_stats: { "strength": "6000000", "speed": "6000000", "endurance": "6000000", "technique": "6000000" },
         reward_coins_min: 5000, reward_coins_max: 8000, reward_stats: { "min": "1500000", "max": "2500000" },
-        drop_table: [{ "item_id": ITEMS.KROPLA, "chance_pct": 100 }],
+        drop_table: [],
         is_repeatable: false, is_one_try: true
     }
 ];
@@ -229,10 +217,6 @@ async function seedMissions() {
         const { error: deleteError } = await supabase.from('missions').delete().not('id', 'is', null);
         if (deleteError) throw deleteError;
 
-    //    console.log('🔄 Resetowanie starych postępów graczy...');
-    //    const { error: resetError } = await supabase.from('characters').update({ completed_missions: [] }).not('profile_id', 'is', null);
-    //    if (resetError) throw resetError;
-        
         console.log('📦 Wgrywanie nowych misji (upsert)...');
         const { data, error } = await supabase.from('missions').upsert(missionsData, { onConflict: 'id' }).select();
             

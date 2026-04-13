@@ -2201,9 +2201,13 @@ app.post('/api/work/finish', authenticateToken, requireAlive, async (req, res) =
     let activeStr = BigInt(fullStats.baseStats.strength || 0) + BigInt(fullStats.equipStats.strength || 0);
     let activeSpd = BigInt(fullStats.baseStats.speed || 0) + BigInt(fullStats.equipStats.speed || 0);
     let activeEnd = BigInt(fullStats.baseStats.endurance || 0) + BigInt(fullStats.equipStats.endurance || 0);
+    
+    // KROK 3: Pobieramy aktywną Technikę
+    let activeTech = BigInt(fullStats.baseStats.technique || 0) + BigInt(fullStats.equipStats.technique || 0);
 
     let penaltyMultiplier = 1.0;
-    const weakest = minBigInt(activeStr, minBigInt(activeSpd, activeEnd));
+    // KROK 3: Dorzucamy activeTech do poszukiwań najsłabszej statystyki (weakest)
+    const weakest = minBigInt(activeTech, minBigInt(activeStr, minBigInt(activeSpd, activeEnd)));
     
     let serverWarningText = null; 
 
