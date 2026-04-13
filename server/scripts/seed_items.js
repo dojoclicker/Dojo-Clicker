@@ -91,7 +91,11 @@ const itemsData = [
     { id: generateId(57), name: "Rozdział Księgi Umysłu", category: "special_consumable", slot: null, buy_price_coins: null, sell_price_coins: "2500", consumable_effect: { "permanent_bonus": { "mental_strength": "250" } } },
     { id: generateId(58), name: "Tomisko Umysłu", category: "special_consumable", slot: null, buy_price_coins: null, sell_price_coins: "5000", consumable_effect: { "permanent_bonus": { "mental_strength": "500" } } },
     { id: generateId(59), name: "Starożytny Tom Umysłu", category: "special_consumable", slot: null, buy_price_coins: null, sell_price_coins: "10000", consumable_effect: { "permanent_bonus": { "mental_strength": "1000" } } },
-
+    // --- TECHNIKA ---
+    { id: generateId(60), name: "Strona Księgi Techniki", category: "special_consumable", slot: null, buy_price_coins: null, sell_price_coins: "1000", consumable_effect: { "permanent_bonus": { "technique": "100" } } },
+    { id: generateId(61), name: "Rozdział Księgi Techniki", category: "special_consumable", slot: null, buy_price_coins: null, sell_price_coins: "2500", consumable_effect: { "permanent_bonus": { "technique": "250" } } },
+    { id: generateId(62), name: "Tomisko Techniki", category: "special_consumable", slot: null, buy_price_coins: null, sell_price_coins: "5000", consumable_effect: { "permanent_bonus": { "technique": "500" } } },
+    { id: generateId(63), name: "Starożytny Tom Techniki", category: "special_consumable", slot: null, buy_price_coins: null, sell_price_coins: "10000", consumable_effect: { "permanent_bonus": { "technique": "1000" } } },
 
     // ==========================================
     // 🛡️ EKWIPUNEK (Zgodnie z wytycznymi GDD)
