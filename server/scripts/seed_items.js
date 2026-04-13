@@ -113,12 +113,12 @@ const itemsData = [
     {
         id: generateId(82), name: "Opaska Nowicjusza", category: "equipment", slot: "head",
         buy_price_coins: "1500", sell_price_coins: "750", req_stats: { "strength": "50", "endurance": "50" },
-        bonuses: { "type": "passive", "bonus_coins_pct": "5" }
+        bonuses: { "type": "passive", "bonus_coins": "5" } // <-- Pasywnie +5 monet do zysku
     },
     {
         id: generateId(83), name: "Ciężka Opaska", category: "equipment", slot: "head",
         buy_price_coins: "5000", sell_price_coins: "2500", req_stats: { "endurance": "100", "strength": "100" },
-        bonuses: { "type": "passive", "bonus_coins_pct": "15" }
+        bonuses: { "type": "training", "bonus_coins_pct": "15" } // <-- Treningowo +15% monet
     },
 
     // Dłonie (Hands) -> Siła

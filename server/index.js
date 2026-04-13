@@ -67,9 +67,9 @@ async function getFullCharacterStats(userId) {
       equippedItems = [];
     }
 
-    const equipBonuses = { strength: 0n, speed: 0n, endurance: 0n, technique: 0n, intelligence: 0n, mental_strength: 0n, bonus_hp: 0n, bonus_mp: 0n, bonus_coins_pct: 0n };
-    const equipBreakdown = { strength: [], speed: [], endurance: [], technique: [], intelligence: [], mental_strength: [], bonus_hp: [], bonus_mp: [], bonus_coins_pct: [] };
-    const trainingBonuses = { strength: 0n, speed: 0n, endurance: 0n, technique: 0n, intelligence: 0n, mental_strength: 0n, bonus_hp: 0n, bonus_mp: 0n };
+    const equipBonuses = { strength: 0n, speed: 0n, endurance: 0n, technique: 0n, intelligence: 0n, mental_strength: 0n, bonus_hp: 0n, bonus_mp: 0n, bonus_coins_pct: 0n, bonus_coins: 0n };
+    const equipBreakdown = { strength: [], speed: [], endurance: [], technique: [], intelligence: [], mental_strength: [], bonus_hp: [], bonus_mp: [], bonus_coins_pct: [], bonus_coins: [] };
+    const trainingBonuses = { strength: 0n, speed: 0n, endurance: 0n, technique: 0n, intelligence: 0n, mental_strength: 0n, bonus_hp: 0n, bonus_mp: 0n, bonus_coins_pct: 0n };
 
     equippedItems.forEach(item => {
       if (item.item_templates && item.item_templates.bonuses) {
@@ -84,7 +84,8 @@ async function getFullCharacterStats(userId) {
           if (bonuses.mental_strength) { equipBonuses.mental_strength += BigInt(bonuses.mental_strength); equipBreakdown.mental_strength.push(`${item.item_templates.name}: +${bonuses.mental_strength}`); }
           if (bonuses.bonus_hp) { equipBonuses.bonus_hp += BigInt(bonuses.bonus_hp); equipBreakdown.bonus_hp.push(`${item.item_templates.name}: +${bonuses.bonus_hp}`); }
           if (bonuses.bonus_mp) { equipBonuses.bonus_mp += BigInt(bonuses.bonus_mp); equipBreakdown.bonus_mp.push(`${item.item_templates.name}: +${bonuses.bonus_mp}`); }
-          if (bonuses.bonus_coins_pct) { equipBonuses.bonus_coins_pct += BigInt(bonuses.bonus_coins_pct); equipBreakdown.bonus_coins_pct.push(`${item.item_templates.name}: +${bonuses.bonus_coins_pct}%`); } // <--- NOWE
+          if (bonuses.bonus_coins_pct) { equipBonuses.bonus_coins_pct += BigInt(bonuses.bonus_coins_pct); equipBreakdown.bonus_coins_pct.push(`${item.item_templates.name}: +${bonuses.bonus_coins_pct}%`); }
+          if (bonuses.bonus_coins) { equipBonuses.bonus_coins += BigInt(bonuses.bonus_coins); equipBreakdown.bonus_coins.push(`${item.item_templates.name}: +${bonuses.bonus_coins}`); } // <-- DODANO PŁASKIE MONETY
         }
 
         if (bonuses.type === 'training') {
@@ -96,6 +97,7 @@ async function getFullCharacterStats(userId) {
           if (bonuses.mental_strength) trainingBonuses.mental_strength += BigInt(bonuses.mental_strength);
           if (bonuses.bonus_hp) trainingBonuses.bonus_hp += BigInt(bonuses.bonus_hp);
           if (bonuses.bonus_mp) trainingBonuses.bonus_mp += BigInt(bonuses.bonus_mp);
+          if (bonuses.bonus_coins_pct) trainingBonuses.bonus_coins_pct += BigInt(bonuses.bonus_coins_pct);
         }
       }
     }); 
@@ -744,8 +746,7 @@ app.post('/api/inventory/consume', authenticateToken, async (req, res) => {
     const originalBonusStamina = BigInt(character.bonus_stamina ?? '0');
     const hasPermanentEffects = effects.permanent_bonus || effects.bonus_stamina || ((effects.hospital_exit_recovery || effects.full_resurrection) && originalHp <= 0n);
     
-    if (currentHp === originalHp && currentMp === originalMp && currentStamina === originalStamina && newBonusStamina === originalBonusStamina && !hasPermanentEffects) {
-      // Zmieniliśmy "message" na "error", aby apiCall w game.html poprawnie to odczytało!
+    if (effectMessages.length === 0 && currentHp === originalHp && currentMp === originalMp && currentStamina === originalStamina && currentCoins === BigInt(character.coins || '0') && !hasPermanentEffects) {
       return res.status(400).json({ error: 'Twoje zasoby są już w pełni odnowione, szkoda marnować przedmiotu!' });
     }
 
@@ -2102,9 +2103,10 @@ app.post('/api/work/finish', authenticateToken, requireAlive, async (req, res) =
         let newHp = maxBigInt(0n, BigInt(char.hp) - (BigInt(fullStats.max_hp) * pct / 100n));
         newHp = maxBigInt(0n, newHp - (BigInt(fullStats.max_hp) * extraHpPct / 100n));
 
-        const equipCoinBonusPct = BigInt(fullStats.equipStats.bonus_coins_pct || '0'); // <--- POBRANIE BONUSU Z EKWIPUNKU
+        const equipCoinBonusFlat = BigInt(fullStats.equipStats.bonus_coins || '0');
+        const trainingCoinBonusPct = BigInt(fullStats.trainingStats.bonus_coins_pct || '0');
         let finalCoinsBase = BigInt(Math.floor(Number(netScore * work.reward_coins) * penaltyMultiplier));
-        const finalCoins = finalCoinsBase + ((finalCoinsBase * equipCoinBonusPct) / 100n); // <--- DODANIE % BONUSU
+        const finalCoins = finalCoinsBase + ((finalCoinsBase * trainingCoinBonusPct) / 100n) + equipCoinBonusFlat;
         
         let newMp = maxBigInt(0n, BigInt(char.mp) - (BigInt(fullStats.max_mp) * pct / 100n));
         let newStamina = maxBigInt(0n, BigInt(char.stamina) - (BigInt(fullStats.max_stamina) * pct / 100n));

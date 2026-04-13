@@ -2414,7 +2414,7 @@
                 tooltipHTML += '<div class="tooltip-section"><span class="tooltip-section-title">Efekt w szpitalu:</span><span class="tooltip-bullet">• Leczy 100% zasobów, zdejmuje karę czasu i przywraca statystyki</span></div>';
             }
 
-            const statNamesPL = { strength: 'Siła', speed: 'Szybkość', endurance: 'Wytrzymałość', technique: 'Technika', intelligence: 'Inteligencja', mental_strength: 'Siła Mentalna', bonus_hp: 'Max HP', bonus_mp: 'Max MP', bonus_coins_pct: '% Zdobywanych Monet' };
+            const statNamesPL = { strength: 'Siła', speed: 'Szybkość', endurance: 'Wytrzymałość', technique: 'Technika', intelligence: 'Inteligencja', mental_strength: 'Siła Mentalna', bonus_hp: 'Max HP', bonus_mp: 'Max MP', bonus_coins_pct: '% Monet (Praca)', bonus_coins: 'Monety (Pasywnie)' };
 
             if (template.slot) {
                 const slotNamesPL = { head: 'Głowa', chest: 'Tors', legs: 'Nogi', feet: 'Stopy', hands: 'Ręce', ear_l: 'L. Kolczyk', ear_r: 'P. Kolczyk', ring_l: 'L. Pierścień', ring_r: 'P. Pierścień', necklace: 'Naszyjnik' };
@@ -2457,6 +2457,7 @@
                     else if (effect === 'temporary_buff') displayEffect = 'Tymczasowe błogosławieństwo';
                     else if (effect === 'restore_hp_pct') displayEffect = `Przywraca ${val}% HP`;
                     else if (effect === 'restore_mp_pct') displayEffect = `Przywraca ${val}% MP`;
+                    else if (effect === 'restore_stamina_pct') displayEffect = `Przywraca ${val}% Staminy`;
                     else if (effect === 'add_coins') displayEffect = `Otrzymujesz ${val} Monet 💰`;
                     tooltipHTML += `<span class="tooltip-bullet">• ${displayEffect}</span><br>`;
                 }
