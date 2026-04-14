@@ -137,18 +137,19 @@ async function getFullCharacterStats(userId) {
         ((baseStats.bonus_mp + equipBonuses.bonus_mp) * 2n) + 
         (baseStats.bonus_stamina * 5n);
 
-    const currentPowerStr = String(character.base_power_level || '0');
+    // Używamy nowej kolumny, aby ominąć automatyczne nadpisywanie przez bazę!
+    const currentPowerStr = String(character.total_power_level || '0');
     const newPowerStr = powerLevel.toString();
 
     // --- ⚡ ZAPIS DO BAZY DANYCH (DLA TOP 10) ---
     if (currentPowerStr !== newPowerStr) {
-        const { error: pwrError } = await supabase.from('characters')
-            .update({ base_power_level: Number(powerLevel) }) 
-            .eq('id', character.id);
-            
-        if (pwrError) {
-            console.error('[Stats] ⚠️ Błąd zapisu Top 10:', pwrError.message);
-        }
+        // Fire & Forget - zdejmujemy await! Zapytanie leci w tle, nie spowalniając gry!
+        supabase.from('characters')
+            .update({ total_power_level: Number(powerLevel) }) 
+            .eq('id', character.id)
+            .then(({ error }) => {
+                if (error) console.error('[Stats] ⚠️ Błąd zapisu Top 10:', error.message);
+            });
     }
 
     return {
@@ -1815,12 +1816,8 @@ async function getRanking() {
   try {
     const { data, error } = await supabase
       .from('characters')
-      .select(`
-        id,
-        base_power_level,
-        profiles!inner(username)
-      `)
-      .order('base_power_level', { ascending: false })
+      .select(`id, total_power_level, profiles!inner(username)`)
+      .order('total_power_level', { ascending: false })
       .limit(10);
     
     if (error) throw error;
@@ -1843,7 +1840,7 @@ app.get('/api/ranking', async (req, res) => {
     const formattedRanking = ranking.map((player, index) => ({
       position: index + 1,
       username: player.profiles.username,
-      power_level: BigInt(player.base_power_level || '1').toString()
+      power_level: BigInt(player.total_power_level || '1').toString()
     }));
     
     res.json(formattedRanking);
@@ -2044,7 +2041,7 @@ app.post('/api/training/stop', authenticateToken, async (req, res) => {
     let rewardMsg = "Trening przerwany. Straciłeś staminę.";
 
     if (action === 'completed' && mentor) {
-      const effectivePower = Math.max(1000, parseInt(char.base_power_level || '0'));
+      const effectivePower = Math.max(1000, parseInt(char.total_power_level || '0'));
       const trainingHours = parseFloat(hoursStr);
       
       const statGain = BigInt(Math.floor((400 + Math.pow(effectivePower, 0.55)) * mentor.multiplier * trainingHours));
