@@ -460,7 +460,7 @@ app.get('/api/character', authenticateToken, async (req, res) => {
 
     // Aktualizujemy Poziom Mocy w bazie Top 10 tylko jeśli faktycznie się zmienił
     if (String(character.total_power_level || '0') !== powerLevel.toString()) {
-        updateData.total_power_level = Number(powerLevel);
+        updateData.total_power_level = Number(powerLevel); // MUSI być Number(), baza danych (int8) odrzuca tekst!
     }
 
     // Patch: Odblokowanie pracy
@@ -472,9 +472,10 @@ app.get('/api/character', authenticateToken, async (req, res) => {
         }
     }
 
-    // Wysyłamy TYLKO JEDNO zapytanie do bazy (Zabija lagi i zawieszenia Supabase!)
+    // Wysyłamy TYLKO JEDNO zapytanie do bazy + LOGOWANIE BŁĘDÓW
     if (Object.keys(updateData).length > 0) {
-        await supabase.from('characters').update(updateData).eq('profile_id', userId);
+        const { error: updErr } = await supabase.from('characters').update(updateData).eq('profile_id', userId);
+        if (updErr) console.error('[Stats] ⚠️ Błąd zapisu danych postaci (Top 10):', updErr.message);
     }
 
     // Zwracamy paczkę do przeglądarki
@@ -2268,11 +2269,11 @@ app.post('/api/work/finish', authenticateToken, requireAlive, async (req, res) =
 
     let dropIds = [];
     if (work.drop_woda && netScore > 10n && Math.floor(Math.random() * 100) < 1) {
-        dropIds.push("00000000-0000-0000-0000-000000000008"); 
+        dropIds.push("00000000-0000-0000-0000-000000000030"); 
         const { data: invData } = await supabase.from('inventory').select('backpack_index').eq('character_id', char.id).is('equipped_slot', null);
         const usedIndexes = invData ? invData.map(i => i.backpack_index) : [];
         let freeIndex = 1; while(usedIndexes.includes(freeIndex)) freeIndex++;
-        await supabase.from('inventory').insert({ character_id: char.id, item_template_id: "00000000-0000-0000-0000-000000000008", quantity: 1, backpack_index: freeIndex });
+        await supabase.from('inventory').insert({ character_id: char.id, item_template_id: "00000000-0000-0000-0000-000000000030", quantity: 1, backpack_index: freeIndex });
     }
 
     let updateData = {

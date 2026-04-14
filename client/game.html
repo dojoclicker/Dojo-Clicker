@@ -1483,7 +1483,7 @@
             
             // Zlicz Magiczne Fasolki w plecaku (equipped_slot === null)
             const magicBeans = items.filter(item => 
-                item.item_template_id === '00000000-0000-0000-0000-000000000006' && 
+                item.item_template_id === '00000000-0000-0000-0000-000000000019' &&
                 item.equipped_slot === null
             );
             
@@ -3013,7 +3013,7 @@ function getItemImage(itemName, category) {
             // Magiczna fasolka
             document.getElementById('btn-use-senzu')?.addEventListener('click', async function() {
                 const magicBean = window.inventoryData?.find(item => 
-                    item.item_template_id === '00000000-0000-0000-0000-000000000006' && 
+                    item.item_template_id === '00000000-0000-0000-0000-000000000019' && 
                     item.equipped_slot === null
                 );
                 if (!magicBean) {
