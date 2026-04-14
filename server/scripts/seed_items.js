@@ -51,17 +51,17 @@ const itemsData = [
     // ==========================================
     // 🌟 ZWIĘKSZANIE LIMITÓW (MAX HP / MP / STAMINA)
     // ==========================================
-    { id: generateId(30), name: "Święta Woda", category: "special_consumable", slot: null, buy_price_coins: "22", sell_price_coins: "5000", consumable_effect: { "bonus_stamina": "10" } },
-    { id: generateId(31), name: "Łza Syreny", category: "special_consumable", slot: null, buy_price_coins: "22", sell_price_coins: "15000", consumable_effect: { "bonus_stamina": "25" } },
-    { id: generateId(32), name: "Esencja Życia", category: "special_consumable", slot: null, buy_price_coins: "22", sell_price_coins: "35000", consumable_effect: { "bonus_stamina": "50" } },
+    { id: generateId(30), name: "Kropla Wigoru", category: "special_consumable", slot: null, buy_price_coins: "22", sell_price_coins: "5000", consumable_effect: { "bonus_stamina": "10" } },
+    { id: generateId(31), name: "Nektar Wigoru", category: "special_consumable", slot: null, buy_price_coins: "22", sell_price_coins: "15000", consumable_effect: { "bonus_stamina": "25" } },
+    { id: generateId(32), name: "Esencja Wigoru", category: "special_consumable", slot: null, buy_price_coins: "22", sell_price_coins: "35000", consumable_effect: { "bonus_stamina": "50" } },
 
-    { id: generateId(33), name: "Kropla Krwi Smoka", category: "special_consumable", slot: null, buy_price_coins: "22", sell_price_coins: "50000", consumable_effect: { "bonus_hp": "100" } },
-    { id: generateId(34), name: "Krew Demona", category: "special_consumable", slot: null, buy_price_coins: "22", sell_price_coins: "125000", consumable_effect: { "bonus_hp": "250" } },
-    { id: generateId(35), name: "Serce Tytana", category: "special_consumable", slot: null, buy_price_coins: "22", sell_price_coins: "300000", consumable_effect: { "bonus_hp": "500" } },
+    { id: generateId(33), name: "Kropla Życia", category: "special_consumable", slot: null, buy_price_coins: "22", sell_price_coins: "50000", consumable_effect: { "bonus_hp": "100" } },
+    { id: generateId(34), name: "Nektar Życia", category: "special_consumable", slot: null, buy_price_coins: "22", sell_price_coins: "125000", consumable_effect: { "bonus_hp": "250" } },
+    { id: generateId(35), name: "Esencja Życia", category: "special_consumable", slot: null, buy_price_coins: "22", sell_price_coins: "300000", consumable_effect: { "bonus_hp": "500" } },
 
-    { id: generateId(36), name: "Łza Bogów", category: "special_consumable", slot: null, buy_price_coins: "22", sell_price_coins: "50000", consumable_effect: { "bonus_mp": "100" } },
-    { id: generateId(37), name: "Kryształ Umysłu", category: "special_consumable", slot: null, buy_price_coins: "22", sell_price_coins: "125000", consumable_effect: { "bonus_mp": "250" } },
-    { id: generateId(38), name: "Oko Astralne", category: "special_consumable", slot: null, buy_price_coins: "22", sell_price_coins: "300000", consumable_effect: { "bonus_mp": "500" } },
+    { id: generateId(36), name: "Kropla Energii", category: "special_consumable", slot: null, buy_price_coins: "22", sell_price_coins: "50000", consumable_effect: { "bonus_mp": "100" } },
+    { id: generateId(37), name: "Nektar Energii", category: "special_consumable", slot: null, buy_price_coins: "22", sell_price_coins: "125000", consumable_effect: { "bonus_mp": "250" } },
+    { id: generateId(38), name: "Esencja Energii", category: "special_consumable", slot: null, buy_price_coins: "22", sell_price_coins: "300000", consumable_effect: { "bonus_mp": "500" } },
 
     // ==========================================
     // 📖 KSIĘGI STATYSTYK (Trwałe punkty)
