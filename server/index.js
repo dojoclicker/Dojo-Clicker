@@ -126,17 +126,32 @@ async function getFullCharacterStats(userId) {
     const stats_sum = baseStats.strength + baseStats.speed + baseStats.endurance + baseStats.technique + baseStats.intelligence + baseStats.mental_strength;
     const powerLevel = stats_sum + baseStats.bonus_hp + (baseStats.bonus_mp * 2n) + (baseStats.bonus_stamina * 5n);
 
-    const currentPowerStr = String(character.base_power_level || '0');
-    const newPowerStr = powerLevel.toString();
+    // --- ⚡ ZAPIS CAŁKOWITEGO POZIOMU MOCY (DLA TOP 10) ---
+    // Wyliczamy moc ze wszystkich statystyk (Baza + Trening + Ekwipunek)
+    const total_stats_sum = 
+        BigInt(fullStats.strength || 0) + 
+        BigInt(fullStats.speed || 0) + 
+        BigInt(fullStats.endurance || 0) + 
+        BigInt(fullStats.technique || 0) + 
+        BigInt(fullStats.intelligence || 0) + 
+        BigInt(fullStats.mental_strength || 0);
+        
+    const totalPowerLevel = total_stats_sum + 
+        BigInt(fullStats.bonus_hp || 0) + 
+        (BigInt(fullStats.bonus_mp || 0) * 2n) + 
+        (BigInt(fullStats.bonus_stamina || 0) * 5n);
 
-    // ⚡ TWARDY ZAPIS + CASTOWANIE DO INT8
-    if (currentPowerStr !== newPowerStr) {
+    const currentTotalPowerStr = String(character.base_power_level || '0');
+    const newTotalPowerStr = totalPowerLevel.toString();
+
+    // Twardy zapis do bazy z uwzględnieniem sprzętu i treningu!
+    if (currentTotalPowerStr !== newTotalPowerStr) {
         const { error: pwrError } = await supabase.from('characters')
-            .update({ base_power_level: Number(powerLevel) }) // Baza int8 wymaga liczby, nie stringa!
+            .update({ base_power_level: Number(totalPowerLevel) }) 
             .eq('id', character.id);
             
         if (pwrError) {
-            console.error('[Stats] ⚠️ Błąd zapisu Poziomu Mocy do bazy:', pwrError.message);
+            console.error('[Stats] ⚠️ Błąd zapisu Top 10:', pwrError.message);
         }
     }
 
