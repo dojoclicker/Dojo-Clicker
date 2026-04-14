@@ -406,10 +406,12 @@
         <div id="shop-view" style="display: none;">
             <div class="shop-container game-panel-row" style="padding: 1rem; width: 100%;">
                 
-                <div class="shop-left-column game-panel" style="flex: 1.4;">
-                    <div class="shop-level-tabs" style="display: flex; gap: 10px; margin-bottom: 15px;">
-                        <button class="shop-tab active" data-level="1">Sklep Nowicjusza</button>
+                <div class="shop-level-tabs" style="display: flex; gap: 10px; margin-bottom: 15px;">
+                        <button class="shop-tab active" data-level="1">Sklep Poziom 1</button>
                         <button class="shop-tab disabled" data-level="2" disabled>Sklep Poziom 2</button>
+                        <button class="shop-tab disabled" data-level="3" disabled>Sklep Poziom 3</button>
+                        <button class="shop-tab disabled" data-level="4" disabled>Sklep Poziom 4</button>
+                        <button class="shop-tab disabled" data-level="5" disabled>Sklep Poziom 5</button>
                     </div>
 
                     <div class="shop-category-tabs" style="display: flex; gap: 10px; margin-bottom: 5px; flex-wrap: wrap;">
@@ -1757,161 +1759,123 @@ function getItemImage(itemName, category) {
         // ==========================================
         // 🛒 6. SYSTEM SKLEPU
         // ==========================================
-        // Tu znajdują się: fetchShopItems(), initShop(), renderShopItems(), buyItem(), sellItem()
+        // Pamięć na dzienne zakupy z serwera i poziom gracza
+        let playerDailyBuys = {};
+        let unlockedShopLevel = 1;
         let currentShopCategory = 'consumables';
         let currentShopLevel = 1;
+        let shopData = { 1:{}, 2:{}, 3:{}, 4:{}, 5:{} };
 
-        // Dane sklepu (dynamiczne z bazy danych)
-        let shopData = { 
-            1: { consumables: [], training: [], equipment: [] }, 
-            2: { consumables: [], training: [], equipment: [] } 
-        };
-
-        // Pobieranie przedmiotów sklepu z bazy danych
+        // Pobieranie przedmiotów sklepu (ZINTEGROWANE Z POZIOMAMI)
         async function fetchShopItems() {
             try {
-                const sessionToken = localStorage.getItem('session_token');
-                const response = await fetch(`${API_BASE_URL}/api/shop/items`, {
-                    method: 'GET',
-                    headers: {
-                        'Authorization': `Bearer ${sessionToken}`,
-                        'Content-Type': 'application/json'
-                    }
+                const res = await apiCall('/api/shop/items', 'GET');
+                if (!res || !res.success) return;
+
+                // Dane z serwera (z Twojego nowego index.js)
+                unlockedShopLevel = res.data.unlockedLevel;
+                playerDailyBuys = res.data.dailyBuys || {};
+                const templates = res.data.items || [];
+                
+                // Inicjalizacja struktury dla 5 poziomów
+                [1,2,3,4,5].forEach(lvl => {
+                    shopData[lvl] = { consumables: [], training: [], equipment: [] };
                 });
 
-                if (!response.ok) {
-                    if (response.status === 401 || response.status === 403) {
-                        localStorage.removeItem('session_token');
-                        window.location.href = 'index.html';
-                        return;
-                    }
-                    throw new Error(`Błąd HTTP: ${response.status}`);
-                }
-
-                const templates = await response.json();
-                
-                // Wyczyść tablice dla poziomu 1
-                shopData[1].consumables = [];
-                shopData[1].training = [];
-                shopData[1].equipment = [];
-
-                // Przetwarzanie i segregacja szablonów
+                // Segregacja przedmiotów na poziomy i kategorie
                 templates.forEach(template => {
-                    // Słownik tłumaczeń na język polski
-                    const slotNamesPL = {
-                        'head': 'Głowa', 'chest': 'Tors', 'legs': 'Nogi', 
-                        'feet': 'Stopy', 'hands': 'Dłonie', 'ear_l': 'L. Kolczyk', 
-                        'ear_r': 'P. Kolczyk', 'ring_l': 'L. Pierścień', 
-                        'ring_r': 'P. Pierścień', 'necklace': 'Naszyjnik'
-                    };
-
-                    // Przekazuj pełny szablon, a nie okrojoną wersję
+                    const lvl = template.shop_level || 1;
                     const shopItem = {
                         ...template, 
                         imagePath: getItemImage(template.name, template.category),
-                        description: template.slot ? 'Miejsce: ' + (slotNamesPL[template.slot] || template.slot) : 'Przedmiot',
                         price: template.buy_price_coins
                     };
 
                     if (template.category === 'consumable' || template.category === 'special_consumable') {
-                        shopData[1].consumables.push(shopItem);
+                        shopData[lvl].consumables.push(shopItem);
                     } else if (template.category === 'equipment') {
-                        // Dynamiczne filtrowanie na podstawie danych z bazy
                         if (template.bonuses && template.bonuses.type === 'training') {
-                            shopData[1].training.push(shopItem);
+                            shopData[lvl].training.push(shopItem);
                         } else {
-                            // Domyślny sprzęt (type === 'passive' lub brak typu)
-                            shopData[1].equipment.push(shopItem);
+                            shopData[lvl].equipment.push(shopItem);
                         }
                     }
                 });
 
-                console.log('[Shop] Pobrano', templates.length, 'przedmiotów z bazy danych');
+                // Wizualna aktualizacja przycisków poziomów (odblokowane/zablokowane)
+                document.querySelectorAll('.shop-tab').forEach(btn => {
+                    const btnLvl = parseInt(btn.dataset.level);
+                    if (btnLvl <= unlockedShopLevel) {
+                        btn.classList.remove('disabled');
+                        btn.disabled = false;
+                    } else {
+                        btn.classList.add('disabled');
+                        btn.disabled = true;
+                    }
+                });
                 
-            } catch (error) {
-                console.error('[Shop] Błąd pobierania przedmiotów sklepu:', error);
-                showWarningMessage('Nie udało się pobrać asortymentu sklepu.');
-            }
+            } catch (error) { console.error('[Shop] Błąd:', error); }
         }
 
-        // Inicjalizacja sklepu
-        async function initShop() {
-            await fetchShopItems(); // Pobierz dane z bazy przed renderowaniem
-            renderShopItems();
-            renderShopBackpack();
+        // Inicjalizacja Sklepu (Event Listenery)
+        function initShop() {
+            fetchShopItems().then(() => {
+                renderShopItems();
+                renderShopBackpack();
+            });
             
-            // Event listenery dla zakładek
+            // Obsługa kliknięć w zakładki Poziomów (1-5)
+            document.querySelectorAll('.shop-tab').forEach(tab => {
+                tab.addEventListener('click', function() {
+                    document.querySelectorAll('.shop-tab').forEach(t => t.classList.remove('active'));
+                    this.classList.add('active');
+                    currentShopLevel = parseInt(this.getAttribute('data-level'));
+                    renderShopItems();
+                });
+            });
+
+            // Obsługa kliknięć w zakładki Kategorii
             document.querySelectorAll('.category-tab').forEach(tab => {
                 tab.addEventListener('click', function() {
-                    if (this.classList.contains('active')) return;
-                    
                     document.querySelectorAll('.category-tab').forEach(t => t.classList.remove('active'));
                     this.classList.add('active');
-                    
                     currentShopCategory = this.getAttribute('data-category');
                     renderShopItems();
                 });
             });
         }
 
-        // Renderowanie przedmiotów sklepu
+        // Renderowanie kart przedmiotów
         function renderShopItems() {
             const grid = document.getElementById('shop-items-grid');
-            const items = shopData[currentShopLevel][currentShopCategory] || [];
+            if (!grid) return;
             
+            const items = shopData[currentShopLevel][currentShopCategory] || [];
             grid.innerHTML = '';
             
             items.forEach(item => {
                 const card = createShopItemCard(item);
                 grid.appendChild(card);
             });
-            
+
             if (items.length === 0) {
-                grid.innerHTML = '<div style="text-align: center; color: #666; grid-column: 1/-1;">Brak przedmiotów w tej kategorii</div>';
+                grid.innerHTML = '<div style="text-align: center; color: #666; grid-column: 1/-1;">Brak przedmiotów w tej kategorii na tym poziomie</div>';
             }
         }
 
-        // Renderowanie plecaka do sprzedaży
+        // Renderowanie plecaka w widoku sklepu (do sprzedaży)
         function renderShopBackpack() {
             const grid = document.getElementById('shop-backpack-grid');
             if (!grid) return;
             const backpackItems = (window.inventoryData || []).filter(item => item.equipped_slot === null);
             
             grid.innerHTML = '';
-            const maxSlots = calculateMaxBackpackSlots();
+            const maxSlots = calculateMaxBackpackSlots(window.playerCurrentStats || {});
             
             for (let i = 1; i <= maxSlots; i++) {
                 const slot = document.createElement('div');
                 slot.className = 'inventory-slot';
                 slot.setAttribute('data-index', i);
-                
-                slot.addEventListener('dragover', function(e) {
-                    if (window.isInventoryActionLocked) return;
-                    e.preventDefault();
-                    this.style.backgroundColor = 'rgba(255, 107, 0, 0.3)';
-                });
-                
-                slot.addEventListener('dragleave', function(e) {
-                    this.style.backgroundColor = '';
-                });
-                
-                slot.addEventListener('drop', function(e) {
-                    if (window.isInventoryActionLocked) return;
-                    e.preventDefault();
-                    e.stopPropagation(); // KRYTYCZNE: Blokuje konflikty z panelem sklepu
-                    this.style.backgroundColor = '';
-                    
-                    const inventoryId = e.dataTransfer.getData('inventory_id');
-                    const targetIndex = this.getAttribute('data-index');
-                    
-                    const droppedOnCard = e.target.closest('.item-card');
-                    if (droppedOnCard) {
-                        const targetInventoryId = droppedOnCard.dataset.inventoryId;
-                        if (typeof performItemSwap === 'function') performItemSwap(inventoryId, 'backpack', targetIndex, targetInventoryId);
-                        return; 
-                    }
-                    if (typeof performItemSwap === 'function') performItemSwap(inventoryId, 'backpack', targetIndex, null);
-                });
                 
                 const item = backpackItems.find(b => b.backpack_index === i);
                 if (item) {
@@ -1922,52 +1886,51 @@ function getItemImage(itemName, category) {
             }
         }
 
-        // Tworzenie karty przedmiotu sklepu
+        // Tworzenie karty przedmiotu sklepu z LICZNIKIEM DZIENNYM
         function createShopItemCard(item) {
             const card = document.createElement('div');
             card.className = 'shop-item-card';
-            
-            // Dodaj atrybut z pełnymi danymi szablonu dla tooltipów
             card.setAttribute('data-item-template', encodeURIComponent(JSON.stringify(item)));
             
-            // Użyj globalnej zmiennej z monetami zamiast nieistniejącego elementu DOM
             const playerCoins = window.playerCurrentCoins || 0;
-            
             const backpackItems = (window.inventoryData || []).filter(i => i.equipped_slot === null);
-            const existingItem = backpackItems.find(i => i.item_template_id === item.id);
             const isStackable = item.category === 'consumable' || item.category === 'special_consumable';
             
-            let hasSpace = false;
-            if (existingItem && isStackable) {
-                hasSpace = true; // Zmieści się na istniejącym stosie
-            } else {
-                hasSpace = backpackItems.length < calculateMaxBackpackSlots(); 
-            }
+            // Logika Twoich limitów dziennych: 11 - poziom przedmiotu
+            const maxDaily = 11 - (item.shop_level || 1);
+            const alreadyBought = playerDailyBuys[item.id] || 0;
+            const remaining = Math.max(0, maxDaily - alreadyBought);
             
             const canAfford = playerCoins >= Number(item.price);
+            const hasLimitLeft = remaining > 0;
             
+            // Sprawdzanie miejsca w plecaku
+            let hasSpace = false;
+            const existingInInv = backpackItems.find(i => i.item_template_id === item.id);
+            if (existingInInv && isStackable) hasSpace = true;
+            else hasSpace = backpackItems.length < calculateMaxBackpackSlots(window.playerCurrentStats || {});
+
             card.innerHTML = `
                 <div class="shop-item-content">
                     <img src="${item.imagePath}" alt="${item.name}" style="width: 48px; height: 48px; object-fit: contain; margin-right: 10px; flex-shrink: 0; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));">
                     <div style="display: flex; flex-direction: column;">
                         <div class="shop-item-name">${item.name}</div>
-                        <div class="shop-item-description">${item.description}</div>
+                        <div style="font-size: 0.75rem; color: ${hasLimitLeft ? 'var(--success)' : 'var(--error)'}">Dziś: ${remaining} / ${maxDaily} szt.</div>
                     </div>
                 </div>
                 <div class="shop-item-bottom">
                     <div class="shop-item-price">
                         <span>💰</span>
-                        <span>${item.price}</span>
+                        <span>${Number(item.price).toLocaleString()}</span>
                     </div>
-                    <button class="shop-buy-btn" ${!canAfford || !hasSpace ? 'disabled' : ''}>
-                        ${!canAfford ? 'Brak monet' : !hasSpace ? 'Brak miejsca' : 'Kup'}
+                    <button class="shop-buy-btn" ${!canAfford || !hasSpace || !hasLimitLeft ? 'disabled' : ''}>
+                        ${!hasLimitLeft ? 'Limit dobowy' : (!canAfford ? 'Brak monet' : !hasSpace ? 'Brak miejsca' : 'Kup')}
                     </button>
                 </div>
             `;
             
-            // Event listener dla kupna
             const buyBtn = card.querySelector('.shop-buy-btn');
-            if (canAfford && hasSpace) {
+            if (canAfford && hasSpace && hasLimitLeft) {
                 buyBtn.addEventListener('click', () => buyItem(item));
             }
             
@@ -1976,42 +1939,27 @@ function getItemImage(itemName, category) {
 
         // Kupowanie przedmiotu
         async function buyItem(item) {
-            const res = await apiCall('/api/shop/buy', 'POST', {
-                template_id: item.id,
-                shop_level: currentShopLevel
-            }, true);
+            const res = await apiCall('/api/shop/buy', 'POST', { template_id: item.id }, true);
             if (!res) return;
 
             if (res.success) {
                 showSuccessMessage(`Kupiono ${item.name}!`);
                 await fetchInventory();
                 await fetchCharacterData();
+                await fetchShopItems(); // Odśwież limity na kartach
                 renderShopItems();
-                renderShopBackpack();
             } else {
-                // Wyjątek z poprzedniego kodu - cichy warning dla braku miejsca
-                if (res.error && res.error.includes('miejsce')) {
-                    showWarningMessage('Brak miejsca w plecaku!');
-                } else {
-                    showWarningMessage(res.error || 'Błąd podczas kupna');
-                }
+                showWarningMessage(res.error || 'Błąd podczas kupna');
             }
         }
 
         // Sprzedaż przedmiotu
         async function sellItem(inventoryId, amount = 'all') {
-            // Wymuszone ukrycie tooltipa przy sprzedaży
-            const tooltip = document.getElementById('global-tooltip');
-            if (tooltip) { tooltip.style.opacity = '0'; tooltip.style.visibility = 'hidden'; tooltip.dataset.currentCard = ''; }
-            
-            const res = await apiCall('/api/shop/sell', 'POST', {
-                inventory_id: inventoryId,
-                amount: amount
-            }, true);
+            const res = await apiCall('/api/shop/sell', 'POST', { inventory_id: inventoryId, amount: amount }, true);
             if (!res) return;
 
             if (res.success) {
-                showSuccessMessage(`Sprzedano ${res.data.item.name} x${res.data.item.quantity} za ${res.data.item.total_sell_price} monet!`);
+                showSuccessMessage(`Sprzedano przedmiot za ${res.data.item.total_sell_price} monet!`);
                 await fetchInventory();
                 await fetchCharacterData();
                 renderShopBackpack();
@@ -2327,14 +2275,17 @@ function getItemImage(itemName, category) {
 
             // Słownik odblokowań GDD (Twarde UUID -> Co odblokowuje dana misja)
             const unlocks = {
+                '00000000-0000-0000-0000-000000000004': { shop: 'Poziom 2 🛒' }, // Poprawione!
                 '00000000-0000-0000-0000-000000000005': { tab: 'Trening 🧘‍♂️', mentor: 'Stary Mistrz 👴' },
                 '10000000-0000-0000-0000-000000000006': { tab: 'Praca 💼', work: 'Roznoszenie Mleka 🥛' },
-                '10000000-0000-0000-0000-000000000007': { work: 'Praca na Budowie 🧱' },
+                '10000000-0000-0000-0000-000000000007': { work: 'Praca na Budowie 🧱', shop: 'Poziom 3 🛒' }, // Poprawione!
                 '10000000-0000-0000-0000-000000000008': { work: 'Praca w Polu 🌱' },
                 '10000000-0000-0000-0000-000000000009': { work: 'Drwal 🪵' },
                 '10000000-0000-0000-0000-000000000010': { tab: 'Zadania Specjalne 📜', work: 'Ekstremalny Kurier 📦' },
+                '10000000-0000-0000-0000-000000000014': { shop: 'Poziom 4 🛒' }, // Poprawione!
                 '10000000-0000-0000-0000-000000000015': { tab: 'Laboratorium Zwojów 🧪', work: 'Zbiór Magicznej Rosy 💦', mentor: 'Koci Pustelnik 🐈' },
                 '10000000-0000-0000-0000-000000000020': { tab: 'Głęboka Medytacja 🧘‍♀️', work: 'Boskie Ogrody 🌸', mentor: 'Pan Niebiańskiego Pałacu ☁️' },
+                '10000000-0000-0000-0000-000000000023': { shop: 'Poziom 5 🛒' }, // Poprawione!
                 '00000000-0000-0000-0000-000000000024': { mentor: 'Sala Czasu ⏳' },
                 '00000000-0000-0000-0000-000000000025': { tab: 'Arena PVP ⚔️' }
             };
@@ -2356,6 +2307,9 @@ function getItemImage(itemName, category) {
             }
             if (unlockInfo.mentor) {
                 unlockHtml += `<li style="color: #fbbf24; font-weight: bold; margin-bottom: 2px;">Mentor: ${unlockInfo.mentor}</li>`;
+            }
+            if (unlockInfo.shop) { // NOWY KLUCZ!
+                unlockHtml += `<li style="color: #ff6b00; font-weight: bold; margin-bottom: 2px;">Sklep: <b>${unlockInfo.shop}</b></li>`;
             }
             
             unlockHtml += `</ul></div>`;

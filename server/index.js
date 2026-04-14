@@ -1330,11 +1330,37 @@ app.post('/api/inventory/split', authenticateToken, async (req, res) => {
 // ==========================================
 // 🛒 5. SYSTEM SKLEPU (KUPOWANIE I SPRZEDAWANIE)
 // ==========================================
+// Funkcja pomocnicza do obliczania poziomu sklepu
+function getCharacterShopLevel(completedMissions) {
+    const completed = completedMissions || [];
+    if (completed.includes('10000000-0000-0000-0000-000000000023')) return 5;
+    if (completed.includes('10000000-0000-0000-0000-000000000014')) return 4;
+    if (completed.includes('10000000-0000-0000-0000-000000000007')) return 3;
+    if (completed.includes('00000000-0000-0000-0000-000000000004')) return 2;
+    return 1;
+}
 app.get('/api/shop/items', authenticateToken, async (req, res) => {
   try {
-    const { data } = await supabase.from('item_templates').select('*').not('buy_price_coins', 'is', null).order('buy_price_coins', { ascending: true });
-    res.json(data || []);
-  } catch (err) { res.status(500).json({ error: 'Błąd' }); }
+    const userId = req.user.id;
+    const { data: char } = await supabase.from('characters').select('completed_missions, daily_shop_buys').eq('profile_id', userId).single();
+    
+    const unlockedLevel = getCharacterShopLevel(char.completed_missions);
+    
+    const { data: templates, error } = await supabase
+      .from('item_templates')
+      .select('*')
+      .lte('shop_level', unlockedLevel) // Pobierz przedmioty do Twojego poziomu włącznie
+      .order('shop_level', { ascending: true })
+      .order('buy_price_coins', { ascending: true });
+
+    if (error) throw error;
+
+    res.json({
+      unlockedLevel,
+      items: templates,
+      dailyBuys: char.daily_shop_buys || {}
+    });
+  } catch (err) { res.status(500).json({ error: 'Błąd pobierania sklepu' }); }
 });
 
 app.post('/api/shop/buy', authenticateToken, requireAlive, async (req, res) => {
@@ -1352,6 +1378,26 @@ app.post('/api/shop/buy', authenticateToken, requireAlive, async (req, res) => {
 
     const { data: backpackItems } = await supabase.from('inventory').select('id, item_template_id, quantity, backpack_index').eq('character_id', character.id).is('equipped_slot', null);
     
+    // ... wewnątrz endpointu buy ...
+    const unlockedLevel = getCharacterShopLevel(char.completed_missions);
+    if (item.shop_level > unlockedLevel) return res.status(403).json({ error: 'Ten przedmiot jest jeszcze zablokowany!' });
+
+    const maxDaily = 11 - item.shop_level; // Twoja logika limitów
+    const currentBuys = char.daily_shop_buys?.[item.id] || 0;
+
+    if (currentBuys >= maxDaily) {
+        return res.status(400).json({ error: `Osiągnąłeś dzienny limit zakupu tego przedmiotu (${maxDaily}x)` });
+    }
+
+    // Po udanym zakupie aktualizujemy daily_shop_buys:
+    const newDailyBuys = { ...char.daily_shop_buys };
+    newDailyBuys[item.id] = currentBuys + 1;
+
+    await supabase.from('characters').update({ 
+        coins: (BigInt(char.coins) - BigInt(item.buy_price_coins)).toString(),
+        daily_shop_buys: newDailyBuys 
+    }).eq('id', char.id);
+
     // [POPRAWKA] Dynamiczne sprawdzanie pojemności
     const { data: charStats } = await supabase.from('characters').select('strength, speed, endurance').eq('id', character.id).single();
     const maxSlots = calculateMaxBackpackSlots(charStats);
@@ -2343,6 +2389,12 @@ cron.schedule('0 0,8,16 * * *', async () => {
     
     // Reset limitu Sali Czasu dla wszystkich postaci
     await supabase.from('characters').update({ daily_time_chamber_used: false }).neq('profile_id', '00000000-0000-0000-0000-000000000000');
+
+    // Reset limitów Sali Czasu i SKLEPU dla wszystkich postaci
+    await supabase.from('characters').update({ 
+        daily_time_chamber_used: false,
+        daily_shop_buys: {} // <--- NOWOŚĆ: Resetuje sklep codziennie
+    }).neq('profile_id', '00000000-0000-0000-0000-000000000000');
     
     await supabase.from('global_server_state').update({ current_dc_day: globalServerState.current_dc_day + 1 }).eq('id', 1);
     await delay(30000);
