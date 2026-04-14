@@ -108,7 +108,7 @@ const itemsData = [
         bonuses: { "type": "passive", "technique": "50" }
     },
     {
-        id: generateId(81), name: "Ciężka Skorupa", category: "equipment", slot: "chest",
+        id: generateId(81), name: "Ciężkie GI", category: "equipment", slot: "chest",
         buy_price_coins: "5000", sell_price_coins: "2500", 
         req_stats: { "technique": "100" }, // Wymaga tylko Techniki
         bonuses: { "type": "training", "technique": "1" }
