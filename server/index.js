@@ -137,21 +137,8 @@ async function getFullCharacterStats(userId) {
         ((baseStats.bonus_mp + equipBonuses.bonus_mp) * 2n) + 
         (baseStats.bonus_stamina * 5n);
 
-    // Używamy nowej kolumny, aby ominąć automatyczne nadpisywanie przez bazę!
-    const currentPowerStr = String(character.total_power_level || '0');
-    const newPowerStr = powerLevel.toString();
-
-    // --- ⚡ ZAPIS DO BAZY DANYCH (DLA TOP 10) ---
-    if (currentPowerStr !== newPowerStr) {
-        // Fire & Forget - zdejmujemy await! Zapytanie leci w tle, nie spowalniając gry!
-        supabase.from('characters')
-            .update({ total_power_level: Number(powerLevel) }) 
-            .eq('id', character.id)
-            .then(({ error }) => {
-                if (error) console.error('[Stats] ⚠️ Błąd zapisu Top 10:', error.message);
-            });
-    }
-
+    // Omijamy problem wyścigu (Race Condition). Poziom mocy jest teraz zwracany z funkcji
+    // i zapisywany w głównym endpointcie razem z resztą danych jako 1 zapytanie!
     return {
       character, profile, powerLevel, max_hp, max_mp, max_stamina,
       baseStats: {
@@ -461,18 +448,36 @@ app.get('/api/character', authenticateToken, async (req, res) => {
       }
     }
 
+    // --- ⚡ ZBIORCZY, INTELIGENTNY ZAPIS DO BAZY (Fix na Lagi i Top 10) ---
+    let updateData = {};
+
     if (dbUpdateNeeded) {
-      await supabase
-        .from('characters')
-        .update({ 
-          stamina: current_stamina.toString(),
-          hp: current_hp.toString(),
-          mp: current_mp.toString(),
-          last_calculation_time: newCalcTimeUTC 
-        })
-        .eq('profile_id', userId);
+        updateData.stamina = current_stamina.toString();
+        updateData.hp = current_hp.toString();
+        updateData.mp = current_mp.toString();
+        updateData.last_calculation_time = newCalcTimeUTC;
     }
 
+    // Aktualizujemy Poziom Mocy w bazie Top 10 tylko jeśli faktycznie się zmienił
+    if (String(character.total_power_level || '0') !== powerLevel.toString()) {
+        updateData.total_power_level = Number(powerLevel);
+    }
+
+    // Patch: Odblokowanie pracy
+    let features = character.unlocked_features || [];
+    if (character.completed_missions && character.completed_missions.includes('10000000-0000-0000-0000-000000000006')) {
+        if (!features.includes('work')) {
+            features.push('work');
+            updateData.unlocked_features = features;
+        }
+    }
+
+    // Wysyłamy TYLKO JEDNO zapytanie do bazy (Zabija lagi i zawieszenia Supabase!)
+    if (Object.keys(updateData).length > 0) {
+        await supabase.from('characters').update(updateData).eq('profile_id', userId);
+    }
+
+    // Zwracamy paczkę do przeglądarki
     const characterData = {
       username: profile.username,
       power_level: powerLevel.toString(),
@@ -492,18 +497,9 @@ app.get('/api/character', authenticateToken, async (req, res) => {
       completed_missions: character.completed_missions || [],
       attempted_one_try_missions: character.attempted_one_try_missions || [],
       hospital_until: exactHospitalEndTime ? new Date(exactHospitalEndTime).toISOString() : (character.hospital_until ? String(character.hospital_until).trim() + 'Z' : null),
-      hospital_reason: character.last_death_penalty ? character.last_death_penalty.source : null
+      hospital_reason: character.last_death_penalty ? character.last_death_penalty.source : null,
+      unlocked_features: features
     };
-
-    // --- PATCH: ODBLOKOWANIE PRACY ---
-    let features = character.unlocked_features || [];
-    if (character.completed_missions && character.completed_missions.includes('10000000-0000-0000-0000-000000000006')) {
-        if (!features.includes('work')) {
-            features.push('work');
-            await supabase.from('characters').update({ unlocked_features: features }).eq('profile_id', userId);
-        }
-    }
-    characterData.unlocked_features = features; // KRYTYCZNE: Teraz to faktycznie leci do frontendu!
 
     res.json(JSON.parse(JSON.stringify(characterData, bigIntReplacer)));
   } catch (err) {

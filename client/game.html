@@ -1629,12 +1629,11 @@ function getItemImage(itemName, category) {
     const polishChars = {'ą':'a','ć':'c','ę':'e','ł':'l','ń':'n','ó':'o','ś':'s','ź':'z','ż':'z'};
     slug = slug.split('').map(char => polishChars[char] || char).join('');
 
-    // 3. Zamiana spacji i kropek na podkreślniki, usunięcie znaków specjalnych
+    // 3. Oczyszczanie ze znaków specjalnych i wielokrotnych podkreślników
     slug = slug.replace(/[\s\.]+/g, '_') // spacje i kropki -> _
-               .replace(/[^a-z0-9_]/g, ''); // wszystko co nie jest litera, cyfra lub _
-
-    // 4. Usunięcie podwójnych podkreślników
-    slug = slug.replace(/_+/g, '_');
+               .replace(/[^a-z0-9_]/g, '') // wszystko co nie jest litera, cyfra lub _
+               .replace(/_+/g, '_') // Usunięcie podwójnych podkreślników
+               .replace(/_$/g, ''); // USUNIĘCIE podkreślnika z samego końca słowa!
 
     return `img/items/${slug}.png`;
 }
