@@ -458,9 +458,10 @@ app.get('/api/character', authenticateToken, async (req, res) => {
         updateData.last_calculation_time = newCalcTimeUTC;
     }
 
-    // Aktualizujemy Poziom Mocy w bazie Top 10 tylko jeśli faktycznie się zmienił
+    // Ostateczny fix dla int8 w Supabase - parsujemy string z powrotem na natywny typ liczbowy.
+    // BigInt nie przejdzie przez JSON do Supabase bez tego kroku.
     if (String(character.total_power_level || '0') !== powerLevel.toString()) {
-        updateData.total_power_level = powerLevel.toString(); // TWARDY FIX: Zdejmujemy Number(). Wysyłamy string, żeby baza tego nie odrzucała!
+        updateData.total_power_level = parseInt(powerLevel.toString(), 10); 
     }
 
     // Patch: Odblokowanie pracy
