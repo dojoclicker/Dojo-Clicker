@@ -460,7 +460,7 @@ app.get('/api/character', authenticateToken, async (req, res) => {
 
     // Aktualizujemy Poziom Mocy w bazie Top 10 tylko jeśli faktycznie się zmienił
     if (String(character.total_power_level || '0') !== powerLevel.toString()) {
-        updateData.total_power_level = Number(powerLevel); // MUSI być Number(), baza danych (int8) odrzuca tekst!
+        updateData.total_power_level = powerLevel.toString(); // TWARDY FIX: Zdejmujemy Number(). Wysyłamy string, żeby baza tego nie odrzucała!
     }
 
     // Patch: Odblokowanie pracy
