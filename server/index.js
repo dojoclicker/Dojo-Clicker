@@ -39,23 +39,20 @@ function calculateMaxBackpackSlots(charStats) {
 // Reużywalna funkcja pobierająca pełne statystyki postaci z bonusami z ekwipunku
 async function getFullCharacterStats(userId) {
   try {
-    // ⚡ OPTYMALIZACJA: Równoległe pobieranie Profilu i Postaci skraca czas ładowania o połowę!
-    const [profileRes, characterRes] = await Promise.all([
-      supabase.from('profiles').select('username').eq('id', userId).single(),
-      supabase.from('characters').select('*').eq('profile_id', userId).single()
-    ]);
+    // ⚡ SUPER-OPTYMALIZACJA: Pobieramy Postać i Profil (JOIN) jednym zapytaniem.
+    // Oszczędza to potężną ilość zapytań (Reads) w darmowym planie Supabase!
+    const { data: character, error: characterError } = await supabase
+      .from('characters')
+      .select('*, profiles!inner(username)') 
+      .eq('profile_id', userId)
+      .single();
 
-    if (profileRes.error || !profileRes.data) {
-        console.error('[DB Error] Profil:', profileRes.error);
-        throw new Error('Nie znaleziono profilu gracza');
-    }
-    if (characterRes.error || !characterRes.data) {
-        console.error('[DB Error] Postać:', characterRes.error);
-        throw new Error('Nie znaleziono postaci gracza (Prawdopodobnie trwa odświeżanie bazy Supabase)');
+    if (characterError || !character) {
+        console.error('[DB Error] Postać/Profil:', characterError);
+        throw new Error('Nie znaleziono postaci gracza (Trwa odświeżanie bazy lub problem z profilem)');
     }
 
-    const profile = profileRes.data;
-    const character = characterRes.data;
+    const profile = { username: character.profiles.username };
 
     let { data: equippedItems, error: equipmentError } = await supabase
       .from('inventory')
@@ -510,6 +507,11 @@ app.get('/api/character', authenticateToken, async (req, res) => {
   }
 });
 
+// ⚡ OPTYMALIZACJA: Cache słownika przedmiotów. Pamięta nazwy przez 30 minut.
+// Zabija to całkowicie bezsensowny ruch do bazy danych przy otwieraniu zakładki "Misje"!
+let itemDictCache = null;
+let itemDictCacheTime = 0;
+
 app.get('/api/missions', authenticateToken, async (req, res) => {
   try {
     const { data: missions, error } = await supabase
@@ -519,10 +521,15 @@ app.get('/api/missions', authenticateToken, async (req, res) => {
 
     if (error) return res.status(500).json({ error: 'Błąd serwera podczas pobierania misji' });
 
-    // 1. Pobieramy słownik przedmiotów, aby podmienić UUID na nazwy
-    const { data: items } = await supabase.from('item_templates').select('id, name');
-    const itemDict = {};
-    if (items) items.forEach(item => itemDict[item.id] = item.name);
+    // 1. Sprawdzamy czy mamy słownik w RAM-ie (odświeża co 30 minut)
+    const now = Date.now();
+    if (!itemDictCache || (now - itemDictCacheTime > 30 * 60 * 1000)) {
+        const { data: items } = await supabase.from('item_templates').select('id, name');
+        itemDictCache = {};
+        if (items) items.forEach(item => itemDictCache[item.id] = item.name);
+        itemDictCacheTime = now;
+    }
+    const itemDict = itemDictCache;
 
     // 2. Doklejamy nazwy do tabeli dropów
     const enrichedMissions = missions.map(mission => {
