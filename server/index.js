@@ -123,31 +123,27 @@ async function getFullCharacterStats(userId) {
     const max_mp = 100n + (totalInt / 5n) + baseStats.bonus_mp + equipBonuses.bonus_mp;
     const max_stamina = 100n + baseStats.bonus_stamina;
 
-    const stats_sum = baseStats.strength + baseStats.speed + baseStats.endurance + baseStats.technique + baseStats.intelligence + baseStats.mental_strength;
-    const powerLevel = stats_sum + baseStats.bonus_hp + (baseStats.bonus_mp * 2n) + (baseStats.bonus_stamina * 5n);
-
-    // --- ⚡ ZAPIS CAŁKOWITEGO POZIOMU MOCY (DLA TOP 10) ---
-    // Wyliczamy moc ze wszystkich statystyk (Baza + Trening + Ekwipunek)
+    // --- ⚡ OBLICZANIE CAŁKOWITEGO POZIOMU MOCY (Baza + Ekwipunek) ---
     const total_stats_sum = 
-        BigInt(fullStats.strength || 0) + 
-        BigInt(fullStats.speed || 0) + 
-        BigInt(fullStats.endurance || 0) + 
-        BigInt(fullStats.technique || 0) + 
-        BigInt(fullStats.intelligence || 0) + 
-        BigInt(fullStats.mental_strength || 0);
-        
-    const totalPowerLevel = total_stats_sum + 
-        BigInt(fullStats.bonus_hp || 0) + 
-        (BigInt(fullStats.bonus_mp || 0) * 2n) + 
-        (BigInt(fullStats.bonus_stamina || 0) * 5n);
+        baseStats.strength + equipBonuses.strength + 
+        baseStats.speed + equipBonuses.speed + 
+        baseStats.endurance + equipBonuses.endurance + 
+        baseStats.technique + equipBonuses.technique + 
+        baseStats.intelligence + equipBonuses.intelligence + 
+        baseStats.mental_strength + equipBonuses.mental_strength;
 
-    const currentTotalPowerStr = String(character.base_power_level || '0');
-    const newTotalPowerStr = totalPowerLevel.toString();
+    const powerLevel = total_stats_sum + 
+        baseStats.bonus_hp + equipBonuses.bonus_hp + 
+        ((baseStats.bonus_mp + equipBonuses.bonus_mp) * 2n) + 
+        (baseStats.bonus_stamina * 5n);
 
-    // Twardy zapis do bazy z uwzględnieniem sprzętu i treningu!
-    if (currentTotalPowerStr !== newTotalPowerStr) {
+    const currentPowerStr = String(character.base_power_level || '0');
+    const newPowerStr = powerLevel.toString();
+
+    // --- ⚡ ZAPIS DO BAZY DANYCH (DLA TOP 10) ---
+    if (currentPowerStr !== newPowerStr) {
         const { error: pwrError } = await supabase.from('characters')
-            .update({ base_power_level: Number(totalPowerLevel) }) 
+            .update({ base_power_level: Number(powerLevel) }) 
             .eq('id', character.id);
             
         if (pwrError) {
