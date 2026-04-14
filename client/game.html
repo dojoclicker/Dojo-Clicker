@@ -2428,20 +2428,51 @@ function getItemImage(itemName, category) {
 
             if (template.consumable_effect && Object.keys(template.consumable_effect).length > 0 && template.name !== 'Magiczna Fasolka') {
                 tooltipHTML += '<div class="tooltip-section"><span class="tooltip-section-title">Efekt użycia:</span>';
+                
+                // Tłumacz statystyk z JSON-a na język gry
+                const translateStat = (stat, value) => {
+                    if (stat === 'strength') return `+${value} Siły na stałe 💪`;
+                    if (stat === 'speed') return `+${value} Szybkości na stałe ⚡`;
+                    if (stat === 'endurance') return `+${value} Wytrzymałości na stałe 🛡️`;
+                    if (stat === 'technique') return `+${value} Techniki na stałe 🎯`;
+                    if (stat === 'intelligence') return `+${value} Inteligencji na stałe 🧠`;
+                    if (stat === 'mental_strength') return `+${value} Siły Mentalnej na stałe 🌀`;
+                    if (stat === 'bonus_hp') return `+${value} Max HP na stałe ❤️`;
+                    if (stat === 'bonus_mp') return `+${value} Max MP na stałe 💧`;
+                    if (stat === 'bonus_stamina') return `+${value} Max Staminy na stałe 🟢`;
+                    return null;
+                };
+
                 for (const [effect, val] of Object.entries(template.consumable_effect)) {
+                    // Obsługa zagnieżdżonych bonusów (np. permanent_bonus: { strength: 10 })
+                    if (effect === 'permanent_bonus' && typeof val === 'object' && val !== null) {
+                        for (const [subStat, subVal] of Object.entries(val)) {
+                            const translated = translateStat(subStat, subVal);
+                            if (translated) tooltipHTML += `<span class="tooltip-bullet">• ${translated}</span><br>`;
+                        }
+                        continue;
+                    }
+
+                    // Jeśli baza ma tylko znacznik "permanent_bonus: true", ukrywamy go, bo obok są już wypisane statystyki
+                    if (effect === 'permanent_bonus' && (val === true || val === 'true')) continue;
+
                     let displayEffect = effect;
-                    if (effect === 'restore_hp') displayEffect = `Przywraca ${val} HP`;
+                    const flatStatTranslation = translateStat(effect, val);
+                    
+                    if (flatStatTranslation) {
+                        displayEffect = flatStatTranslation;
+                    } else if (effect === 'restore_hp') displayEffect = `Przywraca ${val} HP`;
                     else if (effect === 'restore_mp') displayEffect = `Przywraca ${val} MP`;
                     else if (effect === 'restore_stamina') displayEffect = `Przywraca ${val} Staminy`;
-                    else if (effect === 'bonus_stamina') displayEffect = `+${val} Max Staminy na stałe`;
                     else if (effect === 'full_resurrection' || effect === 'hospital_exit_recovery') displayEffect = 'Pełne wyleczenie (Przebudzenie)';
-                    else if (effect === 'permanent_bonus') displayEffect = 'Trwały bonus statystyk';
+                    else if (effect === 'permanent_bonus') displayEffect = 'Trwały bonus statystyk'; // Awaryjny tekst
                     else if (effect === 'unlock_transformation') displayEffect = 'Odblokowuje transformację';
                     else if (effect === 'temporary_buff') displayEffect = 'Tymczasowe błogosławieństwo';
                     else if (effect === 'restore_hp_pct') displayEffect = `Przywraca ${val}% HP`;
                     else if (effect === 'restore_mp_pct') displayEffect = `Przywraca ${val}% MP`;
                     else if (effect === 'restore_stamina_pct') displayEffect = `Przywraca ${val}% Staminy`;
                     else if (effect === 'add_coins') displayEffect = `Otrzymujesz ${val} Monet 💰`;
+                    
                     tooltipHTML += `<span class="tooltip-bullet">• ${displayEffect}</span><br>`;
                 }
                 tooltipHTML += '</div>';
