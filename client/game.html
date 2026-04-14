@@ -5,11 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, shrink-to-fit=no">
     <title>Dojo-Clicker - Gra Przeglądarkowa</title>
     <link rel="stylesheet" href="css/game.css?v=1">
-    <!-- Supabase JS SDK -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
-    <!-- Górny Panel 1 - Header -->
     <header id="top-panel-1">
         <div class="logo-section">
             <div class="game-logo"><span class="desktop-txt">⚡ Dojo-Clicker</span><span class="mobile-txt">⚡ DC</span></div>
@@ -20,7 +18,6 @@
         </div>
     </header>
 
-    <!-- Górny Panel 2 - Nawigacja i Czas -->
     <nav id="top-panel-2">
         <div class="nav-section">
             <button class="nav-btn active" data-tab="missions">
@@ -58,7 +55,6 @@
         </div>
     </nav>
 
-    <!-- Lewy Panel Boczny - Stan Postaci -->
     <aside id="left-sidebar">
         <div class="avatar-placeholder">
             <div>Avatar 2D<br>(200x400px)</div>
@@ -72,7 +68,6 @@
     <span id="power-level" style="font-weight: bold; font-size: 1.1rem; color: var(--goku-accent, #f59e0b);">0</span>
 </div>
             
-            <!-- Sekcja 5 Statystyk Postaci -->
             <div class="character-stats" style="margin: 1rem 0; display: flex; flex-direction: column; gap: 0.5rem; font-size: 0.9rem; color: var(--text-secondary); background: rgba(0,0,0,0.2); padding: 1rem; border-radius: 8px; border: 1px solid var(--goku-panel-border);">
                 <div style="display: flex; justify-content: space-between;">
                     <span>💪 Siła</span>
@@ -140,13 +135,10 @@
 
     </aside>
 
-    <!-- Panel Główny - Obszar Roboczy -->
     <main id="main-workspace">
-        <!-- Widok Dashboard (Strona Główna) -->
         <div id="dashboard-view" style="display: none;">
             <div class="dashboard-container">
             <div class="game-panel-row">
-                <!-- Hub (70%) -->
                 <div class="dashboard-hub game-panel" style="flex: 7;">
                     <div class="game-panel-header">
                         <h4 class="game-panel-title" style="color: var(--goku-accent);">🏢 Hub</h4>
@@ -174,7 +166,6 @@
                     </div>
                 </div>
 
-                <!-- Ranking (30%) -->
                 <div class="dashboard-ranking game-panel" style="flex: 3;">
                     <div class="game-panel-header">
                         <h4 class="game-panel-title" style="color: #f59e0b;">🏆 Top 10</h4>
@@ -190,7 +181,6 @@
                 </div>
             </div>
 
-            <!-- Globalny Czat -->
             <div class="game-panel" style="margin-top: 1rem;">
                 <div class="game-panel-header">
                     <h4 class="game-panel-title" style="color: #06b6d4;">💬 Globalny Czat</h4>
@@ -211,7 +201,6 @@
             </div>
         </div>
 
-        <!-- Widok Misji -->
         <div id="missions-view">
             <div class="missions-grid">
                 </div>
@@ -279,7 +268,6 @@
             </div>
         </div>
 
-        <!-- Widok Pracy -->
         <div id="work-view" style="display: none;" class="view-section">
             <div class="work-container game-panel-row" style="padding: 1rem; width: 100%;">
                 
@@ -342,7 +330,6 @@
             </div>
         </div>
 
-        <!-- Widok Ekwipunku -->
         <div id="equipment-view" style="display: none;">
             <div class="equipment-container game-panel-row">
                 
@@ -381,7 +368,6 @@
             </div>
         </div>
 
-        <!-- Widok Szpitala -->
         <div id="hospital-view" style="display: none;">
             <div class="hospital-container game-panel-row">
                 
@@ -523,39 +509,109 @@
 
     <script>
         // ==========================================
+        // 🚀 CENTRUM DOWODZENIA (STAN GLOBALNY GRY)
+        // ==========================================
+        
+        // --- 1. ZMIENNE SYSTEMOWE ---
+        window.isInventoryActionLocked = false;
+        window.isPlayerHospitalized = false;
+        window.isPlayerTraining = false;
+        window.isWorkMinigameActive = false;
+        window.tooltipTimeout = null;
+
+        // --- 2. STAN GRACZA (RAM) ---
+        window.playerCurrentStats = null;
+        window.playerEquipStats = null;
+        window.inventoryData = null;
+        window.allMissions = null;
+        window.playerCurrentCoins = 0;
+        window.playerBankCoins = 0;
+        window.playerBankCoinLimitLevel = 1;
+        window.playerBankSlotsUnlocked = 5;
+        window.playerCompletedMissions = [];
+        window.playerAttemptedOneTry = [];
+
+        // --- 3. TIMERY I INTERWAŁY ---
+        let hospitalInterval = null;
+        let trainingCountdownInterval = null;
+        let workTimerInterval = null;
+        let workAnimationId = null;
+
+        // --- 4. DANE SKLEPU ---
+        let playerDailyBuys = {};
+        let unlockedShopLevel = 1;
+        let currentShopCategory = 'consumables';
+        let currentShopLevel = 1;
+        let shopData = { 1:{}, 2:{}, 3:{}, 4:{}, 5:{} };
+
+        // --- 5. DANE TRENINGU ---
+        let trainingMentors = [];
+        let activeTrainingEndTime = null;
+        let currentSelectedMentor = null;
+        let dailyTimeChamberUsed = false;
+
+        // --- 6. DANE PRACY (MINIGRY) ---
+        let currentSelectedWorkId = null;
+        let currentWorkDifficulty = 1;
+        let currentWorkReward = 0;
+        let gameState = { 
+            timeLeft: 0, caught: 0, missed: 0, objects: [], 
+            floatingTexts: [], extraHpPenalty: 0, 
+            bonusSpawned: 0, maxBonus: 0, 
+            thiefSpawned: 0, maxThief: 0, trapsSpawned: 0,
+            player: { x: 125, y: 380, w: 50, h: 20, speed: 6 }, 
+            keys: { left: false, right: false } 
+        };
+
+        // --- 7. SŁOWNIKI I STAŁE ---
+        const WORK_FRONTEND_DATA = [
+            { id: 'praca_mleko', name: 'Roznoszenie Mleka', reqMission: '10000000-0000-0000-0000-000000000006', reqName: 'Misję 6', costStamina: 10, costHpPct: 2, reward: 2, reqStatValue: 500, goodEmoji: '🥛', badEmoji: '🫙' },
+            { id: 'praca_budowa', name: 'Praca na Budowie', reqMission: '10000000-0000-0000-0000-000000000007', reqName: 'Misję 7', costStamina: 10, costHpPct: 5, reward: 5, reqStatValue: 1000, goodEmoji: '🧱', badEmoji: '🧨' },
+            { id: 'praca_pole', name: 'Praca w Polu', reqMission: '10000000-0000-0000-0000-000000000008', reqName: 'Misję 8', costStamina: 15, costHpPct: 8, reward: 12, reqStatValue: 2500, goodEmoji: '🌱', badEmoji: '🐛' },
+            { id: 'praca_drwal', name: 'Drwal', reqMission: '10000000-0000-0000-0000-000000000009', reqName: 'Misję 9', costStamina: 15, costHpPct: 15, reward: 25, reqStatValue: 5000, goodEmoji: '🪵', badEmoji: '🪓' },
+            { id: 'praca_kurier', name: 'Ekstremalny Kurier', reqMission: '10000000-0000-0000-0000-000000000010', reqName: 'Misję 10', costStamina: 20, costHpPct: 25, reward: 60, reqStatValue: 10000, goodEmoji: '📦', badEmoji: '🦈' },
+            { id: 'praca_rosa', name: 'Zbiór Magicznej Rosy', reqMission: '10000000-0000-0000-0000-000000000015', reqName: 'Misję 15', costStamina: 25, costHpPct: 10, reward: 150, reqStatValue: 80000, goodEmoji: '💦', badEmoji: '🕷️' },
+            { id: 'praca_ogrody', name: 'Boskie Ogrody', reqMission: '10000000-0000-0000-0000-000000000020', reqName: 'Misję 20', costStamina: 40, costHpPct: 15, reward: 500, reqStatValue: 700000, goodEmoji: '🌸', badEmoji: '🐝' }
+        ];
+
+        const MISSION_UNLOCKS_DICTIONARY = {
+            '10000000-0000-0000-0000-000000000004': { shop: 'Poziom 2 🛒' },
+            '00000000-0000-0000-0000-000000000005': { tab: 'Trening 🧘‍♂️', mentor: 'Stary Mistrz 👴' },
+            '10000000-0000-0000-0000-000000000006': { tab: 'Praca 💼', work: 'Roznoszenie Mleka 🥛' },
+            '10000000-0000-0000-0000-000000000007': { work: 'Praca na Budowie 🧱', shop: 'Poziom 3 🛒' },
+            '10000000-0000-0000-0000-000000000008': { work: 'Praca w Polu 🌱' },
+            '10000000-0000-0000-0000-000000000009': { work: 'Drwal 🪵' },
+            '10000000-0000-0000-0000-000000000010': { tab: 'Zadania Specjalne 📜', work: 'Ekstremalny Kurier 📦' },
+            '00000000-0000-0000-0000-000000000014': { shop: 'Poziom 4 🛒' },
+            '10000000-0000-0000-0000-000000000015': { tab: 'Laboratorium Zwojów 🧪', work: 'Zbiór Magicznej Rosy 💦', mentor: 'Koci Pustelnik 🐈' },
+            '10000000-0000-0000-0000-000000000020': { tab: 'Głęboka Medytacja 🧘‍♀️', work: 'Boskie Ogrody 🌸', mentor: 'Pan Niebiańskiego Pałacu ☁️' },
+            '00000000-0000-0000-0000-000000000023': { shop: 'Poziom 5 🛒' },
+            '00000000-0000-0000-0000-000000000024': { mentor: 'Sala Czasu ⏳' },
+            '00000000-0000-0000-0000-000000000025': { tab: 'Arena PVP ⚔️' }
+        };
+
+        // ==========================================
         // ⚙️ 1. KONFIGURACJA I CORE (API, Alerty, Auth)
         // ==========================================
-        // Tu znajdują się: apiCall(), showNotification(), checkAuthentication()
+        
         const API_BASE_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.protocol === 'file:'
             ? 'http://localhost:3000' 
             : 'https://dojo-clicker.onrender.com';
         
-        // Konfiguracja Supabase
         const SUPABASE_URL = 'https://mtilsthiwqoquwpecyln.supabase.co'; 
         const SUPABASE_ANON_KEY = 'sb_publishable_36PlexFXBSJOQyDG3WDItA_jq1s6zm6'; 
-
-        // Inicjalizacja klienta
         const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-        
-        // Globalna blokada akcji ekwipunku (Race Condition fix)
-        window.isInventoryActionLocked = false;
 
-        // Sprawdzenie tokenu sesji przy starcie
         function checkAuthentication() {
             const sessionToken = localStorage.getItem('session_token');
             if (!sessionToken) {
-                // Przekieruj do strony logowania jeśli brak tokenu
                 window.location.href = 'index.html';
                 return false;
             }
             return sessionToken;
         }
 
-        // ==========================================
-        // GLOBALNY SILNIK API (REFAKTORYZACJA)
-        // ==========================================
         async function apiCall(endpoint, method = 'GET', body = null, useActionLock = false) {
-            // Automatyczna obsługa blokady zapobiegająca Race Conditions
             if (useActionLock) {
                 if (window.isInventoryActionLocked) return null;
                 window.isInventoryActionLocked = true;
@@ -573,12 +629,11 @@
 
                 const response = await fetch(`${API_BASE_URL}${endpoint}`, options);
 
-                // Automatyczna obsługa wylogowania przy błędnym tokenie
                 if (!response.ok) {
                     if (response.status === 401 || response.status === 403) {
                         localStorage.removeItem('session_token');
                         window.location.href = 'index.html';
-                        return null; // Null oznacza twarde zatrzymanie akcji
+                        return null; 
                     }
                     const errorData = await response.json().catch(() => ({}));
                     return { success: false, error: errorData.error || 'Błąd serwera' };
@@ -586,7 +641,6 @@
 
                 const data = await response.json();
                 
-                // Standaryzacja odpowiedzi dla naszych endpointów POST
                 if (data.success === false) {
                      return { success: false, error: data.error || data.message || 'Błąd akcji', data };
                 }
@@ -597,7 +651,6 @@
                 console.error(`[API] Błąd połączenia z ${endpoint}:`, error);
                 return { success: false, error: 'Wystąpił problem z połączeniem sieciowym.' };
             } finally {
-                // Gwarancja zdjęcia blokady
                 if (useActionLock) window.isInventoryActionLocked = false;
             }
         }
@@ -605,7 +658,7 @@
         // ==========================================
         // ⚔️ 2. SYSTEM MISJI
         // ==========================================
-        // Tu znajdują się: renderMissions(), createMissionCard(), startMission()
+        
         async function fetchMissions() {
             const sessionToken = localStorage.getItem('session_token');
             
@@ -620,7 +673,6 @@
 
                 if (!response.ok) {
                     if (response.status === 401 || response.status === 403) {
-                        // Token wygasł lub nieprawidłowy - przekieruj do logowania
                         localStorage.removeItem('session_token');
                         window.location.href = 'index.html';
                         return;
@@ -638,7 +690,6 @@
             }
         }
 
-        // Renderowanie misji w interfejsie
         function renderMissions(missions) {
             const missionsGrid = document.querySelector('.missions-grid');
             
@@ -647,10 +698,8 @@
                 return;
             }
 
-            // Wyczyść starą zawartość
             missionsGrid.innerHTML = '';
 
-            // Obsługa pustej tablicy misji
             if (!missions || missions.length === 0) {
                 missionsGrid.innerHTML = `
                     <div style="grid-column: 1 / -1; text-align: center; padding: 2rem;">
@@ -661,7 +710,6 @@
                 return;
             }
 
-            // Renderuj każdą misję
             missions.forEach((mission, index) => {
                 const card = createMissionCard(mission, index);
                 missionsGrid.appendChild(card);
@@ -670,13 +718,11 @@
             console.log(`[Missions] Wyrenderowano ${missions.length} misji`);
         }
 
-        // Tworzenie pojedynczej karty misji
         function createMissionCard(mission, index) {
             const card = document.createElement('div');
             card.className = 'mission-card';
             card.dataset.missionId = mission.id;
             
-            // Sprawdzenie odblokowania
             const completed = window.playerCompletedMissions || [];
             const attempted = window.playerAttemptedOneTry || [];
             
@@ -686,17 +732,15 @@
 
             const isUnlocked = index === 0 || completed.includes(window.allMissions[index - 1].id) || completed.includes(mission.id);
             
-            // Ikona misji na podstawie indeksu (Misje 1-25 z GDD)
             const missionIcons = [
-                '🌲', '🦅', '🐢', '⚔️', '👴', // 1-5 (Las, Bestia, Żółw, Bandyta, Mistrz)
-                '🥛', '🧱', '🌾', '🪓', '📦', // 6-10 (Mleko, Budowa, Pole, Drwal, Kurier)
-                '🏆', '🎖️', '🗼', '🎯', '🐈', // 11-15 (Turniej, Oficer, Zimowa Wieża, Morderca, Koci Pustelnik)
-                '🤖', '👿', '👹', '👑', '⛩️', // 16-20 (Mech, Demony, Zmutowany, Król Demon, Niebiański Pałac)
-                '🥊', '👤', '🎫', '⏳', '🌍'  // 21-25 (Sala Czasu, Cień, Eliminacje, Półfinały, Finał Turnieju)
+                '🌲', '🦅', '🐢', '⚔️', '👴', 
+                '🥛', '🧱', '🌾', '🪓', '📦', 
+                '🏆', '🎖️', '🗼', '🎯', '🐈', 
+                '🤖', '👿', '👹', '👑', '⛩️', 
+                '🥊', '👤', '🎫', '⏳', '🌍'  
             ];
             const icon = isUnlocked ? missionIcons[index] || '📋' : '🔒';
             
-            // Formatowanie czytelnych danych dla tooltipa
             const reqs = mission.req_stats || {};
             const statNamesPL = { 
                 strength: 'Siła', 
@@ -714,7 +758,6 @@
                 ? mission.drop_table.map(d => `${d.item_name || 'Przedmiot'} (${d.chance_pct}%)`).join(', ') 
                 : 'Brak';
 
-            // Wylicz Szansę na Sukces (Średnia wagowa statystyk)
             let totalCappedRatio = 0n;
             let reqCount = 0n;
             
@@ -728,7 +771,6 @@
                         const rStat = BigInt(reqs[key]);
                         const rawRatio = (pStat * 100n) / rStat;
                         
-                        // Limitujemy pojedynczy wkład do 100%
                         const cappedRatio = rawRatio > 100n ? 100n : rawRatio;
                         totalCappedRatio += cappedRatio;
                         reqCount += 1n;
@@ -738,16 +780,11 @@
             
             const chanceNum = reqCount > 0n ? Number(totalCappedRatio / reqCount) : 100;
 
-            // Ustal kolor procentów
-            let chanceColor = '#ef4444'; // Czerwony (0-60)
-            if (chanceNum > 60 && chanceNum <= 90) chanceColor = '#f59e0b'; // Żółty
-            else if (chanceNum > 90 && chanceNum <= 97) chanceColor = '#84cc16'; // Jasnozielony
-            else if (chanceNum > 97) chanceColor = '#10b981'; // Ciemnozielony (Sukces)
+            let chanceColor = '#ef4444'; 
+            if (chanceNum > 60 && chanceNum <= 90) chanceColor = '#f59e0b'; 
+            else if (chanceNum > 90 && chanceNum <= 97) chanceColor = '#84cc16'; 
+            else if (chanceNum > 97) chanceColor = '#10b981'; 
 
-            // Informacja o typie misji
-            const unlockInfoText = mission.is_repeatable ? 'Misja powtarzalna. Sukces odblokowuje kolejne wyzwania.' : 'Misja Jednorazowa. Po sukcesie zostaje zablokowana i odblokowuje kolejne wyzwanie.';
-
-            // NOWE: Dynamiczny tytuł i kolor generowany z góry
             let titleColor = '';
             let titlePrefix = '';
             if (isCompleted) {
@@ -762,10 +799,8 @@
                 <div class="mission-icon">${icon}</div>
                 <div class="mission-title" style="${titleColor}">${titlePrefix}${mission.name}</div>
                 <div class="mission-cost">🟢 ${mission.stamina_cost} Stamina</div>
-                
-                `; // Zakończenie HTML dla karty (Usunięto mission-tooltip)
+            `; 
 
-            // Dynamiczne doczepianie danych o misji do znacznika na potrzeby globalnego tooltipu
             const missionTooltipData = {
                 id: mission.id,
                 name: mission.name, 
@@ -778,15 +813,14 @@
                 reward_coins_max: mission.reward_coins_max,
                 rewardStatsText: rewardStatsText, 
                 dropsText: dropsText, 
-                is_repeatable: mission.is_repeatable // <-- PRZEKAZUJEMY TYP MISJI BEZPOŚREDNIO
+                is_repeatable: mission.is_repeatable 
             };
             card.setAttribute('data-mission-template', encodeURIComponent(JSON.stringify(missionTooltipData)));
 
-            // Twarda blokada lub aktywacja karty
             if (!isUnlocked || isLockedByStory) {
                 card.classList.add('locked');
-                card.style.pointerEvents = 'none'; // Fizyczna blokada kliknięcia
-                card.style.filter = 'grayscale(100%) opacity(0.6)'; // Natychmiastowe wyszarzenie
+                card.style.pointerEvents = 'none'; 
+                card.style.filter = 'grayscale(100%) opacity(0.6)'; 
             } else {
                 card.addEventListener('click', () => {
                     startMission(mission.id);
@@ -796,7 +830,6 @@
             return card;
         }
 
-        // Wyświetlanie błędu misji
         function showMissionsError(message) {
             const missionsGrid = document.querySelector('.missions-grid');
             if (missionsGrid) {
@@ -810,7 +843,6 @@
             }
         }
 
-        // UNIWERSALNY SYSTEM POWIADOMIEŃ (Toasty w prawym górnym rogu)
         function showNotification(title, message, type = 'info', duration = 3500) {
             let container = document.getElementById('notification-container');
             if (!container) {
@@ -858,13 +890,11 @@
             setTimeout(() => { if (popup.parentNode) closePopup(); }, duration);
         }
 
-        // Klasyczne wrappery dla wstecznej kompatybilności starego kodu
         const showCustomPopup = (title, msg) => showNotification(title, msg, 'info');
         const showErrorMessage = (msg) => showNotification('Błąd', msg, 'error');
         const showSuccessMessage = (msg) => showNotification('Sukces', msg, 'success');
         const showWarningMessage = (msg) => showNotification('Uwaga', msg, 'warning');
 
-        // Rozpoczęcie misji
         async function startMission(missionId) {
             const sessionToken = localStorage.getItem('session_token');
             
@@ -893,13 +923,9 @@
 
                 const data = await response.json();
                 
-                // Sprawdź status błędu z serwera
                 if (data.status === 'error') {
                     const errorMessage = data.message || 'Nie udało się rozpocząć misji. Spróbuj ponownie.';
                     showCustomPopup('❌ Błąd', errorMessage);
-                    
-                    // HEALING FRONTENDU: Jeśli frontend rozjechał się z bazą i gracz kliknął ukończoną misję,
-                    // ten kod wymusi natychmiastowe zaciągnięcie poprawnych danych i "zamrożenie" karty.
                     fetchCharacterData();
                     return;
                 }
@@ -907,7 +933,7 @@
                 let notifType = 'info';
                 let notifTitle = '';
                 let notifMsg = '';
-                let duration = 4000; // Dłuższy czas, by gracz zdążył przeczytać statystyki
+                let duration = 4000; 
 
                 if (data.result === 'success') {
                     notifType = 'success';
@@ -936,7 +962,6 @@
                         if (Number(tg.bonus_mp) > 0) trainingTextList.push(`+${tg.bonus_mp} Max MP`);
                     }
                     
-                    // NOWE: Dodajemy monety z ekwipunku do sekcji Trening!
                     if (data.rewards.bonus_coins_training && data.rewards.bonus_coins_training !== "0") {
                         trainingTextList.push(`+${data.rewards.bonus_coins_training} Monet (Trening)`);
                     }
@@ -949,11 +974,9 @@
                     const boredomDmg = data.rewards.boredom_damage ? BigInt(data.rewards.boredom_damage) : 0n;
                     const boredomHtml = boredomDmg > 0n ? `<div style="font-size: 0.85rem; margin-top: 6px; color: #fca5a5; font-weight: bold;">🩸 Wydarzenie losowe: -${boredomDmg.toString()} HP</div>` : '';
 
-                    // Mapowanie dropów z backendu
                     const drops = data.rewards.dropped_items || [];
                     const dropsHtml = drops.map(d => `<div style="font-size: 0.85rem; margin-top: 6px; color: #4ade80; font-weight: bold;">🎁 Zdobyto: ${d.name} (x${d.quantity})</div>`).join('');
 
-                    // NOWY KOD - Powiadomienie o przepełnionym plecaku
                     const lostDrops = data.rewards.lost_items || [];
                     let lostDropsHtml = '';
                     if (lostDrops.length > 0) {
@@ -963,7 +986,6 @@
                         lostDropsHtml = `<div style="font-size: 0.85rem; margin-top: 6px; color: #ef4444; font-weight: bold;">❌ Pełny plecak! Utracono: ${lostStrings.join(', ')}</div>`;
                     }
 
-                    // Zmiana: Wyświetlamy base_coins zamiast zsumowanych coins
                     notifMsg = `
                         <div style="margin-bottom: 4px;">💰 Monety: <b style="color:#ffffff;">+${data.rewards.base_coins || data.rewards.coins}</b></div>
                         <div style="margin-bottom: 4px;">📊 <b style="color:#ffffff;">+${data.rewards.gains.strength}</b> Siła, <b style="color:#ffffff;">+${data.rewards.gains.speed}</b> Szybk., <b style="color:#ffffff;">+${data.rewards.gains.endurance}</b> Wytrz., <b style="color:#ffffff;">+${data.rewards.gains.technique}</b> Tech.</div>
@@ -987,7 +1009,7 @@
                     if (Number(statsLost.strength) > 0) lostList.push(`-${statsLost.strength} Siła`);
                     if (Number(statsLost.speed) > 0) lostList.push(`-${statsLost.speed} Szybk.`);
                     if (Number(statsLost.endurance) > 0) lostList.push(`-${statsLost.endurance} Wytrz.`);
-                    if (Number(statsLost.technique) > 0) lostList.push(`-${statsLost.technique} Tech.`); // <-- DODAJ TĘ LINIJKĘ
+                    if (Number(statsLost.technique) > 0) lostList.push(`-${statsLost.technique} Tech.`); 
                     if (Number(statsLost.intelligence) > 0) lostList.push(`-${statsLost.intelligence} Int.`);
                     if (Number(statsLost.mental_strength) > 0) lostList.push(`-${statsLost.mental_strength} Ment.`);
 
@@ -1003,7 +1025,7 @@
                             ${statsLostHtml}
                         </div>
                     `;
-                    duration = 5000; // Porażkę wyświetlamy nieco dłużej
+                    duration = 5000; 
                 } else if (data.result === 'death') {
                     notifType = 'death';
                     notifTitle = 'Krytyczna Porażka!';
@@ -1013,7 +1035,7 @@
                     if (statsLost.strength && statsLost.strength !== '0') statsList.push(`-${statsLost.strength} Siła`);
                     if (statsLost.speed && statsLost.speed !== '0') statsList.push(`-${statsLost.speed} Szybk.`);
                     if (statsLost.endurance && statsLost.endurance !== '0') statsList.push(`-${statsLost.endurance} Wytrz.`);
-                    if (statsLost.technique && statsLost.technique !== '0') statsList.push(`-${statsLost.technique} Tech.`); // <-- DODAJ TĘ LINIJKĘ
+                    if (statsLost.technique && statsLost.technique !== '0') statsList.push(`-${statsLost.technique} Tech.`); 
                     if (statsLost.intelligence && statsLost.intelligence !== '0') statsList.push(`-${statsLost.intelligence} Int.`);
                     if (statsLost.mental_strength && statsLost.mental_strength !== '0') statsList.push(`-${statsLost.mental_strength} Ment.`);
                     
@@ -1034,16 +1056,13 @@
                     }
                 }
 
-                // Wyświetl ujednolicone powiadomienie
                 showNotification(notifTitle, notifMsg, notifType, duration);
                 
-                // Odśwież dane postaci
                 await fetchCharacterData();
-                await fetchInventory(); // <--- WYMUSZONE ODŚWIEŻENIE PLECACA
+                await fetchInventory(); 
                 
             } catch (error) {
                 console.error('[Missions] Błąd podczas rozpoczynania misji:', error);
-                
                 showCustomPopup('❌ Błąd serwera', 'Nie udało się rozpocząć misji. Spróbuj ponownie.');
             }
         }
@@ -1051,8 +1070,7 @@
         // ==========================================
         // 🏥 3. SZPITAL I REGENERACJA
         // ==========================================
-        // Tu znajdują się: Odliczanie szpitala, lockTabsForHospital()
-        let hospitalInterval = null;
+        
         function startHospitalCountdown(hospitalUntilStr, reason = null) {
           if (hospitalInterval) clearInterval(hospitalInterval);
           
@@ -1077,13 +1095,12 @@
               headerEl.style.textShadow = '0 0 10px rgba(239, 68, 68, 0.5)';
           }
           if (descEl) {
-              // --- DYNAMICZNY TEKST SZPITALA ---
               let reasonText = 'Straciłeś przytomność. Twój organizm musi się zregenerować.';
               if (reason === 'mission') {
                   reasonText = 'Straciłeś przytomność podczas wykonywania misji. Twój organizm musi się zregenerować.';
               } else if (reason === 'work') {
                   reasonText = 'Wycieńczyłeś swój organizm podczas ciężkiej pracy. Musisz się zregenerować.';
-              } else if (reason === 'combat') { // Zostawione na przyszłość!
+              } else if (reason === 'combat') { 
                   reasonText = 'Straciłeś przytomność w walce. Twój organizm musi się zregenerować.';
               }
               descEl.innerHTML = `<strong style="color: #ef4444;">${reasonText}</strong>`;
@@ -1131,13 +1148,9 @@
             }
           }
           
-          // Wywołaj natychmiast pierwszą klatkę czasu, aby uniknąć sekundy zawieszenia!
           updateTimer();
           hospitalInterval = setInterval(updateTimer, 1000);
         }
-
-        window.isPlayerHospitalized = false;
-        window.isPlayerTraining = false;
 
         function updateTabsLockState() {
             const tabs = {
@@ -1150,17 +1163,14 @@
                 work: document.querySelector('[data-tab="work"]')
             };
 
-            // Wyłączamy płynne przejścia na chwilę (likwiduje efekt fortepianu/skakania)
             Object.values(tabs).forEach(tab => {
                 if (tab) tab.style.transition = 'none';
             });
 
-            // Zdejmujemy tymczasowe blokady ze wszystkich
             Object.values(tabs).forEach(tab => {
                 if (tab) tab.classList.remove('tab-disabled');
             });
 
-            // Wspólne blokady dla Szpitala ORAZ Treningu
             if (window.isPlayerHospitalized || window.isPlayerTraining) {
                 if (tabs.missions) tabs.missions.classList.add('tab-disabled');
                 if (tabs.equipment) tabs.equipment.classList.add('tab-disabled');
@@ -1169,17 +1179,14 @@
                 if (tabs.work) tabs.work.classList.add('tab-disabled');
             }
 
-            // Unikalna blokada TYLKO dla Szpitala
             if (window.isPlayerHospitalized) {
                 if (tabs.training) tabs.training.classList.add('tab-disabled');
             }
 
-            // Unikalna blokada TYLKO dla Treningu
             if (window.isPlayerTraining) {
                 if (tabs.hospital) tabs.hospital.classList.add('tab-disabled');
             }
 
-            // Przywrócenie animacji po wyrenderowaniu klatki
             requestAnimationFrame(() => {
                 setTimeout(() => {
                     Object.values(tabs).forEach(tab => {
@@ -1197,7 +1204,7 @@
         // ==========================================
         // 🧍‍♂️ 4. DANE POSTACI I INTERFEJS GŁÓWNY
         // ==========================================
-        // Tu znajdują się: updateUIWithCharacterData(), updateResourceBar(), activateTab()
+        
         async function fetchCharacterData(isBackground = false) {
             const sessionToken = localStorage.getItem('session_token');
             
@@ -1212,7 +1219,6 @@
 
                 if (!response.ok) {
                     if (response.status === 401 || response.status === 403) {
-                        // Token wygasł lub nieprawidłowy - przekieruj do logowania
                         localStorage.removeItem('session_token');
                         window.location.href = 'index.html';
                         return;
@@ -1225,34 +1231,27 @@
                 
             } catch (error) {
                 console.error('[Character] Błąd pobierania danych:', error);
-                // Wyświetl błąd użytkownikowi tylko jeśli to była ręczna akcja gracza
                 if (!isBackground) {
                     showErrorMessage('Nie udało się pobrać danych postaci. Spróbuj odświeżyć stronę.');
                 }
             }
         }
 
-        // Aktualizacja interfejsu danymi postaci
         function updateUIWithCharacterData(data) {
             try {
-                // Aktualizacja podstawowych informacji
                 document.querySelector('.player-name').textContent = data.username;
                 document.querySelector('#power-level').textContent = data.power_level;
                 document.querySelector('.current-form').textContent = `Forma: ${data.current_form}`;
                 document.querySelector('.coins').textContent = `💰 Monety: ${data.coins}`;
                 
-                // Zapisz monety globalnie dla sklepu
                 window.playerCurrentCoins = Number(data.coins);
                 
-                // Zapisz dane banku globalnie
                 window.playerBankCoins = Number(data.bank_coins || 0);
                 window.playerBankCoinLimitLevel = Number(data.bank_coin_limit_level || 1);
                 window.playerBankSlotsUnlocked = Number(data.bank_slots_unlocked || 5);
                 
-                // NAJPIERW ZAPISZ STATYSTYKI (Zabija błąd 5 slotów)
                 if (data.stats) window.playerCurrentStats = data.stats;
 
-                // DOPIERO TERAZ ODRYSUJ PLECAKI
                 if (window.inventoryData) {
                     renderInventory(window.inventoryData);
                     if (typeof renderShopBackpack === 'function') renderShopBackpack();
@@ -1260,7 +1259,6 @@
                 }
                 if (typeof renderBank === 'function') renderBank();
 
-                // Aktualizacja pasków zasobów z bonusami z ekwipunku
                 const hpBonus = data.equip_stats?.bonus_hp || '0';
                 const mpBonus = data.equip_stats?.bonus_mp || '0';
                 
@@ -1268,7 +1266,6 @@
                 updateResourceBar('mp', data.current_mp, data.max_mp, mpBonus, data.equip_stats?.breakdown?.bonus_mp || []);
                 updateResourceBar('stamina', data.current_stamina, data.max_stamina, '0', []);
 
-                // SZPITAL LOGIC: Sprawdzenie czy gracz jest w szpitalu
                 const currentHp = parseInt(data.current_hp);
                 
                 const headerEl = document.getElementById('hospital-header');
@@ -1277,17 +1274,12 @@
                 const countdownEl = document.getElementById('hospital-countdown');
 
                 if (currentHp <= 0 && data.hospital_until) {
-                    // STAN: MARTWY / W SZPITALU
-                    
-                    // Przenosimy do szpitala TYLKO jeśli gracz nie jest na Stronie Głównej (Dashboardzie)
                     const currentTab = localStorage.getItem('active_game_tab');
                     if (currentTab !== 'dashboard' && currentTab !== 'hospital') {
                         activateTab('hospital');
                     }
                     startHospitalCountdown(data.hospital_until, data.hospital_reason);
                 } else {
-                    // STAN: ZDROWY
-                    
                     if (hospitalInterval) clearInterval(hospitalInterval);
                     lockTabsForHospital(false);
                     
@@ -1299,7 +1291,7 @@
                     if (headerEl) {
                         headerEl.innerText = 'Jesteś Zdrowy!';
                         headerEl.style.color = '#ffffff';
-                        headerEl.style.backgroundColor = '#166534'; // Zielone tło
+                        headerEl.style.backgroundColor = '#166534'; 
                         headerEl.style.textShadow = 'none';
                     }
                     if (descEl) {
@@ -1308,7 +1300,6 @@
                     if (graphicEl) graphicEl.style.borderColor = '#166534';
                 }
 
-                // Aktualizacja statystyk postaci z bonusami z ekwipunku
                 const updateStatDisplay = (statId, baseValue, equipBonus, breakdownArray = []) => {
                     const baseNum = parseInt(baseValue);
                     const bonusNum = parseInt(equipBonus);
@@ -1330,27 +1321,24 @@
                     }
                 };
 
-                // Zaktualizuj 6 głównych statystyk z uwzględnieniem bonusów
                 if (data.equip_stats) {
                     updateStatDisplay('stat-strength', data.stats.strength, data.equip_stats.strength, data.equip_stats.breakdown?.strength || []);
                     updateStatDisplay('stat-speed', data.stats.speed, data.equip_stats.speed, data.equip_stats.breakdown?.speed || []);
                     updateStatDisplay('stat-endurance', data.stats.endurance, data.equip_stats.endurance, data.equip_stats.breakdown?.endurance || []);
-                    updateStatDisplay('stat-technique', data.stats.technique, data.equip_stats.technique, data.equip_stats.breakdown?.technique || []); // <--- NOWE
+                    updateStatDisplay('stat-technique', data.stats.technique, data.equip_stats.technique, data.equip_stats.breakdown?.technique || []); 
                     updateStatDisplay('stat-intelligence', data.stats.intelligence, data.equip_stats.intelligence, data.equip_stats.breakdown?.intelligence || []);
                     updateStatDisplay('stat-mental_strength', data.stats.mental_strength, data.equip_stats.mental_strength, data.equip_stats.breakdown?.mental_strength || []);
                 }
 
-                // Zapisz progres misji i odśwież interfejs misji
                 window.playerCompletedMissions = data.completed_missions;
                 window.playerAttemptedOneTry = data.attempted_one_try_missions || [];
                 if (data.strength !== undefined) window.playerCurrentStats = data;
-                window.playerEquipStats = data.equip_stats || {}; // <-- NOWE: Zapisujemy sprzęt
+                window.playerEquipStats = data.equip_stats || {}; 
                 if (window.allMissions) {
                     renderMissions(window.allMissions);
                     if (typeof window.refreshActiveTooltip === 'function') window.refreshActiveTooltip();
                 }
 
-                // ODBLOKOWANIE ZAKŁADKI PRACA
                 const navWorkBtn = document.getElementById('nav-work-btn');
                 const maZrobionaMisje6 = data.completed_missions && data.completed_missions.includes('10000000-0000-0000-0000-000000000006');
                 
@@ -1359,7 +1347,6 @@
                 }
                 if (typeof renderWorkList === 'function') renderWorkList();
 
-                // Sprawdzamy na żywo czy po walce odblokowano nową mechanikę
                 if (typeof fetchTrainingStatus === 'function') fetchTrainingStatus();
 
                 console.log('[UI] Dane postaci załadowane pomyślnie:', data);
@@ -1369,79 +1356,63 @@
             }
         }
 
-        // Aktualizacja pojedynczego paska zasobów
         function updateResourceBar(resourceType, current, max, equipBonus = '0', breakdown = []) {
-            // Konwersja stringów na BigInt dla obliczeń
             const currentBigInt = BigInt(current);
             const maxBigInt = BigInt(max);
             
-            // Obliczenie procentów (zachowując precyzję BigInt)
             const percentage = Number((currentBigInt * 100n) / maxBigInt);
             
-            // Znalezienie odpowiednich elementów
             const barContainer = document.querySelector(`.${resourceType}-bar`);
             if (!barContainer) return;
 
             const valueElement = barContainer.querySelector('.resource-value');
             const fillElement = barContainer.querySelector('.bar-fill');
 
-            // Aktualizacja tekstu z uwzględnieniem bonusów z ekwipunku
             if (BigInt(equipBonus) > 0n) {
                 const baseMax = BigInt(max) - BigInt(equipBonus);
                 const breakdownText = `Baza: ${baseMax}\nBonus: +${equipBonus}\n\nŹródła:\n` + breakdown.join('\n');
-                // Używamy customowego atrybutu data-tooltip
                 valueElement.innerHTML = `<span style="color: var(--success, #22c55e);" data-tooltip="${breakdownText}">${current} / ${max}</span>`;
             } else {
                 valueElement.textContent = `${current} / ${max}`;
             }
             
-            // Aktualizacja szerokości paska
             fillElement.style.width = `${Math.max(0, Math.min(100, percentage))}%`;
         }
 
-        // Główna funkcja aktywująca zakładkę (Wymaga bycia w Global Scope dla Szpitala!)
         function activateTab(tabName) {
-            // Zapisz wybór w pamięci przeglądarki
             localStorage.setItem('active_game_tab', tabName);
 
-            // Ukryj wszystkie widoki
             const allViews = document.querySelectorAll('[id$="-view"]');
             allViews.forEach(view => {
                 view.style.display = 'none';
             });
 
-            // Pokaż docelowy widok - specjalny case dla hospital-view
             const targetView = document.getElementById(`${tabName}-view`);
             if (targetView) {
                 if (tabName === 'hospital') {
-                    targetView.style.display = 'flex'; // Zostawiamy flex tylko dla szpitala
+                    targetView.style.display = 'flex'; 
                 } else {
-                    targetView.style.display = 'block'; // Przywraca poprawne wyśrodkowanie placeholders!
+                    targetView.style.display = 'block'; 
                 }
             }
 
-            // Zaktualizuj klasy przycisków (podświetlenie)
             const navButtons = document.querySelectorAll('.nav-btn');
             navButtons.forEach(btn => btn.classList.remove('active'));
             
-            // Jeśli to nie jest dashboard, podświetl odpowiedni przycisk na dolnym pasku
             if (tabName !== 'dashboard') {
                 const activeBtn = document.querySelector(`[data-tab="${tabName}"]`);
                 if (activeBtn) activeBtn.classList.add('active');
             }
 
-            // Renderuj Bank jeśli aktywny
             if (tabName === 'bank') {
                 renderBank();
             }
 
-            // Renderuj Sklep jeśli aktywny (NAPRAWA ZNIKAJĄCEGO "BRAK MIEJSCA")
             if (tabName === 'shop') {
                 renderShopItems();
                 renderShopBackpack();
             }
 
-            // Renderuj Dashboard (Czat i Ranking) jeśli aktywny
             if (tabName === 'dashboard') {
                 setTimeout(initializeDashboard, 100);
             }
@@ -1450,7 +1421,7 @@
         // ==========================================
         // 🎒 5. EKWIPUNEK I DRAG & DROP
         // ==========================================
-        // Tu znajdują się: renderInventory(), createItemCard(), performItemSwap(), consumeItem(), initializeDragAndDrop()
+        
         async function fetchInventory() {
             const sessionToken = localStorage.getItem('session_token');
             
@@ -1482,12 +1453,10 @@
             }
         }
 
-        // Aktualizacja przycisku Magicznej Fasolki w Szpitalu
         function updateMagicBeanButton(items) {
             const button = document.getElementById('btn-use-senzu');
             if (!button) return;
             
-            // Zlicz Magiczne Fasolki w plecaku (equipped_slot === null)
             const magicBeans = items.filter(item => 
                 item.item_template_id === '00000000-0000-0000-0000-000000000019' &&
                 item.equipped_slot === null
@@ -1526,24 +1495,20 @@
             return slotNames[slotId] || '';
         }
 
-        // Renderowanie ekwipunku w interfejsie
         function renderInventory(items) {
             const equipmentSlots = document.querySelectorAll('[data-slot]');
             const inventoryGrid = document.querySelector('.inventory-panel .inventory-grid');
             
-            // Wyczyść sloty wyposażenia (ciało)
             equipmentSlots.forEach(slot => {
                 const slotType = slot.getAttribute('data-slot');
                 const defaultText = getDefaultSlotText(slotType);
                 slot.innerHTML = `<span>${defaultText}</span>`;
             });
 
-            // Wyczyść siatkę plecaka
             if (inventoryGrid) inventoryGrid.innerHTML = '';
 
             const allItems = items || [];
             
-            // 1. Renderuj wyposażenie na ciele
             const equippedItems = allItems.filter(item => item.equipped_slot !== null && item.equipped_slot !== 'bank');
             equippedItems.forEach(item => {
                 const slot = document.querySelector(`[data-slot="${item.equipped_slot}"]`);
@@ -1554,7 +1519,6 @@
                 }
             });
 
-            // 2. Renderuj dynamiczny plecak z eventami (Identycznie jak Sklep i Bank!)
             const backpackItems = allItems.filter(item => item.equipped_slot === null);
             const maxSlots = calculateMaxBackpackSlots();
             
@@ -1610,10 +1574,8 @@
 
             console.log(`[Inventory] Wyrenderowano ${allItems.length} przedmiotów`);
             
-            // Zaktualizuj przycisk Magicznej Fasolki w Szpitalu
             updateMagicBeanButton(items);
             
-            // Synchronizacja plecaka w sklepie
             if (typeof renderShopBackpack === 'function') {
                 renderShopBackpack();
             }
@@ -1624,27 +1586,22 @@
             }
         }
 
-        // Inteligentna funkcja: sama tworzy nazwę pliku na podstawie nazwy przedmiotu
-function getItemImage(itemName, category) {
-    if (!itemName) return 'img/items/default_box.png';
+        function getItemImage(itemName, category) {
+            if (!itemName) return 'img/items/default_box.png';
 
-    // 1. Zamiana na małe litery i usunięcie zbędnych spacji
-    let slug = itemName.toLowerCase().trim();
+            let slug = itemName.toLowerCase().trim();
 
-    // 2. Zamiana polskich znaków na łacińskie
-    const polishChars = {'ą':'a','ć':'c','ę':'e','ł':'l','ń':'n','ó':'o','ś':'s','ź':'z','ż':'z'};
-    slug = slug.split('').map(char => polishChars[char] || char).join('');
+            const polishChars = {'ą':'a','ć':'c','ę':'e','ł':'l','ń':'n','ó':'o','ś':'s','ź':'z','ż':'z'};
+            slug = slug.split('').map(char => polishChars[char] || char).join('');
 
-    // 3. Oczyszczanie ze znaków specjalnych i wielokrotnych podkreślników
-    slug = slug.replace(/[\s\.]+/g, '_') // spacje i kropki -> _
-               .replace(/[^a-z0-9_]/g, '') // wszystko co nie jest litera, cyfra lub _
-               .replace(/_+/g, '_') // Usunięcie podwójnych podkreślników
-               .replace(/_$/g, ''); // USUNIĘCIE podkreślnika z samego końca słowa!
+            slug = slug.replace(/[\s\.]+/g, '_') 
+                       .replace(/[^a-z0-9_]/g, '') 
+                       .replace(/_+/g, '_') 
+                       .replace(/_$/g, ''); 
 
-    return `img/items/${slug}.png`;
-}
+            return `img/items/${slug}.png`;
+        }
 
-        // Obliczanie limitu plecaka
         function calculateMaxBackpackSlots() {
             if (!window.playerCurrentStats) return 5;
             const strength = BigInt(window.playerCurrentStats.strength || '0');
@@ -1657,7 +1614,6 @@ function getItemImage(itemName, category) {
             return Math.min(50, 5 + bonusSlots);
         }
 
-        // Tworzenie karty przedmiotu (Główna, uniwersalna funkcja dla całej gry)
         function createItemCard(item) {
             const card = document.createElement('div');
             card.className = 'item-card';
@@ -1680,7 +1636,6 @@ function getItemImage(itemName, category) {
                 ${(item.item_templates?.category === 'consumable' || item.item_templates?.category === 'special_consumable') ? `<div class="item-quantity">${quantity}</div>` : ''}
             `;
 
-            // Event: Przeciąganie (Drag Start)
             card.addEventListener('dragstart', function(e) {
                 if (window.isInventoryActionLocked) {
                     e.preventDefault();
@@ -1701,13 +1656,11 @@ function getItemImage(itemName, category) {
                 }
             });
 
-            // Event: Podwójne kliknięcie (Różne zachowania dla różnych okien)
             card.addEventListener('dblclick', function(e) {
                 e.preventDefault();
                 e.stopPropagation();
                 
-                // KRYTYCZNA POPRAWKA: Wymuszone ukrycie tooltipa
-                if (window.tooltipTimeout) clearTimeout(window.tooltipTimeout); // <-- DODAJ TĘ LINIJKĘ
+                if (window.tooltipTimeout) clearTimeout(window.tooltipTimeout); 
                 const tooltip = document.getElementById('global-tooltip');
                 if (tooltip) {
                     tooltip.style.opacity = '0';
@@ -1720,15 +1673,14 @@ function getItemImage(itemName, category) {
                 const activeTab = localStorage.getItem('active_game_tab');
                 if (activeTab === 'bank') {
                     const targetPanel = item.equipped_slot === 'bank' ? 'backpack' : 'bank';
-                    if (typeof transferBankItem === 'function') transferBankItem(item.id, targetPanel, '1'); // Bank: transfer 1 sztuki
+                    if (typeof transferBankItem === 'function') transferBankItem(item.id, targetPanel, '1'); 
                 } else if (activeTab === 'shop') {
-                    sellItem(item.id, 1); // Sklep: sprzedaż 1 sztuki
+                    sellItem(item.id, 1); 
                 } else {
-                    consumeItem(item.id); // Ekwipunek: użycie
+                    consumeItem(item.id); 
                 }
             });
 
-            // Event: Shift + Kliknięcie (Dzielenie stosów)
             card.addEventListener('click', function(e) {
                 if (e.shiftKey && (item.item_templates?.category === 'consumable' || item.item_templates?.category === 'special_consumable') && parseInt(item.quantity) > 1) {
                     e.preventDefault();
@@ -1747,7 +1699,6 @@ function getItemImage(itemName, category) {
                 }
             });
 
-            // Event: Zakończenie przeciągania (Zabezpieczenie przed wiszącym tooltipem)
             card.addEventListener('dragend', function() {
                 const tooltip = document.getElementById('global-tooltip');
                 if (tooltip) {
@@ -1763,30 +1714,20 @@ function getItemImage(itemName, category) {
         // ==========================================
         // 🛒 6. SYSTEM SKLEPU
         // ==========================================
-        // Pamięć na dzienne zakupy z serwera i poziom gracza
-        let playerDailyBuys = {};
-        let unlockedShopLevel = 1;
-        let currentShopCategory = 'consumables';
-        let currentShopLevel = 1;
-        let shopData = { 1:{}, 2:{}, 3:{}, 4:{}, 5:{} };
-
-        // Pobieranie przedmiotów sklepu (ZINTEGROWANE Z POZIOMAMI)
+        
         async function fetchShopItems() {
             try {
                 const res = await apiCall('/api/shop/items', 'GET');
                 if (!res || !res.success) return;
 
-                // Dane z serwera (z Twojego nowego index.js)
                 unlockedShopLevel = res.data.unlockedLevel;
                 playerDailyBuys = res.data.dailyBuys || {};
                 const templates = res.data.items || [];
                 
-                // Inicjalizacja struktury dla 5 poziomów
                 [1,2,3,4,5].forEach(lvl => {
                     shopData[lvl] = { consumables: [], training: [], equipment: [] };
                 });
 
-                // Segregacja przedmiotów na poziomy i kategorie
                 templates.forEach(template => {
                     const lvl = template.shop_level || 1;
                     const shopItem = {
@@ -1806,7 +1747,6 @@ function getItemImage(itemName, category) {
                     }
                 });
 
-                // Wizualna aktualizacja przycisków poziomów (odblokowane/zablokowane)
                 document.querySelectorAll('.shop-tab').forEach(btn => {
                     const btnLvl = parseInt(btn.dataset.level);
                     if (btnLvl <= unlockedShopLevel) {
@@ -1821,14 +1761,12 @@ function getItemImage(itemName, category) {
             } catch (error) { console.error('[Shop] Błąd:', error); }
         }
 
-        // Inicjalizacja Sklepu (Event Listenery)
         function initShop() {
             fetchShopItems().then(() => {
                 renderShopItems();
                 renderShopBackpack();
             });
             
-            // Obsługa kliknięć w zakładki Poziomów (1-5)
             document.querySelectorAll('.shop-tab').forEach(tab => {
                 tab.addEventListener('click', function() {
                     document.querySelectorAll('.shop-tab').forEach(t => t.classList.remove('active'));
@@ -1838,7 +1776,6 @@ function getItemImage(itemName, category) {
                 });
             });
 
-            // Obsługa kliknięć w zakładki Kategorii
             document.querySelectorAll('.category-tab').forEach(tab => {
                 tab.addEventListener('click', function() {
                     document.querySelectorAll('.category-tab').forEach(t => t.classList.remove('active'));
@@ -1849,7 +1786,6 @@ function getItemImage(itemName, category) {
             });
         }
 
-        // Renderowanie kart przedmiotów
         function renderShopItems() {
             const grid = document.getElementById('shop-items-grid');
             if (!grid) return;
@@ -1867,7 +1803,6 @@ function getItemImage(itemName, category) {
             }
         }
 
-        // Renderowanie plecaka w widoku sklepu (do sprzedaży)
         function renderShopBackpack() {
             const grid = document.getElementById('shop-backpack-grid');
             if (!grid) return;
@@ -1890,7 +1825,6 @@ function getItemImage(itemName, category) {
             }
         }
 
-        // Tworzenie karty przedmiotu sklepu z LICZNIKIEM DZIENNYM
         function createShopItemCard(item) {
             const card = document.createElement('div');
             card.className = 'shop-item-card';
@@ -1900,7 +1834,6 @@ function getItemImage(itemName, category) {
             const backpackItems = (window.inventoryData || []).filter(i => i.equipped_slot === null);
             const isStackable = item.category === 'consumable' || item.category === 'special_consumable';
             
-            // Logika Twoich limitów dziennych: 11 - poziom przedmiotu
             const maxDaily = 11 - (item.shop_level || 1);
             const alreadyBought = playerDailyBuys[item.id] || 0;
             const remaining = Math.max(0, maxDaily - alreadyBought);
@@ -1908,7 +1841,6 @@ function getItemImage(itemName, category) {
             const canAfford = playerCoins >= Number(item.price);
             const hasLimitLeft = remaining > 0;
             
-            // Sprawdzanie miejsca w plecaku
             let hasSpace = false;
             const existingInInv = backpackItems.find(i => i.item_template_id === item.id);
             if (existingInInv && isStackable) hasSpace = true;
@@ -1941,7 +1873,6 @@ function getItemImage(itemName, category) {
             return card;
         }
 
-        // Kupowanie przedmiotu
         async function buyItem(item) {
             const res = await apiCall('/api/shop/buy', 'POST', { template_id: item.id }, true);
             if (!res) return;
@@ -1950,14 +1881,13 @@ function getItemImage(itemName, category) {
                 showSuccessMessage(`Kupiono ${item.name}!`);
                 await fetchInventory();
                 await fetchCharacterData();
-                await fetchShopItems(); // Odśwież limity na kartach
+                await fetchShopItems(); 
                 renderShopItems();
             } else {
                 showWarningMessage(res.error || 'Błąd podczas kupna');
             }
         }
 
-        // Sprzedaż przedmiotu
         async function sellItem(inventoryId, amount = 'all') {
             const res = await apiCall('/api/shop/sell', 'POST', { inventory_id: inventoryId, amount: amount }, true);
             if (!res) return;
@@ -1975,7 +1905,7 @@ function getItemImage(itemName, category) {
         // ==========================================
         // 🏦 7. SYSTEM BANKU I LOKATY
         // ==========================================
-        // Tu znajdują się: renderBankSlots(), renderBankBackpack(), transferBankCoins(), upgradeBank()
+        
         function renderBank() {
             if (!document.getElementById('bank-view')) return;
 
@@ -1994,14 +1924,12 @@ function getItemImage(itemName, category) {
             if (bankCoinsDisplay) bankCoinsDisplay.textContent = `${bankCoins.toLocaleString()} 💰`;
             if (limitDisplay) limitDisplay.textContent = getBankLimit(currentLimitLevel).toLocaleString();
             
-            // Logika kosztu ulepszenia limitu
             const nextLevel = currentLimitLevel + 1;
             const limitCosts = { 2: 5000, 3: 25000, 4: 100000, 5: 500000, 6: 2500000, 7: 10000000, 8: 50000000, 9: 200000000, 10: 1000000000 };
             
             if (nextLevelDisplay) nextLevelDisplay.textContent = nextLevel <= 10 ? nextLevel : "MAX";
             if (upgradeCostDisplay) upgradeCostDisplay.textContent = nextLevel <= 10 ? limitCosts[nextLevel].toLocaleString() : "---";
 
-            // DODANY KOD: Informacja o pojemności kolejnego poziomu
             const limitValueEl = document.getElementById('bank-next-limit-value');
             if (limitValueEl) {
                 const limitsBank = { 1: 10000, 2: 50000, 3: 250000, 4: 1000000, 5: 5000000, 6: 25000000, 7: 100000000, 8: 500000000, 9: 2000000000, 10: 9007199254740991 };
@@ -2019,7 +1947,6 @@ function getItemImage(itemName, category) {
             renderBankBackpack();
         }
 
-        // Pobieranie limitu monet banku
         function getBankLimit(level) {
             const limits = {
                 1: 10000, 2: 50000, 3: 250000, 4: 1000000, 5: 5000000,
@@ -2027,7 +1954,7 @@ function getItemImage(itemName, category) {
             };
             return limits[level] || 10000;
         }
-        // Renderowanie slotów banku
+        
         function renderBankSlots() {
             const bankGrid = document.getElementById('bank-items-grid');
             if (!bankGrid) return;
@@ -2036,7 +1963,6 @@ function getItemImage(itemName, category) {
             const bankItems = (window.inventoryData || []).filter(item => item.equipped_slot === 'bank');
             const unlocked = window.playerBankSlotsUnlocked || 5;
 
-            // Ceny slotów zgodnie z Twoją zasadą
             function getSlotCost(n) {
                 if (n >= 6 && n <= 10) return 5000;
                 if (n >= 11 && n <= 15) return 25000;
@@ -2053,7 +1979,6 @@ function getItemImage(itemName, category) {
                 slot.setAttribute('data-index', i);
                 
                 if (i <= unlocked) {
-                    // Event listenery dla Drop w Banku (pozwala na precyzyjne sortowanie)
                     slot.addEventListener('dragover', function(e) {
                         if (window.isInventoryActionLocked) return;
                         e.preventDefault();
@@ -2073,20 +1998,17 @@ function getItemImage(itemName, category) {
                         const inventoryId = e.dataTransfer.getData('inventory_id');
                         const targetIndex = this.getAttribute('data-index');
                         
-                        // Naprawa Banku: Przekazujemy dokładny indeks!
                         if (typeof transferBankItem === 'function') {
                             transferBankItem(inventoryId, 'bank', 'all', targetIndex);
                         }
                     });
 
-                    // Slot odblokowany
                     const item = bankItems.find(item => item.backpack_index === i);
                     if (item) {
                         const itemCard = createItemCard(item);
                         slot.appendChild(itemCard);
                     }
                 } else if (i === unlocked + 1) {
-                    // NASTĘPNY slot do kupienia (Tylko ten ma cenę i jest klikalny!)
                     const cost = getSlotCost(i);
                     slot.classList.add('locked');
                     slot.style.cursor = 'pointer';
@@ -2094,7 +2016,6 @@ function getItemImage(itemName, category) {
                     slot.innerHTML = `<div style="font-size: 1.2rem;">🔓</div><div style="font-size: 0.65rem; color: #4ade80; font-weight: bold;">Kup slot ${i}</div><div style="font-size: 0.6rem;">${cost.toLocaleString()} 💰</div>`;
                     slot.addEventListener('click', () => showBuySlotModal(i));
                 } else {
-                    // Sloty zablokowane (Dalsza kolejka - brak ceny, nieklikalne)
                     slot.classList.add('locked');
                     slot.style.cursor = 'not-allowed';
                     slot.style.opacity = '0.4';
@@ -2104,7 +2025,6 @@ function getItemImage(itemName, category) {
             }
         }
 
-        // Renderowanie plecaka w widoku banku
         function renderBankBackpack() {
             const grid = document.getElementById('bank-backpack-grid');
             if (!grid) return;
@@ -2160,11 +2080,9 @@ function getItemImage(itemName, category) {
             }
         }
         
-
-        // Transfer monet
         async function transferBankCoins(action) {
             const input = document.getElementById('bank-amount-input');
-            const amount = input.value.replace(/\D/g, ''); // Tylko cyfry
+            const amount = input.value.replace(/\D/g, ''); 
             
             if (!amount || parseInt(amount) <= 0) {
                 showWarningMessage('Podaj prawidłową ilość monet');
@@ -2172,11 +2090,11 @@ function getItemImage(itemName, category) {
             }
 
             const res = await apiCall('/api/bank/transfer_coins', 'POST', { action: action, amount: amount }, true);
-            if (!res) return; // Przerwanie jeśli np. wylogowano
+            if (!res) return; 
 
             if (res.success) {
                 showSuccessMessage(res.data.message);
-                input.value = ''; // Specyficzna logika zachowana!
+                input.value = ''; 
                 await fetchCharacterData();
                 await fetchInventory();
                 renderBank();
@@ -2185,21 +2103,19 @@ function getItemImage(itemName, category) {
             }
         }
 
-        // Ulepszanie banku
         async function upgradeBank(upgradeType) {
             const res = await apiCall('/api/bank/upgrade', 'POST', { upgrade_type: upgradeType }, true);
             if (!res) return;
 
             if (res.success) {
                 showSuccessMessage(res.data.message);
-                await fetchCharacterData(); // Specyficzna logika zachowana!
+                await fetchCharacterData(); 
                 renderBank();
             } else {
                 showWarningMessage(res.error || 'Błąd podczas ulepszania banku');
             }
         }
 
-        // Transfer przedmiotu między bankiem a plecakiem
         async function transferBankItem(inventoryId, targetPanel, amount, targetIndex = null) {
             const res = await apiCall('/api/bank/transfer_item', 'POST', {
                 inventory_id: inventoryId, target_panel: targetPanel, amount: amount, target_index: targetIndex
@@ -2208,14 +2124,13 @@ function getItemImage(itemName, category) {
 
             if (res.success) {
                 showSuccessMessage(res.data.message);
-                await fetchInventory(); // Specyficzna logika zachowana!
+                await fetchInventory(); 
                 renderBank();
             } else {
                 showWarningMessage(res.error || 'Błąd podczas transferu przedmiotu');
             }
         }
 
-        // Dzielenie przedmiotu w banku
         async function splitBankItem(inventoryId, amount) {
             const res = await apiCall('/api/bank/split', 'POST', {
                 inventory_id: inventoryId, amount_to_split: amount
@@ -2224,14 +2139,13 @@ function getItemImage(itemName, category) {
 
             if (res.success) {
                 showSuccessMessage(res.data.message);
-                await fetchInventory(); // Specyficzna logika zachowana!
+                await fetchInventory(); 
                 renderBank();
             } else {
                 showWarningMessage(res.error || 'Błąd podczas dzielenia przedmiotu');
             }
         }
 
-        // Modal kupowania slotu
         function showBuySlotModal(slotNumber) {
             const costs = {
                 '6-10': 5000, '11-15': 25000, '16-20': 100000, '21-25': 500000
@@ -2250,13 +2164,7 @@ function getItemImage(itemName, category) {
             }
         }
 
-        // ==========================================
-        // KONIEC FUNKCJI BANKU
-        // ==========================================
-
-        // Funkcja do dzielenia przedmiotów
         async function splitItem(inventoryId, amount) {
-            // Wymuszone ukrycie tooltipa przy dzieleniu
             const tooltip = document.getElementById('global-tooltip');
             if (tooltip) { tooltip.style.opacity = '0'; tooltip.style.visibility = 'hidden'; tooltip.dataset.currentCard = ''; }
             
@@ -2267,36 +2175,17 @@ function getItemImage(itemName, category) {
             if (!res) return;
 
             if (res.success) {
-                await fetchInventory(); // Ciche odświeżenie bez wiadomości
+                await fetchInventory(); 
             } else {
                 showWarningMessage(res.error || 'Błąd podczas dzielenia przedmiotu');
             }
         }
 
-        // Tworzenie tooltipu dla misji
         function createMissionTooltip(template) {
             if (!template) return '';
 
-            // Słownik odblokowań GDD (Twarde UUID -> Co odblokowuje dana misja)
-            const unlocks = {
-                '10000000-0000-0000-0000-000000000004': { shop: 'Poziom 2 🛒' }, // Poprawione UUID!
-                '00000000-0000-0000-0000-000000000005': { tab: 'Trening 🧘‍♂️', mentor: 'Stary Mistrz 👴' },
-                '10000000-0000-0000-0000-000000000006': { tab: 'Praca 💼', work: 'Roznoszenie Mleka 🥛' },
-                '10000000-0000-0000-0000-000000000007': { work: 'Praca na Budowie 🧱', shop: 'Poziom 3 🛒' },
-                '10000000-0000-0000-0000-000000000008': { work: 'Praca w Polu 🌱' },
-                '10000000-0000-0000-0000-000000000009': { work: 'Drwal 🪵' },
-                '10000000-0000-0000-0000-000000000010': { tab: 'Zadania Specjalne 📜', work: 'Ekstremalny Kurier 📦' },
-                '00000000-0000-0000-0000-000000000014': { shop: 'Poziom 4 🛒' }, // Poprawione UUID!
-                '10000000-0000-0000-0000-000000000015': { tab: 'Laboratorium Zwojów 🧪', work: 'Zbiór Magicznej Rosy 💦', mentor: 'Koci Pustelnik 🐈' },
-                '10000000-0000-0000-0000-000000000020': { tab: 'Głęboka Medytacja 🧘‍♀️', work: 'Boskie Ogrody 🌸', mentor: 'Pan Niebiańskiego Pałacu ☁️' },
-                '00000000-0000-0000-0000-000000000023': { shop: 'Poziom 5 🛒' }, // Poprawione UUID!
-                '00000000-0000-0000-0000-000000000024': { mentor: 'Sala Czasu ⏳' },
-                '00000000-0000-0000-0000-000000000025': { tab: 'Arena PVP ⚔️' }
-            };
-
-            const unlockInfo = unlocks[template.id] || {};
+            const unlockInfo = MISSION_UNLOCKS_DICTIONARY[template.id] || {};
             
-            // Generowanie sekcji "Sukces odblokowuje"
             let unlockHtml = `
                 <div style="font-size: 0.85rem; margin-top: 10px; border-top: 1px dashed rgba(255,255,255,0.2); padding-top: 8px; text-align: left;">
                     <span style="color: #ffffff; font-weight: bold; margin-bottom: 4px; display: block;">Sukces odblokowuje:</span>
@@ -2312,16 +2201,15 @@ function getItemImage(itemName, category) {
             if (unlockInfo.mentor) {
                 unlockHtml += `<li style="color: #fbbf24; font-weight: bold; margin-bottom: 2px;">Mentor: ${unlockInfo.mentor}</li>`;
             }
-            if (unlockInfo.shop) { // NOWY KLUCZ!
+            if (unlockInfo.shop) { 
                 unlockHtml += `<li style="color: #ff6b00; font-weight: bold; margin-bottom: 2px;">Sklep: <b>${unlockInfo.shop}</b></li>`;
             }
             
             unlockHtml += `</ul></div>`;
 
-            // Oznaczenie typu misji na samej górze
-            const isRepeatable = template.is_repeatable !== false; // Domyślnie true
+            const isRepeatable = template.is_repeatable !== false; 
             const typeText = isRepeatable ? 'Misja Powtarzalna' : 'Misja Jednorazowa';
-            const typeColor = isRepeatable ? '#94a3b8' : '#fbbf24'; // Złoty dla jednorazowych, szary dla powtarzalnych
+            const typeColor = isRepeatable ? '#94a3b8' : '#fbbf24'; 
 
             return `
                 <div class="tooltip-title">${template.name}</div>
@@ -2337,7 +2225,6 @@ function getItemImage(itemName, category) {
             `;
         }
 
-        // Tworzenie tooltipu dla przedmiotu
         function createItemTooltip(template) {
             if (!template) return '';
 
@@ -2387,7 +2274,6 @@ function getItemImage(itemName, category) {
             if (template.consumable_effect && Object.keys(template.consumable_effect).length > 0 && template.name !== 'Magiczna Fasolka') {
                 tooltipHTML += '<div class="tooltip-section"><span class="tooltip-section-title">Efekt użycia:</span>';
                 
-                // Tłumacz statystyk z JSON-a na język gry
                 const translateStat = (stat, value) => {
                     if (stat === 'strength') return `+${value} Siły na stałe 💪`;
                     if (stat === 'speed') return `+${value} Szybkości na stałe ⚡`;
@@ -2402,7 +2288,6 @@ function getItemImage(itemName, category) {
                 };
 
                 for (const [effect, val] of Object.entries(template.consumable_effect)) {
-                    // Obsługa zagnieżdżonych bonusów (np. permanent_bonus: { strength: 10 })
                     if (effect === 'permanent_bonus' && typeof val === 'object' && val !== null) {
                         for (const [subStat, subVal] of Object.entries(val)) {
                             const translated = translateStat(subStat, subVal);
@@ -2411,7 +2296,6 @@ function getItemImage(itemName, category) {
                         continue;
                     }
 
-                    // Jeśli baza ma tylko znacznik "permanent_bonus: true", ukrywamy go, bo obok są już wypisane statystyki
                     if (effect === 'permanent_bonus' && (val === true || val === 'true')) continue;
 
                     let displayEffect = effect;
@@ -2423,7 +2307,7 @@ function getItemImage(itemName, category) {
                     else if (effect === 'restore_mp') displayEffect = `Przywraca ${val} MP 💧`;
                     else if (effect === 'restore_stamina') displayEffect = `Przywraca ${val} Staminy 🟢`;
                     else if (effect === 'full_resurrection' || effect === 'hospital_exit_recovery') displayEffect = 'Pełne wyleczenie (Przebudzenie) 🌟';
-                    else if (effect === 'permanent_bonus') displayEffect = 'Trwały bonus statystyk 📈'; // Awaryjny tekst
+                    else if (effect === 'permanent_bonus') displayEffect = 'Trwały bonus statystyk 📈'; 
                     else if (effect === 'unlock_transformation') displayEffect = 'Odblokowuje transformację ⚡';
                     else if (effect === 'temporary_buff') displayEffect = 'Tymczasowe błogosławieństwo ⏱️';
                     else if (effect === 'restore_hp_pct') displayEffect = `Przywraca ${val}% HP ❤️`;
@@ -2452,14 +2336,7 @@ function getItemImage(itemName, category) {
             return tooltipHTML;
         }
 
-        // Wyświetlanie błędu ekwipunku
-        function showInventoryError(message) {
-            console.error('[Inventory] Error:', message);
-        }
-
-        // Wykonywanie konsumpcji przedmiotu z backendem
         async function consumeItem(inventoryId) {
-            // Wymuszone ukrycie tooltipa przy konsumpcji
             const tooltip = document.getElementById('global-tooltip');
             if (tooltip) { tooltip.style.opacity = '0'; tooltip.style.visibility = 'hidden'; tooltip.dataset.currentCard = ''; }
             
@@ -2471,7 +2348,6 @@ function getItemImage(itemName, category) {
                 await fetchCharacterData();
                 showSuccessMessage(res.data.message);
             } else {
-                // Sprawdź czy to warning (np. pełne zasoby) przekazany z backendu
                 if (res.data && res.data.status === 'warning') {
                     showWarningMessage(res.data.message);
                 } else {
@@ -2480,7 +2356,6 @@ function getItemImage(itemName, category) {
             }
         }
 
-        // Wykonywanie zamiany przedmiotów z backendem (OPCJA 1 - Błyskawiczny RAM Update)
         async function performItemSwap(inventoryId, slotTarget, backpackIndexTarget = null, targetItemId = null) {
             if (window.isInventoryActionLocked) return;
             window.isInventoryActionLocked = true;
@@ -2503,25 +2378,20 @@ function getItemImage(itemName, category) {
                 const data = await response.json();
                 
                 if (data.success) {
-                    // === OPCJA 1: Lokalna (błyskawiczna) aktualizacja tablicy ===
                     const item1 = window.inventoryData.find(i => i.id === inventoryId);
                     const item2 = targetItemId ? window.inventoryData.find(i => i.id === targetItemId) : null;
                     
-                    // Sprawdzamy, czy to czynność wpływająca na statystyki (zakładanie/zdejmowanie sprzętu)
                     const isEquipAction = (slotTarget !== 'backpack' && slotTarget !== 'bank') || 
                                           (item1 && item1.equipped_slot !== null && item1.equipped_slot !== 'bank');
 
                     if (data.message.includes('połączone')) {
-                        // Wyjątek: Jeśli połączono stosy (ilość uległa zmianie), bezpiecznie jest pobrać nowy stan
                         await fetchInventory();
                         showSuccessMessage(data.message);
                     } else {
-                        // Zwykłe przeniesienie - modyfikujemy tylko RAM przeglądarki (0 zapytań GET!)
                         const dbSlotTarget = slotTarget === 'backpack' ? null : slotTarget;
                         const parsedIndexTarget = backpackIndexTarget ? parseInt(backpackIndexTarget) : null;
 
                         if (item1 && item2) {
-                            // Swap (zamiana miejsc)
                             const tempSlot = item1.equipped_slot;
                             const tempIndex = item1.backpack_index;
                             
@@ -2531,23 +2401,19 @@ function getItemImage(itemName, category) {
                             item2.equipped_slot = tempSlot;
                             item2.backpack_index = tempIndex;
                         } else if (item1) {
-                            // Przesunięcie na pusty slot
                             item1.equipped_slot = dbSlotTarget;
                             item1.backpack_index = parsedIndexTarget;
                         }
 
-                        // Błyskawiczne przerysowanie interfejsu (bez czekania na serwer)
                         renderInventory(window.inventoryData);
                         
                         const activeTab = localStorage.getItem('active_game_tab');
                         if (activeTab === 'bank' && typeof renderBank === 'function') renderBank();
                         if (activeTab === 'shop' && typeof renderShopBackpack === 'function') renderShopBackpack();
                         
-                        // Pokazujemy dymek sukcesu TYLKO przy zbroi (koniec ze spamem przy sortowaniu!)
                         if (isEquipAction) showSuccessMessage(data.message);
                     }
 
-                    // Pobieramy nowe statystyki postaci (cicho), TYLKO jeśli założono/zdjęto sprzęt
                     if (isEquipAction) {
                         await fetchCharacterData(true); 
                     }
@@ -2563,23 +2429,21 @@ function getItemImage(itemName, category) {
             }
         }
 
-        // Inicjalizacja mechaniki Drag & Drop
         function initializeDragAndDrop() {
-            // Dodaj event listenery do wszystkich slotów wyposażenia
             const equipmentSlots = document.querySelectorAll('[data-slot]');
             equipmentSlots.forEach(slot => {
                 slot.addEventListener('dragover', function(e) {
-                    e.preventDefault(); // Pozwól na upuszczenie
-                    this.style.backgroundColor = 'rgba(255, 107, 0, 0.3)'; // Wizualny feedback
+                    e.preventDefault(); 
+                    this.style.backgroundColor = 'rgba(255, 107, 0, 0.3)'; 
                 });
                 
                 slot.addEventListener('dragleave', function(e) {
-                    this.style.backgroundColor = ''; // Przywróć domyślny kolor
+                    this.style.backgroundColor = ''; 
                 });
                 
                 slot.addEventListener('drop', function(e) {
                     e.preventDefault();
-                    this.style.backgroundColor = ''; // Przywróć domyślny kolor
+                    this.style.backgroundColor = ''; 
                     
                     const inventoryId = e.dataTransfer.getData('inventory_id');
                     const templateId = e.dataTransfer.getData('template_id');
@@ -2589,38 +2453,27 @@ function getItemImage(itemName, category) {
                     const sourceSlot = e.dataTransfer.getData('source_slot');
                     const targetSlot = this.getAttribute('data-slot');
                     
-                    // Zabezpieczenie: Czy to w ogóle jest ekwipunek?
                     if (itemCategory !== 'equipment') {
                         showWarningMessage('Na ciało możesz założyć tylko ekwipunek!');
                         return;
                     }
                     
-                    // Zabezpieczenie przed sortowaniem w plecaku
                     if (sourceSlot === 'backpack' && targetSlot === null) {
                         return;
                     }
                     
-                    // Zabezpieczenie 2: Zamiana w tym samym miejscu
                     const draggedElement = document.querySelector(`[data-inventory-id="${inventoryId}"]`);
                     if (draggedElement && draggedElement.parentElement === this) {
                         return;
                     }
                     
-                    // Rozpoznanie celu dla frontendu
-                    let slotTarget = targetSlot; // Dla slotów wyposażenia
+                    let slotTarget = targetSlot; 
                     
-                    // Zabezpieczenie 1: Zły slot dla sprzętu
                     if (itemCategory === 'equipment' && itemSlot && itemSlot !== targetSlot) {
                         const slotNames = {
-                            'head': 'Głowa',
-                            'chest': 'Klatka piersiowa',
-                            'legs': 'Nogi',
-                            'feet': 'Stopy',
-                            'hands': 'Dłonie',
-                            'ear_l': 'Lewe ucho',
-                            'ear_r': 'Prawe ucho',
-                            'ring_l': 'Lewy pierścień',
-                            'ring_r': 'Prawy pierścień',
+                            'head': 'Głowa', 'chest': 'Klatka piersiowa', 'legs': 'Nogi',
+                            'feet': 'Stopy', 'hands': 'Dłonie', 'ear_l': 'Lewe ucho',
+                            'ear_r': 'Prawe ucho', 'ring_l': 'Lewy pierścień', 'ring_r': 'Prawy pierścień',
                             'necklace': 'Naszyjnik'
                         };
                         
@@ -2631,7 +2484,6 @@ function getItemImage(itemName, category) {
                         return;
                     }
                     
-                    // Wywołaj backend do zamiany przedmiotów, przekazując ID przedmiotu, który podmieniamy!
                     const existingCard = this.querySelector('.item-card');
                     const targetItemId = existingCard ? existingCard.dataset.inventoryId : null;
                     
@@ -2639,7 +2491,6 @@ function getItemImage(itemName, category) {
                 });
             });
 
-            // Dodaj strefę sprzedaży w sklepie (drop zone dla plecaka) - SIATKA
             const shopItemsGrid = document.getElementById('shop-items-grid');
             if (shopItemsGrid) {
                 shopItemsGrid.addEventListener('dragover', function(e) {
@@ -2655,7 +2506,7 @@ function getItemImage(itemName, category) {
                 
                 shopItemsGrid.addEventListener('drop', function(e) {
                     e.preventDefault();
-                    e.stopPropagation(); // KRYTYCZNE: Zatrzymuje bąbelkowanie do lewej kolumny
+                    e.stopPropagation(); 
                     this.style.backgroundColor = '';
                     this.style.border = '';
                     
@@ -2671,7 +2522,6 @@ function getItemImage(itemName, category) {
                 });
             }
 
-            // Dodaj strefę sprzedaży w sklepie (drop zone dla plecaka) - TŁO KOLUMNY
             const shopLeftColumn = document.querySelector('.shop-left-column');
             if (shopLeftColumn) {
                 shopLeftColumn.addEventListener('dragover', function(e) {
@@ -2685,7 +2535,7 @@ function getItemImage(itemName, category) {
                 
                 shopLeftColumn.addEventListener('drop', function(e) {
                     e.preventDefault();
-                    e.stopPropagation(); // KRYTYCZNE: Zatrzymuje propagację
+                    e.stopPropagation(); 
                     this.style.backgroundColor = '';
                     
                     const inventoryId = e.dataTransfer.getData('inventory_id');
@@ -2705,7 +2555,7 @@ function getItemImage(itemName, category) {
         // ==========================================
         // 💬 8. DASHBOARD (CZAT I RANKING)
         // ==========================================
-        // Tu znajdują się: renderRanking(), fetchChatMessages(), sendChatMessage(), initializeRealtimeChat()
+        
         async function fetchRanking() {
             const rankingList = document.getElementById('ranking-list');
             try {
@@ -2939,7 +2789,6 @@ function getItemImage(itemName, category) {
             }, 100);
         }
 
-        // Standaryzowana funkcja do zabijania wszystkich dymków (TERAZ GLOBALNA)
         window.hideAllActiveTooltips = function() {
             const tooltip = document.getElementById('global-tooltip');
             if (tooltip) {
@@ -2952,7 +2801,6 @@ function getItemImage(itemName, category) {
             }
         };
 
-        // Globalna funkcja odświeżająca zawartość otwartego dymka w czasie rzeczywistym
         window.refreshActiveTooltip = function() {
             const tooltip = document.getElementById('global-tooltip');
             if (tooltip && tooltip.style.opacity === '1' && tooltip.dataset.currentCard) {
@@ -2975,13 +2823,11 @@ function getItemImage(itemName, category) {
         // ==========================================
         // 🚀 9. GŁÓWNA INICJALIZACJA (START GRY)
         // ==========================================
-        // Tu znajdują się: Podpinanie przycisków, obsługa tooltipów, aktualizacja zegara DC
+        
         document.addEventListener('DOMContentLoaded', function() {
-            // 1. Sprawdź autoryzację
             const sessionToken = checkAuthentication();
             if (!sessionToken) return;
 
-            // 2. Pobierz dane
             fetchCharacterData();
             fetchMissions();
             fetchInventory();
@@ -2989,7 +2835,6 @@ function getItemImage(itemName, category) {
             if (document.getElementById('shop-view')) initShop();
             setTimeout(() => initializeDragAndDrop(), 500); 
 
-            // Czat Listenery
             const chatSendBtn = document.getElementById('chat-send-btn');
             const chatInput = document.getElementById('chat-input');
             if (chatSendBtn) chatSendBtn.addEventListener('click', sendChatMessage);
@@ -2999,7 +2844,6 @@ function getItemImage(itemName, category) {
                 });
             }
 
-            // Magiczna fasolka
             document.getElementById('btn-use-senzu')?.addEventListener('click', async function() {
                 const magicBean = window.inventoryData?.find(item => 
                     item.item_template_id === '00000000-0000-0000-0000-000000000019' && 
@@ -3012,11 +2856,9 @@ function getItemImage(itemName, category) {
                 consumeItem(magicBean.id);
             });
 
-            // Nawigacja
             const navButtons = document.querySelectorAll('.nav-btn');
             const savedTab = localStorage.getItem('active_game_tab') || 'dashboard';
 
-            // Filtrowanie inputa banku
             const bankAmountInput = document.getElementById('bank-amount-input');
             if (bankAmountInput) {
                 bankAmountInput.addEventListener('input', function() {
@@ -3024,7 +2866,6 @@ function getItemImage(itemName, category) {
                 });
             }
 
-            // Bank
             document.getElementById('bank-deposit-btn')?.addEventListener('click', () => transferBankCoins('deposit'));
             document.getElementById('bank-withdraw-btn')?.addEventListener('click', () => transferBankCoins('withdraw'));
             document.getElementById('bank-upgrade-limit-btn')?.addEventListener('click', () => upgradeBank('coin_limit'));
@@ -3082,9 +2923,6 @@ function getItemImage(itemName, category) {
             updateGameTime(); 
             setInterval(() => fetchCharacterData(true), 30000);
 
-            // ==========================================
-            // SYSTEM GLOBALNEGO TOOLTIPU (Hover Intent)
-            // ==========================================
             const globalTooltip = document.getElementById('global-tooltip');
             if (globalTooltip) {
                 globalTooltip.style.position = 'fixed';
@@ -3092,13 +2930,15 @@ function getItemImage(itemName, category) {
                 globalTooltip.style.zIndex = '999999';
                 globalTooltip.style.transition = 'opacity 0.2s ease'; 
                 
-                window.tooltipTimeout = null; 
                 let lastMouseX = 0; 
                 let lastMouseY = 0; 
 
+                
+                // Poprawiony fragment obsługi Hovera
                 document.body.addEventListener('mouseover', function(e) {
                     const card = e.target.closest('.item-card, .shop-item-card, .mission-card');
-                    const simpleTooltip = e.target.closest('[data-tooltip]');
+                    // Szukamy elementu z data-tooltip (np. wartości paska HP) LUB samego targetu jeśli ma ten atrybut
+                    const simpleTooltip = e.target.hasAttribute('data-tooltip') ? e.target : e.target.closest('[data-tooltip]');
                     
                     if (card || simpleTooltip) {
                         clearTimeout(window.tooltipTimeout); 
@@ -3176,7 +3016,6 @@ function getItemImage(itemName, category) {
                 });
             }
 
-            // Header i Mobile
             const toggleHeaderBtn = document.getElementById('toggle-header-btn');
             const headerPanel = document.getElementById('top-panel-1');
             if (localStorage.getItem('header_collapsed') === 'true') {
@@ -3202,17 +3041,10 @@ function getItemImage(itemName, category) {
         // ==========================================
         // 🧘‍♂️ 10. TRENING IDLE (MEDYTACJA)
         // ==========================================
-        // Tu znajdują się: fetchTrainingStatus(), selectMentor(), updateTotalCost(), start/stop treningu
-        let trainingMentors = [];
-        let activeTrainingEndTime = null;
-        let currentSelectedMentor = null;
-        let trainingCountdownInterval = null;
-        let dailyTimeChamberUsed = false; // Nowa flaga z backendu
-
+        
         const navTrainingBtn = document.querySelector('.nav-btn[data-tab="training"]');
         const mentorsGrid = document.getElementById('mentors-grid');
         
-        // UI Elementy Setupu
         const setupView = document.getElementById('training-setup-panel');
         const setupMentorInfo = document.getElementById('selected-mentor-info');
         const setupMentorName = document.getElementById('setup-mentor-name');
@@ -3222,17 +3054,15 @@ function getItemImage(itemName, category) {
         const hoursSlider = document.getElementById('training-hours-slider');
         const hoursDisplay = document.getElementById('training-hours-display');
         const totalCostDisplay = document.getElementById('training-total-cost');
-        const statSelect = document.getElementById('training-stat-select'); // Nowy element
+        const statSelect = document.getElementById('training-stat-select'); 
         const startBtn = document.getElementById('start-training-btn');
 
-        // UI Elementy Aktywnego Treningu
         const progressView = document.getElementById('training-progress-panel');
         const activeMentorName = document.getElementById('active-mentor-name');
         const countdownDisplay = document.getElementById('training-countdown');
         const claimBtn = document.getElementById('claim-training-btn');
         const stopBtn = document.getElementById('stop-training-btn');
 
-        // 1. Pobieranie statusu
         async function fetchTrainingStatus() {
             try {
                 const res = await apiCall('/api/training/status', 'GET');
@@ -3258,12 +3088,10 @@ function getItemImage(itemName, category) {
                 trainingMentors = data.mentors || [];
                 dailyTimeChamberUsed = data.dailyTimeChamberUsed;
                 
-                // POPRAWKA: Używamy .children.length, co jest odporne na spacje w pliku HTML
                 if (mentorsGrid.children.length === 0 || isCurrentlyTraining !== newTrainingState) {
                     renderMentors();
                 }
 
-                // Sprawdzamy stan prawego panelu
                 if (newTrainingState) {
                     if (!isCurrentlyTraining || progressView.style.display === 'none') {
                         window.isPlayerTraining = true;
@@ -3273,7 +3101,6 @@ function getItemImage(itemName, category) {
                         if (typeof updateTabsLockState === 'function') updateTabsLockState();
                     }
                 } else {
-                    // Upewniamy się, że jeśli gracz nie trenuje, to NA PEWNO widzi panel setupu
                     if (isCurrentlyTraining || setupView.style.display === 'none') {
                         window.isPlayerTraining = false;
                         showSetupState();
@@ -3284,7 +3111,6 @@ function getItemImage(itemName, category) {
             } catch (err) { console.error('Błąd statusu treningu:', err); }
         }
 
-        // 2. Renderowanie kart mentorów (w Twoim panelu po lewej)
         function renderMentors() {
             mentorsGrid.innerHTML = '';
             trainingMentors.forEach(mentor => {
@@ -3327,7 +3153,6 @@ function getItemImage(itemName, category) {
             });
         }
 
-        // 3. Wybór mentora
         function selectMentor(mentor, cardElement) {
             if (activeTrainingEndTime) return;
 
@@ -3341,7 +3166,6 @@ function getItemImage(itemName, category) {
             setupMentorCost.textContent = mentor.cost;
             setupMentorMultiplier.textContent = `x${mentor.multiplier}`;
             
-            // DYNAMICZNY SUWAK: Sala Czasu ma minuty, reszta godziny
             if (mentor.id === 'time_chamber') {
                 hoursSlider.min = 5;
                 hoursSlider.max = 60;
@@ -3362,21 +3186,17 @@ function getItemImage(itemName, category) {
             const val = parseInt(hoursSlider.value);
             const isTimeChamber = currentSelectedMentor.id === 'time_chamber';
             
-            // Jeśli to Sala Czasu, dzielimy przez 60, by uzyskać ułamek godziny
             const effectiveHours = isTimeChamber ? (val / 5) : val;
 
             hoursDisplay.textContent = val;
             
-            // Dynamiczna zmiana napisu z "godzina" na "minut"
             const textNode = hoursDisplay.nextSibling;
             if (textNode) {
                 textNode.textContent = isTimeChamber ? ' minut (rzeczywistych)' : ' godzin(y)';
             }
 
-            // Math.ceil sprawia, że koszt zaokrągla się w górę do pełnych punktów staminy
             totalCostDisplay.textContent = Math.ceil(currentSelectedMentor.cost * effectiveHours);
 
-            // Szacowanie nagrody oparte na godzinach efektywnych
             const powerEl = document.getElementById('total-power-level') || document.getElementById('power-level');
             let effectivePower = 1000;
             if (powerEl) {
@@ -3400,29 +3220,26 @@ function getItemImage(itemName, category) {
         hoursSlider.addEventListener('input', updateTotalCost);
         if (statSelect) statSelect.addEventListener('change', updateTotalCost);
 
-        // 4. Start
         startBtn.addEventListener('click', async () => {
             if (!currentSelectedMentor) return;
             const val = parseInt(hoursSlider.value);
             const isTimeChamber = currentSelectedMentor.id === 'time_chamber';
             
-            // Wysyłamy ile "godzin treningu" ma policzyć serwer
             const effectiveHours = isTimeChamber ? (val / 5) : val;
 
             const res = await apiCall('/api/training/start', 'POST', { 
                 mentorId: currentSelectedMentor.id, 
-                hours: effectiveHours, // Serwer dostanie np. 12 (mimo że trwało to 60 min)
+                hours: effectiveHours, 
                 targetStat: statSelect.value
             }, true);
             
             if (res && res.success) {
                 showSuccessMessage('Wkroczono do Sali Czasu!');
                 fetchTrainingStatus(); 
-                fetchCharacterData(true); // Natychmiastowe pobranie uciętej staminy bez komunikatu błędu
+                fetchCharacterData(true); 
             }
         });
 
-        // 5. Zatrzymanie / Odbiór
         async function handleStopTraining(action) {
             if (action === 'cancel' && !confirm('Na pewno? Stracisz całą wydaną staminę i nie dostaniesz nagrody!')) return;
 
@@ -3434,7 +3251,7 @@ function getItemImage(itemName, category) {
                 else showWarningMessage(res.data.message);
                 
                 if (typeof fetchCharacterData === 'function') fetchCharacterData();
-                fetchTrainingStatus(); // Wraca do wyboru mentorów
+                fetchTrainingStatus(); 
             } else {
                 showErrorMessage(res.error || 'Błąd zamykania treningu');
             }
@@ -3443,14 +3260,12 @@ function getItemImage(itemName, category) {
         claimBtn.addEventListener('click', () => handleStopTraining('claim'));
         stopBtn.addEventListener('click', () => handleStopTraining('cancel'));
 
-        // 6. Zarządzanie Stanami UI
         function showSetupState() {
             activeTrainingEndTime = null;
             setupView.style.display = 'flex';
             progressView.style.display = 'none';
             if (trainingCountdownInterval) clearInterval(trainingCountdownInterval);
             
-            // Czyszczenie zaznaczenia
             document.querySelectorAll('.mentor-card').forEach(c => c.classList.remove('selected'));
             currentSelectedMentor = null;
             setupMentorInfo.style.display = 'none';
@@ -3487,27 +3302,10 @@ function getItemImage(itemName, category) {
             trainingCountdownInterval = setInterval(update, 1000);
         }
 
-
-        // ==========================================
+// ==========================================
         // ⛏️ 11. TRYB PRACA (MINIGRA ZRĘCZNOŚCIOWA)
         // ==========================================
-        window.isWorkMinigameActive = false;
-        let currentSelectedWorkId = null;
-        let workTimerInterval = null;
-        let workAnimationId = null;
 
-        // Twarde przypisanie UUID z bazy misji oraz tematyczne emotikony
-        const WORK_FRONTEND_DATA = [
-            { id: 'praca_mleko', name: 'Roznoszenie Mleka', reqMission: '10000000-0000-0000-0000-000000000006', reqName: 'Misję 6', costStamina: 10, costHpPct: 2, reward: 2, reqStatValue: 500, goodEmoji: '🥛', badEmoji: '🫙' },
-            { id: 'praca_budowa', name: 'Praca na Budowie', reqMission: '10000000-0000-0000-0000-000000000007', reqName: 'Misję 7', costStamina: 10, costHpPct: 5, reward: 5, reqStatValue: 1000, goodEmoji: '🧱', badEmoji: '🧨' },
-            { id: 'praca_pole', name: 'Praca w Polu', reqMission: '10000000-0000-0000-0000-000000000008', reqName: 'Misję 8', costStamina: 15, costHpPct: 8, reward: 12, reqStatValue: 2500, goodEmoji: '🌱', badEmoji: '🐛' },
-            { id: 'praca_drwal', name: 'Drwal', reqMission: '10000000-0000-0000-0000-000000000009', reqName: 'Misję 9', costStamina: 15, costHpPct: 15, reward: 25, reqStatValue: 5000, goodEmoji: '🪵', badEmoji: '🪓' },
-            { id: 'praca_kurier', name: 'Ekstremalny Kurier', reqMission: '10000000-0000-0000-0000-000000000010', reqName: 'Misję 10', costStamina: 20, costHpPct: 25, reward: 60, reqStatValue: 10000, goodEmoji: '📦', badEmoji: '🦈' },
-            { id: 'praca_rosa', name: 'Zbiór Magicznej Rosy', reqMission: '10000000-0000-0000-0000-000000000015', reqName: 'Misję 15', costStamina: 25, costHpPct: 10, reward: 150, reqStatValue: 80000, goodEmoji: '💦', badEmoji: '🕷️' },
-            { id: 'praca_ogrody', name: 'Boskie Ogrody', reqMission: '10000000-0000-0000-0000-000000000020', reqName: 'Misję 20', costStamina: 40, costHpPct: 15, reward: 500, reqStatValue: 700000, goodEmoji: '🌸', badEmoji: '🐝' }
-        ];
-
-        // Wyłącza pozostałe zakładki i guziki na czas pracy!
         function lockTabsForWork(isWorking) {
             window.isWorkMinigameActive = isWorking;
             const tabs = document.querySelectorAll('.nav-btn');
@@ -3532,7 +3330,6 @@ function getItemImage(itemName, category) {
             });
         }
 
-        // Generowanie Listy (Lewy Panel)
         function renderWorkList() {
             const container = document.getElementById('work-list-container');
             if (!container) return;
@@ -3543,7 +3340,7 @@ function getItemImage(itemName, category) {
             WORK_FRONTEND_DATA.forEach(work => {
                 const isUnlocked = completedMissions.includes(work.reqMission);
                 const card = document.createElement('div');
-                card.className = `mentor-card ${isUnlocked ? '' : 'locked'}`; // Zapożyczamy style z kart mentora by nie powielać CSS
+                card.className = `mentor-card ${isUnlocked ? '' : 'locked'}`; 
                 card.id = `work-card-${work.id}`;
                 
                 card.innerHTML = `
@@ -3568,15 +3365,12 @@ function getItemImage(itemName, category) {
             currentWorkReward = workObj.reward;
             currentWorkDifficulty = WORK_FRONTEND_DATA.findIndex(w => w.id === workObj.id) + 1;
             
-            // Prawidłowe odznaczanie kart używających pożyczonego stylu mentor-card
             document.querySelectorAll('#work-list-container .mentor-card').forEach(c => c.classList.remove('selected'));
             cardElement.classList.add('selected');
             
-            // 1. Pobranie DOKŁADNYCH wymagań z danych misji (zapisanych w window.allMissions)
             const mission = (window.allMissions || []).find(m => m.id === workObj.reqMission);
             const reqs = mission ? mission.req_stats : { strength: 0, speed: 0, endurance: 0 };
 
-            // 2. Pobranie Twoich aktualnych statystyk (Baza + Ekwipunek)
             const baseStats = window.playerCurrentStats || {};
             const equipStats = window.playerEquipStats || {};
             
@@ -3585,14 +3379,12 @@ function getItemImage(itemName, category) {
             const pEnd = BigInt(baseStats.endurance || 0) + BigInt(equipStats.endurance || 0);
             const pTech = BigInt(baseStats.technique || 0) + BigInt(equipStats.technique || 0);
 
-            // 3. Sprawdzenie warunków dla każdej statystyki osobno
             const canStr = pStr >= BigInt(reqs.strength || 0);
             const canSpd = pSpd >= BigInt(reqs.speed || 0);
             const canEnd = pEnd >= BigInt(reqs.endurance || 0);
             const canTech = pTech >= BigInt(reqs.technique || 0);
             const canWork = canStr && canSpd && canEnd && canTech;
 
-            // 4. Budowa dynamicznego tekstu wymagań
             const reqHtml = `
                 <span style="color: ${canStr ? 'var(--success)' : 'var(--error)'}">Siła: ${reqs.strength || 0}</span>, 
                 <span style="color: ${canSpd ? 'var(--success)' : 'var(--error)'}">Szybk.: ${reqs.speed || 0}</span>, 
@@ -3635,29 +3427,8 @@ function getItemImage(itemName, category) {
             }
         }
 
-        // ==========================================
-        // SILNIK CANVAS I LOGIKA PRACY
-        // ==========================================
         const canvas = document.getElementById('workCanvas');
         const ctx = canvas ? canvas.getContext('2d') : null;
-
-        let gameState = { 
-            timeLeft: 0, caught: 0, missed: 0, objects: [], 
-            floatingTexts: [], extraHpPenalty: 0, 
-            bonusSpawned: 0, maxBonus: 0, 
-            thiefSpawned: 0, maxThief: 0, trapsSpawned: 0,
-            player: { x: 125, y: 380, w: 50, h: 20, speed: 6 }, keys: { left: false, right: false } 
-        };
-        let currentWorkDifficulty = 1;
-        let currentWorkReward = 0;
-
-        // Podpinamy wybór trudności z bazy UI
-        const originalSelectWork = selectWork;
-        selectWork = function(workObj, cardElement) {
-            originalSelectWork(workObj, cardElement);
-            currentWorkReward = workObj.reward;
-            currentWorkDifficulty = WORK_FRONTEND_DATA.findIndex(w => w.id === workObj.id) + 1; 
-        };
 
         window.addEventListener('keydown', (e) => { if (e.key === 'ArrowLeft' || e.key === 'a') gameState.keys.left = true; if (e.key === 'ArrowRight' || e.key === 'd') gameState.keys.right = true; });
         window.addEventListener('keyup', (e) => { if (e.key === 'ArrowLeft' || e.key === 'a') gameState.keys.left = false; if (e.key === 'ArrowRight' || e.key === 'd') gameState.keys.right = false; });
@@ -3751,13 +3522,12 @@ function getItemImage(itemName, category) {
             let r = Math.random();
             let hasSpecials = (gameState.bonusSpawned < gameState.maxBonus) || (gameState.thiefSpawned < gameState.maxThief);
             
-            // 10% szans, że spadnie obiekt specjalny (jeśli nie wyczerpano limitu)
             if (hasSpecials && r < 0.10) { 
                 let canSpawnBonus = gameState.bonusSpawned < gameState.maxBonus;
                 let canSpawnThief = gameState.thiefSpawned < gameState.maxThief;
                 
                 if (canSpawnBonus && canSpawnThief) {
-                    if (Math.random() < 0.33) isBonus = true; // Złodziej leci 2x częściej
+                    if (Math.random() < 0.33) isBonus = true; 
                     else isThief = true;
                 } else if (canSpawnBonus) {
                     isBonus = true;
@@ -3848,7 +3618,6 @@ function getItemImage(itemName, category) {
                 if (obj.y > canvas.height) gameState.objects.splice(i, 1);
             }
             
-            // Rysowanie animowanych, latających napisów!
             for (let i = gameState.floatingTexts.length - 1; i >= 0; i--) {
                 let ft = gameState.floatingTexts[i];
                 ctx.font = "bold 16px Arial";
@@ -3873,7 +3642,6 @@ function getItemImage(itemName, category) {
             if (res.success) {
                 window.isWorkMinigameActive = true; lockTabsForWork(true);
                 
-                // PANCERNE UKRYWANIE ELEMENTÓW - Odcina listę prac z lewej strony!
                 const listPanel = document.getElementById('work-list-panel');
                 if (listPanel) listPanel.style.display = 'none';
                 
@@ -3890,7 +3658,6 @@ function getItemImage(itemName, category) {
                 gameState.floatingTexts = []; gameState.extraHpPenalty = 0;
                 gameState.bonusSpawned = 0; gameState.maxBonus = currentWorkDifficulty;
                 gameState.thiefSpawned = 0; gameState.maxThief = currentWorkDifficulty * 2;
-                // Dopasowanie pozycji gracza do nowego wymiaru (wysokość 500)
                 gameState.player = { x: canvas.width / 2 - 25, y: canvas.height - 40, w: 50, h: 20, speed: 8 }; 
                 
                 gameState.timeLeft = res.data.duration;
@@ -3916,12 +3683,10 @@ function getItemImage(itemName, category) {
             window.isWorkMinigameActive = false;
             clearInterval(workTimerInterval); cancelAnimationFrame(workAnimationId);
             
-            // --- MASKOWANIE WIZUALNE PRZY PORAŻCE ---
             if (isFailed) {
                 document.getElementById('work-timer').innerText = `OBLICZANIE KARY...`;
                 document.getElementById('work-timer').style.color = 'var(--error)';
                 
-                // Czerwony, pulsujący blur na ekranie gry!
                 const canvasBox = document.getElementById('workCanvas');
                 if (canvasBox) {
                     canvasBox.style.transition = 'all 0.3s ease';
@@ -3935,7 +3700,6 @@ function getItemImage(itemName, category) {
             
             if (res && res.success) {
                 if (isFailed) {
-                    // Odbiór losowych wartości kar za porażkę dla każdej statystyki!
                     const p = res.data.penalty;
                     const pct = p.resources_pct;
                     const penaltyMsg = `
@@ -3949,11 +3713,9 @@ function getItemImage(itemName, category) {
                     `;
                     showNotification('Wyrzucono Cię z pracy!', penaltyMsg, 'error', 7000);
                 } else {
-                    // NOWE: Sprawdzamy czy przetrwaliśmy zmianę, ale Złodziej nas zabił!
                     if (res.data.isDead) {
                         showNotification('Szpital!', `Przetrwałeś zmianę, ale ataki Złodziei całkowicie Cię wycieńczyły! Trafiasz do szpitala.`, 'death', 7000);
                     } else {
-                        // Standardowy raport ze zmiany
                         const data = res.data;
                         let msg = `<div style="margin-bottom: 4px;">💰 Monety: <b style="color:#ffffff;">+${data.baseCoins || data.finalCoins}</b></div>`;
                         
@@ -3985,11 +3747,9 @@ function getItemImage(itemName, category) {
                 }
             }
 
-            // PANCERNE PRZYWRACANIE ELEMENTÓW PO ZAKOŃCZENIU PRACY
             setTimeout(() => {
                 fetchCharacterData(); fetchInventory();
                 
-                // --- CZYSZCZENIE EFEKTÓW WIZUALNYCH ---
                 const workCanvasElement = document.getElementById('workCanvas');
                 if (workCanvasElement) {
                     workCanvasElement.style.filter = 'none';
@@ -4012,18 +3772,15 @@ function getItemImage(itemName, category) {
             }, isFailed ? 2500 : 0);
         } 
 
-        // Czyszczenie pamięci przy wylogowaniu
         const logoutBtnGame = document.getElementById('logout-btn');
         if (logoutBtnGame) {
             logoutBtnGame.addEventListener('click', () => {
-                localStorage.setItem('active_game_tab', 'dashboard'); // Wymusza bezpieczny start na Stronie Głównej!
+                localStorage.setItem('active_game_tab', 'dashboard'); 
             });
         }
 
-        // Zbuduj status w tle bez sztucznego opóźnienia
         fetchTrainingStatus();
         
-        // 🔄 NOWE: Automatycznie odświeżaj listę Top 10 co 60 sekund (jeśli gracz jest na Stronie Głównej)
         setInterval(() => {
             const activeTab = localStorage.getItem('active_game_tab');
             if (activeTab === 'dashboard') {

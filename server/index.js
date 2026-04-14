@@ -15,32 +15,74 @@ const supabaseKey = process.env.SUPABASE_SERVICE_KEY;
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 // ==========================================
-// ⚙️ 1. KONFIGURACJA, BAZA DANYCH I POMOCNIKI
+// 🛠️ 1. STREFA NARZĘDZIOWA (SŁOWNIKI I FUNKCJE)
 // ==========================================
 
-// Funkcje pomocnicze dla BigInt
+// --- 1A. SŁOWNIKI I KONFIGURACJE ---
+const TRAINING_MENTORS = {
+  'old_master': { name: 'Stary Mistrz', emoji: '🐢', cost: 10, multiplier: 2, reqMission: '00000000-0000-0000-0000-000000000005' },
+  'cat_hermit': { name: 'Koci Pustelnik', emoji: '🐈', cost: 25, multiplier: 6, reqMission: '10000000-0000-0000-0000-000000000015' },
+  'celestial': { name: 'Pan Niebiańskiego Pałacu', emoji: '☁️', cost: 50, multiplier: 15, reqMission: '10000000-0000-0000-0000-000000000020' },
+  'time_chamber': { name: 'Sala Czasu', emoji: '⏳', cost: 100, multiplier: 40, reqMission: '00000000-0000-0000-0000-000000000024' }
+};
+
+const WORK_MODES = {
+  praca_mleko:  { req_mission: '10000000-0000-0000-0000-000000000006', duration_sec: 15, cost_stamina: 10n, cost_hp_pct: 2n, reward_coins: 2n, penalty_pct: 10n },
+  praca_budowa: { req_mission: '10000000-0000-0000-0000-000000000007', duration_sec: 20, cost_stamina: 10n, cost_hp_pct: 5n, reward_coins: 5n, penalty_pct: 12n },
+  praca_pole:   { req_mission: '10000000-0000-0000-0000-000000000008', duration_sec: 25, cost_stamina: 15n, cost_hp_pct: 8n, reward_coins: 12n, penalty_pct: 15n },
+  praca_drwal:  { req_mission: '10000000-0000-0000-0000-000000000009', duration_sec: 30, cost_stamina: 15n, cost_hp_pct: 15n, reward_coins: 25n, penalty_pct: 18n },
+  praca_kurier: { req_mission: '10000000-0000-0000-0000-000000000010', duration_sec: 40, cost_stamina: 20n, cost_hp_pct: 25n, reward_coins: 60n, penalty_pct: 22n },
+  praca_rosa:   { req_mission: '10000000-0000-0000-0000-000000000015', duration_sec: 50, cost_stamina: 25n, cost_hp_pct: 10n, reward_coins: 150n, penalty_pct: 25n, drop_woda: true },
+  praca_ogrody: { req_mission: '10000000-0000-0000-0000-000000000020', duration_sec: 60, cost_stamina: 40n, cost_hp_pct: 30n, reward_coins: 500n, penalty_pct: 30n }
+};
+
+const BANK_COIN_LIMITS = {
+  1: { limit: 10000, cost: 0 }, 2: { limit: 50000, cost: 5000 }, 3: { limit: 250000, cost: 25000 },
+  4: { limit: 1000000, cost: 100000 }, 5: { limit: 5000000, cost: 500000 }, 6: { limit: 25000000, cost: 2500000 },
+  7: { limit: 100000000, cost: 10000000 }, 8: { limit: 500000000, cost: 50000000 }, 9: { limit: 2000000000, cost: 200000000 },
+  10: { limit: 9007199254740991, cost: 1000000000 }
+};
+
+const BANK_SLOT_COSTS = { '6-10': 5000, '11-15': 25000, '16-20': 100000, '21-25': 500000 };
+
+// --- 1B. ZMIENNE GLOBALNE I CACHE ---
+let globalServerState = null;
+let itemDictCache = null;
+let itemDictCacheTime = 0;
+let rankingCache = null;
+let rankingCacheTime = 0;
+const RANKING_CACHE_TTL = 1 * 60 * 1000; // 1 minuta
+const chatRateLimitMap = new Map();
+const CHAT_RATE_LIMIT_TTL = 3000; // 3 sekundy
+
+// --- 1C. FUNKCJE POMOCNICZE ---
 const minBigInt = (a, b) => (a < b ? a : b);
 const maxBigInt = (a, b) => (a > b ? a : b);
 
-// Globalna funkcja wyliczająca maksymalną pojemność plecaka
 function calculateMaxBackpackSlots(charStats) {
-  const minPhysicalStat = minBigInt(
-    BigInt(charStats.strength || '0'), 
-    minBigInt(BigInt(charStats.speed || '0'), BigInt(charStats.endurance || '0'))
-  );
+  const minPhysicalStat = minBigInt(BigInt(charStats.strength || '0'), minBigInt(BigInt(charStats.speed || '0'), BigInt(charStats.endurance || '0')));
   return Math.min(50, 5 + Number(minPhysicalStat / 10000n));
+}
+
+function bigIntReplacer(key, value) {
+  return typeof value === 'bigint' ? value.toString() : value;
+}
+
+function getCharacterShopLevel(completedMissions) {
+    const completed = completedMissions || [];
+    if (completed.includes('10000000-0000-0000-0000-000000000023')) return 5;
+    if (completed.includes('10000000-0000-0000-0000-000000000014')) return 4;
+    if (completed.includes('10000000-0000-0000-0000-000000000007')) return 3;
+    if (completed.includes('00000000-0000-0000-0000-000000000004')) return 2;
+    return 1;
 }
 
 // ==========================================
 // 📊 2. SILNIK STATYSTYK I AUTORYZACJA (MIDDLEWARE)
 // ==========================================
-// Tu są: getFullCharacterStats(), authenticateToken()
 
-// Reużywalna funkcja pobierająca pełne statystyki postaci z bonusami z ekwipunku
 async function getFullCharacterStats(userId) {
   try {
-    // ⚡ SUPER-OPTYMALIZACJA: Pobieramy Postać i Profil (JOIN) jednym zapytaniem.
-    // Oszczędza to potężną ilość zapytań (Reads) w darmowym planie Supabase!
     const { data: character, error: characterError } = await supabase
       .from('characters')
       .select('*, profiles!inner(username)') 
@@ -59,7 +101,7 @@ async function getFullCharacterStats(userId) {
       .select('*, item_templates(*)')
       .eq('character_id', character.id)
       .not('equipped_slot', 'is', null)
-      .neq('equipped_slot', 'bank'); // TWARDE ZABEZPIECZENIE: Ignoruj przedmioty schowane w banku!
+      .neq('equipped_slot', 'bank'); 
 
     if (equipmentError) {
       console.error('[Stats] Błąd pobierania ekwipunku:', equipmentError);
@@ -78,13 +120,13 @@ async function getFullCharacterStats(userId) {
           if (bonuses.strength) { equipBonuses.strength += BigInt(bonuses.strength); equipBreakdown.strength.push(`${item.item_templates.name}: +${bonuses.strength}`); }
           if (bonuses.speed) { equipBonuses.speed += BigInt(bonuses.speed); equipBreakdown.speed.push(`${item.item_templates.name}: +${bonuses.speed}`); }
           if (bonuses.endurance) { equipBonuses.endurance += BigInt(bonuses.endurance); equipBreakdown.endurance.push(`${item.item_templates.name}: +${bonuses.endurance}`); }
-          if (bonuses.technique) { equipBonuses.technique += BigInt(bonuses.technique); equipBreakdown.technique.push(`${item.item_templates.name}: +${bonuses.technique}`); } // <--- NOWE
+          if (bonuses.technique) { equipBonuses.technique += BigInt(bonuses.technique); equipBreakdown.technique.push(`${item.item_templates.name}: +${bonuses.technique}`); } 
           if (bonuses.intelligence) { equipBonuses.intelligence += BigInt(bonuses.intelligence); equipBreakdown.intelligence.push(`${item.item_templates.name}: +${bonuses.intelligence}`); }
           if (bonuses.mental_strength) { equipBonuses.mental_strength += BigInt(bonuses.mental_strength); equipBreakdown.mental_strength.push(`${item.item_templates.name}: +${bonuses.mental_strength}`); }
           if (bonuses.bonus_hp) { equipBonuses.bonus_hp += BigInt(bonuses.bonus_hp); equipBreakdown.bonus_hp.push(`${item.item_templates.name}: +${bonuses.bonus_hp}`); }
           if (bonuses.bonus_mp) { equipBonuses.bonus_mp += BigInt(bonuses.bonus_mp); equipBreakdown.bonus_mp.push(`${item.item_templates.name}: +${bonuses.bonus_mp}`); }
           if (bonuses.bonus_coins_pct) { equipBonuses.bonus_coins_pct += BigInt(bonuses.bonus_coins_pct); equipBreakdown.bonus_coins_pct.push(`${item.item_templates.name}: +${bonuses.bonus_coins_pct}%`); }
-          if (bonuses.bonus_coins) { equipBonuses.bonus_coins += BigInt(bonuses.bonus_coins); equipBreakdown.bonus_coins.push(`${item.item_templates.name}: +${bonuses.bonus_coins}`); } // <-- DODANO PŁASKIE MONETY
+          if (bonuses.bonus_coins) { equipBonuses.bonus_coins += BigInt(bonuses.bonus_coins); equipBreakdown.bonus_coins.push(`${item.item_templates.name}: +${bonuses.bonus_coins}`); } 
         }
 
         if (bonuses.type === 'training') {
@@ -134,8 +176,6 @@ async function getFullCharacterStats(userId) {
         ((baseStats.bonus_mp + equipBonuses.bonus_mp) * 2n) + 
         (baseStats.bonus_stamina * 5n);
 
-    // Omijamy problem wyścigu (Race Condition). Poziom mocy jest teraz zwracany z funkcji
-    // i zapisywany w głównym endpointcie razem z resztą danych jako 1 zapytanie!
     return {
       character, profile, powerLevel, max_hp, max_mp, max_stamina,
       baseStats: {
@@ -158,15 +198,15 @@ async function getFullCharacterStats(userId) {
         mental_strength: equipBonuses.mental_strength.toString(),
         bonus_hp: equipBonuses.bonus_hp.toString(),
         bonus_mp: equipBonuses.bonus_mp.toString(),
-        bonus_coins_pct: equipBonuses.bonus_coins_pct.toString(), // <--- BRAKUJĄCA LINIJKA
-        bonus_coins: equipBonuses.bonus_coins.toString(), // <--- BRAKUJĄCA LINIJKA
+        bonus_coins_pct: equipBonuses.bonus_coins_pct.toString(), 
+        bonus_coins: equipBonuses.bonus_coins.toString(), 
         breakdown: equipBreakdown
       },
       trainingStats: {
         strength: trainingBonuses.strength.toString(),
         speed: trainingBonuses.speed.toString(),
         endurance: trainingBonuses.endurance.toString(),
-        technique: trainingBonuses.technique.toString(), // <--- BRAKUJĄCA LINIJKA
+        technique: trainingBonuses.technique.toString(), 
         intelligence: trainingBonuses.intelligence.toString(),
         mental_strength: trainingBonuses.mental_strength.toString(),
         bonus_hp: trainingBonuses.bonus_hp.toString(),
@@ -180,13 +220,6 @@ async function getFullCharacterStats(userId) {
     throw err;
   }
 }
-
-// ==========================================
-// BUFOR RAM - GLOBALNY STAN SERWERA
-// ==========================================
-
-// Przechowujemy stan gry w pamięci Node.js, by chronić limity Supabase
-let globalServerState = null;
 
 // Funkcja pobierająca początkowy stan z bazy przy starcie serwera
 async function initGlobalState() {
@@ -260,7 +293,6 @@ app.get('/api/status', (req, res) => {
 // SYSTEM AUTORYZACJI I KONT
 // ==========================================
 
-// Przywrócona funkcja autoryzacji
 async function authenticateToken(req, res, next) {
   try {
     const authHeader = req.headers['authorization'];
@@ -279,7 +311,6 @@ async function authenticateToken(req, res, next) {
   }
 }
 
-// Middleware sprawdzający, czy gracz żyje (Szpital)
 const requireAlive = async (req, res, next) => {
     try {
         const { data: char, error } = await supabase
@@ -298,10 +329,6 @@ const requireAlive = async (req, res, next) => {
         res.status(500).json({ error: 'Błąd weryfikacji zdrowia' });
     }
 };
-
-function bigIntReplacer(key, value) {
-  return typeof value === 'bigint' ? value.toString() : value;
-}
 
 app.post('/api/auth/register', async (req, res) => {
   const { email, password, username, gender } = req.body;
@@ -338,7 +365,6 @@ app.post('/api/auth/login', async (req, res) => {
 // ==========================================
 // 🧍‍♂️ 3. DANE POSTACI, EKWIPUNEK I PRZEDMIOTY
 // ==========================================
-// Tu są: Odczyt postaci, consume (leczenie), split, swap ekwipunku
 
 app.get('/api/character', authenticateToken, async (req, res) => {
   try {
@@ -392,24 +418,19 @@ app.get('/api/character', authenticateToken, async (req, res) => {
     let elapsedMs = now - effectiveLastCalcTime;
     if (isNaN(elapsedMs) || elapsedMs < 0) elapsedMs = 0;
 
-    // --- TRYB SMART / PRZYJAZNY (Odnawianie staminy po zakończeniu treningu) ---
     let isTrainingActiveRightNow = false;
     if (character.active_training_id && character.training_end_time) {
         const trainingEndTimeMs = new Date(character.training_end_time).getTime();
         
         if (now < trainingEndTimeMs) {
-            // Trening wciąż trwa. Cały upłynięty czas to czas treningu (0 darmowej regeneracji)
             isTrainingActiveRightNow = true;
             elapsedMs = 0; 
         } else {
-            // Trening już się zakończył. 
-            // Liczymy regenerację tylko od momentu zakończenia treningu (odcinamy godziny u mistrza)
             if (effectiveLastCalcTime < trainingEndTimeMs) {
                 elapsedMs = now - trainingEndTimeMs;
             }
         }
     }
-    // -------------------------------------------------------------------------
     
     const consumedMs = elapsedMs - (elapsedMs % 60000);
     let remainderMs = elapsedMs % 60000; 
@@ -433,7 +454,6 @@ app.get('/api/character', authenticateToken, async (req, res) => {
       if (isHospitalized) {
         dbUpdateNeeded = false;
       } else if (isTrainingActiveRightNow) {
-        // Trening fizycznie wciąż trwa. Zamrażamy paski i przepalamy czas!
         dbUpdateNeeded = true; 
       } else {
         const finalEndurance = BigInt(baseStats.endurance) + BigInt(equipStats.endurance || '0');
@@ -453,7 +473,6 @@ app.get('/api/character', authenticateToken, async (req, res) => {
       }
     }
 
-    // --- ⚡ ZBIORCZY, INTELIGENTNY ZAPIS DO BAZY (Fix na Lagi i Top 10) ---
     let updateData = {};
 
     if (dbUpdateNeeded) {
@@ -463,13 +482,10 @@ app.get('/api/character', authenticateToken, async (req, res) => {
         updateData.last_calculation_time = newCalcTimeUTC;
     }
 
-    // Ostateczny fix dla int8 w Supabase - parsujemy string z powrotem na natywny typ liczbowy.
-    // BigInt nie przejdzie przez JSON do Supabase bez tego kroku.
     if (String(character.total_power_level || '0') !== powerLevel.toString()) {
         updateData.total_power_level = parseInt(powerLevel.toString(), 10); 
     }
 
-    // Patch: Odblokowanie pracy
     let features = character.unlocked_features || [];
     if (character.completed_missions && character.completed_missions.includes('10000000-0000-0000-0000-000000000006')) {
         if (!features.includes('work')) {
@@ -478,13 +494,11 @@ app.get('/api/character', authenticateToken, async (req, res) => {
         }
     }
 
-    // Wysyłamy TYLKO JEDNO zapytanie do bazy + LOGOWANIE BŁĘDÓW
     if (Object.keys(updateData).length > 0) {
         const { error: updErr } = await supabase.from('characters').update(updateData).eq('profile_id', userId);
         if (updErr) console.error('[Stats] ⚠️ Błąd zapisu danych postaci (Top 10):', updErr.message);
     }
 
-    // Zwracamy paczkę do przeglądarki
     const characterData = {
       username: profile.username,
       power_level: powerLevel.toString(),
@@ -515,11 +529,6 @@ app.get('/api/character', authenticateToken, async (req, res) => {
   }
 });
 
-// ⚡ OPTYMALIZACJA: Cache słownika przedmiotów. Pamięta nazwy przez 30 minut.
-// Zabija to całkowicie bezsensowny ruch do bazy danych przy otwieraniu zakładki "Misje"!
-let itemDictCache = null;
-let itemDictCacheTime = 0;
-
 app.get('/api/missions', authenticateToken, async (req, res) => {
   try {
     const { data: missions, error } = await supabase
@@ -529,7 +538,6 @@ app.get('/api/missions', authenticateToken, async (req, res) => {
 
     if (error) return res.status(500).json({ error: 'Błąd serwera podczas pobierania misji' });
 
-    // 1. Sprawdzamy czy mamy słownik w RAM-ie (odświeża co 30 minut)
     const now = Date.now();
     if (!itemDictCache || (now - itemDictCacheTime > 30 * 60 * 1000)) {
         const { data: items } = await supabase.from('item_templates').select('id, name');
@@ -539,7 +547,6 @@ app.get('/api/missions', authenticateToken, async (req, res) => {
     }
     const itemDict = itemDictCache;
 
-    // 2. Doklejamy nazwy do tabeli dropów
     const enrichedMissions = missions.map(mission => {
         if (mission.drop_table && Array.isArray(mission.drop_table)) {
             mission.drop_table = mission.drop_table.map(drop => ({
@@ -550,7 +557,6 @@ app.get('/api/missions', authenticateToken, async (req, res) => {
         return mission;
     });
 
-    // NOWE: Twarde sortowanie po wymaganej sile (gwarantuje idealną kolejność 1-25 niezależnie od bazy)
     enrichedMissions.sort((a, b) => {
         const strA = parseInt(a.req_stats?.strength || '0', 10);
         const strB = parseInt(b.req_stats?.strength || '0', 10);
@@ -617,9 +623,6 @@ app.post('/api/inventory/swap', authenticateToken, async (req, res) => {
       if (existingItem) wasOccupied = true;
     }
 
-    // Walidacja wymagań przedmiotu zakładanego prosto z plecaka
-    // Jeśli zdejmujemy przedmiot z ciała do plecaka i zamieniamy się z innym przedmiotem, 
-    // musimy sprawdzić, czy gracz spełnia wymogi przedmiotu, który właśnie wyląduje na ciele!
     if (targetItem && draggedItem.equipped_slot !== null && slot_target === 'backpack') {
       if (targetItem.item_templates && targetItem.item_templates.category === 'equipment' && targetItem.item_templates.req_stats) {
         for (const [stat, requiredValue] of Object.entries(targetItem.item_templates.req_stats)) {
@@ -632,7 +635,6 @@ app.post('/api/inventory/swap', authenticateToken, async (req, res) => {
         }
       }
     }
-    // ===============================
 
     if (targetItem && draggedItem.item_template_id === targetItem.item_template_id && (draggedItem.item_templates.category === 'consumable' || draggedItem.item_templates.category === 'special_consumable')) {
       const totalQuantity = BigInt(draggedItem.quantity || '1') + BigInt(targetItem.quantity || '1');
@@ -648,7 +650,6 @@ app.post('/api/inventory/swap', authenticateToken, async (req, res) => {
       }
     }
 
-    // Zaktualizowana logika zamiany – baza danych robi teraz wszystko za nas!
     const { error: swapError } = await supabase.rpc('swap_items', {
         p_character_id: character.id, 
         p_item_id_1: item_id_1, 
@@ -743,7 +744,7 @@ app.post('/api/inventory/consume', authenticateToken, async (req, res) => {
         currentHp = minBigInt(maxHp, currentHp + (maxHp * BigInt(value)) / 100n); effectMessages.push(`+${value}% HP`);
       } else if (effect === 'restore_mp_pct') {
         currentMp = minBigInt(maxMp, currentMp + (maxMp * BigInt(value)) / 100n); effectMessages.push(`+${value}% MP`);
-      } else if (effect === 'add_coins') { // <--- NOWE: SAKWY Z MONETAMI
+      } else if (effect === 'add_coins') { 
         currentCoins = currentCoins + BigInt(value); effectMessages.push(`+${value} Monet`);
       } else if (effect === 'restore_stamina_pct') {
         currentStamina = minBigInt(maxStamina, currentStamina + (maxStamina * BigInt(value)) / 100n); effectMessages.push(`+${value}% Staminy`);
@@ -780,8 +781,6 @@ app.post('/api/inventory/consume', authenticateToken, async (req, res) => {
       } else if (effect === 'permanent_bonus') {
         for (const [stat, statValue] of Object.entries(value)) {
           const bonus = BigInt(statValue);
-          // Zamiast wysyłać to od razu do bazy, dodajemy do zmiennych głównych,
-          // aby finalny zapis na końcu funkcji (UPDATE) to chwycił!
           if (stat === 'strength') currentStr += bonus;
           else if (stat === 'speed') currentSpd += bonus;
           else if (stat === 'endurance') currentEnd += bonus;
@@ -877,13 +876,13 @@ app.post('/api/missions/start', authenticateToken, requireAlive, async (req, res
         const reqStat = BigInt(reqStats[stat]);
         const rawRatio = (playerStat * 100n) / reqStat;
         
-        // 1. Zabezpieczenie dla kar (Diminishing Returns) - Wyciągamy SUROWE punkty najsłabszej statystyki
+        // 1. Zabezpieczenie dla kar (Diminishing Returns)
         if (lowestRawPlayerStat === -1n || playerStat < lowestRawPlayerStat) {
             lowestRawPlayerStat = playerStat;
             reqStatForThreshold = reqStat;
         }
         
-        // 2. Realna szansa na sukces (każda statystyka max 100% udziału)
+        // 2. Realna szansa na sukces
         totalCappedRatio += minBigInt(100n, rawRatio);
         reqCount += 1n;
       }
@@ -896,23 +895,22 @@ app.post('/api/missions/start', authenticateToken, requireAlive, async (req, res
     const currentSpd = BigInt(fullStats.baseStats.speed);
     const currentEnd = BigInt(fullStats.baseStats.endurance);
 
-    // KROK 4.7.2: Kary za Potęgę (Diminishing Returns)
+    // KROK 4.7.2: Kary za Potęgę
     let rewardMultiplier = 100n;
     let boredomInjuryChance = 20n;
     
     if (lowestRawPlayerStat !== -1n) {
         if (lowestRawPlayerStat >= (reqStatForThreshold * 8n) + 100n) {
-            rewardMultiplier = 10n; // Duża kara
+            rewardMultiplier = 10n;
             boredomInjuryChance = 0n;
         } else if (lowestRawPlayerStat >= (reqStatForThreshold * 4n) + 40n) {
-            rewardMultiplier = 50n; // Średnia kara
+            rewardMultiplier = 50n;
             boredomInjuryChance = 5n;
         } else if (lowestRawPlayerStat >= (reqStatForThreshold * 2n) + 15n) {
-            rewardMultiplier = 75n; // Mała kara
+            rewardMultiplier = 75n; 
             boredomInjuryChance = 10n;
         }
     }
-    // Brak kary - pozostaje 100% i 20% szansy na rany z nudów
 
     const currentInt = BigInt(fullStats.baseStats.intelligence);
     const currentMen = BigInt(fullStats.baseStats.mental_strength);
@@ -926,35 +924,28 @@ app.post('/api/missions/start', authenticateToken, requireAlive, async (req, res
     const maxStamina = BigInt(fullStats.max_stamina);
 
     if (roll > Number(successChance)) {
-      // KROK 4.7.1: Kara za Pychę (Porażka w misji < 100% szans)
-      
-      // Obrażenia HP/MP/Staminy: 5% + (100% - szansa_na_sukces)
       const damagePercent = 5n + (100n - successChance);
 
       let newHp = maxBigInt(0n, BigInt(character.hp || '100') - ((maxHp * damagePercent) / 100n));
       let newMp = maxBigInt(0n, BigInt(character.mp || '100') - ((maxMp * damagePercent) / 100n));
       newStamina = maxBigInt(0n, newStamina - ((maxStamina * damagePercent) / 100n));
 
-      // Utrata statystyk i monet w zależności od szansy na sukces
-      let penaltyMultiplier = 2n; // domyślnie 2x
+      let penaltyMultiplier = 2n; 
       if (successChance >= 40n && successChance <= 79n) {
-          penaltyMultiplier = 3n; // Średnia kara
+          penaltyMultiplier = 3n; 
       } else if (successChance <= 39n) {
-          penaltyMultiplier = 4n; // Duża kara
+          penaltyMultiplier = 4n; 
       }
       
-      // HYBRYDOWY PODZIAŁ KARY (50% sztywne, 50% losowe)
       const baseReward = maxBigInt(1n, BigInt(mission.reward_stats?.min || '1'));
       const totalStatLossNum = Number(baseReward * penaltyMultiplier);
       
-      // Wyliczamy bezpieczną bazę (50% całości podzielone na 4 statystyki)
       let guaranteedPool = Math.floor(totalStatLossNum * 0.5); 
       let randomPool = totalStatLossNum - guaranteedPool;
       
       let guaranteedPerStat = Math.floor(guaranteedPool / 4);
       let guaranteedRemainder = guaranteedPool - (guaranteedPerStat * 4);
 
-      // Losujemy resztę z "wirtualnego worka"
       let r1 = Math.random(); let r2 = Math.random(); let r3 = Math.random(); let r4 = Math.random();
       const sumR = r1 + r2 + r3 + r4;
       
@@ -963,13 +954,11 @@ app.post('/api/missions/start', authenticateToken, requireAlive, async (req, res
       let randEnd = Math.floor(randomPool * (r3 / sumR));
       let randTech = randomPool - randStr - randSpd - randEnd;
 
-      // Sumujemy gwarantowane + losowe (i rzutujemy z powrotem na BigInt dla bazy)
       const strLoss = BigInt(Math.max(1, guaranteedPerStat + randStr));
       const spdLoss = BigInt(Math.max(1, guaranteedPerStat + randSpd));
       const endLoss = BigInt(Math.max(1, guaranteedPerStat + randEnd));
-      const techLoss = BigInt(Math.max(1, guaranteedPerStat + guaranteedRemainder + randTech)); // <-- TECHNIKA
+      const techLoss = BigInt(Math.max(1, guaranteedPerStat + guaranteedRemainder + randTech));
       
-      // Utrata monet
       const baseCoinsReward = maxBigInt(1n, BigInt(mission.reward_coins_min || '1'));
       const coinsLost = maxBigInt(0n, (baseCoinsReward * penaltyMultiplier));
       const newCoins = maxBigInt(0n, BigInt(character.coins || '0') - coinsLost);
@@ -977,20 +966,19 @@ app.post('/api/missions/start', authenticateToken, requireAlive, async (req, res
       const finalStr = maxBigInt(1n, currentStr - strLoss);
       const finalSpd = maxBigInt(1n, currentSpd - spdLoss);
       const finalEnd = maxBigInt(1n, currentEnd - endLoss);
-      const finalTech = maxBigInt(1n, currentTech - techLoss); // <-- TECHNIKA
-      const finalInt = currentInt; // Inteligencja nie jest tracona przy porażce
-      const finalMen = currentMen; // Siła Mentalna nie jest tracona przy porażce
+      const finalTech = maxBigInt(1n, currentTech - techLoss);
+      const finalInt = currentInt;
+      const finalMen = currentMen;
 
       const statsLostLog = {
           strength: strLoss.toString(), speed: spdLoss.toString(),
-          endurance: endLoss.toString(), technique: techLoss.toString(), // <-- TECHNIKA
+          endurance: endLoss.toString(), technique: techLoss.toString(),
           intelligence: '0', mental_strength: '0'
       };
 
       const isDead = newHp <= 0n;
 
           if (isDead) {
-            // Wyliczenie % kary na podstawie Poziomu Mocy (Hubris System)
             const pl = BigInt(fullStats.powerLevel);
             let deathPenaltyPct = 2n;
             if (pl > 10000000n) deathPenaltyPct = 10n;
@@ -998,23 +986,21 @@ app.post('/api/missions/start', authenticateToken, requireAlive, async (req, res
             else if (pl > 100000n) deathPenaltyPct = 6n;
             else if (pl > 10000n) deathPenaltyPct = 4n;
 
-            // 1. Utrata 10% obecnych Monet (min 1 moneta straty, chyba że ma 0)
             const currentCoinsBeforeLoss = BigInt(character.coins || '0');
             const deathCoinsLost = currentCoinsBeforeLoss > 0n ? maxBigInt(1n, (currentCoinsBeforeLoss * 10n) / 100n) : 0n;
             const deathNewCoins = currentCoinsBeforeLoss - deathCoinsLost;
 
-            // 2. Utrata procentowa ze WSZYSTKICH 5 statystyk bazowych + Techniki
             const deathStrLoss = (currentStr * deathPenaltyPct) / 100n;
             const deathSpdLoss = (currentSpd * deathPenaltyPct) / 100n;
             const deathEndLoss = (currentEnd * deathPenaltyPct) / 100n;
-            const deathTechLoss = (currentTech * deathPenaltyPct) / 100n; // <-- TECHNIKA
+            const deathTechLoss = (currentTech * deathPenaltyPct) / 100n; 
             const deathIntLoss = (currentInt * deathPenaltyPct) / 100n;
             const deathMenLoss = (currentMen * deathPenaltyPct) / 100n;
 
             const deathFinalStr = maxBigInt(1n, currentStr - deathStrLoss);
             const deathFinalSpd = maxBigInt(1n, currentSpd - deathSpdLoss);
             const deathFinalEnd = maxBigInt(1n, currentEnd - deathEndLoss);
-            const deathFinalTech = maxBigInt(1n, currentTech - deathTechLoss); // <-- TECHNIKA
+            const deathFinalTech = maxBigInt(1n, currentTech - deathTechLoss); 
             const deathFinalInt = maxBigInt(1n, currentInt - deathIntLoss);
             const deathFinalMen = maxBigInt(1n, currentMen - deathMenLoss);
 
@@ -1026,7 +1012,7 @@ app.post('/api/missions/start', authenticateToken, requireAlive, async (req, res
                 strength: deathStrLoss.toString(),
                 speed: deathSpdLoss.toString(),
                 endurance: deathEndLoss.toString(),
-                technique: deathTechLoss.toString(), // <-- TECHNIKA
+                technique: deathTechLoss.toString(),
                 intelligence: deathIntLoss.toString(),
                 mental_strength: deathMenLoss.toString(),
                 hospital_end_ms: exactEndMs.toString(),
@@ -1036,7 +1022,7 @@ app.post('/api/missions/start', authenticateToken, requireAlive, async (req, res
             await supabase.from('characters').update({
                 hp: '0', mp: '0', stamina: newStamina.toString(), coins: deathNewCoins.toString(),
                 strength: deathFinalStr.toString(), speed: deathFinalSpd.toString(), endurance: deathFinalEnd.toString(),
-                technique: deathFinalTech.toString(), // <-- TECHNIKA
+                technique: deathFinalTech.toString(), 
                 intelligence: deathFinalInt.toString(), mental_strength: deathFinalMen.toString(),
                 last_death_penalty: deathStatsLostLog, hospital_until: hospitalUntilUTC, current_form: 'Stan Podstawowy',
                 attempted_one_try_missions: (mission.is_one_try === true && !attemptedOneTry.includes(missionId)) ? [...attemptedOneTry, missionId] : attemptedOneTry
@@ -1056,7 +1042,7 @@ app.post('/api/missions/start', authenticateToken, requireAlive, async (req, res
         await supabase.from('characters').update({
             hp: newHp.toString(), mp: newMp.toString(), stamina: newStamina.toString(), coins: newCoins.toString(),
             strength: finalStr.toString(), speed: finalSpd.toString(), endurance: finalEnd.toString(),
-            technique: finalTech.toString(), // <-- TECHNIKA
+            technique: finalTech.toString(), 
             intelligence: finalInt.toString(), mental_strength: finalMen.toString(),
             attempted_one_try_missions: (mission.is_one_try === true && !attemptedOneTry.includes(missionId)) ? [...attemptedOneTry, missionId] : attemptedOneTry
         }).eq('profile_id', userId);
@@ -1068,18 +1054,14 @@ app.post('/api/missions/start', authenticateToken, requireAlive, async (req, res
     const minC = BigInt(mission.reward_coins_min || '0'); 
     const maxC = BigInt(mission.reward_coins_max || '0');
     
-    // Obliczamy bazę (z uwzględnieniem ewentualnej kary za potęgę z rewardMultiplier)
     let finalCoinsBase = ((minC + BigInt(Math.floor(Math.random() * Number(maxC - minC + 1n)))) * rewardMultiplier) / 100n;
 
-    // Pobieramy bonusy z ekwipunku do zarobków
-    const equipCoinBonusFlat = BigInt(fullStats.equipStats.bonus_coins || '0'); // Płaski bonus (np. Opaska Nowicjusza)
-    const trainingCoinBonusPct = BigInt(fullStats.trainingStats.bonus_coins_pct || '0'); // Bonus % (np. Ciężka Opaska)
+    const equipCoinBonusFlat = BigInt(fullStats.equipStats.bonus_coins || '0'); 
+    const trainingCoinBonusPct = BigInt(fullStats.trainingStats.bonus_coins_pct || '0'); 
 
-    // Finalna kwota: (Baza + Bonus % za ciężki sprzęt) + Płaski bonus za sprzęt pasywny
     let trainingCoinBonusValue = 0n;
     if (trainingCoinBonusPct > 0n) {
         trainingCoinBonusValue = (finalCoinsBase * trainingCoinBonusPct) / 100n;
-        // Gwarantujemy minimum 1 monetę bonusu, by zniwelować ucinanie przez BigInt
         if (trainingCoinBonusValue === 0n) trainingCoinBonusValue = 1n; 
     }
     
@@ -1125,11 +1107,9 @@ app.post('/api/missions/start', authenticateToken, requireAlive, async (req, res
         else gainTech += rem;
     }
 
-    // Sprzęt treningowy nie nalicza bonusów w przypadku porażki
     let trainGainStr = 0n; let trainGainSpd = 0n; let trainGainEnd = 0n; let trainGainTech = 0n;
     let trainGainBonusHp = 0n; let trainGainBonusMp = 0n;
     
-    // Tylko przy sukcesie naliczamy bonusy treningowe
     if (fullStats.trainingStats && roll <= Number(successChance)) {
         if (BigInt(fullStats.trainingStats.strength || '0') > 0n) trainGainStr = maxBigInt(1n, (BigInt(fullStats.trainingStats.strength) * rewardMultiplier) / 100n);
         if (BigInt(fullStats.trainingStats.speed || '0') > 0n) trainGainSpd = maxBigInt(1n, (BigInt(fullStats.trainingStats.speed) * rewardMultiplier) / 100n);
@@ -1146,7 +1126,6 @@ app.post('/api/missions/start', authenticateToken, requireAlive, async (req, res
     const newBonusHp = BigInt(character.bonus_hp || '0') + trainGainBonusHp;
     const newBonusMp = BigInt(character.bonus_mp || '0') + trainGainBonusMp;
 
-    // KROK 4.7.2: Sprawdzenie Wydarzenia Losowego po sukcesie
     let finalHp = BigInt(character.hp || '100');
     let finalMp = BigInt(character.mp || '100');
     let finalStamina = newStamina;
@@ -1162,14 +1141,12 @@ app.post('/api/missions/start', authenticateToken, requireAlive, async (req, res
         finalStamina = newStamina;
     }
 
-    // === SYSTEM DROPÓW W MISJACH (KROK 4.8) ===
+    // === SYSTEM DROPÓW W MISJACH ===
     let droppedItems = [];
-    let lostDrops = []; // Nowa tablica na utracone przedmioty z powodu braku miejsca
+    let lostDrops = []; 
     if (mission.drop_table && mission.drop_table.length > 0 && roll <= Number(successChance)) {
-        // Obliczenie dynamicznego plecaka za pomocą globalnej funkcji
         const maxBackpackSlots = calculateMaxBackpackSlots({ strength: currentStr, speed: currentSpd, endurance: currentEnd });
 
-        // Pobranie aktualnego plecaka gracza
         const { data: currentInventory } = await supabase
             .from('inventory')
             .select('*, item_templates(*)')
@@ -1178,23 +1155,25 @@ app.post('/api/missions/start', authenticateToken, requireAlive, async (req, res
 
         const backpackItems = currentInventory || [];
 
+        // ⚡ OPTYMALIZACJA 1: Pobieramy szablony wszystkich dropów z tej misji JEDNYM zapytaniem!
+        const dropItemIds = mission.drop_table.map(d => d.item_id);
+        const { data: dropTemplates } = await supabase.from('item_templates').select('*').in('id', dropItemIds);
+        const templateMap = {};
+        if (dropTemplates) dropTemplates.forEach(t => templateMap[t.id] = t);
+
+        // ⚡ OPTYMALIZACJA 2: Tablice do hurtowego zapisu (Batching)
+        const itemsToInsert = [];
+        const itemsToUpdate = [];
+
         for (const drop of mission.drop_table) {
             const dropRoll = Math.floor(Math.random() * 100) + 1;
             
             if (dropRoll <= drop.chance_pct) {
-                // Pobranie danych przedmiotu
-                const { data: itemTemplate } = await supabase
-                    .from('item_templates')
-                    .select('*')
-                    .eq('id', drop.item_id)
-                    .single();
-
+                const itemTemplate = templateMap[drop.item_id]; // Odczyt z pamięci RAM (0 zapytań do bazy!)
                 if (!itemTemplate) continue;
 
-                // Twarda Zasada Anty-Klonowania
                 if (itemTemplate.category === 'special_consumable') {
                     const hasInBackpack = backpackItems.some(i => i.item_template_id === itemTemplate.id);
-                    
                     let alreadyUnlocked = false;
                     const effect = itemTemplate.consumable_effect || {};
                     const unlockedForms = character.unlocked_forms || [];
@@ -1203,25 +1182,18 @@ app.post('/api/missions/start', authenticateToken, requireAlive, async (req, res
                     if (effect.unlock_form && unlockedForms.includes(effect.unlock_form)) alreadyUnlocked = true;
                     if (effect.unlock_skill && unlockedSkills.includes(effect.unlock_skill)) alreadyUnlocked = true;
 
-                    if (hasInBackpack || alreadyUnlocked) {
-                        continue; // Drop przepada na zawsze
-                    }
+                    if (hasInBackpack || alreadyUnlocked) continue; 
                 }
 
-                // Logika dodawania do plecaka
                 const isStackable = itemTemplate.category === 'consumable' || itemTemplate.category === 'special_consumable';
                 const existingStack = backpackItems.find(i => i.item_template_id === itemTemplate.id && BigInt(i.quantity) < 99n);
 
                 if (isStackable && existingStack) {
-                    // Dodaj do istniejącego stosu
-                    await supabase.from('inventory')
-                        .update({ quantity: (BigInt(existingStack.quantity) + 1n).toString() })
-                        .eq('id', existingStack.id);
-                        
-                    droppedItems.push({ name: itemTemplate.name, quantity: 1 });
+                    // Aktualizujemy w RAM i odkładamy do paczki "aktualizacji"
                     existingStack.quantity = (BigInt(existingStack.quantity) + 1n).toString();
+                    itemsToUpdate.push({ id: existingStack.id, quantity: existingStack.quantity });
+                    droppedItems.push({ name: itemTemplate.name, quantity: 1 });
                 } else {
-                    // Szukaj wolnego slota (do wyliczonego limitu)
                     const occupiedIndexes = backpackItems.map(i => i.backpack_index);
                     let freeIdx = 1;
                     while (occupiedIndexes.includes(freeIdx)) freeIdx++;
@@ -1234,31 +1206,37 @@ app.post('/api/missions/start', authenticateToken, requireAlive, async (req, res
                             equipped_slot: null,
                             backpack_index: freeIdx
                         };
-                        await supabase.from('inventory').insert(newItem);
+                        itemsToInsert.push(newItem); // Odkładamy do paczki "nowych"
                         droppedItems.push({ name: itemTemplate.name, quantity: 1 });
                         backpackItems.push(newItem); 
                     } else {
-                        // Rejestrujemy utracony drop, aby wysłać info do gracza
                         lostDrops.push(itemTemplate.name);
                     }
                 }
             }
+        }
+
+        // ⚡ OPTYMALIZACJA 3: Zapis do bazy wszystkiego na raz! (Redukcja N+1 Query)
+        if (itemsToInsert.length > 0) {
+            // Supabase pozwala wysłać całą tablicę obiektów jednym strzałem:
+            await supabase.from('inventory').insert(itemsToInsert); 
+        }
+        if (itemsToUpdate.length > 0) {
+            // Wykonanie update'ów równolegle (Promise.all wysyła wszystkie w jednym momencie)
+            await Promise.all(itemsToUpdate.map(update => 
+                supabase.from('inventory').update({ quantity: update.quantity }).eq('id', update.id)
+            ));
         }
     }
     // ==========================================
 
     let newCompleted = [...completedMissions];
     let newAttempted = [...attemptedOneTry];
-    let newUnlockedFeatures = character.unlocked_features || []; // Pobieramy obecne odblokowania
+    let newUnlockedFeatures = character.unlocked_features || []; 
     
-    // Każda pierwsza wygrana (nawet powtarzalna) musi trafić do completed, 
-    // aby odblokować graczowi kolejną misję na liście!
     if (!newCompleted.includes(missionId)) newCompleted.push(missionId);
-    
-    // Zapisujemy próbę dla misji One-Try
     if (mission.is_one_try === true && !newAttempted.includes(missionId)) newAttempted.push(missionId);
 
-    // SYSTEM ODBLOKOWAŃ GDD (Oparte o prawdziwe UUID z bazy - w 100% odporne na zmiany nazw)
     const STORY_MISSIONS_IDS = {
         TRAINING: '00000000-0000-0000-0000-000000000005', 
         WORK: '10000000-0000-0000-0000-000000000006',
@@ -1316,7 +1294,6 @@ app.post('/api/inventory/split', authenticateToken, async (req, res) => {
     const { data: character } = await supabase.from('characters').select('id').eq('profile_id', userId).single();
     if (!character) return res.status(404).json({ error: 'Postać nie znaleziona' });
 
-    // [POPRAWKA] Dynamiczne sprawdzanie pojemności
     const { data: charStats } = await supabase.from('characters').select('strength, speed, endurance').eq('id', character.id).single();
     const maxSlots = calculateMaxBackpackSlots(charStats);
 
@@ -1345,15 +1322,7 @@ app.post('/api/inventory/split', authenticateToken, async (req, res) => {
 // ==========================================
 // 🛒 5. SYSTEM SKLEPU (KUPOWANIE I SPRZEDAWANIE)
 // ==========================================
-// Funkcja pomocnicza do obliczania poziomu sklepu
-function getCharacterShopLevel(completedMissions) {
-    const completed = completedMissions || [];
-    if (completed.includes('10000000-0000-0000-0000-000000000023')) return 5;
-    if (completed.includes('10000000-0000-0000-0000-000000000014')) return 4;
-    if (completed.includes('10000000-0000-0000-0000-000000000007')) return 3;
-    if (completed.includes('00000000-0000-0000-0000-000000000004')) return 2;
-    return 1;
-}
+
 app.get('/api/shop/items', authenticateToken, async (req, res) => {
   try {
     const userId = req.user.id;
@@ -1364,7 +1333,7 @@ app.get('/api/shop/items', authenticateToken, async (req, res) => {
     const { data: templates, error } = await supabase
       .from('item_templates')
       .select('*')
-      .lte('shop_level', unlockedLevel) // Pobierz przedmioty do Twojego poziomu włącznie
+      .lte('shop_level', unlockedLevel) 
       .order('shop_level', { ascending: true })
       .order('buy_price_coins', { ascending: true });
 
@@ -1383,7 +1352,6 @@ app.post('/api/shop/buy', authenticateToken, requireAlive, async (req, res) => {
     const userId = req.user.id;
     const { template_id, quantity = 1 } = req.body;
 
-    // 1. Pobieramy postać (wraz z misjami i historią zakupów na dziś)
     const { data: character } = await supabase
         .from('characters')
         .select('id, coins, completed_missions, daily_shop_buys')
@@ -1401,7 +1369,6 @@ app.post('/api/shop/buy', authenticateToken, requireAlive, async (req, res) => {
     const totalCost = BigInt(itemTemplate.buy_price_coins) * BigInt(quantity);
     if (BigInt(character.coins || '0') < totalCost) return res.status(400).json({ error: 'Nie masz monet!' });
 
-    // 2. LOGIKA LIMITÓW DZIENNYCH I POZIOMU SKLEPU
     const unlockedLevel = getCharacterShopLevel(character.completed_missions);
     if ((itemTemplate.shop_level || 1) > unlockedLevel) {
         return res.status(403).json({ error: 'Ten przedmiot jest jeszcze zablokowany!' });
@@ -1414,7 +1381,6 @@ app.post('/api/shop/buy', authenticateToken, requireAlive, async (req, res) => {
         return res.status(400).json({ error: `Osiągnąłeś dzienny limit zakupu tego przedmiotu (${maxDaily}x)` });
     }
 
-    // 3. SPRAWDZANIE PLECACA
     const { data: backpackItems } = await supabase.from('inventory').select('id, item_template_id, quantity, backpack_index').eq('character_id', character.id).is('equipped_slot', null);
     const { data: charStats } = await supabase.from('characters').select('strength, speed, endurance').eq('id', character.id).single();
     const maxSlots = calculateMaxBackpackSlots(charStats);
@@ -1426,7 +1392,6 @@ app.post('/api/shop/buy', authenticateToken, requireAlive, async (req, res) => {
         if (backpackItems.length >= maxSlots) return res.status(400).json({ error: 'Brak miejsca w plecaku!' });
     }
 
-    // 4. AKTUALIZACJA LIMITÓW I MONET (Jeden zbiorczy zapis do bazy!)
     const newDailyBuys = { ...character.daily_shop_buys };
     newDailyBuys[itemTemplate.id] = currentBuys + quantity;
     const newCoins = (BigInt(character.coins || '0') - totalCost).toString();
@@ -1436,7 +1401,6 @@ app.post('/api/shop/buy', authenticateToken, requireAlive, async (req, res) => {
         daily_shop_buys: newDailyBuys
     }).eq('id', character.id);
 
-    // 5. DODAWANIE DO PLECACA
     if (existingItem && isStackable) {
       await supabase.from('inventory').update({ quantity: (BigInt(existingItem.quantity) + BigInt(quantity)).toString() }).eq('id', existingItem.id);
     } else {
@@ -1475,28 +1439,6 @@ app.post('/api/shop/sell', authenticateToken, requireAlive, async (req, res) => 
 // 🏦 6. SYSTEM BANKU I SKRYTKI
 // ==========================================
 
-// Cenniki i limity Banku
-const BANK_COIN_LIMITS = {
-  1: { limit: 10000, cost: 0 },
-  2: { limit: 50000, cost: 5000 },
-  3: { limit: 250000, cost: 25000 },
-  4: { limit: 1000000, cost: 100000 },
-  5: { limit: 5000000, cost: 500000 },
-  6: { limit: 25000000, cost: 2500000 },
-  7: { limit: 100000000, cost: 10000000 },
-  8: { limit: 500000000, cost: 50000000 },
-  9: { limit: 2000000000, cost: 200000000 },
-  10: { limit: 9007199254740991, cost: 1000000000 }
-};
-
-const BANK_SLOT_COSTS = {
-  '6-10': 5000,
-  '11-15': 25000,
-  '16-20': 100000,
-  '21-25': 500000
-};
-
-// Endpoint 1: Transfer monet
 app.post('/api/bank/transfer_coins', authenticateToken, requireAlive, async (req, res) => {
   try {
     const userId = req.user.id;
@@ -1546,7 +1488,6 @@ app.post('/api/bank/transfer_coins', authenticateToken, requireAlive, async (req
   } catch (err) { res.status(500).json({ error: 'Błąd serwera' }); }
 });
 
-// Endpoint 2: Ulepszenia Banku
 app.post('/api/bank/upgrade', authenticateToken, requireAlive, async (req, res) => {
   try {
     const userId = req.user.id;
@@ -1564,7 +1505,6 @@ app.post('/api/bank/upgrade', authenticateToken, requireAlive, async (req, res) 
 
     if (characterError || !character) return res.status(404).json({ error: 'Postać nie znaleziona' });
 
-    // Zabezpieczenie Szpitala
     if (BigInt(character.hp || '0') <= 0n) {
       return res.status(400).json({ error: 'Jesteś w Szpitalu! Bank jest niedostępny.' });
     }
@@ -1610,7 +1550,6 @@ app.post('/api/bank/upgrade', authenticateToken, requireAlive, async (req, res) 
   } catch (err) { res.status(500).json({ error: 'Błąd serwera' }); }
 });
 
-// Endpoint 3: Transfer przedmiotów
 app.post('/api/bank/transfer_item', authenticateToken, requireAlive, async (req, res) => {
   try {
     const userId = req.user.id;
@@ -1627,7 +1566,6 @@ app.post('/api/bank/transfer_item', authenticateToken, requireAlive, async (req,
 
     if (characterError || !character) return res.status(404).json({ error: 'Postać nie znaleziona' });
 
-    // Zabezpieczenie Szpitala
     if (BigInt(character.hp || '0') <= 0n) {
       return res.status(400).json({ error: 'Jesteś w Szpitalu! Bank jest niedostępny.' });
     }
@@ -1641,15 +1579,12 @@ app.post('/api/bank/transfer_item', authenticateToken, requireAlive, async (req,
 
     if (itemError || !item) return res.status(404).json({ error: 'Przedmiot nie znaleziony' });
 
-    const isConsumable = item.item_templates.type === 'consumable';
-    const maxStack = isConsumable ? 99 : 999999999;
     const transferAmount = amount === 'all' ? BigInt(item.quantity) : BigInt(amount);
 
     if (transferAmount <= 0n || transferAmount > BigInt(item.quantity)) {
       return res.status(400).json({ error: 'Nieprawidłowa ilość' });
     }
 
-    // 1. Sprawdzenie możliwości stackowania (łączenia)
     let targetStackItem = null;
     const isStackable = item.item_templates.category === 'consumable' || item.item_templates.category === 'special_consumable';
 
@@ -1664,26 +1599,20 @@ app.post('/api/bank/transfer_item', authenticateToken, requireAlive, async (req,
             
             const { data: targetItems } = await query;
 
-        // Szukamy stosu, który ma miejsce (do max 99)
         if (targetItems && targetItems.length > 0) {
             if (target_index !== undefined && target_index !== null) {
-                // Drag & Drop: Łączymy w stos TYLKO jeśli upuściłeś prosto na inny stos
                 targetStackItem = targetItems.find(t => t.backpack_index === parseInt(target_index) && BigInt(t.quantity) + transferAmount <= 99n);
             } else {
-                // Szybkie przenoszenie (dwuklik): Łączymy z pierwszym z brzegu
                 targetStackItem = targetItems.find(t => BigInt(t.quantity) + transferAmount <= 99n);
             }
         }
     }
 
-    // 2. Walidacja pojemności (jeśli brak stosu do połączenia)
     if (!targetStackItem) {
         let isSwap = false;
         
-        // ZABEZPIECZENIE: Sprawdzamy, czy przesuwamy item wewnątrz tego samego panelu (np. z banku na inną kratkę banku)
         const isInternalMove = (item.equipped_slot === 'bank' && target_panel === 'bank') || (item.equipped_slot === null && target_panel === 'backpack');
 
-        // ZABEZPIECZENIE: Sprawdzamy, czy to podmiana (SWAP) przedmiotu z zajętą kratką
         if (target_index !== undefined && target_index !== null && transferAmount === BigInt(item.quantity)) {
             let query = supabase.from('inventory').select('id').eq('character_id', character.id).eq('backpack_index', parseInt(target_index));
             if (target_panel === 'bank') query = query.eq('equipped_slot', 'bank');
@@ -1693,14 +1622,12 @@ app.post('/api/bank/transfer_item', authenticateToken, requireAlive, async (req,
             if (existItem && existItem.length > 0) isSwap = true;
         }
 
-        // WYJĄTEK: Jeśli to SWAP lub ruch wewnątrz jednej skrzyni, omijamy blokadę "Brak miejsca"! (Ilość przedmiotów nie rośnie)
         if (!isSwap && !isInternalMove) {
             if (target_panel === 'bank') {
                 const bankSlots = parseInt(character.bank_slots_unlocked || '5');
                 const { count } = await supabase.from('inventory').select('*', { count: 'exact', head: true }).eq('character_id', character.id).eq('equipped_slot', 'bank');
                 if (count >= bankSlots) return res.status(400).json({ error: 'Brak miejsca w banku!' });
             } else {
-                // Obliczanie plecaka
                 const { data: charStats } = await supabase.from('characters').select('strength, speed, endurance').eq('id', character.id).single();
                 const maxSlots = calculateMaxBackpackSlots(charStats);
                 const { count } = await supabase.from('inventory').select('*', { count: 'exact', head: true }).eq('character_id', character.id).is('equipped_slot', null);
@@ -1709,22 +1636,19 @@ app.post('/api/bank/transfer_item', authenticateToken, requireAlive, async (req,
         }
     }
 
-    // 3. Wykonanie akcji w bazie danych
     if (targetStackItem) {
-        // SCENARIUSZ A: Łączenie stosów
         await supabase.from('inventory').update({ 
             quantity: (BigInt(targetStackItem.quantity) + transferAmount).toString() 
         }).eq('id', targetStackItem.id);
 
         if (transferAmount === BigInt(item.quantity)) {
-            await supabase.from('inventory').delete().eq('id', inventory_id); // Przeniesiono całość
+            await supabase.from('inventory').delete().eq('id', inventory_id); 
         } else {
             await supabase.from('inventory').update({ 
                 quantity: (BigInt(item.quantity) - transferAmount).toString() 
-            }).eq('id', inventory_id); // Odkrojono część
+            }).eq('id', inventory_id); 
         }
     } else {
-          // SCENARIUSZ B: Szukamy wolnej kratki i wkładamy
           let idxQuery = supabase.from('inventory').select('id, backpack_index')
               .eq('character_id', character.id);
             
@@ -1748,7 +1672,6 @@ app.post('/api/bank/transfer_item', authenticateToken, requireAlive, async (req,
             if (!occupiedIndexes.includes(parsedIdx)) {
                 finalIndex = parsedIdx;
             } else if (transferAmount === BigInt(item.quantity)) {
-                // Kratka jest zajęta! Pobieramy przedmiot, który tam leży, aby go zamienić (SWAP)
                 finalIndex = parsedIdx;
                 swapTargetItem = existingItems.find(i => i.backpack_index === parsedIdx);
             }
@@ -1756,19 +1679,16 @@ app.post('/api/bank/transfer_item', authenticateToken, requireAlive, async (req,
 
         if (transferAmount === BigInt(item.quantity)) {
             if (swapTargetItem) {
-                // Zabezpieczenie: blokujemy zamianę ze skrytki z przedmiotem założonym na ciało postaci
                 if (item.equipped_slot !== 'bank' && item.equipped_slot !== null) {
                     return res.status(400).json({ error: 'Nie możesz podmienić przedmiotu w banku bezpośrednio na założony ekwipunek!' });
                 }
                 
-                // SWAP: Kładziemy przedmiot z docelowej kratki na stare miejsce przeciągniętego przedmiotu
                 await supabase.from('inventory').update({
                     equipped_slot: item.equipped_slot,
                     backpack_index: item.backpack_index
                 }).eq('id', swapTargetItem.id);
             }
 
-            // Przenosimy przeciągnięty przedmiot na jego nowe miejsce
             await supabase.from('inventory').update({ 
                 equipped_slot: target_panel === 'bank' ? 'bank' : null, 
                 backpack_index: finalIndex 
@@ -1792,7 +1712,6 @@ app.post('/api/bank/transfer_item', authenticateToken, requireAlive, async (req,
   } catch (err) { res.status(500).json({ error: 'Błąd serwera' }); }
 });
 
-// Endpoint 4: Kaskadowy Split w Banku
 app.post('/api/bank/split', authenticateToken, requireAlive, async (req, res) => {
   try {
     const userId = req.user.id;
@@ -1808,7 +1727,6 @@ app.post('/api/bank/split', authenticateToken, requireAlive, async (req, res) =>
 
     if (characterError || !character) return res.status(404).json({ error: 'Postać nie znaleziona' });
 
-    // Zabezpieczenie Szpitala
     if (BigInt(character.hp || '0') <= 0n) {
       return res.status(400).json({ error: 'Jesteś w Szpitalu! Bank jest niedostępny.' });
     }
@@ -1827,7 +1745,6 @@ app.post('/api/bank/split', authenticateToken, requireAlive, async (req, res) =>
       return res.status(400).json({ error: 'Zła ilość do podziału!' });
     }
 
-    // Zmniejszenie głównego stacka
     await supabase.from('inventory').update({ 
       quantity: (BigInt(item.quantity) - splitAmount).toString() 
     }).eq('id', inventory_id);
@@ -1835,7 +1752,6 @@ app.post('/api/bank/split', authenticateToken, requireAlive, async (req, res) =>
     const isFromBank = item.equipped_slot === 'bank';
     const targetPanel = isFromBank ? 'bank' : null;
     
-    // Szukamy wolnego miejsca w obecnym panelu
     let panelQuery = supabase.from('inventory').select('backpack_index').eq('character_id', character.id);
     if (isFromBank) panelQuery = panelQuery.eq('equipped_slot', 'bank');
     else panelQuery = panelQuery.is('equipped_slot', null);
@@ -1843,7 +1759,6 @@ app.post('/api/bank/split', authenticateToken, requireAlive, async (req, res) =>
     const { data: panelItems } = await panelQuery;
     const occupied = panelItems.map(i => i.backpack_index).filter(i => i !== null);
     
-    // Walidacja limitów miejsca
     let hasSpace = false;
     if (isFromBank) {
         const bankSlots = parseInt(character.bank_slots_unlocked || '5');
@@ -1867,7 +1782,6 @@ app.post('/api/bank/split', authenticateToken, requireAlive, async (req, res) =>
         });
         return res.json({ success: true, message: `Podzielono stos i umieszczono w nowym slocie!` });
     } else {
-        // Brak miejsca na podział, cofamy potrącenie z początku!
         await supabase.from('inventory').update({ quantity: item.quantity }).eq('id', inventory_id);
         return res.status(400).json({ error: `Brak wolnych miejsc w ${isFromBank ? 'banku' : 'plecaku'} na wydzielenie stosu!` });
     }
@@ -1878,16 +1792,6 @@ app.post('/api/bank/split', authenticateToken, requireAlive, async (req, res) =>
 // 💬 7. CZAT, RANKING I DASHBOARD
 // ==========================================
 
-// Cache dla rankingu (odświeżany co 1 minutę)
-let rankingCache = null;
-let rankingCacheTime = 0;
-const RANKING_CACHE_TTL = 1 * 60 * 1000; // 1 minuta
-
-// Rate-limiting dla czatu (1 wiadomość na 3 sekundy na profil)
-const chatRateLimitMap = new Map();
-const CHAT_RATE_LIMIT_TTL = 3000; // 3 sekundy
-
-// Pobranie rankingu z cache lub bazy
 async function getRanking() {
   const now = Date.now();
   
@@ -1914,7 +1818,6 @@ async function getRanking() {
   }
 }
 
-// Endpoint GET /api/ranking - Top 10 graczy
 app.get('/api/ranking', async (req, res) => {
   try {
     const ranking = await getRanking();
@@ -1932,7 +1835,6 @@ app.get('/api/ranking', async (req, res) => {
   }
 });
 
-// Endpoint POST /api/chat/send - Wysyłanie wiadomości globalnych
 app.post('/api/chat/send', authenticateToken, async (req, res) => {
   try {
     const userId = req.user.id;
@@ -1946,14 +1848,12 @@ app.post('/api/chat/send', authenticateToken, async (req, res) => {
       return res.status(400).json({ error: 'Wiadomość może mieć maksymalnie 200 znaków' });
     }
     
-    // Rate-limiting check
     const now = Date.now();
     const lastMessageTime = chatRateLimitMap.get(userId) || 0;
     if (now - lastMessageTime < CHAT_RATE_LIMIT_TTL) {
       return res.status(429).json({ error: 'Możesz wysłać tylko 1 wiadomość na 3 sekundy' });
     }
     
-    // Pobierz dane postaci
     const { data: character, error: characterError } = await supabase
       .from('characters')
       .select('hp, profiles!inner(username)')
@@ -1964,16 +1864,14 @@ app.post('/api/chat/send', authenticateToken, async (req, res) => {
       return res.status(404).json({ error: 'Nie znaleziono postaci' });
     }
     
-    // Sprawdź czy gracz jest duchem (hp <= 0)
     const isGhost = BigInt(character.hp || '0') <= 0n;
     
-    // Wstaw wiadomość do bazy
     const { error: insertError } = await supabase
       .from('global_messages')
       .insert({
         profile_id: userId,
-        username: character.profiles.username, // [DODANE] Przekazanie nicku!
-        content: message.trim(),               // [POPRAWIONE] Z 'message' na 'content'
+        username: character.profiles.username, 
+        content: message.trim(),               
         is_ghost: isGhost
       });
     
@@ -1982,7 +1880,6 @@ app.post('/api/chat/send', authenticateToken, async (req, res) => {
       return res.status(500).json({ error: 'Błąd serwera podczas wysyłania wiadomości' });
     }
     
-    // Aktualizuj rate-limiting
     chatRateLimitMap.set(userId, now);
     
     res.json({ 
@@ -1997,7 +1894,6 @@ app.post('/api/chat/send', authenticateToken, async (req, res) => {
   }
 });
 
-// Czyszczenie mapy anty-spamowej czatu co 1 godzinę (Zabezpieczenie RAM)
 setInterval(() => {
   const now = Date.now();
   for (const [userId, timestamp] of chatRateLimitMap.entries()) {
@@ -2011,15 +1907,6 @@ setInterval(() => {
 // 🧘‍♂️ 8. SYSTEM TRENINGU (SALA CZASU I MISTRZOWIE)
 // ==========================================
 
-const TRAINING_MENTORS = {
-  // Prawdziwe, dokładne ID pobrane z seed_missions.js
-  'old_master': { name: 'Stary Mistrz', emoji: '🐢', cost: 10, multiplier: 2, reqMission: '00000000-0000-0000-0000-000000000005' },
-  'cat_hermit': { name: 'Koci Pustelnik', emoji: '🐈', cost: 25, multiplier: 6, reqMission: '10000000-0000-0000-0000-000000000015' },
-  'celestial': { name: 'Pan Niebiańskiego Pałacu', emoji: '☁️', cost: 50, multiplier: 15, reqMission: '10000000-0000-0000-0000-000000000020' },
-  'time_chamber': { name: 'Sala Czasu', emoji: '⏳', cost: 100, multiplier: 40, reqMission: '00000000-0000-0000-0000-000000000024' }
-};
-
-// 1. Pobranie statusu z bazy danych
 app.get('/api/training/status', authenticateToken, async (req, res) => {
   const userId = req.user.id;
   try {
@@ -2030,7 +1917,6 @@ app.get('/api/training/status', authenticateToken, async (req, res) => {
 
     if (error) throw error;
     
-    // Odczyt tablic JSONB z bazy danych
     const unlockedFeatures = data.unlocked_features || [];
     const completedMissions = data.completed_missions || [];
 
@@ -2052,7 +1938,6 @@ app.get('/api/training/status', authenticateToken, async (req, res) => {
   } catch (err) { res.status(500).json({ error: 'Błąd statusu' }); }
 });
 
-// 2. Start
 app.post('/api/training/start', authenticateToken, async (req, res) => {
   const userId = req.user.id;
   const { mentorId, hours, targetStat } = req.body; 
@@ -2073,26 +1958,23 @@ app.post('/api/training/start', authenticateToken, async (req, res) => {
         return res.status(400).json({ error: 'Sala Czasu raz na dobę DC!' });
     }
 
-    // Koszt staminy zaokrąglamy w górę
     const totalStaminaCost = Math.ceil(mentor.cost * parseFloat(hours));
     if (BigInt(char.stamina) < BigInt(totalStaminaCost)) return res.status(400).json({ error: 'Za mało staminy!' });
 
     const validStat = ['strength', 'speed', 'endurance', 'technique', 'balanced'].includes(targetStat) ? targetStat : 'balanced';
     
-    // LOGIKA CZASU:
-    // Jeśli to Sala Czasu, to każda przesłana "godzina" (hours) trwa w rzeczywistości tylko 5 minut.
     let realDurationMinutes;
     if (mentorId === 'time_chamber') {
-        realDurationMinutes = parseFloat(hours) * 5; // 12h efektywne -> 60 min rzeczywiste
+        realDurationMinutes = parseFloat(hours) * 5; 
     } else {
-        realDurationMinutes = parseFloat(hours) * 60; // Standardowo 1h -> 60 min
+        realDurationMinutes = parseFloat(hours) * 60; 
     }
 
     const endTime = new Date(Date.now() + realDurationMinutes * 60 * 1000).toISOString();
     
     let updates = {
       stamina: (BigInt(char.stamina) - BigInt(totalStaminaCost)).toString(),
-      active_training_id: `${mentorId}:${hours}:${validStat}`, // Zapisujemy Godziny Efektywne
+      active_training_id: `${mentorId}:${hours}:${validStat}`, 
       training_end_time: endTime
     };
     if (mentorId === 'time_chamber') updates.daily_time_chamber_used = true;
@@ -2104,7 +1986,6 @@ app.post('/api/training/start', authenticateToken, async (req, res) => {
   } catch (err) { res.status(500).json({ error: 'Błąd startu' }); }
 });
 
-// 3. Stop
 app.post('/api/training/stop', authenticateToken, async (req, res) => {
   const userId = req.user.id;
   try {
@@ -2129,11 +2010,11 @@ app.post('/api/training/stop', authenticateToken, async (req, res) => {
       const statGain = BigInt(Math.floor((400 + Math.pow(effectivePower, 0.55)) * mentor.multiplier * trainingHours));
 
       if (targetStat === 'balanced') {
-        const perStat = statGain / 4n; // Dzielimy na 4 statystyki: Siła, Szybk, Wytrz, Technika
+        const perStat = statGain / 4n; 
         updates.strength = (BigInt(char.strength || '1') + perStat).toString();
         updates.speed = (BigInt(char.speed || '1') + perStat).toString();
         updates.endurance = (BigInt(char.endurance || '1') + perStat).toString();
-        updates.technique = (BigInt(char.technique || '1') + perStat).toString(); // <--- DODANO TECHNIKĘ
+        updates.technique = (BigInt(char.technique || '1') + perStat).toString(); 
         rewardMsg = `Zyskano po +${perStat} do Siły, Szybk., Wytrz. i Techniki!`;
       } else {
         const safeStat = ['strength', 'speed', 'endurance', 'technique'].includes(targetStat) ? targetStat : 'strength';
@@ -2154,17 +2035,6 @@ app.post('/api/training/stop', authenticateToken, async (req, res) => {
 // 🛠️ 8.5. TRYB PRACA (MINIGRA)
 // ==========================================
 
-// Nowy zaktualizowany słownik - łączy pracę z tabelą `missions` przez ID (aby zaciągnąć req_stats automatycznie) i definiuje rosnące kary procentowe (Game Over)
-const WORK_MODES = {
-  praca_mleko:  { req_mission: '10000000-0000-0000-0000-000000000006', duration_sec: 15, cost_stamina: 10n, cost_hp_pct: 2n, reward_coins: 2n, penalty_pct: 10n },
-  praca_budowa: { req_mission: '10000000-0000-0000-0000-000000000007', duration_sec: 20, cost_stamina: 10n, cost_hp_pct: 5n, reward_coins: 5n, penalty_pct: 12n },
-  praca_pole:   { req_mission: '10000000-0000-0000-0000-000000000008', duration_sec: 25, cost_stamina: 15n, cost_hp_pct: 8n, reward_coins: 12n, penalty_pct: 15n },
-  praca_drwal:  { req_mission: '10000000-0000-0000-0000-000000000009', duration_sec: 30, cost_stamina: 15n, cost_hp_pct: 15n, reward_coins: 25n, penalty_pct: 18n },
-  praca_kurier: { req_mission: '10000000-0000-0000-0000-000000000010', duration_sec: 40, cost_stamina: 20n, cost_hp_pct: 25n, reward_coins: 60n, penalty_pct: 22n },
-  praca_rosa:   { req_mission: '10000000-0000-0000-0000-000000000015', duration_sec: 50, cost_stamina: 25n, cost_hp_pct: 10n, reward_coins: 150n, penalty_pct: 25n, drop_woda: true },
-  praca_ogrody: { req_mission: '10000000-0000-0000-0000-000000000020', duration_sec: 60, cost_stamina: 40n, cost_hp_pct: 30n, reward_coins: 500n, penalty_pct: 30n }
-};
-
 app.post('/api/work/start', authenticateToken, requireAlive, async (req, res) => {
   const userId = req.user.id;
   const { workId } = req.body;
@@ -2175,7 +2045,6 @@ app.post('/api/work/start', authenticateToken, requireAlive, async (req, res) =>
     const fullStats = await getFullCharacterStats(userId);
     const char = fullStats.character;
 
-    // POBRANIE WYMAGAŃ Z MISJI
     const { data: mission } = await supabase.from('missions').select('req_stats').eq('id', work.req_mission).single();
     if (mission && mission.req_stats) {
         const sReq = BigInt(mission.req_stats.strength || 0);
@@ -2209,7 +2078,6 @@ app.post('/api/work/finish', authenticateToken, requireAlive, async (req, res) =
     const fullStats = await getFullCharacterStats(userId);
     const char = fullStats.character;
     
-    // Pobranie danych misji w celu wyliczenia kary wzorem z misji
     const { data: mission } = await supabase.from('missions').select('req_stats, reward_stats').eq('id', work.req_mission).single();
     
     let reqStat = 1n;
@@ -2220,7 +2088,6 @@ app.post('/api/work/finish', authenticateToken, requireAlive, async (req, res) =
     if (failed) {
         const pct = work.penalty_pct;
         
-        // 1. WIRTUALNA KOSTKA (Całkowita pula kary)
         let totalLoss = 50n; 
         if (mission && mission.reward_stats && mission.reward_stats.min && mission.reward_stats.max) {
             const minR = Number(mission.reward_stats.min);
@@ -2233,7 +2100,6 @@ app.post('/api/work/finish', authenticateToken, requireAlive, async (req, res) =
             totalLoss = maxBigInt(1n, reqStat / 10n); 
         }
         
-        // 2. HYBRYDOWY PODZIAŁ KARY (50% sztywne, 50% losowe)
         let totalLossNum = Number(totalLoss);
         
         let guaranteedPool = Math.floor(totalLossNum * 0.5); 
@@ -2255,7 +2121,6 @@ app.post('/api/work/finish', authenticateToken, requireAlive, async (req, res) =
         let sLossEnd = BigInt(Math.max(1, guaranteedPerStat + randEnd));
         let sLossTech = BigInt(Math.max(1, guaranteedPerStat + guaranteedRemainder + randTech));
 
-        // 3. OBLICZAMY NOWE ZASOBY I SPRAWDZAMY CZY GRACZ PRZEŻYŁ
         const extraHpPct = BigInt(req.body.extraHpPenaltyPct || 0); 
         let newHp = maxBigInt(0n, BigInt(char.hp) - (BigInt(fullStats.max_hp) * pct / 100n));
         newHp = maxBigInt(0n, newHp - (BigInt(fullStats.max_hp) * extraHpPct / 100n));
@@ -2299,7 +2164,6 @@ app.post('/api/work/finish', authenticateToken, requireAlive, async (req, res) =
         return res.json({ success: true, failed: true, isDead: isDead, penalty: { resources_pct: pct.toString(), loss_str: sLossStr.toString(), loss_spd: sLossSpd.toString(), loss_end: sLossEnd.toString(), loss_tech: sLossTech.toString() } });
     }
 
-    // --- BLOK SUKCESU PRACY ---
     const netScore = maxBigInt(0n, BigInt(goodObjectsCaught) - BigInt(obstaclesCaught));
     
     const extraHpPct = BigInt(req.body.extraHpPenaltyPct || 0);
@@ -2316,21 +2180,22 @@ app.post('/api/work/finish', authenticateToken, requireAlive, async (req, res) =
     let activeSpd = BigInt(fullStats.baseStats.speed || 0) + BigInt(fullStats.equipStats.speed || 0);
     let activeEnd = BigInt(fullStats.baseStats.endurance || 0) + BigInt(fullStats.equipStats.endurance || 0);
     
-    // KROK 3: Pobieramy aktywną Technikę
     let activeTech = BigInt(fullStats.baseStats.technique || 0) + BigInt(fullStats.equipStats.technique || 0);
 
-    let penaltyMultiplier = 1.0;
     // KROK 3: Dorzucamy activeTech do poszukiwań najsłabszej statystyki (weakest)
     const weakest = minBigInt(activeTech, minBigInt(activeStr, minBigInt(activeSpd, activeEnd)));
     
+    // BEZPIECZNA MATEMATYKA BIGINT (Zmiana ułamków na procenty BigInt)
+    let penaltyMultiplierPct = 100n; 
     let serverWarningText = null; 
 
-    if (weakest >= (reqStat * 8n) + 100n) { penaltyMultiplier = 0.10; serverWarningText = 'Zyski obniżone o 90% (Duża kara za potęgę)'; } 
-    else if (weakest >= (reqStat * 4n) + 40n) { penaltyMultiplier = 0.50; serverWarningText = 'Zyski obniżone o 50% (Średnia kara za potęgę)'; } 
-    else if (weakest >= (reqStat * 2n) + 15n) { penaltyMultiplier = 0.75; serverWarningText = 'Zyski obniżone o 25% (Mała kara za potęgę)'; }
+    if (weakest >= (reqStat * 8n) + 100n) { penaltyMultiplierPct = 10n; serverWarningText = 'Zyski obniżone o 90% (Duża kara za potęgę)'; } 
+    else if (weakest >= (reqStat * 4n) + 40n) { penaltyMultiplierPct = 50n; serverWarningText = 'Zyski obniżone o 50% (Średnia kara za potęgę)'; } 
+    else if (weakest >= (reqStat * 2n) + 15n) { penaltyMultiplierPct = 75n; serverWarningText = 'Zyski obniżone o 25% (Mała kara za potęgę)'; }
 
-    // WYLICZANIE MONET Z EKWIPUNKU
-    let finalCoinsBase = BigInt(Math.floor(Number(netScore * work.reward_coins) * penaltyMultiplier));
+    // WYLICZANIE MONET Z EKWIPUNKU (Brak Number() i Math.floor() - BigInt dzieli liczby całkowite)
+    let finalCoinsBase = (netScore * BigInt(work.reward_coins) * penaltyMultiplierPct) / 100n;
+    
     const equipCoinBonusFlat = BigInt(fullStats.equipStats.bonus_coins || '0');
     const trainingCoinBonusPct = BigInt(fullStats.trainingStats.bonus_coins_pct || '0');
     
@@ -2343,14 +2208,15 @@ app.post('/api/work/finish', authenticateToken, requireAlive, async (req, res) =
     
     const finalCoins = finalCoinsBase + trainingCoinBonusValue + equipCoinBonusFlat;
 
-    const applyPenalty = (val) => BigInt(Math.floor(Number(netScore * val) * penaltyMultiplier));
+    // Uniwersalna, w 100% bezpieczna funkcja aplikowania mnożnika do dowolnej statystyki
+    const applyPenalty = (val) => (netScore * BigInt(val) * penaltyMultiplierPct) / 100n;
 
-    const gStr = applyPenalty(BigInt(fullStats.trainingStats.strength || 0));
-    const gSpd = applyPenalty(BigInt(fullStats.trainingStats.speed || 0));
-    const gEnd = applyPenalty(BigInt(fullStats.trainingStats.endurance || 0));
-    const gTech = applyPenalty(BigInt(fullStats.trainingStats.technique || 0)); 
-    const gHp = applyPenalty(BigInt(fullStats.trainingStats.bonus_hp || 0));
-    const gMp = applyPenalty(BigInt(fullStats.trainingStats.bonus_mp || 0));
+    const gStr = applyPenalty(fullStats.trainingStats.strength || 0);
+    const gSpd = applyPenalty(fullStats.trainingStats.speed || 0);
+    const gEnd = applyPenalty(fullStats.trainingStats.endurance || 0);
+    const gTech = applyPenalty(fullStats.trainingStats.technique || 0); 
+    const gHp = applyPenalty(fullStats.trainingStats.bonus_hp || 0);
+    const gMp = applyPenalty(fullStats.trainingStats.bonus_mp || 0);
 
     let dropIds = [];
     if (work.drop_woda && netScore > 10n && Math.floor(Math.random() * 100) < 1) {
@@ -2415,19 +2281,15 @@ const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 cron.schedule('0 0,8,16 * * *', async () => {
   console.log('[Zegar DC] Wybiła Północ DC! Rozpoczynam zmianę dnia...');
   try {
-    // 1. Włączamy przerwę techniczną
     await supabase.from('global_server_state').update({ is_maintenance: true }).eq('id', 1);
     
-    // Dajemy chwilę na spłynięcie zapytań w locie (5 sekund zamiast 60)
     await delay(5000); 
     
-    // 2. Jeden, połączony UPDATE resetujący limity dla wszystkich graczy
     await supabase.from('characters').update({ 
         daily_time_chamber_used: false,
         daily_shop_buys: {} 
     }).neq('profile_id', '00000000-0000-0000-0000-000000000000');
     
-    // 3. Podbicie dnia DC i natychmiastowe WYŁĄCZENIE przerwy technicznej w jednym kroku!
     await supabase.from('global_server_state').update({ 
         current_dc_day: globalServerState.current_dc_day + 1,
         is_maintenance: false
@@ -2436,7 +2298,6 @@ cron.schedule('0 0,8,16 * * *', async () => {
     console.log('[Zegar DC] Nowy dzień DC rozpoczęty, serwer odblokowany!');
   } catch (error) {
     console.error('[Zegar DC] ⚠️ Krytyczny błąd podczas zmiany dnia:', error);
-    // W razie błędu awaryjnie odblokuj serwer
     await supabase.from('global_server_state').update({ is_maintenance: false }).eq('id', 1);
   }
 });
