@@ -1434,69 +1434,78 @@ input[type=range]#training-hours-slider::-webkit-slider-thumb {
     .hospital-panel-right h2 { font-size: 1.2rem !important; }
     #hospital-countdown { font-size: 2.5rem !important; }
 
-    /* ==========================================
-       5. SKLEP - SYSTEM ZAKŁADEK I SIATKI
-       ========================================== */
-    .shop-items-grid { 
-        display: grid !important; 
-        grid-template-columns: repeat(auto-fill, minmax(145px, 1fr)) !important; 
-        gap: 12px !important; 
-        width: 100% !important; 
-    }
+    } /* <--- TA KLAMRA ZAMYKA STREFĘ TELEFONÓW (Nie usuwaj jej!) */
 
-    .shop-item-card { 
-        min-height: 150px !important; 
-        display: flex !important;
-        flex-direction: column !important;
-        justify-content: space-between !important;
-    }
+/* ==========================================
+   5. SKLEP - GLOBALNY WYGLĄD (KOMPUTERY I TELEFONY)
+   ========================================== */
+.shop-items-grid { 
+    display: grid !important; 
+    grid-template-columns: repeat(auto-fill, minmax(145px, 1fr)) !important; 
+    gap: 12px !important; 
+    width: 100% !important; 
+}
 
-    .shop-level-tabs, .shop-category-tabs { 
-        display: flex !important; 
-        flex-wrap: wrap !important; 
-        gap: 8px !important; 
-        margin-bottom: 15px !important;
-        justify-content: center !important; 
-    }
+.shop-item-card { 
+    min-height: 150px !important; 
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: space-between !important;
+}
 
-    /* KOSMETYKA PRZYCISKÓW (ZAKŁADEK) */
-    .shop-tab, .category-tab { 
-        flex: 1 1 calc(33% - 8px) !important;
-        min-width: 110px !important;
-        padding: 10px 5px !important; 
-        font-size: 12px !important; 
-        text-align: center !important; 
-        display: flex !important; 
-        align-items: center !important; 
-        justify-content: center !important;
-        
-        /* Wygląd - Kolory i Ramki */
-        background-color: var(--goku-panel-bg) !important;
-        color: var(--text-secondary) !important;
-        border: 1px solid var(--goku-panel-border) !important;
-        border-radius: 6px !important;
-        cursor: pointer !important;
-        text-transform: uppercase !important;
-        font-weight: bold !important;
-        transition: all 0.3s ease !important;
-    }
+.shop-level-tabs, .shop-category-tabs { 
+    display: flex !important; 
+    flex-wrap: wrap !important; 
+    gap: 8px !important; 
+    margin-bottom: 15px !important;
+    justify-content: center !important; 
+}
 
-    .shop-tab:hover:not(.disabled), .category-tab:hover {
-        background-color: rgba(255, 107, 0, 0.1) !important;
-        color: var(--text-primary) !important;
-        border-color: var(--goku-accent) !important;
-    }
+/* KOSMETYKA PRZYCISKÓW (ZAKŁADEK) */
+.shop-tab, .category-tab { 
+    flex: 1 1 calc(33% - 8px) !important; /* Domyślnie 3 zakładki w rzędzie na PC */
+    min-width: 110px !important;
+    padding: 10px 5px !important; 
+    font-size: 12px !important; 
+    text-align: center !important; 
+    display: flex !important; 
+    align-items: center !important; 
+    justify-content: center !important;
+    
+    /* Wygląd - Kolory i Ramki */
+    background-color: var(--goku-panel-bg) !important;
+    color: var(--text-secondary) !important;
+    border: 1px solid var(--goku-panel-border) !important;
+    border-radius: 6px !important;
+    cursor: pointer !important;
+    text-transform: uppercase !important;
+    font-weight: bold !important;
+    transition: all 0.3s ease !important;
+}
 
-    .shop-tab.active, .category-tab.active {
-        background-color: rgba(255, 107, 0, 0.25) !important;
-        color: var(--goku-accent) !important;
-        border-color: var(--goku-accent) !important;
-        box-shadow: 0 0 10px rgba(255, 107, 0, 0.2) inset !important;
-    }
+.shop-tab:hover:not(.disabled), .category-tab:hover {
+    background-color: rgba(255, 107, 0, 0.1) !important;
+    color: var(--text-primary) !important;
+    border-color: var(--goku-accent) !important;
+}
 
-    .shop-tab.disabled {
-        opacity: 0.3 !important;
-        cursor: not-allowed !important;
-        background-color: #0a0f1d !important;
+.shop-tab.active, .category-tab.active {
+    background-color: rgba(255, 107, 0, 0.25) !important;
+    color: var(--goku-accent) !important;
+    border-color: var(--goku-accent) !important;
+    box-shadow: 0 0 10px rgba(255, 107, 0, 0.2) inset !important;
+}
+
+.shop-tab.disabled {
+    opacity: 0.3 !important;
+    cursor: not-allowed !important;
+    background-color: #0a0f1d !important;
+}
+
+/* POPRAWKI DLA MAŁYCH EKRANÓW W SKLEPIE */
+@media (max-width: 768px) {
+    .shop-tab, .category-tab {
+        flex: 1 1 calc(50% - 6px) !important; /* Na telefonach 2 zakładki w rzędzie */
+        font-size: 11px !important;
     }
 }
