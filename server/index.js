@@ -1368,54 +1368,70 @@ app.post('/api/shop/buy', authenticateToken, requireAlive, async (req, res) => {
     const userId = req.user.id;
     const { template_id, quantity = 1 } = req.body;
 
-    const { data: character } = await supabase.from('characters').select('id, coins').eq('profile_id', userId).single();
-    const { data: itemTemplate } = await supabase.from('item_templates').select('*, buy_price_coins').eq('id', template_id).single();
+    // 1. Pobieramy postać (wraz z misjami i historią zakupów na dziś)
+    const { data: character } = await supabase
+        .from('characters')
+        .select('id, coins, completed_missions, daily_shop_buys')
+        .eq('profile_id', userId)
+        .single();
+
+    const { data: itemTemplate } = await supabase
+        .from('item_templates')
+        .select('*')
+        .eq('id', template_id)
+        .single();
 
     if (!character || !itemTemplate || itemTemplate.buy_price_coins === null) return res.status(400).json({ error: 'Błąd zakupu' });
 
     const totalCost = BigInt(itemTemplate.buy_price_coins) * BigInt(quantity);
     if (BigInt(character.coins || '0') < totalCost) return res.status(400).json({ error: 'Nie masz monet!' });
 
-    const { data: backpackItems } = await supabase.from('inventory').select('id, item_template_id, quantity, backpack_index').eq('character_id', character.id).is('equipped_slot', null);
-    
-    // ... wewnątrz endpointu buy ...
-    const unlockedLevel = getCharacterShopLevel(char.completed_missions);
-    if (item.shop_level > unlockedLevel) return res.status(403).json({ error: 'Ten przedmiot jest jeszcze zablokowany!' });
+    // 2. LOGIKA LIMITÓW DZIENNYCH I POZIOMU SKLEPU
+    const unlockedLevel = getCharacterShopLevel(character.completed_missions);
+    if ((itemTemplate.shop_level || 1) > unlockedLevel) {
+        return res.status(403).json({ error: 'Ten przedmiot jest jeszcze zablokowany!' });
+    }
 
-    const maxDaily = 11 - item.shop_level; // Twoja logika limitów
-    const currentBuys = char.daily_shop_buys?.[item.id] || 0;
+    const maxDaily = 11 - (itemTemplate.shop_level || 1);
+    const currentBuys = character.daily_shop_buys?.[itemTemplate.id] || 0;
 
-    if (currentBuys >= maxDaily) {
+    if (currentBuys + quantity > maxDaily) {
         return res.status(400).json({ error: `Osiągnąłeś dzienny limit zakupu tego przedmiotu (${maxDaily}x)` });
     }
 
-    // Po udanym zakupie aktualizujemy daily_shop_buys:
-    const newDailyBuys = { ...char.daily_shop_buys };
-    newDailyBuys[item.id] = currentBuys + 1;
-
-    await supabase.from('characters').update({ 
-        coins: (BigInt(char.coins) - BigInt(item.buy_price_coins)).toString(),
-        daily_shop_buys: newDailyBuys 
-    }).eq('id', char.id);
-
-    // [POPRAWKA] Dynamiczne sprawdzanie pojemności
+    // 3. SPRAWDZANIE PLECACA
+    const { data: backpackItems } = await supabase.from('inventory').select('id, item_template_id, quantity, backpack_index').eq('character_id', character.id).is('equipped_slot', null);
     const { data: charStats } = await supabase.from('characters').select('strength, speed, endurance').eq('id', character.id).single();
     const maxSlots = calculateMaxBackpackSlots(charStats);
 
     const existingItem = backpackItems.find(item => item.item_template_id === template_id);
     const isStackable = itemTemplate.category === 'consumable' || itemTemplate.category === 'special_consumable';
-    if (!existingItem || !isStackable) { if (backpackItems.length >= maxSlots) return res.status(400).json({ error: 'Pełny plecak!' }); }
 
-    await supabase.from('characters').update({ coins: (BigInt(character.coins || '0') - totalCost).toString() }).eq('id', character.id);
+    if (!existingItem || !isStackable) {
+        if (backpackItems.length >= maxSlots) return res.status(400).json({ error: 'Brak miejsca w plecaku!' });
+    }
 
+    // 4. AKTUALIZACJA LIMITÓW I MONET (Jeden zbiorczy zapis do bazy!)
+    const newDailyBuys = { ...character.daily_shop_buys };
+    newDailyBuys[itemTemplate.id] = currentBuys + quantity;
+    const newCoins = (BigInt(character.coins || '0') - totalCost).toString();
+
+    await supabase.from('characters').update({
+        coins: newCoins,
+        daily_shop_buys: newDailyBuys
+    }).eq('id', character.id);
+
+    // 5. DODAWANIE DO PLECACA
     if (existingItem && isStackable) {
       await supabase.from('inventory').update({ quantity: (BigInt(existingItem.quantity) + BigInt(quantity)).toString() }).eq('id', existingItem.id);
     } else {
-      const occupied = backpackItems.map(i => i.backpack_index); let freeIdx = 1; while (occupied.includes(freeIdx)) freeIdx++;
+      const occupied = backpackItems.map(i => i.backpack_index);
+      let freeIdx = 1; while (occupied.includes(freeIdx)) freeIdx++;
       await supabase.from('inventory').insert({ character_id: character.id, item_template_id: template_id, quantity: quantity, equipped_slot: null, backpack_index: freeIdx });
     }
+
     res.json({ success: true, message: `Kupiono x${quantity}!`, item: { name: itemTemplate.name, quantity: quantity, total_cost: totalCost.toString() }});
-  } catch (err) { res.status(500).json({ error: 'Błąd' }); }
+  } catch (err) { res.status(500).json({ error: 'Błąd podczas zakupu' }); }
 });
 
 app.post('/api/shop/sell', authenticateToken, requireAlive, async (req, res) => {
