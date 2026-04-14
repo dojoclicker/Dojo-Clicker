@@ -14,28 +14,28 @@ const itemsData = [
     // 🟢 REGENERACJA ZASOBÓW (CONSUMABLE)
     // ==========================================
     // --- HP (Pieczone Mięsa / Kapsułki Medyczne) ---
-    { id: generateId(1), name: "Kawałek Mięsa", category: "consumable", slot: null, buy_price_coins: "100", sell_price_coins: "50", consumable_effect: { "restore_hp": "10" } },
-    { id: generateId(2), name: "Solidna Pieczeń", category: "consumable", slot: null, buy_price_coins: "400", sell_price_coins: "200", consumable_effect: { "restore_hp": "25" } },
-    { id: generateId(3), name: "Wielka Pieczeń", category: "consumable", slot: null, buy_price_coins: "800", sell_price_coins: "400", consumable_effect: { "restore_hp": "50" } },
-    { id: generateId(4), name: "Mała Kapsułka Med.", category: "consumable", slot: null, buy_price_coins: "1000", sell_price_coins: "500", consumable_effect: { "restore_hp_pct": 25 } },
-    { id: generateId(5), name: "Średnia Kapsułka Med.", category: "consumable", slot: null, buy_price_coins: "2500", sell_price_coins: "1250", consumable_effect: { "restore_hp_pct": 50 } },
-    { id: generateId(6), name: "Duża Kapsułka Med.", category: "consumable", slot: null, buy_price_coins: "6000", sell_price_coins: "3000", consumable_effect: { "restore_hp_pct": 100 } },
+    { id: generateId(1), name: "Kawałek Mięsa", category: "consumable", slot: null, shop_level: 1, buy_price_coins: "100", sell_price_coins: "50", consumable_effect: { "restore_hp": "10" } },
+    { id: generateId(2), name: "Solidna Pieczeń", category: "consumable", slot: null, shop_level: 1, buy_price_coins: "400", sell_price_coins: "200", consumable_effect: { "restore_hp": "25" } },
+    { id: generateId(3), name: "Wielka Pieczeń", category: "consumable", slot: null, shop_level: 2, buy_price_coins: "800", sell_price_coins: "400", consumable_effect: { "restore_hp": "50" } },
+    { id: generateId(4), name: "Mała Kapsułka Med.", category: "consumable", slot: null, shop_level: 2, buy_price_coins: "1000", sell_price_coins: "500", consumable_effect: { "restore_hp_pct": 25 } },
+    { id: generateId(5), name: "Średnia Kapsułka Med.", category: "consumable", slot: null, shop_level: 3, buy_price_coins: "2500", sell_price_coins: "1250", consumable_effect: { "restore_hp_pct": 50 } },
+    { id: generateId(6), name: "Duża Kapsułka Med.", category: "consumable", slot: null, shop_level: 4, buy_price_coins: "6000", sell_price_coins: "3000", consumable_effect: { "restore_hp_pct": 100 } },
 
     // --- MP (Eliksiry Skupienia / Kapsułki Many) ---
-    { id: generateId(7), name: "Magiczne Ziele", category: "consumable", slot: null, buy_price_coins: "100", sell_price_coins: "50", consumable_effect: { "restore_mp": "10" } },
-    { id: generateId(8), name: "Magiczne Zioła", category: "consumable", slot: null, buy_price_coins: "400", sell_price_coins: "200", consumable_effect: { "restore_mp": "25" } },
-    { id: generateId(9), name: "Magiczny Kwiat", category: "consumable", slot: null, buy_price_coins: "800", sell_price_coins: "400", consumable_effect: { "restore_mp": "50" } },
-    { id: generateId(10), name: "Mała Kapsułka Many", category: "consumable", slot: null, buy_price_coins: "1000", sell_price_coins: "500", consumable_effect: { "restore_mp_pct": 25 } },
-    { id: generateId(11), name: "Średnia Kapsułka Many", category: "consumable", slot: null, buy_price_coins: "2500", sell_price_coins: "1250", consumable_effect: { "restore_mp_pct": 50 } },
-    { id: generateId(12), name: "Duża Kapsułka Many", category: "consumable", slot: null, buy_price_coins: "6000", sell_price_coins: "3000", consumable_effect: { "restore_mp_pct": 100 } },
+    { id: generateId(7), name: "Magiczne Ziele", category: "consumable", slot: null, shop_level: 1, buy_price_coins: "100", sell_price_coins: "50", consumable_effect: { "restore_mp": "10" } },
+    { id: generateId(8), name: "Magiczne Zioła", category: "consumable", slot: null, shop_level: 1, buy_price_coins: "400", sell_price_coins: "200", consumable_effect: { "restore_mp": "25" } },
+    { id: generateId(9), name: "Magiczny Kwiat", category: "consumable", slot: null, shop_level: 2, buy_price_coins: "800", sell_price_coins: "400", consumable_effect: { "restore_mp": "50" } },
+    { id: generateId(10), name: "Mała Kapsułka Many", category: "consumable", slot: null, shop_level: 2, buy_price_coins: "1000", sell_price_coins: "500", consumable_effect: { "restore_mp_pct": 25 } },
+    { id: generateId(11), name: "Średnia Kapsułka Many", category: "consumable", slot: null, shop_level: 3, buy_price_coins: "2500", sell_price_coins: "1250", consumable_effect: { "restore_mp_pct": 50 } },
+    { id: generateId(12), name: "Duża Kapsułka Many", category: "consumable", slot: null, shop_level: 4, buy_price_coins: "6000", sell_price_coins: "3000", consumable_effect: { "restore_mp_pct": 100 } },
 
     // --- STAMINA (Napoje Sportowe / Kapsułki Staminy) ---
-    { id: generateId(13), name: "Mały Napój Sportowy", category: "consumable", slot: null, buy_price_coins: "200", sell_price_coins: "100", consumable_effect: { "restore_stamina": "10" } },
-    { id: generateId(14), name: "Średni Napój Sportowy", category: "consumable", slot: null, buy_price_coins: "500", sell_price_coins: "250", consumable_effect: { "restore_stamina": "25" } },
-    { id: generateId(15), name: "Duży Napój Sportowy", category: "consumable", slot: null, buy_price_coins: "1000", sell_price_coins: "500", consumable_effect: { "restore_stamina": "50" } },
-    { id: generateId(16), name: "Mała Kapsułka Stam.", category: "consumable", slot: null, buy_price_coins: "2000", sell_price_coins: "1000", consumable_effect: { "restore_stamina_pct": 25 } },
-    { id: generateId(17), name: "Średnia Kapsułka Stam.", category: "consumable", slot: null, buy_price_coins: "5000", sell_price_coins: "2500", consumable_effect: { "restore_stamina_pct": 50 } },
-    { id: generateId(18), name: "Duża Kapsułka Stam.", category: "consumable", slot: null, buy_price_coins: "12000", sell_price_coins: "6000", consumable_effect: { "restore_stamina_pct": 100 } },
+    { id: generateId(13), name: "Mały Napój Sportowy", category: "consumable", slot: null, shop_level: 1, buy_price_coins: "200", sell_price_coins: "100", consumable_effect: { "restore_stamina": "10" } },
+    { id: generateId(14), name: "Średni Napój Sportowy", category: "consumable", slot: null, shop_level: 1, buy_price_coins: "500", sell_price_coins: "250", consumable_effect: { "restore_stamina": "25" } },
+    { id: generateId(15), name: "Duży Napój Sportowy", category: "consumable", slot: null, shop_level: 2, buy_price_coins: "1000", sell_price_coins: "500", consumable_effect: { "restore_stamina": "50" } },
+    { id: generateId(16), name: "Mała Kapsułka Stam.", category: "consumable", slot: null, shop_level: 2, buy_price_coins: "2000", sell_price_coins: "1000", consumable_effect: { "restore_stamina_pct": 25 } },
+    { id: generateId(17), name: "Średnia Kapsułka Stam.", category: "consumable", slot: null, shop_level: 3, buy_price_coins: "5000", sell_price_coins: "2500", consumable_effect: { "restore_stamina_pct": 50 } },
+    { id: generateId(18), name: "Duża Kapsułka Stam.", category: "consumable", slot: null, shop_level: 4, buy_price_coins: "12000", sell_price_coins: "6000", consumable_effect: { "restore_stamina_pct": 100 } },
 
     { id: generateId(19), name: "Magiczna Fasolka", category: "consumable", slot: null, buy_price_coins: null, sell_price_coins: "2500", consumable_effect: { "hospital_exit_recovery": true, "restore_hp_pct": 100, "restore_mp_pct": 100, "restore_stamina_pct": 100 } },
 
@@ -51,15 +51,15 @@ const itemsData = [
     // ==========================================
     // 🌟 ZWIĘKSZANIE LIMITÓW (MAX HP / MP / STAMINA)
     // ==========================================
-    { id: generateId(30), name: "Kropla Wigoru", category: "special_consumable", slot: null, buy_price_coins: "10000", sell_price_coins: "5000", consumable_effect: { "bonus_stamina": "10" } },
+    { id: generateId(30), name: "Kropla Wigoru", category: "special_consumable", slot: null, shop_level: 5, buy_price_coins: "10000", sell_price_coins: "5000", consumable_effect: { "bonus_stamina": "10" } },
     { id: generateId(31), name: "Nektar Wigoru", category: "special_consumable", slot: null, buy_price_coins: null, sell_price_coins: "125000", consumable_effect: { "bonus_stamina": "25" } },
     { id: generateId(32), name: "Esencja Wigoru", category: "special_consumable", slot: null, buy_price_coins: null, sell_price_coins: "300000", consumable_effect: { "bonus_stamina": "50" } },
 
-    { id: generateId(33), name: "Kropla Życia", category: "special_consumable", slot: null, buy_price_coins: "10000", sell_price_coins: "5000", consumable_effect: { "bonus_hp": "100" } },
+    { id: generateId(33), name: "Kropla Życia", category: "special_consumable", slot: null, shop_level: 5, buy_price_coins: "10000", sell_price_coins: "5000", consumable_effect: { "bonus_hp": "100" } },
     { id: generateId(34), name: "Nektar Życia", category: "special_consumable", slot: null, buy_price_coins: null, sell_price_coins: "125000", consumable_effect: { "bonus_hp": "250" } },
     { id: generateId(35), name: "Esencja Życia", category: "special_consumable", slot: null, buy_price_coins: null, sell_price_coins: "300000", consumable_effect: { "bonus_hp": "500" } },
 
-    { id: generateId(36), name: "Kropla Energii", category: "special_consumable", slot: null, buy_price_coins: "10000", sell_price_coins: "5000", consumable_effect: { "bonus_mp": "100" } },
+    { id: generateId(36), name: "Kropla Energii", category: "special_consumable", slot: null, shop_level: 5, buy_price_coins: "10000", sell_price_coins: "5000", consumable_effect: { "bonus_mp": "100" } },
     { id: generateId(37), name: "Nektar Energii", category: "special_consumable", slot: null, buy_price_coins: null, sell_price_coins: "125000", consumable_effect: { "bonus_mp": "250" } },
     { id: generateId(38), name: "Esencja Energii", category: "special_consumable", slot: null, buy_price_coins: null, sell_price_coins: "300000", consumable_effect: { "bonus_mp": "500" } },
 
@@ -67,34 +67,34 @@ const itemsData = [
     // 📖 KSIĘGI STATYSTYK (Trwałe punkty)
     // ==========================================
     // --- SIŁA ---
-    { id: generateId(40), name: "Strona Księgi Siły", category: "special_consumable", slot: null, buy_price_coins: "2000", sell_price_coins: "1000", consumable_effect: { "permanent_bonus": { "strength": "100" } } },
-    { id: generateId(41), name: "Rozdział Księgi Siły", category: "special_consumable", slot: null, buy_price_coins: "5000", sell_price_coins: "2500", consumable_effect: { "permanent_bonus": { "strength": "250" } } },
-    { id: generateId(42), name: "Tomisko Siły", category: "special_consumable", slot: null, buy_price_coins: "10000", sell_price_coins: "5000", consumable_effect: { "permanent_bonus": { "strength": "500" } } },
+    { id: generateId(40), name: "Strona Księgi Siły", category: "special_consumable", slot: null, shop_level: 3, buy_price_coins: "2000", sell_price_coins: "1000", consumable_effect: { "permanent_bonus": { "strength": "100" } } },
+    { id: generateId(41), name: "Rozdział Księgi Siły", category: "special_consumable", slot: null, shop_level: 4, buy_price_coins: "5000", sell_price_coins: "2500", consumable_effect: { "permanent_bonus": { "strength": "250" } } },
+    { id: generateId(42), name: "Tomisko Siły", category: "special_consumable", slot: null, shop_level: 5, buy_price_coins: "10000", sell_price_coins: "5000", consumable_effect: { "permanent_bonus": { "strength": "500" } } },
     { id: generateId(43), name: "Starożytny Tom Siły", category: "special_consumable", slot: null, buy_price_coins: null, sell_price_coins: "10000", consumable_effect: { "permanent_bonus": { "strength": "1000" } } },
     // --- SZYBKOŚĆ ---
-    { id: generateId(44), name: "Strona Księgi Szybkości", category: "special_consumable", slot: null, buy_price_coins: "2000", sell_price_coins: "1000", consumable_effect: { "permanent_bonus": { "speed": "100" } } },
-    { id: generateId(45), name: "Rozdział Księgi Szybkości", category: "special_consumable", slot: null, buy_price_coins: "5000", sell_price_coins: "2500", consumable_effect: { "permanent_bonus": { "speed": "250" } } },
-    { id: generateId(46), name: "Tomisko Szybkości", category: "special_consumable", slot: null, buy_price_coins: "10000", sell_price_coins: "5000", consumable_effect: { "permanent_bonus": { "speed": "500" } } },
+    { id: generateId(44), name: "Strona Księgi Szybkości", category: "special_consumable", slot: null, shop_level: 3, buy_price_coins: "2000", sell_price_coins: "1000", consumable_effect: { "permanent_bonus": { "speed": "100" } } },
+    { id: generateId(45), name: "Rozdział Księgi Szybkości", category: "special_consumable", slot: null, shop_level: 4, buy_price_coins: "5000", sell_price_coins: "2500", consumable_effect: { "permanent_bonus": { "speed": "250" } } },
+    { id: generateId(46), name: "Tomisko Szybkości", category: "special_consumable", slot: null, shop_level: 5, buy_price_coins: "10000", sell_price_coins: "5000", consumable_effect: { "permanent_bonus": { "speed": "500" } } },
     { id: generateId(47), name: "Starożytny Tom Szybkości", category: "special_consumable", slot: null, buy_price_coins: null, sell_price_coins: "10000", consumable_effect: { "permanent_bonus": { "speed": "1000" } } },
     // --- WYTRZYMAŁOŚĆ ---
-    { id: generateId(48), name: "Strona Księgi Wytrzymałości", category: "special_consumable", slot: null, buy_price_coins: "2000", sell_price_coins: "1000", consumable_effect: { "permanent_bonus": { "endurance": "100" } } },
-    { id: generateId(49), name: "Rozdział Księgi Wytrz.", category: "special_consumable", slot: null, buy_price_coins: "5000", sell_price_coins: "2500", consumable_effect: { "permanent_bonus": { "endurance": "250" } } },
-    { id: generateId(50), name: "Tomisko Wytrzymałości", category: "special_consumable", slot: null, buy_price_coins: "10000", sell_price_coins: "5000", consumable_effect: { "permanent_bonus": { "endurance": "500" } } },
+    { id: generateId(48), name: "Strona Księgi Wytrzymałości", category: "special_consumable", slot: null, shop_level: 3, buy_price_coins: "2000", sell_price_coins: "1000", consumable_effect: { "permanent_bonus": { "endurance": "100" } } },
+    { id: generateId(49), name: "Rozdział Księgi Wytrz.", category: "special_consumable", slot: null, shop_level: 4, buy_price_coins: "5000", sell_price_coins: "2500", consumable_effect: { "permanent_bonus": { "endurance": "250" } } },
+    { id: generateId(50), name: "Tomisko Wytrzymałości", category: "special_consumable", slot: null, shop_level: 5, buy_price_coins: "10000", sell_price_coins: "5000", consumable_effect: { "permanent_bonus": { "endurance": "500" } } },
     { id: generateId(51), name: "Starożytny Tom Wytrz.", category: "special_consumable", slot: null, buy_price_coins: null, sell_price_coins: "10000", consumable_effect: { "permanent_bonus": { "endurance": "1000" } } },
     // --- INTELIGENCJA ---
-    { id: generateId(52), name: "Strona Księgi Inteligencji", category: "special_consumable", slot: null, buy_price_coins: "2000", sell_price_coins: "1000", consumable_effect: { "permanent_bonus": { "intelligence": "100" } } },
-    { id: generateId(53), name: "Rozdział Księgi Intel.", category: "special_consumable", slot: null, buy_price_coins: "5000", sell_price_coins: "2500", consumable_effect: { "permanent_bonus": { "intelligence": "250" } } },
-    { id: generateId(54), name: "Tomisko Inteligencji", category: "special_consumable", slot: null, buy_price_coins: "10000", sell_price_coins: "5000", consumable_effect: { "permanent_bonus": { "intelligence": "500" } } },
+    { id: generateId(52), name: "Strona Księgi Inteligencji", category: "special_consumable", slot: null, shop_level: 3, buy_price_coins: "2000", sell_price_coins: "1000", consumable_effect: { "permanent_bonus": { "intelligence": "100" } } },
+    { id: generateId(53), name: "Rozdział Księgi Intel.", category: "special_consumable", slot: null, shop_level: 4, buy_price_coins: "5000", sell_price_coins: "2500", consumable_effect: { "permanent_bonus": { "intelligence": "250" } } },
+    { id: generateId(54), name: "Tomisko Inteligencji", category: "special_consumable", slot: null, shop_level: 5, buy_price_coins: "10000", sell_price_coins: "5000", consumable_effect: { "permanent_bonus": { "intelligence": "500" } } },
     { id: generateId(55), name: "Starożytny Tom Intel.", category: "special_consumable", slot: null, buy_price_coins: null, sell_price_coins: "10000", consumable_effect: { "permanent_bonus": { "intelligence": "1000" } } },
     // --- SIŁA MENTALNA ---
-    { id: generateId(56), name: "Strona Księgi Umysłu", category: "special_consumable", slot: null, buy_price_coins: "2000", sell_price_coins: "1000", consumable_effect: { "permanent_bonus": { "mental_strength": "100" } } },
-    { id: generateId(57), name: "Rozdział Księgi Umysłu", category: "special_consumable", slot: null, buy_price_coins: "5000", sell_price_coins: "2500", consumable_effect: { "permanent_bonus": { "mental_strength": "250" } } },
-    { id: generateId(58), name: "Tomisko Umysłu", category: "special_consumable", slot: null, buy_price_coins: "10000", sell_price_coins: "5000", consumable_effect: { "permanent_bonus": { "mental_strength": "500" } } },
+    { id: generateId(56), name: "Strona Księgi Umysłu", category: "special_consumable", slot: null, shop_level: 3, buy_price_coins: "2000", sell_price_coins: "1000", consumable_effect: { "permanent_bonus": { "mental_strength": "100" } } },
+    { id: generateId(57), name: "Rozdział Księgi Umysłu", category: "special_consumable", slot: null, shop_level: 4, buy_price_coins: "5000", sell_price_coins: "2500", consumable_effect: { "permanent_bonus": { "mental_strength": "250" } } },
+    { id: generateId(58), name: "Tomisko Umysłu", category: "special_consumable", slot: null, shop_level: 5, buy_price_coins: "10000", sell_price_coins: "5000", consumable_effect: { "permanent_bonus": { "mental_strength": "500" } } },
     { id: generateId(59), name: "Starożytny Tom Umysłu", category: "special_consumable", slot: null, buy_price_coins: null, sell_price_coins: "10000", consumable_effect: { "permanent_bonus": { "mental_strength": "1000" } } },
     // --- TECHNIKA ---
-    { id: generateId(60), name: "Strona Księgi Techniki", category: "special_consumable", slot: null, buy_price_coins: "2000", sell_price_coins: "1000", consumable_effect: { "permanent_bonus": { "technique": "100" } } },
-    { id: generateId(61), name: "Rozdział Księgi Techniki", category: "special_consumable", slot: null, buy_price_coins: "5000", sell_price_coins: "2500", consumable_effect: { "permanent_bonus": { "technique": "250" } } },
-    { id: generateId(62), name: "Tomisko Techniki", category: "special_consumable", slot: null, buy_price_coins: "10000", sell_price_coins: "5000", consumable_effect: { "permanent_bonus": { "technique": "500" } } },
+    { id: generateId(60), name: "Strona Księgi Techniki", category: "special_consumable", slot: null, shop_level: 3, buy_price_coins: "2000", sell_price_coins: "1000", consumable_effect: { "permanent_bonus": { "technique": "100" } } },
+    { id: generateId(61), name: "Rozdział Księgi Techniki", category: "special_consumable", slot: null, shop_level: 4, buy_price_coins: "5000", sell_price_coins: "2500", consumable_effect: { "permanent_bonus": { "technique": "250" } } },
+    { id: generateId(62), name: "Tomisko Techniki", category: "special_consumable", slot: null, shop_level: 5, buy_price_coins: "10000", sell_price_coins: "5000", consumable_effect: { "permanent_bonus": { "technique": "500" } } },
     { id: generateId(63), name: "Starożytny Tom Techniki", category: "special_consumable", slot: null, buy_price_coins: null, sell_price_coins: "10000", consumable_effect: { "permanent_bonus": { "technique": "1000" } } },
 
     // ==========================================
@@ -103,12 +103,12 @@ const itemsData = [
     
     // Klatka piersiowa (Chest) -> Daje i wymaga TECHNIKI
     {
-        id: generateId(80), name: "Podstawowe Gi", category: "equipment", slot: "chest",
+        id: generateId(80), name: "Podstawowe Gi", category: "equipment", slot: "chest", shop_level: 1,
         buy_price_coins: "1500", sell_price_coins: "750", req_stats: { "technique": "50" },
         bonuses: { "type": "passive", "technique": "50" }
     },
     {
-        id: generateId(81), name: "Ciężkie GI", category: "equipment", slot: "chest",
+        id: generateId(81), name: "Ciężkie GI", category: "equipment", slot: "chest", shop_level: 1,
         buy_price_coins: "5000", sell_price_coins: "2500", 
         req_stats: { "technique": "100" }, // Wymaga tylko Techniki
         bonuses: { "type": "training", "technique": "1" }
@@ -116,66 +116,66 @@ const itemsData = [
 
     // Głowa (Head) -> Opaska Nowicjusza (Pasywna - płaskie sztuki monet)
     {
-        id: generateId(82), name: "Opaska Nowicjusza", category: "equipment", slot: "head",
+        id: generateId(82), name: "Opaska Nowicjusza", category: "equipment", slot: "head", shop_level: 1,
         buy_price_coins: "1500", sell_price_coins: "750", req_stats: { "strength": "50", "endurance": "50" },
         bonuses: { "type": "passive", "bonus_coins": "5" } // Daje +5 monet do każdej misji/pracy
     },
     // Głowa (Head) -> Ciężka Opaska (Treningowa - procenty)
     {
-        id: generateId(83), name: "Ciężka Opaska", category: "equipment", slot: "head",
+        id: generateId(83), name: "Ciężka Opaska", category: "equipment", slot: "head", shop_level: 1,
         buy_price_coins: "5000", sell_price_coins: "2500", req_stats: { "endurance": "100", "strength": "100" },
         bonuses: { "type": "training", "bonus_coins_pct": "1" }
     },
 
     // Dłonie (Hands) -> Siła
     {
-        id: generateId(84), name: "Bandaże Treningowe", category: "equipment", slot: "hands",
+        id: generateId(84), name: "Bandaże Treningowe", category: "equipment", slot: "hands", shop_level: 1,
         buy_price_coins: "800", sell_price_coins: "400", req_stats: { "strength": "50" },
         bonuses: { "type": "passive", "strength": "50" }
     },
     {
-        id: generateId(85), name: "Ciężkie Rękawice", category: "equipment", slot: "hands",
+        id: generateId(85), name: "Ciężkie Rękawice", category: "equipment", slot: "hands", shop_level: 1,
         buy_price_coins: "5000", sell_price_coins: "2500", req_stats: { "strength": "100" },
         bonuses: { "type": "training", "strength": "1" }
     },
 
     // Nogi (Legs) -> Wytrzymałość
     {
-        id: generateId(86), name: "Wygodne Spodnie", category: "equipment", slot: "legs",
+        id: generateId(86), name: "Wygodne Spodnie", category: "equipment", slot: "legs", shop_level: 1,
         buy_price_coins: "1000", sell_price_coins: "500", req_stats: { "endurance": "50" },
         bonuses: { "type": "passive", "endurance": "50" }
     },
     {
-        id: generateId(87), name: "Ciężkie Spodnie", category: "equipment", slot: "legs",
+        id: generateId(87), name: "Ciężkie Spodnie", category: "equipment", slot: "legs", shop_level: 1,
         buy_price_coins: "5000", sell_price_coins: "2500", req_stats: { "endurance": "100" },
         bonuses: { "type": "training", "endurance": "1" }
     },
 
     // Stopy (Feet) -> Szybkość
     {
-        id: generateId(88), name: "Trampki", category: "equipment", slot: "feet",
+        id: generateId(88), name: "Trampki", category: "equipment", slot: "feet", shop_level: 1,
         buy_price_coins: "800", sell_price_coins: "400", req_stats: { "speed": "50" },
         bonuses: { "type": "passive", "speed": "50" }
     },
     {
-        id: generateId(89), name: "Ciężkie Buty", category: "equipment", slot: "feet",
+        id: generateId(89), name: "Ciężkie Buty", category: "equipment", slot: "feet", shop_level: 1,
         buy_price_coins: "5000", sell_price_coins: "2500", req_stats: { "speed": "100" },
         bonuses: { "type": "training", "speed": "1" }
     },
 
     // Biżuteria (Bez zmian)
     {
-        id: generateId(25), name: "Kolczyk Umysłu", category: "equipment", slot: "ear_l",
+        id: generateId(25), name: "Kolczyk Umysłu", category: "equipment", slot: "ear_l", shop_level: 2,
         buy_price_coins: "25000", sell_price_coins: "12500", req_stats: { "intelligence": "400" },
         bonuses: { "type": "passive", "intelligence": "400" }
     },
     {
-        id: generateId(26), name: "Pierścień Ducha", category: "equipment", slot: "ring_l",
+        id: generateId(26), name: "Pierścień Ducha", category: "equipment", slot: "ring_l", shop_level: 2,
         buy_price_coins: "30000", sell_price_coins: "15000", req_stats: { "mental_strength": "400" },
         bonuses: { "type": "passive", "mental_strength": "400" }
     },
     {
-        id: generateId(27), name: "Rzemyk Harmonii", category: "equipment", slot: "necklace",
+        id: generateId(27), name: "Rzemyk Harmonii", category: "equipment", slot: "necklace", shop_level: 2,
         buy_price_coins: "20000", sell_price_coins: "10000", req_stats: { "intelligence": "400", "mental_strength": "400" },
         bonuses: { "type": "passive", "intelligence": "400", "mental_strength": "400" }
     }
