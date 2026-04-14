@@ -45,8 +45,14 @@ async function getFullCharacterStats(userId) {
       supabase.from('characters').select('*').eq('profile_id', userId).single()
     ]);
 
-    if (profileRes.error || !profileRes.data) throw new Error('Nie znaleziono profilu gracza');
-    if (characterRes.error || !characterRes.data) throw new Error('Nie znaleziono postaci gracza');
+    if (profileRes.error || !profileRes.data) {
+        console.error('[DB Error] Profil:', profileRes.error);
+        throw new Error('Nie znaleziono profilu gracza');
+    }
+    if (characterRes.error || !characterRes.data) {
+        console.error('[DB Error] Postać:', characterRes.error);
+        throw new Error('Nie znaleziono postaci gracza (Prawdopodobnie trwa odświeżanie bazy Supabase)');
+    }
 
     const profile = profileRes.data;
     const character = characterRes.data;
@@ -123,12 +129,15 @@ async function getFullCharacterStats(userId) {
     const currentPowerStr = String(character.base_power_level || '0');
     const newPowerStr = powerLevel.toString();
 
-    // ⚡ TWARDY ZAPIS: Czekamy na zapis (await), aby uniknąć konfliktów (Race Condition) w bazie!
-    // Ponieważ zoptymalizowaliśmy zapytania wyżej (Promise.all), ten await nie spowoduje lagów.
+    // ⚡ TWARDY ZAPIS + CASTOWANIE DO INT8
     if (currentPowerStr !== newPowerStr) {
-        await supabase.from('characters')
-            .update({ base_power_level: newPowerStr })
+        const { error: pwrError } = await supabase.from('characters')
+            .update({ base_power_level: Number(powerLevel) }) // Baza int8 wymaga liczby, nie stringa!
             .eq('id', character.id);
+            
+        if (pwrError) {
+            console.error('[Stats] ⚠️ Błąd zapisu Poziomu Mocy do bazy:', pwrError.message);
+        }
     }
 
     return {
