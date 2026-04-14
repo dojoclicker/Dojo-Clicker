@@ -1438,6 +1438,12 @@
                 renderBank();
             }
 
+            // Renderuj Sklep jeśli aktywny (NAPRAWA ZNIKAJĄCEGO "BRAK MIEJSCA")
+            if (tabName === 'shop') {
+                renderShopItems();
+                renderShopBackpack();
+            }
+
             // Renderuj Dashboard (Czat i Ranking) jeśli aktywny
             if (tabName === 'dashboard') {
                 setTimeout(initializeDashboard, 100);
@@ -2276,17 +2282,17 @@ function getItemImage(itemName, category) {
 
             // Słownik odblokowań GDD (Twarde UUID -> Co odblokowuje dana misja)
             const unlocks = {
-                '00000000-0000-0000-0000-000000000004': { shop: 'Poziom 2 🛒' }, // Poprawione!
+                '10000000-0000-0000-0000-000000000004': { shop: 'Poziom 2 🛒' }, // Poprawione UUID!
                 '00000000-0000-0000-0000-000000000005': { tab: 'Trening 🧘‍♂️', mentor: 'Stary Mistrz 👴' },
                 '10000000-0000-0000-0000-000000000006': { tab: 'Praca 💼', work: 'Roznoszenie Mleka 🥛' },
-                '10000000-0000-0000-0000-000000000007': { work: 'Praca na Budowie 🧱', shop: 'Poziom 3 🛒' }, // Poprawione!
+                '10000000-0000-0000-0000-000000000007': { work: 'Praca na Budowie 🧱', shop: 'Poziom 3 🛒' },
                 '10000000-0000-0000-0000-000000000008': { work: 'Praca w Polu 🌱' },
                 '10000000-0000-0000-0000-000000000009': { work: 'Drwal 🪵' },
                 '10000000-0000-0000-0000-000000000010': { tab: 'Zadania Specjalne 📜', work: 'Ekstremalny Kurier 📦' },
-                '10000000-0000-0000-0000-000000000014': { shop: 'Poziom 4 🛒' }, // Poprawione!
+                '00000000-0000-0000-0000-000000000014': { shop: 'Poziom 4 🛒' }, // Poprawione UUID!
                 '10000000-0000-0000-0000-000000000015': { tab: 'Laboratorium Zwojów 🧪', work: 'Zbiór Magicznej Rosy 💦', mentor: 'Koci Pustelnik 🐈' },
                 '10000000-0000-0000-0000-000000000020': { tab: 'Głęboka Medytacja 🧘‍♀️', work: 'Boskie Ogrody 🌸', mentor: 'Pan Niebiańskiego Pałacu ☁️' },
-                '10000000-0000-0000-0000-000000000023': { shop: 'Poziom 5 🛒' }, // Poprawione!
+                '00000000-0000-0000-0000-000000000023': { shop: 'Poziom 5 🛒' }, // Poprawione UUID!
                 '00000000-0000-0000-0000-000000000024': { mentor: 'Sala Czasu ⏳' },
                 '00000000-0000-0000-0000-000000000025': { tab: 'Arena PVP ⚔️' }
             };

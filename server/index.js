@@ -770,12 +770,19 @@ app.post('/api/inventory/consume', authenticateToken, async (req, res) => {
       } else if (effect === 'restore_stamina' && value === 'full') {
         currentStamina = maxStamina; effectMessages.push('Pełna Stamina');
       } else if (effect === 'permanent_bonus') {
-        const updateData = {};
         for (const [stat, statValue] of Object.entries(value)) {
-          updateData[stat] = (BigInt(character[stat] || '1') + BigInt(statValue)).toString();
+          const bonus = BigInt(statValue);
+          // Zamiast wysyłać to od razu do bazy, dodajemy do zmiennych głównych,
+          // aby finalny zapis na końcu funkcji (UPDATE) to chwycił!
+          if (stat === 'strength') currentStr += bonus;
+          else if (stat === 'speed') currentSpd += bonus;
+          else if (stat === 'endurance') currentEnd += bonus;
+          else if (stat === 'technique') currentTech += bonus;
+          else if (stat === 'intelligence') currentInt += bonus;
+          else if (stat === 'mental_strength') currentMen += bonus;
+          
           effectMessages.push(`+${statValue} ${stat}`);
         }
-        await supabase.from('characters').update(updateData).eq('id', character.id);
       }
     }
 
