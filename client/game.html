@@ -1278,7 +1278,6 @@
 
                 if (currentHp <= 0 && data.hospital_until) {
                     // STAN: MARTWY / W SZPITALU
-                    localStorage.setItem('is_hospitalized', 'true'); // Zapamiętujemy szpital dla błyskawicznego startu!
                     
                     // Przenosimy do szpitala TYLKO jeśli gracz nie jest na Stronie Głównej (Dashboardzie)
                     const currentTab = localStorage.getItem('active_game_tab');
@@ -1288,7 +1287,6 @@
                     startHospitalCountdown(data.hospital_until, data.hospital_reason);
                 } else {
                     // STAN: ZDROWY
-                    localStorage.setItem('is_hospitalized', 'false'); // Czyścimy pamięć o szpitalu
                     
                     if (hospitalInterval) clearInterval(hospitalInterval);
                     lockTabsForHospital(false);
@@ -1358,7 +1356,6 @@
                 
                 if ((data.unlocked_features && data.unlocked_features.includes('work')) || maZrobionaMisje6) {
                     if (navWorkBtn) navWorkBtn.classList.remove('disabled', 'locked');
-                    localStorage.setItem('work_unlocked', 'true'); // <-- Zapisujemy w przeglądarce!
                 }
                 if (typeof renderWorkList === 'function') renderWorkList();
 
@@ -3245,10 +3242,8 @@ function getItemImage(itemName, category) {
 
                 if (data.isUnlocked) {
                     if (navTrainingBtn) navTrainingBtn.classList.remove('disabled', 'locked'); 
-                    localStorage.setItem('training_unlocked', 'true');
                 } else {
                     if (navTrainingBtn) navTrainingBtn.classList.add('disabled', 'locked'); 
-                    localStorage.setItem('training_unlocked', 'false');
                     const trainingView = document.getElementById('training-view');
                     if (trainingView && trainingView.style.display !== 'none') {
                         const missionsBtn = document.querySelector('[data-tab="missions"]');
@@ -3271,7 +3266,6 @@ function getItemImage(itemName, category) {
                 // Sprawdzamy stan prawego panelu
                 if (newTrainingState) {
                     if (!isCurrentlyTraining || progressView.style.display === 'none') {
-                        localStorage.setItem('is_training_active', 'true');
                         window.isPlayerTraining = true;
                         const [mentorId, hours, stat] = data.activeTraining.split(':');
                         const mentor = trainingMentors.find(m => m.id === mentorId) || { name: 'Mistrz' };
@@ -3281,7 +3275,6 @@ function getItemImage(itemName, category) {
                 } else {
                     // Upewniamy się, że jeśli gracz nie trenuje, to NA PEWNO widzi panel setupu
                     if (isCurrentlyTraining || setupView.style.display === 'none') {
-                        localStorage.setItem('is_training_active', 'false');
                         window.isPlayerTraining = false;
                         showSetupState();
                         if (typeof updateTabsLockState === 'function') updateTabsLockState();
@@ -4019,38 +4012,12 @@ function getItemImage(itemName, category) {
             }, isFailed ? 2500 : 0);
         } 
 
-        // Czyszczenie pamięci przy wylogowaniu (zapobiega mieszaniu się kont)
+        // Czyszczenie pamięci przy wylogowaniu
         const logoutBtnGame = document.getElementById('logout-btn');
         if (logoutBtnGame) {
             logoutBtnGame.addEventListener('click', () => {
-                localStorage.removeItem('training_unlocked');
-                localStorage.removeItem('work_unlocked');
-                localStorage.removeItem('is_training_active'); // Zdejmuje blokadę treningu w przeglądarce dla nowego konta
-                localStorage.removeItem('is_hospitalized');    // Zdejmuje blokadę szpitala w przeglądarce dla nowego konta
                 localStorage.setItem('active_game_tab', 'dashboard'); // Wymusza bezpieczny start na Stronie Głównej!
             });
-        }
-        
-        // Błyskawiczne odblokowanie UI na podstawie pamięci lokalnej (całkowity brak "mrugania" guzika)
-        if (localStorage.getItem('training_unlocked') === 'true') {
-            if (navTrainingBtn) navTrainingBtn.classList.remove('disabled', 'locked');
-        }
-
-        // Błyskawiczne odblokowanie PRACY (brak mrugania guzika)
-        if (localStorage.getItem('work_unlocked') === 'true') {
-            const navWorkBtn = document.getElementById('nav-work-btn');
-            if (navWorkBtn) navWorkBtn.classList.remove('disabled', 'locked');
-        }
-
-        // Błyskawiczne zablokowanie innych zakładek, jeśli w pamięci jest aktywny trening
-        if (localStorage.getItem('is_training_active') === 'true') {
-            window.isPlayerTraining = true;
-            if (typeof updateTabsLockState === 'function') updateTabsLockState();
-        }
-
-        // Błyskawiczne zablokowanie nawigacji dla Szpitala (brak skaczących guzików po wciśnięciu F5)
-        if (localStorage.getItem('is_hospitalized') === 'true') {
-            if (typeof lockTabsForHospital === 'function') lockTabsForHospital(true);
         }
 
         // Zbuduj status w tle bez sztucznego opóźnienia

@@ -199,6 +199,14 @@ async function initGlobalState() {
 
     if (error) throw error;
     globalServerState = data;
+    
+    // 🛡️ BEZPIECZNIK: Jeśli serwer zrestartował się w trakcie przerwy, wymuś odblokowanie!
+    if (globalServerState.is_maintenance) {
+        console.log('[BEZPIECZNIK] Wykryto zablokowany serwer po restarcie! Wymuszam odblokowanie...');
+        await supabase.from('global_server_state').update({ is_maintenance: false }).eq('id', 1);
+        globalServerState.is_maintenance = false;
+    }
+
     console.log(`[Zegar DC] Stan serwera załadowany do RAM. Obecny Dzień DC: ${globalServerState.current_dc_day}`);
     
     // Uruchomienie nasłuchiwania na zmiany w bazie (WebSockets)
@@ -2405,24 +2413,30 @@ app.listen(port, async () => {
 
 const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 cron.schedule('0 0,8,16 * * *', async () => {
-  console.log('[Zegar DC] Wybiła Północ DC!');
+  console.log('[Zegar DC] Wybiła Północ DC! Rozpoczynam zmianę dnia...');
   try {
+    // 1. Włączamy przerwę techniczną
     await supabase.from('global_server_state').update({ is_maintenance: true }).eq('id', 1);
-    await delay(30000); 
     
-    // Reset limitu Sali Czasu dla wszystkich postaci
-    await supabase.from('characters').update({ daily_time_chamber_used: false }).neq('profile_id', '00000000-0000-0000-0000-000000000000');
-
-    // Reset limitów Sali Czasu i SKLEPU dla wszystkich postaci
+    // Dajemy chwilę na spłynięcie zapytań w locie (5 sekund zamiast 60)
+    await delay(5000); 
+    
+    // 2. Jeden, połączony UPDATE resetujący limity dla wszystkich graczy
     await supabase.from('characters').update({ 
         daily_time_chamber_used: false,
-        daily_shop_buys: {} // <--- NOWOŚĆ: Resetuje sklep codziennie
+        daily_shop_buys: {} 
     }).neq('profile_id', '00000000-0000-0000-0000-000000000000');
     
-    await supabase.from('global_server_state').update({ current_dc_day: globalServerState.current_dc_day + 1 }).eq('id', 1);
-    await delay(30000);
-    await supabase.from('global_server_state').update({ is_maintenance: false }).eq('id', 1);
+    // 3. Podbicie dnia DC i natychmiastowe WYŁĄCZENIE przerwy technicznej w jednym kroku!
+    await supabase.from('global_server_state').update({ 
+        current_dc_day: globalServerState.current_dc_day + 1,
+        is_maintenance: false
+    }).eq('id', 1);
+
+    console.log('[Zegar DC] Nowy dzień DC rozpoczęty, serwer odblokowany!');
   } catch (error) {
+    console.error('[Zegar DC] ⚠️ Krytyczny błąd podczas zmiany dnia:', error);
+    // W razie błędu awaryjnie odblokuj serwer
     await supabase.from('global_server_state').update({ is_maintenance: false }).eq('id', 1);
   }
 });
