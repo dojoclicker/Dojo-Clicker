@@ -16,6 +16,7 @@
     --mp-bg: #1e3a8a;
     --stamina-color: #84cc16;
     --stamina-bg: #365314;
+    --coins-color: #fbbf24;
     
     /* Teksty */
     --text-primary: #f1f5f9;
@@ -245,6 +246,29 @@ body {
     gap: 1rem;
 }
 
+.character-stats {
+    margin: 1rem 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    background: rgba(0, 0, 0, 0.2);
+    padding: 1rem;
+    border-radius: 8px;
+    border: 1px solid var(--goku-panel-border);
+}
+
+.stat-row {
+    display: flex;
+    justify-content: space-between;
+}
+
+.stat-value {
+    color: var(--text-primary);
+    font-weight: bold;
+}
+
 .player-info { text-align: center; }
 .player-name { font-size: 1.2rem; font-weight: bold; color: var(--goku-accent); margin-bottom: 0.5rem; }
 .power-level { font-size: 1rem; color: var(--text-secondary); margin-bottom: 0.25rem; }
@@ -409,13 +433,9 @@ body {
 
 .hospital-panel-left {
     flex: 1; 
-    background: var(--goku-panel-bg);
-    border: 2px solid var(--goku-panel-border);
-    border-radius: 12px;
     display: flex;
     justify-content: center;
     align-items: center;
-    padding: 1.5rem; /* Zmieniono z 20px na 1.5rem dla zgodności z Ekwipunkiem */
     min-width: 0; /* Gwarantuje idealne wymuszenie 50/50 */
 }
 
@@ -424,7 +444,7 @@ body {
     height: 100%;
     min-height: 420px; /* Zmieniono z 350px na 420px (idetyczna wysokość co sylwetka gracza) */
     background: radial-gradient(circle, #2a1111 0%, #0a0f1d 100%);
-    border: 3px solid #dc2626;
+    border: 3px solid var(--hp-color);
     border-radius: 8px;
     display: flex;
     justify-content: center;
@@ -436,18 +456,14 @@ body {
 .hospital-panel-right {
     flex: 1; 
     min-width: 0; /* Zmieniono z 350px dla wymuszenia 50/50 */
-    background: var(--goku-panel-bg);
-    border: 2px solid var(--goku-panel-border);
-    border-radius: 12px;
-    padding: 1.5rem; /* Zmieniono z 20px na 1.5rem */
     text-align: center;
     display: flex;
     flex-direction: column;
     justify-content: center;
 }
 
-.text-hospital-danger { color: #ef4444 !important; text-shadow: 0 0 10px rgba(239, 68, 68, 0.5); }
-.text-hospital-success { color: #22c55e !important; text-shadow: 0 0 10px rgba(34, 197, 94, 0.5); }
+.text-hospital-danger { color: var(--error) !important; text-shadow: 0 0 10px rgba(239, 68, 68, 0.5); }
+.text-hospital-success { color: var(--success) !important; text-shadow: 0 0 10px rgba(34, 197, 94, 0.5); }
 .disabled, .tab-disabled { pointer-events: none !important; filter: grayscale(100%) brightness(0.5); opacity: 0.5; cursor: not-allowed; position: relative; }
 
 .dashboard-container {
@@ -477,10 +493,6 @@ body {
 
 .equipment-panel {
     flex: 1; /* Wymusza 50% szerokości */
-    background: var(--goku-panel-bg);
-    border: 2px solid var(--goku-panel-border);
-    border-radius: 12px;
-    padding: 1.5rem;
     display: flex;
     flex-direction: column;
 }
@@ -547,10 +559,6 @@ body {
 
 .inventory-panel {
     flex: 1; /* Wymusza 50% szerokości */
-    background: var(--goku-panel-bg);
-    border: 2px solid var(--goku-panel-border);
-    border-radius: 12px;
-    padding: 1.5rem;
     display: flex;
     flex-direction: column;
 }
@@ -639,18 +647,10 @@ body {
 
 .bank-left-column {
     flex: 0 0 65%;
-    background: var(--goku-panel-bg);
-    border: 2px solid var(--goku-panel-border);
-    border-radius: 12px;
-    padding: 1.5rem;
 }
 
 .bank-right-column {
     flex: 0 0 35%;
-    background: var(--goku-panel-bg);
-    border: 2px solid var(--goku-panel-border);
-    border-radius: 12px;
-    padding: 1.5rem;
 }
 
 .bank-panel h3 {
@@ -841,8 +841,8 @@ body {
 }
 
 .shop-tab.active, .category-tab.active {
-    background: linear-gradient(135deg, var(--goku-accent) 0%, #cc5500 100%);
-    border-color: #ff8533;
+    background: linear-gradient(135deg, var(--goku-accent) 0%, var(--goku-accent-hover) 100%);
+    border-color: var(--goku-accent-hover);
     color: #fff;
     box-shadow: 0 4px 10px rgba(255, 107, 0, 0.3);
 }
@@ -927,7 +927,7 @@ body {
 
 /* NOWOCZESNA CENA */
 .shop-item-price {
-    color: #fbbf24;
+    color: var(--coins-color);
     font-weight: 800;
     font-size: 0.95rem;
     background: rgba(0,0,0,0.6);
@@ -945,7 +945,7 @@ body {
 /* PRZYCISK KUPNA */
 .shop-buy-btn {
     width: 100%;
-    background: linear-gradient(135deg, var(--goku-accent) 0%, #d95a00 100%);
+    background: linear-gradient(135deg, var(--goku-accent) 0%, var(--goku-accent-hover) 100%);
     color: white;
     border: none;
     border-radius: 8px;
@@ -988,7 +988,7 @@ body {
     position: fixed;
     width: max-content;
     max-width: 250px;
-    background: #0f172a !important;
+    background: var(--goku-bg-primary) !important;
     border: 2px solid var(--goku-accent);
     border-radius: 8px;
     padding: 0.75rem;
@@ -1005,9 +1005,9 @@ body {
 }
 
 .nuke-help-btn {
-    background-color: #ff6b00;
-    color: #ffffff;
-    border: 2px solid #ffffff;
+    background-color: var(--goku-accent);
+    color: var(--text-primary);
+    border: 2px solid var(--text-primary);
     border-radius: 50%;
     width: 22px;
     height: 22px;
@@ -1036,8 +1036,8 @@ body {
 .nuke-floating-tooltip {
     position: fixed;
     width: 260px;
-    background-color: #0f172a;
-    border: 2px solid #ff6b00;
+    background-color: var(--goku-bg-primary);
+    border: 2px solid var(--goku-accent);
     border-radius: 8px;
     padding: 15px;
     box-shadow: 0 10px 40px rgba(0,0,0,0.9);
@@ -1054,7 +1054,7 @@ body {
     transform: translateY(-50%);
     border-width: 10px 10px 10px 0;
     border-style: solid;
-    border-color: transparent #ff6b00 transparent transparent;
+    border-color: transparent var(--goku-accent) transparent transparent;
 }
 
 /* ==========================================
@@ -1164,9 +1164,70 @@ body {
 .bank-btn-group { display: flex; gap: 10px; }
 
 /* ==========================================
+   DASHBOARD, RANKING I CZAT
+   ========================================== */
+.dashboard-inner-box {
+    background: rgba(0, 0, 0, 0.2);
+    padding: 1rem;
+    border-radius: 8px;
+    border: 1px solid var(--goku-panel-border);
+}
+
+.empty-state-text {
+    color: var(--text-muted);
+    text-align: center;
+    padding: 1rem;
+}
+
+.chat-messages-box {
+    height: 200px;
+    overflow-y: auto;
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid var(--goku-panel-border);
+    border-radius: 8px;
+    padding: 0.5rem;
+}
+
+.chat-input-wrapper {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+}
+
+.chat-input-field {
+    flex: 1;
+    padding: 0.5rem;
+    background: var(--goku-panel-bg);
+    border: 1px solid var(--goku-panel-border);
+    border-radius: 4px;
+    color: var(--text-primary);
+}
+
+.ranking-item-card {
+    display: flex; 
+    align-items: center; 
+    padding: 0.5rem; 
+    margin-bottom: 0.5rem; 
+    background: rgba(0, 0, 0, 0.2); 
+    border-radius: 6px; 
+    border: 1px solid var(--goku-panel-border);
+}
+
+.chat-message-row {
+    margin-bottom: 4px; 
+    padding: 4px 8px;
+    background: rgba(0, 0, 0, 0.15); 
+    border-left: 2px solid var(--goku-accent);
+    border-radius: 0 4px 4px 0;
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+    line-height: 1.3;
+}
+
+/* ==========================================
    REFAKTORYZACJA - POWIADOMIENIA I TOOLTIPY
    ========================================== */
-
 /* Powiadomienia (Toasty) */
 #notification-container {
     position: fixed; top: 20px; right: 20px;
@@ -1207,6 +1268,31 @@ body {
     margin-bottom: 8px; font-size: 0.85rem; color: #cbd5e1; 
     background: rgba(255,255,255,0.05); padding: 4px; 
     border-radius: 4px; text-align: center;
+}
+/* Tooltipy misji - klasy pomocnicze */
+.tooltip-mission-type {
+    font-size: 0.8rem; font-weight: bold; text-align: center; margin-bottom: 6px; letter-spacing: 0.5px; text-transform: uppercase;
+}
+.tooltip-mission-desc {
+    font-size: 0.85rem; margin-bottom: 0.5rem; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 0.5rem; text-align: center; font-style: italic;
+}
+.tooltip-mission-chance {
+    font-size: 0.95rem; margin-bottom: 0.75rem; text-align: center; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 0.5rem;
+}
+.tooltip-mission-detail {
+    font-size: 0.85rem; margin-top: 4px;
+}
+.tooltip-unlock-box {
+    font-size: 0.85rem; margin-top: 10px; border-top: 1px dashed rgba(255,255,255,0.2); padding-top: 8px; text-align: left;
+}
+.tooltip-unlock-title {
+    color: #ffffff; font-weight: bold; margin-bottom: 4px; display: block;
+}
+.tooltip-unlock-list {
+    margin: 0; padding-left: 20px; list-style-type: disc;
+}
+.tooltip-unlock-item {
+    margin-bottom: 2px; font-weight: bold;
 }
 
 /* ==========================================
@@ -1375,137 +1461,136 @@ input[type=range]#training-hours-slider::-webkit-slider-thumb {
 
 
 /* ==========================================
-   RESPONSYWNOŚĆ (SMARTFON)
-   ========================================== */
-   
-@media (max-width: 768px) {
-    /* 1. GLOBALNY RESET */
-    html, body { overflow-x: hidden !important; width: 100% !important; max-width: 100% !important; margin: 0 !important; padding: 0 !important; }
-    body { display: flex !important; flex-direction: column !important; min-height: 100vh !important; }
-
-    /* 2. HEADERY I NAWIGACJA */
-    #top-panel-1 { display: flex !important; justify-content: space-between !important; align-items: center !important; padding: 8px 10px !important; height: auto !important; width: 100% !important; box-sizing: border-box !important; flex-shrink: 0 !important; }
-    .desktop-txt { display: none !important; }
-    .mobile-txt { display: inline !important; }
-    .header-buttons { display: flex !important; gap: 5px !important; flex: none !important; }
-    .btn-header { padding: 6px 8px !important; font-size: 11px !important; }
-    
-    #top-panel-2 { display: flex !important; flex-direction: column !important; padding: 8px 5px !important; width: 100% !important; box-sizing: border-box !important; flex-shrink: 0 !important; }
-    .nav-section { display: flex !important; flex-wrap: nowrap !important; justify-content: flex-start !important; overflow-x: auto !important; width: 100% !important; padding-bottom: 5px !important; -webkit-overflow-scrolling: touch; gap: 5px !important; }
-    .nav-btn { min-width: 65px !important; padding: 4px !important; flex-shrink: 0 !important; }
-    .nav-text { font-size: 10px !important; }
-    
-    .time-container { display: flex !important; width: 100% !important; justify-content: center !important; align-items: center !important; gap: 5px !important; margin-top: 5px !important; }
-    .time-display { font-size: 11px !important; padding: 4px 8px !important; flex-grow: 1 !important; text-align: center !important; margin: 0 !important; }
-    .blue-mini-btn { height: 26px !important; padding: 0 12px !important; font-size: 11px !important; flex-shrink: 0 !important; margin: 0 !important; }
-
-    /* 3. LEWY PANEL (Kompaktowy) */
-    aside#left-sidebar { flex-shrink: 0 !important; position: relative !important; width: 100% !important; max-width: 100% !important; padding: 12px 10px !important; margin: 0 !important; border-right: none !important; border-bottom: 2px solid var(--goku-panel-border) !important; height: auto !important; min-height: unset !important; gap: 8px !important; box-sizing: border-box !important; }
-    
-    aside#left-sidebar:not(.stats-expanded) .avatar-placeholder, 
-    aside#left-sidebar:not(.stats-expanded) .player-info > *:not(.coins), 
-    aside#left-sidebar:not(.stats-expanded) .character-stats { display: none !important; }
-    
-    aside#left-sidebar .coins { display: block !important; text-align: center !important; font-size: 14px !important; margin: 0 !important; font-weight: bold !important; }
-    aside#left-sidebar.stats-expanded .coins { margin: 10px 0 !important; }
-    
-    aside#left-sidebar .resource-bars { gap: 6px !important; width: 100% !important; }
-    aside#left-sidebar .bar-container { height: 12px !important; }
-    aside#left-sidebar .resource-header { font-size: 11px !important; margin-bottom: 2px !important; }
-    
-    #toggle-stats-details { position: static !important; display: block !important; width: 100% !important; height: 32px !important; margin: 10px 0 0 0 !important; background: rgba(249, 115, 22, 0.1) !important; border: 1px solid var(--goku-accent) !important; border-radius: 6px !important; color: var(--goku-accent) !important; font-size: 11px !important; font-weight: bold !important; text-transform: uppercase !important; cursor: pointer !important; }
-    
-    aside#left-sidebar.stats-expanded .player-info > * { display: block !important; }
-
-    /* 4. GŁÓWNY OBSZAR ROBOCZY */
-    main#main-workspace { padding: 10px !important; width: 100% !important; max-width: 100% !important; overflow-x: hidden !important; flex-grow: 1 !important; box-sizing: border-box !important; display: block !important; }
-    
-    .dashboard-container, .equipment-container, .shop-container, .hospital-container, .bank-container { display: flex !important; flex-direction: column !important; align-items: center !important; width: 100% !important; max-width: 100% !important; padding: 0 !important; margin: 0 !important; gap: 15px !important; box-sizing: border-box !important; }
-    
-    .dashboard-hub, .dashboard-ranking, .equipment-panel, .inventory-panel, .shop-left-column, .shop-right-column, .hospital-panel-left, .hospital-panel-right, .bank-left-column, .bank-right-column { width: 100% !important; max-width: 100% !important; min-width: 0 !important; padding: 15px 10px !important; margin: 0 !important; box-sizing: border-box !important; flex: none !important; }
-    
-    .missions-grid { display: grid !important; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)) !important; gap: 10px !important; padding: 0 0 50px 0 !important; width: 100% !important; box-sizing: border-box !important; }
-    .mission-card { width: 100% !important; height: auto !important; min-height: 180px !important; padding: 10px !important; box-sizing: border-box !important; }
-    
-    .inventory-grid, .shop-backpack-grid { display: flex !important; flex-wrap: wrap !important; justify-content: center !important; gap: 8px !important; width: 100% !important; box-sizing: border-box !important; }
-    .character-body { grid-template-columns: 60px 75px 60px !important; grid-template-rows: 60px 45px 60px 60px !important; gap: 8px !important; justify-content: center !important; }
-    
-    .hospital-big-graphic { min-height: 200px !important; }
-    .hospital-panel-right h2 { font-size: 1.2rem !important; }
-    #hospital-countdown { font-size: 2.5rem !important; }
-
-    } /* <--- TA KLAMRA ZAMYKA STREFĘ TELEFONÓW (Nie usuwaj jej!) */
-
-/* ==========================================
    5. SKLEP - GLOBALNY WYGLĄD (KOMPUTERY I TELEFONY)
    ========================================== */
 .shop-items-grid { 
-    display: grid !important; 
-    grid-template-columns: repeat(auto-fill, minmax(145px, 1fr)) !important; 
-    gap: 12px !important; 
-    width: 100% !important; 
+    display: grid; 
+    grid-template-columns: repeat(auto-fill, minmax(145px, 1fr)); 
+    gap: 12px; 
+    width: 100%; 
 }
 
 .shop-item-card { 
-    min-height: 150px !important; 
-    display: flex !important;
-    flex-direction: column !important;
-    justify-content: space-between !important;
+    min-height: 150px; 
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
 }
 
 .shop-level-tabs, .shop-category-tabs { 
-    display: flex !important; 
-    flex-wrap: wrap !important; 
-    gap: 8px !important; 
-    margin-bottom: 15px !important;
-    justify-content: center !important; 
+    display: flex; 
+    flex-wrap: wrap; 
+    gap: 8px; 
+    margin-bottom: 15px;
+    justify-content: center; 
 }
 
 /* KOSMETYKA PRZYCISKÓW (ZAKŁADEK) */
 .shop-tab, .category-tab { 
-    flex: 1 1 calc(33% - 8px) !important; /* Domyślnie 3 zakładki w rzędzie na PC */
-    min-width: 110px !important;
-    padding: 10px 5px !important; 
-    font-size: 12px !important; 
-    text-align: center !important; 
-    display: flex !important; 
-    align-items: center !important; 
-    justify-content: center !important;
+    flex: 1 1 calc(33% - 8px); /* Domyślnie 3 zakładki w rzędzie na PC */
+    min-width: 110px;
+    padding: 10px 5px; 
+    font-size: 12px; 
+    text-align: center; 
+    display: flex; 
+    align-items: center; 
+    justify-content: center;
     
     /* Wygląd - Kolory i Ramki */
-    background-color: var(--goku-panel-bg) !important;
-    color: var(--text-secondary) !important;
-    border: 1px solid var(--goku-panel-border) !important;
-    border-radius: 6px !important;
-    cursor: pointer !important;
-    text-transform: uppercase !important;
-    font-weight: bold !important;
-    transition: all 0.3s ease !important;
+    background-color: var(--goku-panel-bg);
+    color: var(--text-secondary);
+    border: 1px solid var(--goku-panel-border);
+    border-radius: 6px;
+    cursor: pointer;
+    text-transform: uppercase;
+    font-weight: bold;
+    transition: all 0.3s ease;
 }
 
 .shop-tab:hover:not(.disabled), .category-tab:hover {
-    background-color: rgba(255, 107, 0, 0.1) !important;
-    color: var(--text-primary) !important;
-    border-color: var(--goku-accent) !important;
+    background-color: rgba(255, 107, 0, 0.1);
+    color: var(--text-primary);
+    border-color: var(--goku-accent);
 }
 
 .shop-tab.active, .category-tab.active {
-    background-color: rgba(255, 107, 0, 0.25) !important;
-    color: var(--goku-accent) !important;
-    border-color: var(--goku-accent) !important;
-    box-shadow: 0 0 10px rgba(255, 107, 0, 0.2) inset !important;
+    background-color: rgba(255, 107, 0, 0.25);
+    color: var(--goku-accent);
+    border-color: var(--goku-accent);
+    box-shadow: inset 0 0 10px rgba(255, 107, 0, 0.2);
 }
 
 .shop-tab.disabled {
-    opacity: 0.3 !important;
-    cursor: not-allowed !important;
-    background-color: #0a0f1d !important;
+    opacity: 0.3;
+    cursor: not-allowed;
+    background-color: var(--goku-bg-primary);
 }
 
-/* POPRAWKI DLA MAŁYCH EKRANÓW W SKLEPIE */
+/* ==========================================
+   RESPONSYWNOŚĆ (SMARTFON) - ZAWSZE NA DOLE PLIKU!
+   ========================================== */
 @media (max-width: 768px) {
+    /* 1. GLOBALNY RESET */
+    html, body { overflow-x: hidden; width: 100%; max-width: 100%; margin: 0; padding: 0; }
+    body { display: flex; flex-direction: column; min-height: 100vh; }
+
+    /* 2. HEADERY I NAWIGACJA */
+    #top-panel-1 { display: flex; justify-content: space-between; align-items: center; padding: 8px 10px; height: auto; width: 100%; box-sizing: border-box; flex-shrink: 0; }
+    .desktop-txt { display: none; }
+    .mobile-txt { display: inline; }
+    .header-buttons { display: flex; gap: 5px; flex: none; }
+    .btn-header { padding: 6px 8px; font-size: 11px; }
+    
+    #top-panel-2 { display: flex; flex-direction: column; padding: 8px 5px; width: 100%; box-sizing: border-box; flex-shrink: 0; }
+    .nav-section { display: flex; flex-wrap: nowrap; justify-content: flex-start; overflow-x: auto; width: 100%; padding-bottom: 5px; -webkit-overflow-scrolling: touch; gap: 5px; }
+    .nav-btn { min-width: 65px; padding: 4px; flex-shrink: 0; }
+    .nav-text { font-size: 10px; }
+    
+    .time-container { display: flex; width: 100%; justify-content: center; align-items: center; gap: 5px; margin-top: 5px; }
+    .time-display { font-size: 11px; padding: 4px 8px; flex-grow: 1; text-align: center; margin: 0; }
+    .blue-mini-btn { height: 26px; padding: 0 12px; font-size: 11px; flex-shrink: 0; margin: 0; }
+
+    /* 3. LEWY PANEL (Kompaktowy) */
+    aside#left-sidebar { flex-shrink: 0; position: relative; width: 100%; max-width: 100%; padding: 12px 10px; margin: 0; border-right: none; border-bottom: 2px solid var(--goku-panel-border); height: auto; min-height: unset; gap: 8px; box-sizing: border-box; }
+    
+    aside#left-sidebar:not(.stats-expanded) .avatar-placeholder, 
+    aside#left-sidebar:not(.stats-expanded) .player-info > *:not(.coins), 
+    aside#left-sidebar:not(.stats-expanded) .character-stats { display: none; }
+    
+    aside#left-sidebar .coins { display: block; text-align: center; font-size: 14px; margin: 0; font-weight: bold; }
+    aside#left-sidebar.stats-expanded .coins { margin: 10px 0; }
+    
+    aside#left-sidebar .resource-bars { gap: 6px; width: 100%; }
+    aside#left-sidebar .bar-container { height: 12px; }
+    aside#left-sidebar .resource-header { font-size: 11px; margin-bottom: 2px; }
+    
+    #toggle-stats-details { position: static; display: block; width: 100%; height: 32px; margin: 10px 0 0 0; background: rgba(249, 115, 22, 0.1); border: 1px solid var(--goku-accent); border-radius: 6px; color: var(--goku-accent); font-size: 11px; font-weight: bold; text-transform: uppercase; cursor: pointer; }
+    
+    aside#left-sidebar.stats-expanded .player-info > * { display: block; }
+
+    /* 4. GŁÓWNY OBSZAR ROBOCZY */
+    main#main-workspace { padding: 10px; width: 100%; max-width: 100%; overflow-x: hidden; flex-grow: 1; box-sizing: border-box; display: block; }
+    
+    /* Nadpisywanie globalnych układów flex dla kontenerów (Dzięki kaskadzie to teraz zadziała!) */
+    .game-panel-row,
+    .dashboard-container, .equipment-container, .shop-container, .hospital-container, .bank-container { display: flex; flex-direction: column; align-items: center; width: 100%; max-width: 100%; padding: 0; margin: 0; gap: 15px; box-sizing: border-box; }
+    
+    .game-panel,
+    .dashboard-hub, .dashboard-ranking, .equipment-panel, .inventory-panel, .shop-left-column, .shop-right-column, .hospital-panel-left, .hospital-panel-right, .bank-left-column, .bank-right-column { width: 100%; max-width: 100%; min-width: 0; padding: 15px 10px; margin: 0; box-sizing: border-box; flex: none; }
+    
+    .missions-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; padding: 0 0 50px 0; width: 100%; box-sizing: border-box; }
+    .mission-card { width: 100%; height: auto; min-height: 180px; padding: 10px; box-sizing: border-box; }
+    
+    .inventory-grid, .shop-backpack-grid { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; width: 100%; box-sizing: border-box; }
+    .character-body { grid-template-columns: 60px 75px 60px; grid-template-rows: 60px 45px 60px 60px; gap: 8px; justify-content: center; }
+    
+    .hospital-big-graphic { min-height: 200px; }
+    .hospital-panel-right h2 { font-size: 1.2rem; }
+    #hospital-countdown { font-size: 2.5rem; }
+
+    /* 5. POPRAWKI SKLEPU DLA TELEFONÓW */
     .shop-tab, .category-tab {
-        flex: 1 1 calc(50% - 6px) !important; /* Na telefonach 2 zakładki w rzędzie */
-        font-size: 11px !important;
+        flex: 1 1 calc(50% - 6px); /* Na telefonach 2 zakładki w rzędzie */
+        font-size: 11px;
     }
-}
+} /* <--- TA KLAMRA ZAMYKA STREFĘ TELEFONÓW */
