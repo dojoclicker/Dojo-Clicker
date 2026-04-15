@@ -1,4 +1,4 @@
-require('dotenv').config({ path: '../.env' }); // Wskazujemy ścieżkę do .env w folderze server
+require('dotenv').config();
 const { createClient } = require('@supabase/supabase-js');
 
 // Inicjalizacja klienta Supabase

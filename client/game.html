@@ -3073,10 +3073,25 @@
                     timeElement.innerHTML = `<span style="color: var(--error); font-weight: bold;">RUNDA ZAKOŃCZONA</span>`;
                     handleDowntimeMode();
                 } else {
-                    // Wyliczamy lokalnie zgrabną symulację zegarka (opierając się o timestamp, tak jak u Ciebie)
                     const now = new Date();
-                    const dcHour = now.getHours();
-                    const dcMinute = now.getMinutes();
+                    const realHour = now.getHours();
+                    const realMinute = now.getMinutes();
+
+                    // --- ZEGAR DOJO-CLICKER ---
+                    // 8 godzin realnych = 24 godziny DC. Wskaźnik przyspieszenia to x3.
+                    // Określamy, w którym "bloku 8-godzinnym" dnia obecnie jesteśmy (0-7)
+                    const blockHour = realHour % 8; 
+                    
+                    // Liczymy ile minut upłynęło od ostatniego "Północy DC" (czyli od 00:00, 08:00 lub 16:00 czasu realnego)
+                    const elapsedRealMinutes = (blockHour * 60) + realMinute;
+                    
+                    // Przyspieszamy to trzykrotnie dla świata gry
+                    const elapsedDcMinutes = elapsedRealMinutes * 3;
+
+                    // Wyliczamy godziny i minuty DC
+                    const dcHour = Math.floor(elapsedDcMinutes / 60);
+                    const dcMinute = elapsedDcMinutes % 60;
+
                     timeElement.textContent = `Runda ${GameState.currentRound} | Dzień: ${GameState.currentDcDay}/75 | ${dcHour.toString().padStart(2, '0')}:${dcMinute.toString().padStart(2, '0')}`;
                     releaseDowntimeMode();
                 }
