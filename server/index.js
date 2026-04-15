@@ -2426,7 +2426,7 @@ app.listen(port, async () => {
 });
 
 const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
-cron.schedule('0 0,8,16 * * *', async () => {
+cron.schedule('30 1,9,17 * * *', async () => {
   console.log('[Zegar DC] Wybiła Północ DC! Rozpoczynam zmianę dnia i losowanie zadań...');
   try {
     await supabase.from('global_server_state').update({ is_maintenance: true }).eq('id', 1);

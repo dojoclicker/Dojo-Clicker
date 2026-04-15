@@ -3085,9 +3085,27 @@ function updateGameTime(state) {
             const realMinute = now.getMinutes();
             const realSecond = now.getSeconds();
 
-            // Obliczamy ile sekund minęło w obecnym bloku 8-godzinnym (00, 08, 16)
-            const blockStartHour = Math.floor(realHour / 8) * 8;
-            const secondsInBlock = ((realHour - blockStartHour) * 3600) + (realMinute * 60) + realSecond;
+            // Wyliczamy obecny czas jako minuty od północy czasu rzeczywistego
+            const currentMins = (realHour * 60) + realMinute;
+            let elapsedMins = 0;
+
+            // Sprawdzamy, w którym z 3 bloków dziennych się znajdujemy (01:30 to 90 min, 09:30 to 570 min, 17:30 to 1050 min)
+            if (currentMins < 90) { 
+                // Jesteśmy przed 01:30 w nocy (czyli trwa jeszcze blok wczorajszy od 17:30)
+                elapsedMins = currentMins + (24 * 60) - 1050; 
+            } else if (currentMins >= 90 && currentMins < 570) { 
+                // Między 01:30 a 09:30
+                elapsedMins = currentMins - 90;
+            } else if (currentMins >= 570 && currentMins < 1050) { 
+                // Między 09:30 a 17:30
+                elapsedMins = currentMins - 570;
+            } else { 
+                // Po 17:30
+                elapsedMins = currentMins - 1050;
+            }
+
+            // Przeliczamy minuty i sekundy bloku na łączną ilość sekund
+            const secondsInBlock = (elapsedMins * 60) + realSecond;
 
             // 1 sekunda RL = 3 sekundy DC
             const dcTotalSeconds = secondsInBlock * 3;
