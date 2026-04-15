@@ -1588,14 +1588,18 @@ app.post('/api/shop/buy', authenticateToken, requireAlive, async (req, res) => {
     }).eq('id', character.id);
 
     if (existingItem && isStackable) {
-      await supabase.from('inventory').update({ quantity: (BigInt(existingItem.quantity) + BigInt(quantity)).toString() }).eq('id', existingItem.id);
-    } else {
-      const occupied = backpackItems.map(i => i.backpack_index);
-      let freeIdx = 1; while (occupied.includes(freeIdx)) freeIdx++;
-      await supabase.from('inventory').insert({ character_id: character.id, item_template_id: template_id, quantity: quantity, equipped_slot: null, backpack_index: freeIdx });
-    }
+      await supabase.from('inventory').update({ quantity: (BigInt(existingItem.quantity) + BigInt(quantity)).toString() }).eq('id', existingItem.id);
+    } else {
+      const occupied = backpackItems.map(i => i.backpack_index);
+      let freeIdx = 1; while (occupied.includes(freeIdx)) freeIdx++;
+      await supabase.from('inventory').insert({ character_id: character.id, item_template_id: template_id, quantity: quantity, equipped_slot: null, backpack_index: freeIdx });
+    }
 
-    res.json({ success: true, message: `Kupiono x${quantity}!`, item: { name: itemTemplate.name, quantity: quantity, total_cost: totalCost.toString() }});
+    // --- TRACKER ZADAŃ SPECJALNYCH (ZAKUPY) ---
+    // Śledzimy ilość zakupionych przedmiotów
+    await updateTaskProgress(userId, 'shop', 'buy', quantity);
+
+    res.json({ success: true, message: `Kupiono x${quantity}!`, item: { name: itemTemplate.name, quantity: quantity, total_cost: totalCost.toString() }});
   } catch (err) { res.status(500).json({ error: 'Błąd podczas zakupu' }); }
 });
 
@@ -2151,9 +2155,12 @@ app.post('/api/training/start', authenticateToken, async (req, res) => {
     
     let realDurationMinutes;
     if (mentorId === 'time_chamber') {
+        // Sala Czasu ma swój unikalny wzór: X min RL = odpowiednik godzin
         realDurationMinutes = parseFloat(hours) * 5; 
     } else {
-        realDurationMinutes = parseFloat(hours) * 60; 
+        // Standardowy trening: 1 godzina w grze (DC) to 20 minut w rzeczywistości (RL)
+        // Dlatego dzielimy wybrane godziny gry przez 3
+        realDurationMinutes = (parseFloat(hours) / 3) * 60; 
     }
 
     const endTime = new Date(Date.now() + realDurationMinutes * 60 * 1000).toISOString();
@@ -2193,7 +2200,7 @@ app.post('/api/training/stop', authenticateToken, async (req, res) => {
       const effectivePower = Math.max(1000, parseInt(char.total_power_level || '0'));
       const trainingHours = parseFloat(hoursStr);
 
-      // --- TRACKER ZADAŃ SPECJALNYCH (Czas w minutach) ---
+      // --- TRACKER ZADAŃ SPECJALNYCH (Czas w minutach DC) ---
       await updateTaskProgress(userId, 'training', 'any', Math.floor(trainingHours * 60));
       
       const statGain = BigInt(Math.floor((400 + Math.pow(effectivePower, 0.55)) * mentor.multiplier * trainingHours));

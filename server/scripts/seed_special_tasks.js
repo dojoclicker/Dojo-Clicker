@@ -16,11 +16,12 @@ const specialTasksData = [
         name: 'Wytrwały Biegacz',
         description: 'Ukończ misję "Trening w pobliskim lesie" 50 razy.',
         task_type: 'mission',
-        target_id: '00000000-0000-0000-0000-000000000001', // ID Misji 1
+        target_id: '00000000-0000-0000-0000-000000000001',
         goal_amount: 50,
         min_dc_day: 1,
-        max_dc_day: 15, // Zadanie pojawia się tylko między 1 a 15 dniem
-        reward: { coins: 500, items: [{ id: "00000000-0000-0000-0000-000000000001", qty: 10 }] } // 500 monet i 10x Mięso
+        max_dc_day: 15,
+        // ID 1 to Kawałek Mięsa
+        reward: { coins: 500, items: [{ id: "00000000-0000-0000-0000-000000000001", qty: 10 }] } 
     },
     {
         id: generateTaskId(2),
@@ -31,7 +32,8 @@ const specialTasksData = [
         goal_amount: 5,
         min_dc_day: 5,
         max_dc_day: 75,
-        reward: { stats: { bonus_coins_pct: 5 } } // +5% stałego bonusu do monet
+        // ID 14 to Mała Sakiewka (+250 monet). Skoro nie chcesz stałego procentu, damy im tu czysty zastrzyk gotówki.
+        reward: { items: [{ id: "00000000-0000-0000-0000-000000000014", qty: 2 }] } 
     },
     {
         id: generateTaskId(3),
@@ -42,29 +44,32 @@ const specialTasksData = [
         goal_amount: 240,
         min_dc_day: 2,
         max_dc_day: 75,
-        reward: { items: [{ id: "00000000-0000-0000-0000-000000000030", qty: 1 }] } // 1x Święta Woda
+        // ID 30 to Kropla Wigoru (+10 Max Staminy)
+        reward: { items: [{ id: "00000000-0000-0000-0000-000000000030", qty: 1 }] } 
     },
     {
         id: generateTaskId(4),
         name: 'Powrót na Ring',
         description: 'Wygraj Lokalny Turniej Sztuk Walki 1 raz.',
         task_type: 'mission',
-        target_id: '00000000-0000-0000-0000-000000000011', // ID Misji 11 (Turniej)
+        target_id: '00000000-0000-0000-0000-000000000011',
         goal_amount: 1,
         min_dc_day: 3,
         max_dc_day: 75,
-        reward: { coins: 2500, stats: { strength: 250, speed: 250, endurance: 250, technique: 250 } }
+        // Dodano ID 32 (Esencja Wigoru)
+        reward: { coins: 2500, stats: { strength: 250, speed: 250, endurance: 250, technique: 250 }, items: [{ id: "00000000-0000-0000-0000-000000000032", qty: 1 }] }
     },
     {
         id: generateTaskId(5),
-        name: 'Gladiator',
-        description: 'Wygraj 3 walki na Arenie PVP.',
-        task_type: 'pvp',
-        target_id: 'win',
-        goal_amount: 3,
+        name: 'Bywalec Sklepów',
+        description: 'Kup 5 dowolnych przedmiotów w Sklepie (dowolny poziom).',
+        task_type: 'shop',
+        target_id: 'buy',
+        goal_amount: 5,
         min_dc_day: 15,
         max_dc_day: 75,
-        reward: { items: [{ id: "00000000-0000-0000-0000-000000000031", qty: 1 }] } // 1x Kropla Krwi Smoka
+        // Nektar Wigoru
+        reward: { items: [{ id: "00000000-0000-0000-0000-000000000031", qty: 1 }] } 
     }
 ];
 
