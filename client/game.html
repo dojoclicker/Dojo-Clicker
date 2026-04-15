@@ -67,11 +67,11 @@
         <div class="player-info">
             <div class="player-name">Ładowanie...</div>
             <div style="margin: 10px 0; display: flex; justify-content: center; align-items: center; gap: 8px;">
-    <button id="pl-info-btn" class="nuke-help-btn">?</button>
-    <span>Poziom Mocy</span>
-    <span id="power-level" style="font-weight: bold; font-size: 1.1rem; color: var(--goku-accent, #f59e0b);">0</span>
-</div>
-            
+            <button id="pl-info-btn" class="nuke-help-btn">?</button>
+            <span>Poziom Mocy</span>
+            <span id="power-level" style="font-weight: bold; font-size: 1.1rem; color: var(--goku-accent, #f59e0b);">0</span>
+        </div>
+                    
             <div class="character-stats">
                 <div class="stat-row">
                     <span>💪 Siła</span>
@@ -3061,66 +3061,66 @@
             });
 
             // Zmienna do przechowywania interwału tykania
-let clockInterval = null;
+            let clockInterval = null;
 
-function updateGameTime(state) {
-    const timeElement = document.getElementById('game-time');
-    if (!timeElement || !state) return;
+            function updateGameTime(state) {
+                const timeElement = document.getElementById('game-time');
+                if (!timeElement || !state) return;
 
-    // Zatrzymujemy poprzedni zegar, jeśli istniał
-    if (clockInterval) clearInterval(clockInterval);
+                // Zatrzymujemy poprzedni zegar, jeśli istniał
+                if (clockInterval) clearInterval(clockInterval);
 
-    GameState.currentRound = state.current_round || 1;
-    GameState.currentDcDay = state.current_dc_day || 1;
-    GameState.isDowntime = GameState.current_dc_day > 75;
+                GameState.currentRound = state.current_round || 1;
+                GameState.currentDcDay = state.current_dc_day || 1;
+                GameState.isDowntime = GameState.current_dc_day > 75;
 
-    if (GameState.isDowntime) {
-        timeElement.innerHTML = `<span style="color: var(--error); font-weight: bold;">RUNDA ZAKOŃCZONA</span>`;
-        handleDowntimeMode();
-    } else {
-        // Startujemy lokalne "tykanie" co sekundę
-        const startClock = () => {
-            const now = new Date();
-            const realHour = now.getHours();
-            const realMinute = now.getMinutes();
-            const realSecond = now.getSeconds();
+                if (GameState.isDowntime) {
+                    timeElement.innerHTML = `<span style="color: var(--error); font-weight: bold;">RUNDA ZAKOŃCZONA</span>`;
+                    handleDowntimeMode();
+                } else {
+                    // Startujemy lokalne "tykanie" co sekundę
+                    const startClock = () => {
+                        const now = new Date();
+                        const realHour = now.getHours();
+                        const realMinute = now.getMinutes();
+                        const realSecond = now.getSeconds();
 
-            // Wyliczamy obecny czas jako minuty od północy czasu rzeczywistego
-            const currentMins = (realHour * 60) + realMinute;
-            let elapsedMins = 0;
+                        // Wyliczamy obecny czas jako minuty od północy czasu rzeczywistego
+                        const currentMins = (realHour * 60) + realMinute;
+                        let elapsedMins = 0;
 
-            // Sprawdzamy, w którym z 3 bloków dziennych się znajdujemy (01:30 to 90 min, 09:30 to 570 min, 17:30 to 1050 min)
-            if (currentMins < 90) { 
-                // Jesteśmy przed 01:30 w nocy (czyli trwa jeszcze blok wczorajszy od 17:30)
-                elapsedMins = currentMins + (24 * 60) - 1050; 
-            } else if (currentMins >= 90 && currentMins < 570) { 
-                // Między 01:30 a 09:30
-                elapsedMins = currentMins - 90;
-            } else if (currentMins >= 570 && currentMins < 1050) { 
-                // Między 09:30 a 17:30
-                elapsedMins = currentMins - 570;
-            } else { 
-                // Po 17:30
-                elapsedMins = currentMins - 1050;
+                        // Sprawdzamy, w którym z 3 bloków dziennych się znajdujemy (01:30 to 90 min, 09:30 to 570 min, 17:30 to 1050 min)
+                        if (currentMins < 90) { 
+                            // Jesteśmy przed 01:30 w nocy (czyli trwa jeszcze blok wczorajszy od 17:30)
+                            elapsedMins = currentMins + (24 * 60) - 1050; 
+                        } else if (currentMins >= 90 && currentMins < 570) { 
+                            // Między 01:30 a 09:30
+                            elapsedMins = currentMins - 90;
+                        } else if (currentMins >= 570 && currentMins < 1050) { 
+                            // Między 09:30 a 17:30
+                            elapsedMins = currentMins - 570;
+                        } else { 
+                            // Po 17:30
+                            elapsedMins = currentMins - 1050;
+                        }
+
+                        // Przeliczamy minuty i sekundy bloku na łączną ilość sekund
+                        const secondsInBlock = (elapsedMins * 60) + realSecond;
+
+                        // 1 sekunda RL = 3 sekundy DC
+                        const dcTotalSeconds = secondsInBlock * 3;
+                        
+                        const dcHour = Math.floor(dcTotalSeconds / 3600) % 24;
+                        const dcMinute = Math.floor((dcTotalSeconds % 3600) / 60);
+
+                        timeElement.textContent = `Runda ${GameState.currentRound} | Dzień: ${GameState.currentDcDay}/75 | ${dcHour.toString().padStart(2, '0')}:${dcMinute.toString().padStart(2, '0')}`;
+                    };
+
+                    startClock(); // Wywołanie natychmiastowe
+                    clockInterval = setInterval(startClock, 1000); // Tykanie co sekundę
+                    releaseDowntimeMode();
+                }
             }
-
-            // Przeliczamy minuty i sekundy bloku na łączną ilość sekund
-            const secondsInBlock = (elapsedMins * 60) + realSecond;
-
-            // 1 sekunda RL = 3 sekundy DC
-            const dcTotalSeconds = secondsInBlock * 3;
-            
-            const dcHour = Math.floor(dcTotalSeconds / 3600) % 24;
-            const dcMinute = Math.floor((dcTotalSeconds % 3600) / 60);
-
-            timeElement.textContent = `Runda ${GameState.currentRound} | Dzień: ${GameState.currentDcDay}/75 | ${dcHour.toString().padStart(2, '0')}:${dcMinute.toString().padStart(2, '0')}`;
-        };
-
-        startClock(); // Wywołanie natychmiastowe
-        clockInterval = setInterval(startClock, 1000); // Tykanie co sekundę
-        releaseDowntimeMode();
-    }
-}
 
             function handleDowntimeMode() {
                 const navSection = document.getElementById('main-nav-section');
@@ -3595,7 +3595,7 @@ function updateGameTime(state) {
             trainingCountdownInterval = setInterval(update, 1000);
         }
 
-// ==========================================
+        // ==========================================
         // ⛏️ 11. TRYB PRACA (MINIGRA ZRĘCZNOŚCIOWA)
         // ==========================================
 
