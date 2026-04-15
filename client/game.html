@@ -3060,42 +3060,49 @@
                 window.location.href = 'index.html';
             });
 
-            // --- NOWY ZEGAR GLOBALNY I DOWNTIME ---
-            function updateGameTime(state) {
-                const timeElement = document.getElementById('game-time');
-                if (!timeElement || !state) return;
+            // Zmienna do przechowywania interwału tykania
+let clockInterval = null;
 
-                GameState.currentRound = state.current_round || 1;
-                GameState.currentDcDay = state.current_dc_day || 1;
-                GameState.isDowntime = GameState.currentDcDay > 75;
+function updateGameTime(state) {
+    const timeElement = document.getElementById('game-time');
+    if (!timeElement || !state) return;
 
-                if (GameState.isDowntime) {
-                    timeElement.innerHTML = `<span style="color: var(--error); font-weight: bold;">RUNDA ZAKOŃCZONA</span>`;
-                    handleDowntimeMode();
-                } else {
-                    const now = new Date();
-                    const realHour = now.getHours();
-                    const realMinute = now.getMinutes();
+    // Zatrzymujemy poprzedni zegar, jeśli istniał
+    if (clockInterval) clearInterval(clockInterval);
 
-                    // --- ZEGAR DOJO-CLICKER ---
-                    // 8 godzin realnych = 24 godziny DC. Wskaźnik przyspieszenia to x3.
-                    // Określamy, w którym "bloku 8-godzinnym" dnia obecnie jesteśmy (0-7)
-                    const blockHour = realHour % 8; 
-                    
-                    // Liczymy ile minut upłynęło od ostatniego "Północy DC" (czyli od 00:00, 08:00 lub 16:00 czasu realnego)
-                    const elapsedRealMinutes = (blockHour * 60) + realMinute;
-                    
-                    // Przyspieszamy to trzykrotnie dla świata gry
-                    const elapsedDcMinutes = elapsedRealMinutes * 3;
+    GameState.currentRound = state.current_round || 1;
+    GameState.currentDcDay = state.current_dc_day || 1;
+    GameState.isDowntime = GameState.current_dc_day > 75;
 
-                    // Wyliczamy godziny i minuty DC
-                    const dcHour = Math.floor(elapsedDcMinutes / 60);
-                    const dcMinute = elapsedDcMinutes % 60;
+    if (GameState.isDowntime) {
+        timeElement.innerHTML = `<span style="color: var(--error); font-weight: bold;">RUNDA ZAKOŃCZONA</span>`;
+        handleDowntimeMode();
+    } else {
+        // Startujemy lokalne "tykanie" co sekundę
+        const startClock = () => {
+            const now = new Date();
+            const realHour = now.getHours();
+            const realMinute = now.getMinutes();
+            const realSecond = now.getSeconds();
 
-                    timeElement.textContent = `Runda ${GameState.currentRound} | Dzień: ${GameState.currentDcDay}/75 | ${dcHour.toString().padStart(2, '0')}:${dcMinute.toString().padStart(2, '0')}`;
-                    releaseDowntimeMode();
-                }
-            }
+            // Obliczamy ile sekund minęło w obecnym bloku 8-godzinnym (00, 08, 16)
+            const blockStartHour = Math.floor(realHour / 8) * 8;
+            const secondsInBlock = ((realHour - blockStartHour) * 3600) + (realMinute * 60) + realSecond;
+
+            // 1 sekunda RL = 3 sekundy DC
+            const dcTotalSeconds = secondsInBlock * 3;
+            
+            const dcHour = Math.floor(dcTotalSeconds / 3600) % 24;
+            const dcMinute = Math.floor((dcTotalSeconds % 3600) / 60);
+
+            timeElement.textContent = `Runda ${GameState.currentRound} | Dzień: ${GameState.currentDcDay}/75 | ${dcHour.toString().padStart(2, '0')}:${dcMinute.toString().padStart(2, '0')}`;
+        };
+
+        startClock(); // Wywołanie natychmiastowe
+        clockInterval = setInterval(startClock, 1000); // Tykanie co sekundę
+        releaseDowntimeMode();
+    }
+}
 
             function handleDowntimeMode() {
                 const navSection = document.getElementById('main-nav-section');
