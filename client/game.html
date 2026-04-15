@@ -1816,6 +1816,36 @@
                 slot.className = 'inventory-slot';
                 slot.setAttribute('data-index', i);
                 
+                // --- DODANE EVENT LISTENER'Y DLA DRAG & DROP ---
+                slot.addEventListener('dragover', function(e) {
+                    if (window.isInventoryActionLocked) return;
+                    e.preventDefault();
+                    this.style.backgroundColor = 'rgba(255, 107, 0, 0.3)';
+                });
+                
+                slot.addEventListener('dragleave', function(e) {
+                    this.style.backgroundColor = '';
+                });
+                
+                slot.addEventListener('drop', function(e) {
+                    if (window.isInventoryActionLocked) return;
+                    e.preventDefault();
+                    e.stopPropagation();
+                    this.style.backgroundColor = '';
+                    
+                    const inventoryId = e.dataTransfer.getData('inventory_id');
+                    const targetIndex = this.getAttribute('data-index');
+                    
+                    const droppedOnCard = e.target.closest('.item-card');
+                    if (droppedOnCard) {
+                        const targetInventoryId = droppedOnCard.dataset.inventoryId;
+                        if (typeof performItemSwap === 'function') performItemSwap(inventoryId, 'backpack', targetIndex, targetInventoryId);
+                        return; 
+                    }
+                    if (typeof performItemSwap === 'function') performItemSwap(inventoryId, 'backpack', targetIndex, null);
+                });
+                // -----------------------------------------------
+                
                 const item = backpackItems.find(b => b.backpack_index === i);
                 if (item) {
                     const card = createItemCard(item);
