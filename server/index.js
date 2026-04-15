@@ -2426,7 +2426,7 @@ app.listen(port, async () => {
 });
 
 const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
-cron.schedule('30 1,9,17 * * *', async () => {
+cron.schedule('0 2,10,18 * * *', async () => {
   console.log('[Zegar DC] Wybiła Północ DC! Rozpoczynam zmianę dnia i losowanie zadań...');
   try {
     await supabase.from('global_server_state').update({ is_maintenance: true }).eq('id', 1);
@@ -2479,4 +2479,7 @@ cron.schedule('30 1,9,17 * * *', async () => {
     console.error('[Zegar DC] ⚠️ Krytyczny błąd podczas zmiany dnia:', error);
     await supabase.from('global_server_state').update({ is_maintenance: false }).eq('id', 1);
   }
+}, {
+  scheduled: true,
+  timezone: "Europe/Warsaw"
 });

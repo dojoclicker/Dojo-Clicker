@@ -735,14 +735,14 @@
             const realMinute = date.getMinutes();
             const realSecond = date.getSeconds();
 
-            // 1. Obliczanie Godziny DC (taki sam algorytm jak w zegarze głównym)
+            // 1. Obliczanie Godziny DC
             const currentMins = (realHour * 60) + realMinute;
             let elapsedMins = 0;
 
-            if (currentMins < 90) elapsedMins = currentMins + (24 * 60) - 1050; 
-            else if (currentMins >= 90 && currentMins < 570) elapsedMins = currentMins - 90;
-            else if (currentMins >= 570 && currentMins < 1050) elapsedMins = currentMins - 570;
-            else elapsedMins = currentMins - 1050;
+            if (currentMins < 120) elapsedMins = currentMins + (24 * 60) - 1080; 
+            else if (currentMins >= 120 && currentMins < 600) elapsedMins = currentMins - 120;
+            else if (currentMins >= 600 && currentMins < 1080) elapsedMins = currentMins - 600;
+            else elapsedMins = currentMins - 1080;
 
             const secondsInBlock = (elapsedMins * 60) + realSecond;
             const dcTotalSeconds = secondsInBlock * 3;
@@ -750,8 +750,8 @@
             const dcHour = Math.floor(dcTotalSeconds / 3600) % 24;
             const dcMinute = Math.floor((dcTotalSeconds % 3600) / 60);
 
-            // 2. Obliczanie Dnia DC (różnica w 8-godzinnych blokach od teraz)
-            const offsetMs = 90 * 60 * 1000; // Przesunięcie 01:30
+            // 2. Obliczanie Dnia DC
+            const offsetMs = 120 * 60 * 1000; // Przesunięcie 02:00 (120 minut)
             const adjustedNow = now.getTime() - (now.getTimezoneOffset() * 60000) - offsetMs;
             const adjustedDate = date.getTime() - (date.getTimezoneOffset() * 60000) - offsetMs;
             
@@ -760,7 +760,7 @@
             
             const blockDiff = blockNow - blockDate;
             let messageDcDay = GameState.currentDcDay - blockDiff;
-            if (messageDcDay < 1) messageDcDay = 1; // Zabezpieczenie
+            if (messageDcDay < 1) messageDcDay = 1;
 
             return `Dz. ${messageDcDay} | ${dcHour.toString().padStart(2, '0')}:${dcMinute.toString().padStart(2, '0')}`;
         }
@@ -3123,19 +3123,19 @@
                         const currentMins = (realHour * 60) + realMinute;
                         let elapsedMins = 0;
 
-                        // Sprawdzamy, w którym z 3 bloków dziennych się znajdujemy (01:30 to 90 min, 09:30 to 570 min, 17:30 to 1050 min)
-                        if (currentMins < 90) { 
-                            // Jesteśmy przed 01:30 w nocy (czyli trwa jeszcze blok wczorajszy od 17:30)
-                            elapsedMins = currentMins + (24 * 60) - 1050; 
-                        } else if (currentMins >= 90 && currentMins < 570) { 
-                            // Między 01:30 a 09:30
-                            elapsedMins = currentMins - 90;
-                        } else if (currentMins >= 570 && currentMins < 1050) { 
-                            // Między 09:30 a 17:30
-                            elapsedMins = currentMins - 570;
+                        // Sprawdzamy, w którym z 3 bloków dziennych się znajdujemy (02:00 to 120 min, 10:00 to 600 min, 18:00 to 1080 min)
+                        if (currentMins < 120) { 
+                            // Jesteśmy przed 02:00 w nocy (czyli trwa jeszcze blok wczorajszy od 18:00)
+                            elapsedMins = currentMins + (24 * 60) - 1080; 
+                        } else if (currentMins >= 120 && currentMins < 600) { 
+                            // Między 02:00 a 10:00
+                            elapsedMins = currentMins - 120;
+                        } else if (currentMins >= 600 && currentMins < 1080) { 
+                            // Między 10:00 a 18:00
+                            elapsedMins = currentMins - 600;
                         } else { 
-                            // Po 17:30
-                            elapsedMins = currentMins - 1050;
+                            // Po 18:00
+                            elapsedMins = currentMins - 1080;
                         }
 
                         // Przeliczamy minuty i sekundy bloku na łączną ilość sekund
