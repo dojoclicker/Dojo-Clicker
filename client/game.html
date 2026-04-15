@@ -512,24 +512,28 @@
         // 🚀 CENTRUM DOWODZENIA (STAN GLOBALNY GRY)
         // ==========================================
         
-        // --- 1. ZMIENNE SYSTEMOWE ---
-        window.isInventoryActionLocked = false;
-        window.isPlayerHospitalized = false;
-        window.isPlayerTraining = false;
-        window.isWorkMinigameActive = false;
-        window.tooltipTimeout = null;
-
-        // --- 2. STAN GRACZA (RAM) ---
-        window.playerCurrentStats = null;
-        window.playerEquipStats = null;
-        window.inventoryData = null;
-        window.allMissions = null;
-        window.playerCurrentCoins = 0;
-        window.playerBankCoins = 0;
-        window.playerBankCoinLimitLevel = 1;
-        window.playerBankSlotsUnlocked = 5;
-        window.playerCompletedMissions = [];
-        window.playerAttemptedOneTry = [];
+        // --- 1. & 2. STAN GRACZA I SYSTEMU (GameState) ---
+        const GameState = {
+            isInventoryActionLocked: false,
+            isPlayerHospitalized: false,
+            isPlayerTraining: false,
+            isWorkMinigameActive: false,
+            tooltipTimeout: null,
+            
+            playerCurrentStats: null,
+            playerEquipStats: null,
+            inventoryData: null,
+            allMissions: null,
+            
+            playerCurrentCoins: 0,
+            playerBankCoins: 0,
+            playerBankCoinLimitLevel: 1,
+            playerBankSlotsUnlocked: 5,
+            
+            playerCompletedMissions: [],
+            playerAttemptedOneTry: [],
+            chatChannel: null
+        };
 
         // --- 3. TIMERY I INTERWAŁY ---
         let hospitalInterval = null;
@@ -613,8 +617,8 @@
 
         async function apiCall(endpoint, method = 'GET', body = null, useActionLock = false) {
             if (useActionLock) {
-                if (window.isInventoryActionLocked) return null;
-                window.isInventoryActionLocked = true;
+                if (GameState.isInventoryActionLocked) return null;
+                GameState.isInventoryActionLocked = true;
             }
             
             try {
@@ -651,8 +655,31 @@
                 console.error(`[API] Błąd połączenia z ${endpoint}:`, error);
                 return { success: false, error: 'Wystąpił problem z połączeniem sieciowym.' };
             } finally {
-                if (useActionLock) window.isInventoryActionLocked = false;
+                if (useActionLock) GameState.isInventoryActionLocked = false;
             }
+        }
+
+        // ==========================================
+        // 🎨 1.5. NARZĘDZIA UI (HELPERS)
+        // ==========================================
+        function createDropZone(slotElement, dropAction) {
+            slotElement.addEventListener('dragover', function(e) {
+                if (GameState.isInventoryActionLocked) return;
+                e.preventDefault();
+                this.style.backgroundColor = 'rgba(255, 107, 0, 0.3)';
+            });
+            
+            slotElement.addEventListener('dragleave', function(e) {
+                this.style.backgroundColor = '';
+            });
+            
+            slotElement.addEventListener('drop', function(e) {
+                if (GameState.isInventoryActionLocked) return;
+                e.preventDefault();
+                e.stopPropagation();
+                this.style.backgroundColor = '';
+                dropAction(e, this); // Przekazujemy zdarzenie i samą kratkę do logiki
+            });
         }
 
         // ==========================================
@@ -681,7 +708,7 @@
                 }
 
                 const missions = await response.json();
-                window.allMissions = missions;
+                GameState.allMissions = missions;
                 renderMissions(missions);
                 
             } catch (error) {
@@ -723,14 +750,14 @@
             card.className = 'mission-card';
             card.dataset.missionId = mission.id;
             
-            const completed = window.playerCompletedMissions || [];
-            const attempted = window.playerAttemptedOneTry || [];
+            const completed = GameState.playerCompletedMissions || [];
+            const attempted = GameState.playerAttemptedOneTry || [];
             
             const isCompleted = mission.is_repeatable === false && completed.includes(mission.id);
             const isFailedOneTry = mission.is_one_try === true && attempted.includes(mission.id) && !completed.includes(mission.id);
             const isLockedByStory = isCompleted || isFailedOneTry;
 
-            const isUnlocked = index === 0 || completed.includes(window.allMissions[index - 1].id) || completed.includes(mission.id);
+            const isUnlocked = index === 0 || completed.includes(GameState.allMissions[index - 1].id) || completed.includes(mission.id);
             
             const missionIcons = [
                 '🌲', '🦅', '🐢', '⚔️', '👴', 
@@ -761,11 +788,11 @@
             let totalCappedRatio = 0n;
             let reqCount = 0n;
             
-            if (window.playerCurrentStats) {
+            if (GameState.playerCurrentStats) {
                 ['strength', 'speed', 'endurance', 'technique'].forEach(key => {
                     if (reqs[key] && Number(reqs[key]) > 0) {
-                        const baseStat = BigInt(window.playerCurrentStats[key] || '1');
-                        const equipBonus = BigInt((window.playerEquipStats && window.playerEquipStats[key]) ? window.playerEquipStats[key] : '0');
+                        const baseStat = BigInt(GameState.playerCurrentStats[key] || '1');
+                        const equipBonus = BigInt((GameState.playerEquipStats && GameState.playerEquipStats[key]) ? GameState.playerEquipStats[key] : '0');
                         const pStat = baseStat + equipBonus; 
                         
                         const rStat = BigInt(reqs[key]);
@@ -1171,7 +1198,7 @@
                 if (tab) tab.classList.remove('tab-disabled');
             });
 
-            if (window.isPlayerHospitalized || window.isPlayerTraining) {
+            if (GameState.isPlayerHospitalized || GameState.isPlayerTraining) {
                 if (tabs.missions) tabs.missions.classList.add('tab-disabled');
                 if (tabs.equipment) tabs.equipment.classList.add('tab-disabled');
                 if (tabs.shop) tabs.shop.classList.add('tab-disabled');
@@ -1179,11 +1206,11 @@
                 if (tabs.work) tabs.work.classList.add('tab-disabled');
             }
 
-            if (window.isPlayerHospitalized) {
+            if (GameState.isPlayerHospitalized) {
                 if (tabs.training) tabs.training.classList.add('tab-disabled');
             }
 
-            if (window.isPlayerTraining) {
+            if (GameState.isPlayerTraining) {
                 if (tabs.hospital) tabs.hospital.classList.add('tab-disabled');
             }
 
@@ -1197,7 +1224,7 @@
         }
 
         function lockTabsForHospital(isLocked) {
-            window.isPlayerHospitalized = isLocked;
+            GameState.isPlayerHospitalized = isLocked;
             updateTabsLockState();
         }
 
@@ -1244,16 +1271,16 @@
                 document.querySelector('.current-form').textContent = `Forma: ${data.current_form}`;
                 document.querySelector('.coins').textContent = `💰 Monety: ${data.coins}`;
                 
-                window.playerCurrentCoins = Number(data.coins);
+                GameState.playerCurrentCoins = Number(data.coins);
                 
-                window.playerBankCoins = Number(data.bank_coins || 0);
-                window.playerBankCoinLimitLevel = Number(data.bank_coin_limit_level || 1);
-                window.playerBankSlotsUnlocked = Number(data.bank_slots_unlocked || 5);
+                GameState.playerBankCoins = Number(data.bank_coins || 0);
+                GameState.playerBankCoinLimitLevel = Number(data.bank_coin_limit_level || 1);
+                GameState.playerBankSlotsUnlocked = Number(data.bank_slots_unlocked || 5);
                 
-                if (data.stats) window.playerCurrentStats = data.stats;
+                if (data.stats) GameState.playerCurrentStats = data.stats;
 
-                if (window.inventoryData) {
-                    renderInventory(window.inventoryData);
+                if (GameState.inventoryData) {
+                    renderInventory(GameState.inventoryData);
                     if (typeof renderShopBackpack === 'function') renderShopBackpack();
                     if (typeof renderShopItems === 'function') renderShopItems();
                 }
@@ -1330,12 +1357,12 @@
                     updateStatDisplay('stat-mental_strength', data.stats.mental_strength, data.equip_stats.mental_strength, data.equip_stats.breakdown?.mental_strength || []);
                 }
 
-                window.playerCompletedMissions = data.completed_missions;
-                window.playerAttemptedOneTry = data.attempted_one_try_missions || [];
-                if (data.strength !== undefined) window.playerCurrentStats = data;
-                window.playerEquipStats = data.equip_stats || {}; 
-                if (window.allMissions) {
-                    renderMissions(window.allMissions);
+                GameState.playerCompletedMissions = data.completed_missions;
+                GameState.playerAttemptedOneTry = data.attempted_one_try_missions || [];
+                if (data.strength !== undefined) GameState.playerCurrentStats = data;
+                GameState.playerEquipStats = data.equip_stats || {}; 
+                if (GameState.allMissions) {
+                    renderMissions(GameState.allMissions);
                     if (typeof window.refreshActiveTooltip === 'function') window.refreshActiveTooltip();
                 }
 
@@ -1444,7 +1471,7 @@
                 }
 
                 const inventory = await response.json();
-                window.inventoryData = inventory;
+                GameState.inventoryData = inventory;
                 renderInventory(inventory);
                 
             } catch (error) {
@@ -1527,25 +1554,11 @@
                 slot.className = 'inventory-slot';
                 slot.setAttribute('data-index', i);
                 
-                slot.addEventListener('dragover', function(e) {
-                    if (window.isInventoryActionLocked) return;
-                    e.preventDefault();
-                    this.style.backgroundColor = 'rgba(255, 107, 0, 0.3)';
-                });
-                
-                slot.addEventListener('dragleave', function(e) {
-                    this.style.backgroundColor = '';
-                });
-                
-                slot.addEventListener('drop', function(e) {
-                    if (window.isInventoryActionLocked) return;
-                    e.preventDefault();
-                    e.stopPropagation();
-                    this.style.backgroundColor = '';
-                    
+                // Używamy naszego nowego Helpera
+                createDropZone(slot, (e, currentSlot) => {
                     const inventoryId = e.dataTransfer.getData('inventory_id');
                     const sourceSlot = e.dataTransfer.getData('source_slot');
-                    const targetIndex = this.getAttribute('data-index');
+                    const targetIndex = currentSlot.getAttribute('data-index');
                     
                     const droppedOnCard = e.target.closest('.item-card');
                     if (droppedOnCard) {
@@ -1603,10 +1616,10 @@
         }
 
         function calculateMaxBackpackSlots() {
-            if (!window.playerCurrentStats) return 5;
-            const strength = BigInt(window.playerCurrentStats.strength || '0');
-            const speed = BigInt(window.playerCurrentStats.speed || '0');
-            const endurance = BigInt(window.playerCurrentStats.endurance || '0');
+            if (!GameState.playerCurrentStats) return 5;
+            const strength = BigInt(GameState.playerCurrentStats.strength || '0');
+            const speed = BigInt(GameState.playerCurrentStats.speed || '0');
+            const endurance = BigInt(GameState.playerCurrentStats.endurance || '0');
             let minStat = strength;
             if (speed < minStat) minStat = speed;
             if (endurance < minStat) minStat = endurance;
@@ -1637,7 +1650,7 @@
             `;
 
             card.addEventListener('dragstart', function(e) {
-                if (window.isInventoryActionLocked) {
+                if (GameState.isInventoryActionLocked) {
                     e.preventDefault();
                     return;
                 }
@@ -1660,7 +1673,7 @@
                 e.preventDefault();
                 e.stopPropagation();
                 
-                if (window.tooltipTimeout) clearTimeout(window.tooltipTimeout); 
+                if (GameState.tooltipTimeout) clearTimeout(GameState.tooltipTimeout); 
                 const tooltip = document.getElementById('global-tooltip');
                 if (tooltip) {
                     tooltip.style.opacity = '0';
@@ -1668,7 +1681,7 @@
                     tooltip.dataset.currentCard = '';
                 }
                 
-                if (window.isInventoryActionLocked) return;
+                if (GameState.isInventoryActionLocked) return;
 
                 const activeTab = localStorage.getItem('active_game_tab');
                 if (activeTab === 'bank') {
@@ -1685,7 +1698,7 @@
                 if (e.shiftKey && (item.item_templates?.category === 'consumable' || item.item_templates?.category === 'special_consumable') && parseInt(item.quantity) > 1) {
                     e.preventDefault();
                     e.stopPropagation();
-                    if (window.isInventoryActionLocked) return;
+                    if (GameState.isInventoryActionLocked) return;
                     
                     const splitAmount = prompt(`Ile sztuk chcesz wydzielić? (Max: ${parseInt(item.quantity) - 1})`, "1");
                     if (splitAmount && !isNaN(splitAmount) && parseInt(splitAmount) > 0 && parseInt(splitAmount) < parseInt(item.quantity)) {
@@ -1806,35 +1819,20 @@
         function renderShopBackpack() {
             const grid = document.getElementById('shop-backpack-grid');
             if (!grid) return;
-            const backpackItems = (window.inventoryData || []).filter(item => item.equipped_slot === null);
+            const backpackItems = (GameState.inventoryData || []).filter(item => item.equipped_slot === null);
             
             grid.innerHTML = '';
-            const maxSlots = calculateMaxBackpackSlots(window.playerCurrentStats || {});
+            const maxSlots = calculateMaxBackpackSlots(GameState.playerCurrentStats || {});
             
             for (let i = 1; i <= maxSlots; i++) {
                 const slot = document.createElement('div');
                 slot.className = 'inventory-slot';
                 slot.setAttribute('data-index', i);
                 
-                // --- DODANE EVENT LISTENER'Y DLA DRAG & DROP ---
-                slot.addEventListener('dragover', function(e) {
-                    if (window.isInventoryActionLocked) return;
-                    e.preventDefault();
-                    this.style.backgroundColor = 'rgba(255, 107, 0, 0.3)';
-                });
-                
-                slot.addEventListener('dragleave', function(e) {
-                    this.style.backgroundColor = '';
-                });
-                
-                slot.addEventListener('drop', function(e) {
-                    if (window.isInventoryActionLocked) return;
-                    e.preventDefault();
-                    e.stopPropagation();
-                    this.style.backgroundColor = '';
-                    
+                // Używamy Helpera w sklepie
+                createDropZone(slot, (e, currentSlot) => {
                     const inventoryId = e.dataTransfer.getData('inventory_id');
-                    const targetIndex = this.getAttribute('data-index');
+                    const targetIndex = currentSlot.getAttribute('data-index');
                     
                     const droppedOnCard = e.target.closest('.item-card');
                     if (droppedOnCard) {
@@ -1844,7 +1842,6 @@
                     }
                     if (typeof performItemSwap === 'function') performItemSwap(inventoryId, 'backpack', targetIndex, null);
                 });
-                // -----------------------------------------------
                 
                 const item = backpackItems.find(b => b.backpack_index === i);
                 if (item) {
@@ -1860,8 +1857,8 @@
             card.className = 'shop-item-card';
             card.setAttribute('data-item-template', encodeURIComponent(JSON.stringify(item)));
             
-            const playerCoins = window.playerCurrentCoins || 0;
-            const backpackItems = (window.inventoryData || []).filter(i => i.equipped_slot === null);
+            const playerCoins = GameState.playerCurrentCoins || 0;
+            const backpackItems = (GameState.inventoryData || []).filter(i => i.equipped_slot === null);
             const isStackable = item.category === 'consumable' || item.category === 'special_consumable';
             
             const maxDaily = 11 - (item.shop_level || 1);
@@ -1874,7 +1871,7 @@
             let hasSpace = false;
             const existingInInv = backpackItems.find(i => i.item_template_id === item.id);
             if (existingInInv && isStackable) hasSpace = true;
-            else hasSpace = backpackItems.length < calculateMaxBackpackSlots(window.playerCurrentStats || {});
+            else hasSpace = backpackItems.length < calculateMaxBackpackSlots(GameState.playerCurrentStats || {});
 
             card.innerHTML = `
                 <div class="shop-item-content">
@@ -1946,9 +1943,9 @@
             const upgradeCostDisplay = document.getElementById('bank-upgrade-cost');
             const slotsDisplay = document.getElementById('bank-slots-display');
 
-            const currentLimitLevel = window.playerBankCoinLimitLevel || 1;
-            const currentCoins = window.playerCurrentCoins || 0;
-            const bankCoins = window.playerBankCoins || 0;
+            const currentLimitLevel = GameState.playerBankCoinLimitLevel || 1;
+            const currentCoins = GameState.playerCurrentCoins || 0;
+            const bankCoins = GameState.playerBankCoins || 0;
 
             if (coinsDisplay) coinsDisplay.textContent = `${currentCoins.toLocaleString()} 💰`;
             if (bankCoinsDisplay) bankCoinsDisplay.textContent = `${bankCoins.toLocaleString()} 💰`;
@@ -1970,8 +1967,8 @@
                 }
             }
 
-            const bankItems = (window.inventoryData || []).filter(item => item.equipped_slot === 'bank');
-            if (slotsDisplay) slotsDisplay.textContent = `${bankItems.length}/${window.playerBankSlotsUnlocked}`;
+            const bankItems = (GameState.inventoryData || []).filter(item => item.equipped_slot === 'bank');
+            if (slotsDisplay) slotsDisplay.textContent = `${bankItems.length}/${GameState.playerBankSlotsUnlocked}`;
 
             renderBankSlots();
             renderBankBackpack();
@@ -1990,8 +1987,8 @@
             if (!bankGrid) return;
 
             bankGrid.innerHTML = '';
-            const bankItems = (window.inventoryData || []).filter(item => item.equipped_slot === 'bank');
-            const unlocked = window.playerBankSlotsUnlocked || 5;
+            const bankItems = (GameState.inventoryData || []).filter(item => item.equipped_slot === 'bank');
+            const unlocked = GameState.playerBankSlotsUnlocked || 5;
 
             function getSlotCost(n) {
                 if (n >= 6 && n <= 10) return 5000;
@@ -2009,24 +2006,9 @@
                 slot.setAttribute('data-index', i);
                 
                 if (i <= unlocked) {
-                    slot.addEventListener('dragover', function(e) {
-                        if (window.isInventoryActionLocked) return;
-                        e.preventDefault();
-                        this.style.backgroundColor = 'rgba(255, 107, 0, 0.3)';
-                    });
-                    
-                    slot.addEventListener('dragleave', function(e) {
-                        this.style.backgroundColor = '';
-                    });
-                    
-                    slot.addEventListener('drop', function(e) {
-                        if (window.isInventoryActionLocked) return;
-                        e.preventDefault();
-                        e.stopPropagation();
-                        this.style.backgroundColor = '';
-                        
+                    createDropZone(slot, (e, currentSlot) => {
                         const inventoryId = e.dataTransfer.getData('inventory_id');
-                        const targetIndex = this.getAttribute('data-index');
+                        const targetIndex = currentSlot.getAttribute('data-index');
                         
                         if (typeof transferBankItem === 'function') {
                             transferBankItem(inventoryId, 'bank', 'all', targetIndex);
@@ -2059,7 +2041,7 @@
             const grid = document.getElementById('bank-backpack-grid');
             if (!grid) return;
             
-            const backpackItems = (window.inventoryData || []).filter(item => item.equipped_slot === null);
+            const backpackItems = (GameState.inventoryData || []).filter(item => item.equipped_slot === null);
             grid.innerHTML = '';
             
             const maxSlots = calculateMaxBackpackSlots();
@@ -2068,24 +2050,10 @@
                 slot.className = 'inventory-slot';
                 slot.setAttribute('data-index', i);
                 
-                slot.addEventListener('dragover', function(e) {
-                    if (window.isInventoryActionLocked) return;
-                    e.preventDefault();
-                    this.style.backgroundColor = 'rgba(255, 107, 0, 0.3)';
-                });
-                
-                slot.addEventListener('dragleave', function(e) {
-                    this.style.backgroundColor = '';
-                });
-                
-                slot.addEventListener('drop', function(e) {
-                    if (window.isInventoryActionLocked) return;
-                    e.preventDefault();
-                    this.style.backgroundColor = '';
-                    
+                createDropZone(slot, (e, currentSlot) => {
                     const inventoryId = e.dataTransfer.getData('inventory_id');
                     const sourceSlot = e.dataTransfer.getData('source_slot');
-                    const targetIndex = this.getAttribute('data-index');
+                    const targetIndex = currentSlot.getAttribute('data-index');
                     
                     if (sourceSlot === 'bank') {
                         if (typeof transferBankItem === 'function') transferBankItem(inventoryId, 'backpack', 'all', targetIndex);
@@ -2387,8 +2355,8 @@
         }
 
         async function performItemSwap(inventoryId, slotTarget, backpackIndexTarget = null, targetItemId = null) {
-            if (window.isInventoryActionLocked) return;
-            window.isInventoryActionLocked = true;
+            if (GameState.isInventoryActionLocked) return;
+            GameState.isInventoryActionLocked = true;
             
             try {
                 const response = await fetch(`${API_BASE_URL}/api/inventory/swap`, {
@@ -2408,8 +2376,8 @@
                 const data = await response.json();
                 
                 if (data.success) {
-                    const item1 = window.inventoryData.find(i => i.id === inventoryId);
-                    const item2 = targetItemId ? window.inventoryData.find(i => i.id === targetItemId) : null;
+                    const item1 = GameState.inventoryData.find(i => i.id === inventoryId);
+                    const item2 = targetItemId ? GameState.inventoryData.find(i => i.id === targetItemId) : null;
                     
                     const isEquipAction = (slotTarget !== 'backpack' && slotTarget !== 'bank') || 
                                           (item1 && item1.equipped_slot !== null && item1.equipped_slot !== 'bank');
@@ -2435,7 +2403,7 @@
                             item1.backpack_index = parsedIndexTarget;
                         }
 
-                        renderInventory(window.inventoryData);
+                        renderInventory(GameState.inventoryData);
                         
                         const activeTab = localStorage.getItem('active_game_tab');
                         if (activeTab === 'bank' && typeof renderBank === 'function') renderBank();
@@ -2455,7 +2423,7 @@
                 console.error('[Swap] Błąd komunikacji z backendem:', error);
                 showWarningMessage('Wystąpił błąd podczas zamiany przedmiotów');
             } finally {
-                window.isInventoryActionLocked = false;
+                GameState.isInventoryActionLocked = false;
             }
         }
 
@@ -2773,7 +2741,7 @@
                         setTimeout(() => initializeRealtimeChat(), 5000);
                     }
                 });
-            window.chatChannel = channel;
+            GameState.chatChannel = channel;
         }
 
         function addNewChatMessage(message) {
@@ -2826,8 +2794,8 @@
                 tooltip.style.visibility = 'hidden';
                 tooltip.dataset.currentCard = '';
             }
-            if (window.tooltipTimeout) {
-                clearTimeout(window.tooltipTimeout);
+            if (GameState.tooltipTimeout) {
+                clearTimeout(GameState.tooltipTimeout);
             }
         };
 
@@ -2875,7 +2843,7 @@
             }
 
             document.getElementById('btn-use-senzu')?.addEventListener('click', async function() {
-                const magicBean = window.inventoryData?.find(item => 
+                const magicBean = GameState.inventoryData?.find(item => 
                     item.item_template_id === '00000000-0000-0000-0000-000000000019' && 
                     item.equipped_slot === null
                 );
@@ -2971,9 +2939,9 @@
                     const simpleTooltip = e.target.hasAttribute('data-tooltip') ? e.target : e.target.closest('[data-tooltip]');
                     
                     if (card || simpleTooltip) {
-                        clearTimeout(window.tooltipTimeout); 
-                        window.tooltipTimeout = setTimeout(() => {
-                            if (window.isInventoryActionLocked) return;
+                        clearTimeout(GameState.tooltipTimeout); 
+                        GameState.tooltipTimeout = setTimeout(() => {
+                            if (GameState.isInventoryActionLocked) return;
                             if (card && !document.body.contains(card)) return;
                             if (simpleTooltip && !document.body.contains(simpleTooltip)) return;
 
@@ -3038,7 +3006,7 @@
                     const card = e.target.closest('.item-card, .shop-item-card, .mission-card');
                     const simpleTooltip = e.target.closest('[data-tooltip]');
                     if ((card && !card.contains(e.relatedTarget)) || (simpleTooltip && !simpleTooltip.contains(e.relatedTarget))) {
-                        clearTimeout(window.tooltipTimeout); 
+                        clearTimeout(GameState.tooltipTimeout); 
                         globalTooltip.style.opacity = '0';
                         globalTooltip.style.visibility = 'hidden';
                         globalTooltip.dataset.currentCard = '';
@@ -3124,7 +3092,7 @@
 
                 if (newTrainingState) {
                     if (!isCurrentlyTraining || progressView.style.display === 'none') {
-                        window.isPlayerTraining = true;
+                        GameState.isPlayerTraining = true;
                         const [mentorId, hours, stat] = data.activeTraining.split(':');
                         const mentor = trainingMentors.find(m => m.id === mentorId) || { name: 'Mistrz' };
                         showActiveTrainingState(mentor, data.endTime);
@@ -3132,7 +3100,7 @@
                     }
                 } else {
                     if (isCurrentlyTraining || setupView.style.display === 'none') {
-                        window.isPlayerTraining = false;
+                        GameState.isPlayerTraining = false;
                         showSetupState();
                         if (typeof updateTabsLockState === 'function') updateTabsLockState();
                     }
@@ -3337,7 +3305,7 @@
         // ==========================================
 
         function lockTabsForWork(isWorking) {
-            window.isWorkMinigameActive = isWorking;
+            GameState.isWorkMinigameActive = isWorking;
             const tabs = document.querySelectorAll('.nav-btn');
             tabs.forEach(tab => {
                 if (tab.id !== 'nav-work-btn') {
@@ -3364,7 +3332,7 @@
             const container = document.getElementById('work-list-container');
             if (!container) return;
             
-            const completedMissions = window.playerCompletedMissions || [];
+            const completedMissions = GameState.playerCompletedMissions || [];
             container.innerHTML = '';
             
             WORK_FRONTEND_DATA.forEach(work => {
@@ -3390,7 +3358,7 @@
         }
 
         function selectWork(workObj, cardElement) {
-            if (window.isWorkMinigameActive) return; 
+            if (GameState.isWorkMinigameActive) return; 
             currentSelectedWorkId = workObj.id;
             currentWorkReward = workObj.reward;
             currentWorkDifficulty = WORK_FRONTEND_DATA.findIndex(w => w.id === workObj.id) + 1;
@@ -3398,11 +3366,11 @@
             document.querySelectorAll('#work-list-container .mentor-card').forEach(c => c.classList.remove('selected'));
             cardElement.classList.add('selected');
             
-            const mission = (window.allMissions || []).find(m => m.id === workObj.reqMission);
+            const mission = (GameState.allMissions || []).find(m => m.id === workObj.reqMission);
             const reqs = mission ? mission.req_stats : { strength: 0, speed: 0, endurance: 0 };
 
-            const baseStats = window.playerCurrentStats || {};
-            const equipStats = window.playerEquipStats || {};
+            const baseStats = GameState.playerCurrentStats || {};
+            const equipStats = GameState.playerEquipStats || {};
             
             const pStr = BigInt(baseStats.strength || 0) + BigInt(equipStats.strength || 0);
             const pSpd = BigInt(baseStats.speed || 0) + BigInt(equipStats.speed || 0);
@@ -3465,12 +3433,12 @@
 
         if (canvas) {
             canvas.addEventListener('mousemove', (e) => {
-                if (!window.isWorkMinigameActive) return;
+                if (!GameState.isWorkMinigameActive) return;
                 const rect = canvas.getBoundingClientRect(); const scaleX = canvas.width / rect.width;
                 gameState.player.x = ((e.clientX - rect.left) * scaleX) - (gameState.player.w / 2);
             });
             canvas.addEventListener('touchmove', (e) => {
-                if (!window.isWorkMinigameActive) return; e.preventDefault();
+                if (!GameState.isWorkMinigameActive) return; e.preventDefault();
                 const rect = canvas.getBoundingClientRect(); const scaleX = canvas.width / rect.width;
                 gameState.player.x = ((e.touches[0].clientX - rect.left) * scaleX) - (gameState.player.w / 2);
             }, { passive: false });
@@ -3481,8 +3449,8 @@
             let coinsBase = netScore * currentWorkReward;
             
             let tStr = 0, tSpd = 0, tEnd = 0, tTech = 0, tHp = 0, tMp = 0, tCoinsPct = 0, tCoinsFlat = 0;
-            if (window.inventoryData) {
-                window.inventoryData.forEach(item => {
+            if (GameState.inventoryData) {
+                GameState.inventoryData.forEach(item => {
                     if (item.equipped_slot && item.equipped_slot !== 'bank' && item.item_templates && item.item_templates.bonuses) {
                         let b = item.item_templates.bonuses;
                         if (b.type === 'training') {
@@ -3532,7 +3500,7 @@
         }
 
         function spawnObject() {
-            if (!window.isWorkMinigameActive) return;
+            if (!GameState.isWorkMinigameActive) return;
             
             const dropTimesLUT = [1.9, 1.8, 1.7, 1.6, 1.5, 1.4, 1.3, 1.2, 1.1, 1.0, 0.9, 0.8, 0.7, 0.6, 0.5];
             
@@ -3594,7 +3562,7 @@
         }
 
         function gameLoop() {
-            if (!window.isWorkMinigameActive) return;
+            if (!GameState.isWorkMinigameActive) return;
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             
             if (gameState.keys.left) gameState.player.x -= gameState.player.speed;
@@ -3665,12 +3633,12 @@
         }
 
         document.getElementById('start-work-btn')?.addEventListener('click', async () => {
-            if (!currentSelectedWorkId || window.isWorkMinigameActive) return;
+            if (!currentSelectedWorkId || GameState.isWorkMinigameActive) return;
             const res = await apiCall('/api/work/start', 'POST', { workId: currentSelectedWorkId }, true);
             if (!res) return;
 
             if (res.success) {
-                window.isWorkMinigameActive = true; lockTabsForWork(true);
+                GameState.isWorkMinigameActive = true; lockTabsForWork(true);
                 
                 const listPanel = document.getElementById('work-list-panel');
                 if (listPanel) listPanel.style.display = 'none';
@@ -3710,7 +3678,7 @@
         });
 
         async function finishWorkMinigame(isFailed = false) {
-            window.isWorkMinigameActive = false;
+            GameState.isWorkMinigameActive = false;
             clearInterval(workTimerInterval); cancelAnimationFrame(workAnimationId);
             
             if (isFailed) {
