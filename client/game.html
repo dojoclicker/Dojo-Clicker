@@ -727,6 +727,44 @@
             });
         }
 
+        function formatDcTime(dateString) {
+            const date = new Date(dateString);
+            const now = new Date();
+
+            const realHour = date.getHours();
+            const realMinute = date.getMinutes();
+            const realSecond = date.getSeconds();
+
+            // 1. Obliczanie Godziny DC (taki sam algorytm jak w zegarze głównym)
+            const currentMins = (realHour * 60) + realMinute;
+            let elapsedMins = 0;
+
+            if (currentMins < 90) elapsedMins = currentMins + (24 * 60) - 1050; 
+            else if (currentMins >= 90 && currentMins < 570) elapsedMins = currentMins - 90;
+            else if (currentMins >= 570 && currentMins < 1050) elapsedMins = currentMins - 570;
+            else elapsedMins = currentMins - 1050;
+
+            const secondsInBlock = (elapsedMins * 60) + realSecond;
+            const dcTotalSeconds = secondsInBlock * 3;
+            
+            const dcHour = Math.floor(dcTotalSeconds / 3600) % 24;
+            const dcMinute = Math.floor((dcTotalSeconds % 3600) / 60);
+
+            // 2. Obliczanie Dnia DC (różnica w 8-godzinnych blokach od teraz)
+            const offsetMs = 90 * 60 * 1000; // Przesunięcie 01:30
+            const adjustedNow = now.getTime() - (now.getTimezoneOffset() * 60000) - offsetMs;
+            const adjustedDate = date.getTime() - (date.getTimezoneOffset() * 60000) - offsetMs;
+            
+            const blockNow = Math.floor(adjustedNow / (8 * 3600 * 1000));
+            const blockDate = Math.floor(adjustedDate / (8 * 3600 * 1000));
+            
+            const blockDiff = blockNow - blockDate;
+            let messageDcDay = GameState.currentDcDay - blockDiff;
+            if (messageDcDay < 1) messageDcDay = 1; // Zabezpieczenie
+
+            return `Dz. ${messageDcDay} | ${dcHour.toString().padStart(2, '0')}:${dcMinute.toString().padStart(2, '0')}`;
+        }
+
         // ==========================================
         // 📜 1.8. ZADANIA SPECJALNE (DZIENNE)
         // ==========================================
@@ -2837,7 +2875,7 @@
             }
         }
 
-        function renderChatMessages(messages) {
+       function renderChatMessages(messages) {
             const chatMessages = document.getElementById('chat-messages');
             if (!chatMessages) return;
 
@@ -2851,10 +2889,8 @@
             }
 
             const messagesHTML = messages.map(msg => {
-                const time = new Date(msg.created_at).toLocaleTimeString('pl-PL', { 
-                    hour: '2-digit', 
-                    minute: '2-digit' 
-                });
+                const time = formatDcTime(msg.created_at); // UŻYCIE NOWEGO CZASU DC
+                
                 const ghostIcon = msg.is_ghost ? '👻 ' : '';
                 const ghostStyle = msg.is_ghost ? 
                     'opacity: 0.7; color: #87ceeb;' : 
@@ -2863,8 +2899,8 @@
                 return `
                     <div class="chat-message-row" style="${ghostStyle}">
                         <div style="font-size: 0.7rem; color: var(--text-muted); flex-shrink: 0;">[${time}]</div>
-                        <div style="font-size: 0.85rem; font-weight: 700; color: var(--goku-accent); flex-shrink: 0;">${ghostIcon}${msg.username}:</div>
-                        <div style="font-size: 0.85rem; color: var(--text-primary); word-break: break-word;">${msg.content}</div>
+                        <div style="font-size: 0.85rem; font-weight: 700; color: var(--goku-accent); flex-shrink: 0; margin-left: 5px;">${ghostIcon}${msg.username}:</div>
+                        <div style="font-size: 0.85rem; color: var(--text-primary); word-break: break-word; margin-left: 5px;">${msg.content}</div>
                     </div>
                 `;
             }).join('');
@@ -2937,10 +2973,8 @@
                 chatMessages.innerHTML = '';
             }
 
-            const time = new Date(message.created_at).toLocaleTimeString('pl-PL', { 
-                hour: '2-digit', 
-                minute: '2-digit' 
-            });
+            const time = formatDcTime(message.created_at); // UŻYCIE NOWEGO CZASU DC
+            
             const ghostIcon = message.is_ghost ? '👻 ' : '';
             const ghostStyle = message.is_ghost ? 
                 'opacity: 0.7; color: #87ceeb;' : 
@@ -2949,8 +2983,8 @@
             const messageHTML = `
                 <div class="chat-message-row" style="${ghostStyle}">
                     <div style="font-size: 0.7rem; color: var(--text-muted); flex-shrink: 0;">[${time}]</div>
-                    <div style="font-size: 0.85rem; font-weight: 700; color: var(--goku-accent); flex-shrink: 0;">${ghostIcon}${message.username}:</div>
-                    <div style="font-size: 0.85rem; color: var(--text-primary); word-break: break-word;">${message.content}</div>
+                    <div style="font-size: 0.85rem; font-weight: 700; color: var(--goku-accent); flex-shrink: 0; margin-left: 5px;">${ghostIcon}${message.username}:</div>
+                    <div style="font-size: 0.85rem; color: var(--text-primary); word-break: break-word; margin-left: 5px;">${message.content}</div>
                 </div>
             `;
 
