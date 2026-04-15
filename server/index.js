@@ -62,6 +62,16 @@ const BANK_COIN_LIMITS = {
 
 const BANK_SLOT_COSTS = { '6-10': 5000, '11-15': 25000, '16-20': 100000, '21-25': 500000 };
 
+// --- KONFIGURACJA NAGRODY GŁÓWNEJ ZA ZADANIA (Zależnie od dnia Rundy) ---
+const MAIN_DAILY_REWARDS = [
+  // Od Dnia 1 do 25
+  { max_day: 25, reward: { stats: { bonus_hp: 50n, bonus_mp: 50n } }, text: '+50 Max HP, +50 Max MP (Nagroda Rundy)' },
+  // Od Dnia 26 do 50
+  { max_day: 50, reward: { stats: { bonus_hp: 100n, bonus_mp: 100n } }, text: '+100 Max HP, +100 Max MP (Nagroda Rundy)' },
+  // Od Dnia 51 do 75 (Koniec rundy)
+  { max_day: 75, reward: { coins: 50000n }, text: '50,000 Monet (Nagroda Końcowa Rundy)' }
+];
+
 // --- 1B. ZMIENNE GLOBALNE I CACHE ---
 let globalServerState = null;
 let itemDictCache = null;
@@ -222,6 +232,41 @@ function calculateDeathPenalty(character, currentStats, powerLevel, source) {
             men: maxBigInt(1n, BigInt(currentStats.men) - menLoss).toString()
         }
     };
+}
+
+// Helper 5: Aktualizacja postępu Dziennych Zadań Specjalnych
+async function updateTaskProgress(userId, taskType, targetId, amountToAdd) {
+    if (!globalServerState || !globalServerState.daily_global_tasks) return;
+    
+    // Szukamy aktywnych zadań, które pasują do tego typu akcji
+    const activeTasks = globalServerState.daily_global_tasks.filter(t => 
+        t.task_type === taskType && (t.target_id === targetId || t.target_id === 'any')
+    );
+    if (activeTasks.length === 0) return;
+
+    try {
+        const { data: char } = await supabase.from('characters').select('id, daily_tasks_progress').eq('profile_id', userId).single();
+        if (!char) return;
+
+        let progress = char.daily_tasks_progress || {};
+        let updated = false;
+
+        activeTasks.forEach(task => {
+            if (!progress[task.id]) progress[task.id] = { current: 0, claimed: false };
+            
+            // Dodajemy postęp tylko, jeśli zadanie nie zostało jeszcze odebrane i ukończone
+            if (!progress[task.id].claimed && progress[task.id].current < task.goal_amount) {
+                progress[task.id].current += amountToAdd;
+                updated = true;
+            }
+        });
+
+        if (updated) {
+            await supabase.from('characters').update({ daily_tasks_progress: progress }).eq('id', char.id);
+        }
+    } catch(err) {
+        console.error('[Tasks] Błąd aktualizacji postępu:', err.message);
+    }
 }
 
 // ==========================================
@@ -396,7 +441,7 @@ async function initGlobalState() {
         globalServerState.is_maintenance = false;
     }
 
-    console.log(`[Zegar DC] Stan serwera załadowany do RAM. Obecny Dzień DC: ${globalServerState.current_dc_day}`);
+    console.log(`[Zegar DC] Stan serwera załadowany do RAM. Runda: ${globalServerState.current_round}, Dzień DC: ${globalServerState.current_dc_day}`);
     
     // Uruchomienie nasłuchiwania na zmiany w bazie (WebSockets)
     subscribeToGlobalStateChanges();
@@ -414,7 +459,7 @@ function subscribeToGlobalStateChanges() {
       { event: 'UPDATE', schema: 'public', table: 'global_server_state', filter: 'id=eq.1' },
       (payload) => {
         globalServerState = payload.new;
-        console.log(`[Zegar DC] Wykryto zmianę! Zaktualizowano bufor RAM. Nowy Dzień DC: ${globalServerState.current_dc_day}`);
+        console.log(`[Zegar DC] Wykryto zmianę! Zaktualizowano bufor RAM. Runda: ${globalServerState.current_round}, Dzień: ${globalServerState.current_dc_day}`);
         console.log(`[Zegar DC] Przerwa techniczna (Maintenance): ${globalServerState.is_maintenance}`);
       }
     )
@@ -656,28 +701,31 @@ app.get('/api/character', authenticateToken, async (req, res) => {
     }
 
     const characterData = {
-      username: profile.username,
-      power_level: basePowerLevel.toString(),
-      total_power_level: totalPowerLevel.toString(),
-      coins: character.coins ?? '0',
-      bank_coins: character.bank_coins ?? '0',
-      bank_coin_limit_level: character.bank_coin_limit_level ?? 1,
-      bank_slots_unlocked: character.bank_slots_unlocked ?? 5,
-      current_form: character.current_form ?? 'Stan Podstawowy',
-      current_hp: current_hp.toString(),
-      current_mp: current_mp.toString(),
-      current_stamina: current_stamina.toString(), 
-      max_hp: max_hp.toString(),
-      max_mp: max_mp.toString(),
-      max_stamina: max_stamina.toString(),
-      stats: baseStats, 
-      equip_stats: equipStats, 
-      completed_missions: character.completed_missions || [],
-      attempted_one_try_missions: character.attempted_one_try_missions || [],
-      hospital_until: exactHospitalEndTime ? new Date(exactHospitalEndTime).toISOString() : (character.hospital_until ? String(character.hospital_until).trim() + 'Z' : null),
-      hospital_reason: character.last_death_penalty ? character.last_death_penalty.source : null,
-      unlocked_features: features
-    };
+      username: profile.username,
+      power_level: basePowerLevel.toString(),
+      total_power_level: totalPowerLevel.toString(),
+      coins: character.coins ?? '0',
+      bank_coins: character.bank_coins ?? '0',
+      bank_coin_limit_level: character.bank_coin_limit_level ?? 1,
+      bank_slots_unlocked: character.bank_slots_unlocked ?? 5,
+      current_form: character.current_form ?? 'Stan Podstawowy',
+      current_hp: current_hp.toString(),
+      current_mp: current_mp.toString(),
+      current_stamina: current_stamina.toString(), 
+      max_hp: max_hp.toString(),
+      max_mp: max_mp.toString(),
+      max_stamina: max_stamina.toString(),
+      stats: baseStats, 
+      equip_stats: equipStats, 
+      completed_missions: character.completed_missions || [],
+      attempted_one_try_missions: character.attempted_one_try_missions || [],
+      hospital_until: exactHospitalEndTime ? new Date(exactHospitalEndTime).toISOString() : (character.hospital_until ? String(character.hospital_until).trim() + 'Z' : null),
+      hospital_reason: character.last_death_penalty ? character.last_death_penalty.source : null,
+      unlocked_features: features,
+      // --- NOWE: ZADANIA SPECJALNE ---
+      daily_tasks_progress: character.daily_tasks_progress || {},
+      daily_global_tasks: globalServerState?.daily_global_tasks || []
+    };
 
     res.json(JSON.parse(JSON.stringify(characterData, bigIntReplacer)));
   } catch (err) {
@@ -1251,6 +1299,9 @@ app.post('/api/missions/start', authenticateToken, requireAlive, async (req, res
     if (missionId === STORY_MISSIONS_IDS.MEDITATION && !newUnlockedFeatures.includes('meditation')) newUnlockedFeatures.push('meditation');
     if (missionId === STORY_MISSIONS_IDS.PVP && !newUnlockedFeatures.includes('pvp')) newUnlockedFeatures.push('pvp');
 
+    // --- TRACKER ZADAŃ SPECJALNYCH ---
+    if (roll <= Number(successChance)) await updateTaskProgress(userId, 'mission', missionId, 1);
+
     await supabase.from('characters').update({
         coins: newCoins.toString(), strength: newStr.toString(), speed: newSpd.toString(), endurance: newEnd.toString(), technique: newTech.toString(),
         hp: finalHp.toString(), mp: finalMp.toString(), stamina: finalStamina.toString(), bonus_hp: newBonusHp.toString(), bonus_mp: newBonusMp.toString(),
@@ -1304,10 +1355,160 @@ app.post('/api/inventory/split', authenticateToken, async (req, res) => {
   } catch (err) { res.status(500).json({ error: 'Błąd serwera' }); }
 });
 
+// --- ENDPOINT: ODBIÓR NAGRÓD ZA ZADANIA SPECJALNE ---
+app.post('/api/tasks/claim', authenticateToken, requireAlive, async (req, res) => {
+    try {
+        const userId = req.user.id;
+        const { task_id } = req.body;
+        
+        if (!task_id) return res.status(400).json({ error: 'Brak ID zadania' });
+        
+        const globalTasks = globalServerState?.daily_global_tasks || [];
+        if (globalTasks.length === 0) return res.status(400).json({ error: 'Brak aktywnych zadań' });
+
+        const { data: char } = await supabase.from('characters').select('*').eq('profile_id', userId).single();
+        if (!char) return res.status(404).json({ error: 'Postać nie istnieje' });
+
+        let progress = char.daily_tasks_progress || {};
+        let rewardsToGive = { coins: 0n, stats: {}, items: [] };
+        let rewardsText = [];
+        let overflowWarnings = [];
+
+        if (task_id === 'main') {
+            if (progress['main_reward_claimed']) return res.status(400).json({ error: 'Nagroda główna już odebrana!' });
+            
+            let allDone = true;
+            globalTasks.forEach(t => {
+                const p = progress[t.id] || { current: 0 };
+                if (p.current < t.goal_amount) allDone = false;
+            });
+            
+            if (!allDone) return res.status(400).json({ error: 'Nie wykonałeś jeszcze wszystkich zadań!' });
+
+            const day = globalServerState.current_dc_day || 1;
+            
+            // Szukamy odpowiedniej nagrody na podstawie dnia Rundy
+            const config = MAIN_DAILY_REWARDS.find(r => day <= r.max_day) || MAIN_DAILY_REWARDS[MAIN_DAILY_REWARDS.length - 1];
+
+            if (config.reward.stats) {
+                for (const [s, val] of Object.entries(config.reward.stats)) { rewardsToGive.stats[s] = val; }
+            }
+            if (config.reward.coins) {
+                rewardsToGive.coins = config.reward.coins;
+            }
+            if (config.reward.items) {
+                config.reward.items.forEach(i => rewardsToGive.items.push({ id: i.id, qty: BigInt(i.qty) }));
+            }
+            
+            rewardsText.push(config.text);
+            progress['main_reward_claimed'] = true;
+        } else {
+            const task = globalTasks.find(t => t.id === task_id);
+            if (!task) return res.status(404).json({ error: 'Nie znaleziono zadania' });
+            
+            const p = progress[task.id] || { current: 0, claimed: false };
+            if (p.claimed) return res.status(400).json({ error: 'Nagroda już odebrana!' });
+            if (p.current < task.goal_amount) return res.status(400).json({ error: 'Zadanie nie jest jeszcze ukończone!' });
+
+            if (task.reward) {
+                if (task.reward.coins) { rewardsToGive.coins = BigInt(task.reward.coins); rewardsText.push(`${task.reward.coins} Monet`); }
+                if (task.reward.stats) {
+                    for (const [s, val] of Object.entries(task.reward.stats)) { rewardsToGive.stats[s] = BigInt(val); rewardsText.push(`+${val} ${s}`); }
+                }
+                if (task.reward.items && Array.isArray(task.reward.items)) {
+                    task.reward.items.forEach(i => rewardsToGive.items.push({ id: i.id, qty: BigInt(i.qty) }));
+                }
+            } else {
+                rewardsToGive.coins = 500n; rewardsText.push('500 Monet');
+            }
+            if (!progress[task.id]) progress[task.id] = { current: task.goal_amount };
+            progress[task.id].claimed = true;
+        }
+
+        let updateData = { daily_tasks_progress: progress };
+        if (rewardsToGive.coins > 0n) updateData.coins = (BigInt(char.coins || '0') + rewardsToGive.coins).toString();
+        for (const [stat, val] of Object.entries(rewardsToGive.stats)) updateData[stat] = (BigInt(char[stat] || '0') + val).toString();
+
+        if (rewardsToGive.items.length > 0) {
+            const { data: charStats } = await supabase.from('characters').select('strength, speed, endurance').eq('id', char.id).single();
+            const maxBackpackSlots = calculateMaxBackpackSlots(charStats);
+            const bankSlotsUnlocked = parseInt(char.bank_slots_unlocked || '5');
+
+            const { data: currentInv } = await supabase.from('inventory').select('*').eq('character_id', char.id);
+            const backpackItems = currentInv.filter(i => i.equipped_slot === null);
+            const bankItems = currentInv.filter(i => i.equipped_slot === 'bank');
+
+            const itemIds = rewardsToGive.items.map(i => i.id);
+            const { data: templates } = await supabase.from('item_templates').select('*').in('id', itemIds);
+            
+            let itemsToInsert = []; let itemsToUpdate = [];
+
+            for (const rItem of rewardsToGive.items) {
+                const template = templates?.find(t => t.id === rItem.id);
+                if (!template) continue;
+                rewardsText.push(`${rItem.qty}x ${template.name}`);
+                const isStackable = template.category === 'consumable' || template.category === 'special_consumable';
+                let qtyLeft = rItem.qty;
+
+                // 1. Stosowanie w plecaku
+                if (isStackable) {
+                    const existingBp = backpackItems.find(i => i.item_template_id === template.id && BigInt(i.quantity) < 99n);
+                    if (existingBp) {
+                        const space = 99n - BigInt(existingBp.quantity);
+                        const toAdd = minBigInt(space, qtyLeft);
+                        existingBp.quantity = (BigInt(existingBp.quantity) + toAdd).toString();
+                        itemsToUpdate.push({ id: existingBp.id, quantity: existingBp.quantity });
+                        qtyLeft -= toAdd;
+                    }
+                }
+                // 2. Nowe sloty w plecaku
+                while (qtyLeft > 0n && backpackItems.length < maxBackpackSlots) {
+                    const toAdd = isStackable ? minBigInt(99n, qtyLeft) : 1n;
+                    const occupied = backpackItems.map(i => i.backpack_index);
+                    let freeIdx = 1; while(occupied.includes(freeIdx)) freeIdx++;
+                    const newItem = { character_id: char.id, item_template_id: template.id, quantity: toAdd.toString(), equipped_slot: null, backpack_index: freeIdx };
+                    itemsToInsert.push(newItem); backpackItems.push(newItem); qtyLeft -= toAdd;
+                }
+                // 3. Overflow do Banku
+                if (qtyLeft > 0n) {
+                    overflowWarnings.push(`Brak miejsca w plecaku! ${template.name} zabezpieczono w Banku.`);
+                    if (isStackable) {
+                        const existingBank = bankItems.find(i => i.item_template_id === template.id && BigInt(i.quantity) < 99n);
+                        if (existingBank) {
+                            const space = 99n - BigInt(existingBank.quantity);
+                            const toAdd = minBigInt(space, qtyLeft);
+                            existingBank.quantity = (BigInt(existingBank.quantity) + toAdd).toString();
+                            itemsToUpdate.push({ id: existingBank.id, quantity: existingBank.quantity });
+                            qtyLeft -= toAdd;
+                        }
+                    }
+                    while (qtyLeft > 0n && bankItems.length < bankSlotsUnlocked) {
+                        const toAdd = isStackable ? minBigInt(99n, qtyLeft) : 1n;
+                        const occupied = bankItems.map(i => i.backpack_index);
+                        let freeIdx = 1; while(occupied.includes(freeIdx)) freeIdx++;
+                        const newItem = { character_id: char.id, item_template_id: template.id, quantity: toAdd.toString(), equipped_slot: 'bank', backpack_index: freeIdx };
+                        itemsToInsert.push(newItem); bankItems.push(newItem); qtyLeft -= toAdd;
+                    }
+                    // 4. Przepada
+                    if (qtyLeft > 0n) overflowWarnings.push(`Brak miejsca w Banku! Utracono ${qtyLeft}x ${template.name}.`);
+                }
+            }
+            if (itemsToInsert.length > 0) await supabase.from('inventory').insert(itemsToInsert);
+            if (itemsToUpdate.length > 0) await Promise.all(itemsToUpdate.map(u => supabase.from('inventory').update({ quantity: u.quantity }).eq('id', u.id)));
+        }
+
+        await supabase.from('characters').update(updateData).eq('id', char.id);
+        res.json({ success: true, rewards_text: rewardsText, overflow_warnings: overflowWarnings });
+        
+    } catch (err) { 
+        console.error('[Tasks Claim] Błąd:', err);
+        res.status(500).json({ error: 'Błąd serwera podczas odbierania nagrody' }); 
+    }
+});
+
 // ==========================================
 // 🛒 5. SYSTEM SKLEPU (KUPOWANIE I SPRZEDAWANIE)
 // ==========================================
-
 app.get('/api/shop/items', authenticateToken, async (req, res) => {
   try {
     const userId = req.user.id;
@@ -1991,6 +2192,9 @@ app.post('/api/training/stop', authenticateToken, async (req, res) => {
     if (action === 'completed' && mentor) {
       const effectivePower = Math.max(1000, parseInt(char.total_power_level || '0'));
       const trainingHours = parseFloat(hoursStr);
+
+      // --- TRACKER ZADAŃ SPECJALNYCH (Czas w minutach) ---
+      await updateTaskProgress(userId, 'training', 'any', Math.floor(trainingHours * 60));
       
       const statGain = BigInt(Math.floor((400 + Math.pow(effectivePower, 0.55)) * mentor.multiplier * trainingHours));
 
@@ -2179,6 +2383,9 @@ app.post('/api/work/finish', authenticateToken, requireAlive, async (req, res) =
         hp: newHp.toString()
     };
 
+    // --- TRACKER ZADAŃ SPECJALNYCH ---
+    if (netScore > 0n) await updateTaskProgress(userId, 'work', workId, 1);
+
     if (isDead) {
         const hospitalData = calculateHospitalTime(BigInt(fullStats.basePowerLevel));
         exactEndMs = hospitalData.exactEndMs; 
@@ -2213,25 +2420,56 @@ app.listen(port, async () => {
 
 const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 cron.schedule('0 0,8,16 * * *', async () => {
-  console.log('[Zegar DC] Wybiła Północ DC! Rozpoczynam zmianę dnia...');
-  try {
-    await supabase.from('global_server_state').update({ is_maintenance: true }).eq('id', 1);
-    
-    await delay(5000); 
-    
-    await supabase.from('characters').update({ 
-        daily_time_chamber_used: false,
-        daily_shop_buys: {} 
-    }).neq('profile_id', '00000000-0000-0000-0000-000000000000');
-    
-    await supabase.from('global_server_state').update({ 
-        current_dc_day: globalServerState.current_dc_day + 1,
-        is_maintenance: false
-    }).eq('id', 1);
+  console.log('[Zegar DC] Wybiła Północ DC! Rozpoczynam zmianę dnia i losowanie zadań...');
+  try {
+    await supabase.from('global_server_state').update({ is_maintenance: true }).eq('id', 1);
+    await delay(5000); 
+    
+    // Reset Dziennych Limitów graczy ORAZ notatnika z postępami zadań
+    await supabase.from('characters').update({ 
+        daily_time_chamber_used: false,
+        daily_shop_buys: {},
+        daily_tasks_progress: {} 
+    }).neq('profile_id', '00000000-0000-0000-0000-000000000000');
+    
+    // --- LOGIKA SEZONÓW (RUND) ---
+    let nextDay = globalServerState.current_dc_day + 1;
+    if (nextDay > 76) nextDay = 76;
 
-    console.log('[Zegar DC] Nowy dzień DC rozpoczęty, serwer odblokowany!');
-  } catch (error) {
-    console.error('[Zegar DC] ⚠️ Krytyczny błąd podczas zmiany dnia:', error);
-    await supabase.from('global_server_state').update({ is_maintenance: false }).eq('id', 1);
-  }
+    // --- LOSOWANIE ZADAŃ SPECJALNYCH ---
+    let newDailyTasks = [];
+    if (nextDay <= 75) {
+        // Pobieramy tylko te zadania, które pasują do obecnego dnia Rundy
+        const { data: allTasks, error: tasksErr } = await supabase
+            .from('special_tasks_templates')
+            .select('*')
+            .lte('min_dc_day', nextDay)
+            .gte('max_dc_day', nextDay);
+
+        if (!tasksErr && allTasks && allTasks.length > 0) {
+            // Tasujemy tablicę (Fisher-Yates / Math.random)
+            const shuffled = allTasks.sort(() => 0.5 - Math.random());
+            // Losujemy od 3 do 5 zadań
+            const numTasks = Math.floor(Math.random() * 3) + 3; 
+            newDailyTasks = shuffled.slice(0, numTasks);
+        }
+    }
+
+    // Aktualizacja Globalnego Stanu
+    await supabase.from('global_server_state').update({ 
+        current_dc_day: nextDay,
+        daily_global_tasks: newDailyTasks,
+        is_maintenance: false
+    }).eq('id', 1);
+
+    if (nextDay > 75) {
+        console.log(`[Zegar DC] Runda ${globalServerState.current_round} zakończona! Trwa przerwa międzysezonowa.`);
+    } else {
+        console.log(`[Zegar DC] Nowy dzień DC (${nextDay}). Wylosowano ${newDailyTasks.length} Zadań Specjalnych! Serwer odblokowany.`);
+    }
+
+  } catch (error) {
+    console.error('[Zegar DC] ⚠️ Krytyczny błąd podczas zmiany dnia:', error);
+    await supabase.from('global_server_state').update({ is_maintenance: false }).eq('id', 1);
+  }
 });

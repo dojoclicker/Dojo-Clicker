@@ -19,7 +19,7 @@
     </header>
 
     <nav id="top-panel-2">
-        <div class="nav-section">
+        <div class="nav-section" id="main-nav-section">
             <button class="nav-btn active" data-tab="missions">
                 <div class="nav-icon">⚔️</div>
                 <div class="nav-text">Misje</div>
@@ -47,6 +47,10 @@
             <button class="nav-btn disabled locked" data-tab="work" id="nav-work-btn">
                 <div class="nav-icon">💼</div>
                 <div class="nav-text">Praca</div>
+            </button>
+            <button class="nav-btn disabled locked" data-tab="special_tasks" id="nav-tasks-btn">
+                <div class="nav-icon">📜</div>
+                <div class="nav-text">Zadania</div>
             </button>
         </div>
         <div class="time-container">
@@ -329,6 +333,29 @@
             </div>
         </div>
 
+        <div id="special_tasks-view" style="display: none;" class="view-section">
+            <div class="tasks-container game-panel-row" style="padding: 1rem; width: 100%;">
+                
+                <div class="game-panel" style="flex: 1;">
+                    <div class="game-panel-header" style="display: flex; justify-content: space-between; align-items: center;">
+                        <h4 class="game-panel-title" style="color: #a3e635;">📜 Dzienne Zadania Specjalne</h4>
+                        <div id="tasks-completion-status" style="font-weight: bold; color: var(--text-muted);">Zrobione: 0/0</div>
+                    </div>
+                    
+                    <div style="background: rgba(0,0,0,0.3); padding: 15px; border-radius: 8px; border: 1px dashed var(--goku-accent); margin-bottom: 20px; text-align: center;">
+                        <h5 style="color: var(--goku-accent); margin-bottom: 10px; font-size: 1.1rem;">Złota Nagroda za wszystko!</h5>
+                        <p style="color: var(--text-secondary); font-size: 0.95rem; margin-bottom: 10px;">Wykonaj wszystkie poniższe zadania, aby odebrać super nagrodę (zależną od dnia Rundy).</p>
+                        <button id="claim-all-tasks-btn" class="upgrade-btn disabled" disabled style="padding: 10px 20px;">Odbierz Nagrodę Główną</button>
+                    </div>
+
+                    <div id="special-tasks-list" style="display: flex; flex-direction: column; gap: 15px; min-height: 200px;">
+                        <div style="text-align: center; color: var(--text-muted); padding: 2rem;">Ładowanie zadań...</div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
         <div id="equipment-view" style="display: none;">
             <div class="equipment-container game-panel-row">
                 
@@ -497,6 +524,21 @@
             </div>
         </div>
 
+        <section id="downtime-view" class="game-panel-row" style="display: none; height: 100%; align-items: center; justify-content: center; text-align: center; padding: 2rem;">
+            <div class="game-panel" style="padding: 3rem; max-width: 800px;">
+                <h1 style="color: var(--error); font-size: 3rem; margin-bottom: 1rem; text-shadow: 0 0 10px rgba(239,68,68,0.5);">RUNDA ZAKOŃCZONA</h1>
+                <h2 style="color: var(--goku-accent); font-size: 1.5rem; margin-bottom: 2rem;">Trwa podliczanie wyników i nagród...</h2>
+                <p style="color: var(--text-muted); font-size: 1.1rem; line-height: 1.6; margin-bottom: 2rem;">
+                    Gracze stracili dostęp do swoich zasobów. Trzech najlepszych wojowników wkrótce otrzyma Walutę Premium. 
+                    Przygotuj się! Oczekujemy na rozpoczęcie nowej Rundy pierwszego dnia kolejnego miesiąca.
+                </p>
+                <div style="padding: 1.5rem; background: rgba(0,0,0,0.4); border: 1px dashed var(--goku-panel-border); border-radius: 12px; display: inline-block;">
+                    <h3 style="color: var(--text-primary); margin-bottom: 10px;">Start Następnej Rundy za:</h3>
+                    <div id="downtime-countdown" style="font-size: 2.5rem; font-weight: bold; color: var(--success); font-family: monospace;">--:--:--</div>
+                </div>
+            </div>
+        </section>
+
     <div id="pl-tooltip" class="nuke-floating-tooltip">
         <strong style="color: #ff6b00; font-size: 1.1rem;">Jak wyliczany jest Poziom Mocy?</strong>
         <hr style="border-color: #334155; margin: 10px 0;">
@@ -518,6 +560,10 @@
             isPlayerTraining: false,
             isWorkMinigameActive: false,
             tooltipTimeout: null,
+
+            currentRound: 1,
+            currentDcDay: 1,
+            isDowntime: false,
             
             playerCurrentStats: null,
             playerEquipStats: null,
@@ -682,9 +728,158 @@
         }
 
         // ==========================================
+        // 📜 1.8. ZADANIA SPECJALNE (DZIENNE)
+        // ==========================================
+
+        function renderSpecialTasks() {
+            const tasksListEl = document.getElementById('special-tasks-list');
+            const hubTasksEl = document.querySelector('.special-tasks'); // Widget w Hubie
+            const completionStatusEl = document.getElementById('tasks-completion-status');
+            const claimAllBtn = document.getElementById('claim-all-tasks-btn');
+            
+            if (!tasksListEl) return;
+
+            const globalTasks = GameState.playerCurrentStats?.daily_global_tasks || [];
+            const progressDict = GameState.playerCurrentStats?.daily_tasks_progress || {};
+            
+            if (!globalTasks || globalTasks.length === 0) {
+                tasksListEl.innerHTML = '<div style="text-align: center; color: var(--text-muted); padding: 2rem;">Oczekujemy na wytyczne z centrali...</div>';
+                if (hubTasksEl) hubTasksEl.innerHTML = '<div class="empty-state-text"><div>🎯 Brak aktywnych zadań</div></div>';
+                return;
+            }
+
+            tasksListEl.innerHTML = '';
+            let hubHtml = '';
+            let completedCount = 0;
+
+            globalTasks.forEach(task => {
+                const progressData = progressDict[task.id] || { current: 0, claimed: false };
+                const currentAmt = Math.min(progressData.current, task.goal_amount);
+                const isCompleted = currentAmt >= task.goal_amount;
+                const isClaimed = progressData.claimed;
+                
+                if (isCompleted) completedCount++;
+
+                // Pasek postępu procentowo
+                const pct = Math.min(100, (currentAmt / task.goal_amount) * 100);
+
+                // --- 1. RENDEROWANIE DO ZAKŁADKI ---
+                const card = document.createElement('div');
+                card.style.background = 'rgba(0,0,0,0.4)';
+                card.style.border = `1px solid ${isClaimed ? 'var(--success)' : 'var(--goku-panel-border)'}`;
+                card.style.borderRadius = '8px';
+                card.style.padding = '15px';
+                card.style.display = 'flex';
+                card.style.justifyContent = 'space-between';
+                card.style.alignItems = 'center';
+                if (isClaimed) card.style.opacity = '0.7';
+
+                card.innerHTML = `
+                    <div style="flex: 1; padding-right: 15px;">
+                        <h4 style="color: ${isClaimed ? 'var(--success)' : 'var(--goku-accent)'}; margin-bottom: 5px;">
+                            ${isClaimed ? '✅ ' : ''}${task.name}
+                        </h4>
+                        <div style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 10px;">${task.description || ''}</div>
+                        
+                        <div style="background: #000; height: 10px; border-radius: 5px; overflow: hidden; position: relative;">
+                            <div style="width: ${pct}%; background: ${isCompleted ? 'var(--success)' : '#3b82f6'}; height: 100%; transition: width 0.3s;"></div>
+                        </div>
+                        <div style="font-size: 0.8rem; color: var(--text-muted); text-align: right; margin-top: 3px;">
+                            ${currentAmt} / ${task.goal_amount}
+                        </div>
+                    </div>
+                    <div style="min-width: 120px; text-align: right;">
+                        ${isClaimed 
+                            ? '<span style="color: var(--success); font-weight: bold;">Odebrano</span>' 
+                            : `<button class="btn-header claim-task-btn" data-task-id="${task.id}" ${isCompleted ? 'style="background: var(--success);"' : 'disabled style="opacity: 0.5; cursor: not-allowed;"'}>Odbierz</button>`
+                        }
+                    </div>
+                `;
+                tasksListEl.appendChild(card);
+
+                // --- 2. RENDEROWANIE DO WIDGETU W HUBIE ---
+                hubHtml += `
+                    <div style="display: flex; justify-content: space-between; font-size: 0.9rem; margin-bottom: 8px; border-bottom: 1px dashed rgba(255,255,255,0.1); padding-bottom: 8px;">
+                        <span style="color: ${isClaimed ? 'var(--success)' : 'var(--text-primary)'}">${task.name}</span>
+                        <span style="color: ${isCompleted ? 'var(--success)' : 'var(--text-muted)'}">${currentAmt}/${task.goal_amount} ${isClaimed ? '✅' : ''}</span>
+                    </div>
+                `;
+            });
+
+            // Aktualizacja widgetu w HUB
+            if (hubTasksEl) {
+                hubTasksEl.innerHTML = hubHtml;
+            }
+
+            // Podsumowanie ukończenia całości
+            if (completionStatusEl) completionStatusEl.innerText = `Zrobione: ${completedCount}/${globalTasks.length}`;
+
+            const allClaimed = globalTasks.every(t => (progressDict[t.id] && progressDict[t.id].claimed));
+            const allCompletedButNotAllClaimed = completedCount === globalTasks.length && !allClaimed;
+            
+            // Logika guzika "Odbierz wszystkie / Nagrodę główną"
+            if (progressDict['main_reward_claimed']) {
+                claimAllBtn.innerText = '✅ Nagroda Główna Odebrana';
+                claimAllBtn.classList.add('disabled');
+                claimAllBtn.disabled = true;
+            } else if (completedCount === globalTasks.length) {
+                claimAllBtn.innerText = 'Odbierz Nagrodę Główną!';
+                claimAllBtn.classList.remove('disabled');
+                claimAllBtn.disabled = false;
+                claimAllBtn.style.background = 'linear-gradient(135deg, #16a34a, #15803d)';
+                
+                // Unikamy wielokrotnego dodawania listenera
+                claimAllBtn.onclick = () => claimSpecialTask('main');
+            } else {
+                claimAllBtn.innerText = 'Wykonaj wszystkie zadania';
+                claimAllBtn.classList.add('disabled');
+                claimAllBtn.disabled = true;
+                claimAllBtn.style.background = '';
+            }
+
+            // Listenery dla poszczególnych zadań
+            document.querySelectorAll('.claim-task-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    claimSpecialTask(this.getAttribute('data-task-id'));
+                });
+            });
+        }
+
+        async function claimSpecialTask(taskId) {
+            const res = await apiCall('/api/tasks/claim', 'POST', { task_id: taskId }, true);
+            if (!res) return;
+
+            if (res.success) {
+                let msgHtml = `<div>Odebrano nagrodę!</div>`;
+                if (res.data.rewards_text && res.data.rewards_text.length > 0) {
+                    msgHtml += `<ul style="text-align: left; padding-left: 20px; font-size: 0.9rem; margin-top: 5px;">`;
+                    res.data.rewards_text.forEach(txt => {
+                        msgHtml += `<li>🎁 ${txt}</li>`;
+                    });
+                    msgHtml += `</ul>`;
+                }
+
+                if (res.data.overflow_warnings && res.data.overflow_warnings.length > 0) {
+                    msgHtml += `<div style="margin-top: 8px; color: #fbbf24; font-size: 0.85rem;">⚠️ Info o depozycie:</div>`;
+                    msgHtml += `<ul style="text-align: left; padding-left: 20px; font-size: 0.8rem; color: #fbbf24;">`;
+                    res.data.overflow_warnings.forEach(txt => {
+                        msgHtml += `<li>${txt}</li>`;
+                    });
+                    msgHtml += `</ul>`;
+                }
+
+                showNotification('Zadanie Wykonane!', msgHtml, res.data.overflow_warnings?.length > 0 ? 'warning' : 'success', 5000);
+                
+                await fetchInventory();
+                await fetchCharacterData();
+            } else {
+                showWarningMessage(res.error || 'Błąd podczas odbierania nagrody.');
+            }
+        }
+
+        // ==========================================
         // ⚔️ 2. SYSTEM MISJI
         // ==========================================
-        
         async function fetchMissions() {
             const sessionToken = localStorage.getItem('session_token');
             
@@ -1179,15 +1374,16 @@
         }
 
         function updateTabsLockState() {
-            const tabs = {
-                missions: document.querySelector('[data-tab="missions"]'),
-                equipment: document.querySelector('[data-tab="equipment"]'),
-                shop: document.querySelector('[data-tab="shop"]'),
-                bank: document.querySelector('[data-tab="bank"]'),
-                hospital: document.querySelector('[data-tab="hospital"]'),
-                training: document.querySelector('[data-tab="training"]'),
-                work: document.querySelector('[data-tab="work"]')
-            };
+            const tabs = {
+                missions: document.querySelector('[data-tab="missions"]'),
+                equipment: document.querySelector('[data-tab="equipment"]'),
+                shop: document.querySelector('[data-tab="shop"]'),
+                bank: document.querySelector('[data-tab="bank"]'),
+                hospital: document.querySelector('[data-tab="hospital"]'),
+                training: document.querySelector('[data-tab="training"]'),
+                work: document.querySelector('[data-tab="work"]'),
+                special_tasks: document.querySelector('[data-tab="special_tasks"]') // NOWE
+            };
 
             Object.values(tabs).forEach(tab => {
                 if (tab) tab.style.transition = 'none';
@@ -1198,12 +1394,13 @@
             });
 
             if (GameState.isPlayerHospitalized || GameState.isPlayerTraining) {
-                if (tabs.missions) tabs.missions.classList.add('tab-disabled');
-                if (tabs.equipment) tabs.equipment.classList.add('tab-disabled');
-                if (tabs.shop) tabs.shop.classList.add('tab-disabled');
-                if (tabs.bank) tabs.bank.classList.add('tab-disabled');
-                if (tabs.work) tabs.work.classList.add('tab-disabled');
-            }
+                if (tabs.missions) tabs.missions.classList.add('tab-disabled');
+                if (tabs.equipment) tabs.equipment.classList.add('tab-disabled');
+                if (tabs.shop) tabs.shop.classList.add('tab-disabled');
+                if (tabs.bank) tabs.bank.classList.add('tab-disabled');
+                if (tabs.work) tabs.work.classList.add('tab-disabled');
+                if (tabs.special_tasks) tabs.special_tasks.classList.add('tab-disabled'); // NOWE
+            }
 
             if (GameState.isPlayerHospitalized) {
                 if (tabs.training) tabs.training.classList.add('tab-disabled');
@@ -1366,12 +1563,21 @@
                 }
 
                 const navWorkBtn = document.getElementById('nav-work-btn');
-                const maZrobionaMisje6 = data.completed_missions && data.completed_missions.includes('10000000-0000-0000-0000-000000000006');
+                const navTasksBtn = document.getElementById('nav-tasks-btn'); // NOWE
+
+                const maZrobionaMisje6 = data.completed_missions && data.completed_missions.includes('10000000-0000-0000-0000-000000000006');
+                const maZrobionaMisje10 = data.completed_missions && data.completed_missions.includes('10000000-0000-0000-0000-000000000010'); // NOWE
+                
+                if ((data.unlocked_features && data.unlocked_features.includes('work')) || maZrobionaMisje6) {
+                    if (navWorkBtn) navWorkBtn.classList.remove('disabled', 'locked');
+                }
                 
-                if ((data.unlocked_features && data.unlocked_features.includes('work')) || maZrobionaMisje6) {
-                    if (navWorkBtn) navWorkBtn.classList.remove('disabled', 'locked');
+                // Odblokowanie Zadań Specjalnych
+                if ((data.unlocked_features && data.unlocked_features.includes('special_tasks')) || maZrobionaMisje10) {
+                    if (navTasksBtn) navTasksBtn.classList.remove('disabled', 'locked');
                 }
                 if (typeof renderWorkList === 'function') renderWorkList();
+                if (typeof renderSpecialTasks === 'function') renderSpecialTasks();
 
                 if (typeof fetchTrainingStatus === 'function') fetchTrainingStatus();
 
@@ -2854,15 +3060,96 @@
                 window.location.href = 'index.html';
             });
 
-            function updateGameTime() {
+            // --- NOWY ZEGAR GLOBALNY I DOWNTIME ---
+            function updateGameTime(state) {
                 const timeElement = document.getElementById('game-time');
-                if (!timeElement) return;
-                const now = new Date();
-                const dcDay = Math.floor(now.getDate() / 8) + 1; 
-                const dcHour = now.getHours();
-                const dcMinute = now.getMinutes();
-                timeElement.textContent = `DC: Dzień ${dcDay} | ${dcHour.toString().padStart(2, '0')}:${dcMinute.toString().padStart(2, '0')}`;
+                if (!timeElement || !state) return;
+
+                GameState.currentRound = state.current_round || 1;
+                GameState.currentDcDay = state.current_dc_day || 1;
+                GameState.isDowntime = GameState.currentDcDay > 75;
+
+                if (GameState.isDowntime) {
+                    timeElement.innerHTML = `<span style="color: var(--error); font-weight: bold;">RUNDA ZAKOŃCZONA</span>`;
+                    handleDowntimeMode();
+                } else {
+                    // Wyliczamy lokalnie zgrabną symulację zegarka (opierając się o timestamp, tak jak u Ciebie)
+                    const now = new Date();
+                    const dcHour = now.getHours();
+                    const dcMinute = now.getMinutes();
+                    timeElement.textContent = `Runda ${GameState.currentRound} | Dzień: ${GameState.currentDcDay}/75 | ${dcHour.toString().padStart(2, '0')}:${dcMinute.toString().padStart(2, '0')}`;
+                    releaseDowntimeMode();
+                }
             }
+
+            function handleDowntimeMode() {
+                const navSection = document.getElementById('main-nav-section');
+                if (navSection) navSection.style.display = 'none'; // Ukryj zakładki
+                
+                const allViews = document.querySelectorAll('[id$="-view"]');
+                allViews.forEach(view => view.style.display = 'none'); // Ukryj całą grę
+                
+                const downtimeView = document.getElementById('downtime-view');
+                if (downtimeView) downtimeView.style.display = 'flex'; // Pokaż ekran końca rundy
+
+                // Odliczanie do pierwszego dnia następnego miesiąca
+                updateDowntimeCountdown();
+            }
+
+            function releaseDowntimeMode() {
+                const navSection = document.getElementById('main-nav-section');
+                if (navSection && navSection.style.display === 'none') {
+                    navSection.style.display = 'flex'; // Przywróć zakładki
+                    
+                    const downtimeView = document.getElementById('downtime-view');
+                    if (downtimeView) downtimeView.style.display = 'none'; // Ukryj ekran kary
+                    
+                    const savedTab = localStorage.getItem('active_game_tab') || 'dashboard';
+                    activateTab(savedTab); // Przywróć aktywną grę
+                }
+            }
+
+            function updateDowntimeCountdown() {
+                const countdownEl = document.getElementById('downtime-countdown');
+                if (!countdownEl || !GameState.isDowntime) return;
+
+                const now = new Date();
+                const nextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1, 0, 0, 0); // 1 dzień nastepnego miesiąca
+                const diff = nextMonth - now;
+
+                if (diff <= 0) {
+                    countdownEl.textContent = "00:00:00";
+                    return;
+                }
+
+                const d = Math.floor(diff / (1000 * 60 * 60 * 24));
+                const h = Math.floor((diff / (1000 * 60 * 60)) % 24).toString().padStart(2, '0');
+                const m = Math.floor((diff / 1000 / 60) % 60).toString().padStart(2, '0');
+                const s = Math.floor((diff / 1000) % 60).toString().padStart(2, '0');
+
+                countdownEl.textContent = `${d}d ${h}:${m}:${s}`;
+                setTimeout(updateDowntimeCountdown, 1000);
+            }
+
+            // Nasłuchiwanie na zmiany Globalnego Stanu z Bazy Danych
+            function initServerStateListener() {
+                supabaseClient
+                    .channel('global_server_state')
+                    .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'global_server_state', filter: 'id=eq.1' }, (payload) => {
+                        updateGameTime(payload.new);
+                    })
+                    .subscribe();
+
+                // Pierwsze pobranie
+                supabaseClient.from('global_server_state').select('*').eq('id', 1).single().then(res => {
+                    if (res.data) updateGameTime(res.data);
+                });
+            }
+
+            initServerStateListener();
+            setInterval(() => {
+                if (!GameState.isDowntime) fetchCharacterData(true);
+            }, 30000);
 
             const plBtn = document.getElementById('pl-info-btn');
             const plTooltip = document.getElementById('pl-tooltip');
