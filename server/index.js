@@ -19,21 +19,38 @@ const supabase = createClient(supabaseUrl, supabaseKey);
 // ==========================================
 
 // --- 1A. SŁOWNIKI I KONFIGURACJE ---
+// Zbiorczy słownik ID Misji używanych w logice (aby uniknąć literówek)
+const MISSION_IDS = {
+  TRAINING_FOREST: '00000000-0000-0000-0000-000000000004', // Poziom Sklepu 2
+  MENTOR_OLD_MASTER: '00000000-0000-0000-0000-000000000005',
+  WORK_MILK: '10000000-0000-0000-0000-000000000006',
+  WORK_BUILDING: '10000000-0000-0000-0000-000000000007',
+  WORK_FIELD: '10000000-0000-0000-0000-000000000008',
+  WORK_LUMBERJACK: '10000000-0000-0000-0000-000000000009',
+  WORK_COURIER: '10000000-0000-0000-0000-000000000010',
+  SHOP_LVL_4: '10000000-0000-0000-0000-000000000014',
+  WORK_ROSA: '10000000-0000-0000-0000-000000000015',
+  WORK_GARDENS: '10000000-0000-0000-0000-000000000020',
+  SHOP_LVL_5: '10000000-0000-0000-0000-000000000023',
+  MENTOR_TIME_CHAMBER: '00000000-0000-0000-0000-000000000024',
+  PVP_FINALS: '00000000-0000-0000-0000-000000000025'
+};
+
 const TRAINING_MENTORS = {
-  'old_master': { name: 'Stary Mistrz', emoji: '🐢', cost: 10, multiplier: 2, reqMission: '00000000-0000-0000-0000-000000000005' },
-  'cat_hermit': { name: 'Koci Pustelnik', emoji: '🐈', cost: 25, multiplier: 6, reqMission: '10000000-0000-0000-0000-000000000015' },
-  'celestial': { name: 'Pan Niebiańskiego Pałacu', emoji: '☁️', cost: 50, multiplier: 15, reqMission: '10000000-0000-0000-0000-000000000020' },
-  'time_chamber': { name: 'Sala Czasu', emoji: '⏳', cost: 100, multiplier: 40, reqMission: '00000000-0000-0000-0000-000000000024' }
+  'old_master': { name: 'Stary Mistrz', emoji: '🐢', cost: 10, multiplier: 2, reqMission: MISSION_IDS.MENTOR_OLD_MASTER },
+  'cat_hermit': { name: 'Koci Pustelnik', emoji: '🐈', cost: 25, multiplier: 6, reqMission: MISSION_IDS.WORK_ROSA },
+  'celestial': { name: 'Pan Niebiańskiego Pałacu', emoji: '☁️', cost: 50, multiplier: 15, reqMission: MISSION_IDS.WORK_GARDENS },
+  'time_chamber': { name: 'Sala Czasu', emoji: '⏳', cost: 100, multiplier: 40, reqMission: MISSION_IDS.MENTOR_TIME_CHAMBER }
 };
 
 const WORK_MODES = {
-  praca_mleko:  { req_mission: '10000000-0000-0000-0000-000000000006', duration_sec: 15, cost_stamina: 10n, cost_hp_pct: 2n, reward_coins: 2n, penalty_pct: 10n },
-  praca_budowa: { req_mission: '10000000-0000-0000-0000-000000000007', duration_sec: 20, cost_stamina: 10n, cost_hp_pct: 5n, reward_coins: 5n, penalty_pct: 12n },
-  praca_pole:   { req_mission: '10000000-0000-0000-0000-000000000008', duration_sec: 25, cost_stamina: 15n, cost_hp_pct: 8n, reward_coins: 12n, penalty_pct: 15n },
-  praca_drwal:  { req_mission: '10000000-0000-0000-0000-000000000009', duration_sec: 30, cost_stamina: 15n, cost_hp_pct: 15n, reward_coins: 25n, penalty_pct: 18n },
-  praca_kurier: { req_mission: '10000000-0000-0000-0000-000000000010', duration_sec: 40, cost_stamina: 20n, cost_hp_pct: 25n, reward_coins: 60n, penalty_pct: 22n },
-  praca_rosa:   { req_mission: '10000000-0000-0000-0000-000000000015', duration_sec: 50, cost_stamina: 25n, cost_hp_pct: 10n, reward_coins: 150n, penalty_pct: 25n, drop_woda: true },
-  praca_ogrody: { req_mission: '10000000-0000-0000-0000-000000000020', duration_sec: 60, cost_stamina: 40n, cost_hp_pct: 30n, reward_coins: 500n, penalty_pct: 30n }
+  praca_mleko:  { req_mission: MISSION_IDS.WORK_MILK, duration_sec: 15, cost_stamina: 10n, cost_hp_pct: 2n, reward_coins: 2n, penalty_pct: 10n },
+  praca_budowa: { req_mission: MISSION_IDS.WORK_BUILDING, duration_sec: 20, cost_stamina: 10n, cost_hp_pct: 5n, reward_coins: 5n, penalty_pct: 12n },
+  praca_pole:   { req_mission: MISSION_IDS.WORK_FIELD, duration_sec: 25, cost_stamina: 15n, cost_hp_pct: 8n, reward_coins: 12n, penalty_pct: 15n },
+  praca_drwal:  { req_mission: MISSION_IDS.WORK_LUMBERJACK, duration_sec: 30, cost_stamina: 15n, cost_hp_pct: 15n, reward_coins: 25n, penalty_pct: 18n },
+  praca_kurier: { req_mission: MISSION_IDS.WORK_COURIER, duration_sec: 40, cost_stamina: 20n, cost_hp_pct: 25n, reward_coins: 60n, penalty_pct: 22n },
+  praca_rosa:   { req_mission: MISSION_IDS.WORK_ROSA, duration_sec: 50, cost_stamina: 25n, cost_hp_pct: 10n, reward_coins: 150n, penalty_pct: 25n, drop_woda: true },
+  praca_ogrody: { req_mission: MISSION_IDS.WORK_GARDENS, duration_sec: 60, cost_stamina: 40n, cost_hp_pct: 30n, reward_coins: 500n, penalty_pct: 30n }
 };
 
 const BANK_COIN_LIMITS = {
@@ -70,11 +87,23 @@ function bigIntReplacer(key, value) {
 
 function getCharacterShopLevel(completedMissions) {
     const completed = completedMissions || [];
-    if (completed.includes('10000000-0000-0000-0000-000000000023')) return 5;
-    if (completed.includes('10000000-0000-0000-0000-000000000014')) return 4;
-    if (completed.includes('10000000-0000-0000-0000-000000000007')) return 3;
-    if (completed.includes('00000000-0000-0000-0000-000000000004')) return 2;
+    if (completed.includes(MISSION_IDS.SHOP_LVL_5)) return 5;
+    if (completed.includes(MISSION_IDS.SHOP_LVL_4)) return 4;
+    if (completed.includes(MISSION_IDS.WORK_BUILDING)) return 3;
+    if (completed.includes(MISSION_IDS.TRAINING_FOREST)) return 2;
     return 1;
+}
+
+// Oblicza, o której godzinie gracz wyjdzie ze szpitala po śmierci
+function calculateHospitalTime(powerLevelBigInt) {
+    const pl = Number(powerLevelBigInt);
+    const hospitalMinutes = Math.min(120, 5 + Math.floor(Math.pow(pl, 0.25)));
+    const exactEndMs = Date.now() + hospitalMinutes * 60000;
+    return {
+        minutes: hospitalMinutes,
+        exactEndMs: exactEndMs,
+        utcString: new Date(exactEndMs).toISOString()
+    };
 }
 
 // ==========================================
@@ -112,33 +141,32 @@ async function getFullCharacterStats(userId) {
     const equipBreakdown = { strength: [], speed: [], endurance: [], technique: [], intelligence: [], mental_strength: [], bonus_hp: [], bonus_mp: [], bonus_coins_pct: [], bonus_coins: [] };
     const trainingBonuses = { strength: 0n, speed: 0n, endurance: 0n, technique: 0n, intelligence: 0n, mental_strength: 0n, bonus_hp: 0n, bonus_mp: 0n, bonus_coins_pct: 0n };
 
+    // Lista statystyk, które dynamicznie sprawdzamy i sumujemy
+    const PASSIVE_STATS = ['strength', 'speed', 'endurance', 'technique', 'intelligence', 'mental_strength', 'bonus_hp', 'bonus_mp', 'bonus_coins_pct', 'bonus_coins'];
+    const TRAINING_STATS = ['strength', 'speed', 'endurance', 'technique', 'intelligence', 'mental_strength', 'bonus_hp', 'bonus_mp', 'bonus_coins_pct'];
+
     equippedItems.forEach(item => {
       if (item.item_templates && item.item_templates.bonuses) {
         const bonuses = item.item_templates.bonuses;
         
+        // 1. Pasywne bonusy do statystyk (Domyślne)
         if (bonuses.type === 'passive' || bonuses.type === undefined) {
-          if (bonuses.strength) { equipBonuses.strength += BigInt(bonuses.strength); equipBreakdown.strength.push(`${item.item_templates.name}: +${bonuses.strength}`); }
-          if (bonuses.speed) { equipBonuses.speed += BigInt(bonuses.speed); equipBreakdown.speed.push(`${item.item_templates.name}: +${bonuses.speed}`); }
-          if (bonuses.endurance) { equipBonuses.endurance += BigInt(bonuses.endurance); equipBreakdown.endurance.push(`${item.item_templates.name}: +${bonuses.endurance}`); }
-          if (bonuses.technique) { equipBonuses.technique += BigInt(bonuses.technique); equipBreakdown.technique.push(`${item.item_templates.name}: +${bonuses.technique}`); } 
-          if (bonuses.intelligence) { equipBonuses.intelligence += BigInt(bonuses.intelligence); equipBreakdown.intelligence.push(`${item.item_templates.name}: +${bonuses.intelligence}`); }
-          if (bonuses.mental_strength) { equipBonuses.mental_strength += BigInt(bonuses.mental_strength); equipBreakdown.mental_strength.push(`${item.item_templates.name}: +${bonuses.mental_strength}`); }
-          if (bonuses.bonus_hp) { equipBonuses.bonus_hp += BigInt(bonuses.bonus_hp); equipBreakdown.bonus_hp.push(`${item.item_templates.name}: +${bonuses.bonus_hp}`); }
-          if (bonuses.bonus_mp) { equipBonuses.bonus_mp += BigInt(bonuses.bonus_mp); equipBreakdown.bonus_mp.push(`${item.item_templates.name}: +${bonuses.bonus_mp}`); }
-          if (bonuses.bonus_coins_pct) { equipBonuses.bonus_coins_pct += BigInt(bonuses.bonus_coins_pct); equipBreakdown.bonus_coins_pct.push(`${item.item_templates.name}: +${bonuses.bonus_coins_pct}%`); }
-          if (bonuses.bonus_coins) { equipBonuses.bonus_coins += BigInt(bonuses.bonus_coins); equipBreakdown.bonus_coins.push(`${item.item_templates.name}: +${bonuses.bonus_coins}`); } 
+          PASSIVE_STATS.forEach(stat => {
+            if (bonuses[stat]) {
+              equipBonuses[stat] += BigInt(bonuses[stat]);
+              const sign = stat === 'bonus_coins_pct' ? '%' : '';
+              equipBreakdown[stat].push(`${item.item_templates.name}: +${bonuses[stat]}${sign}`);
+            }
+          });
         }
 
+        // 2. Bonusy wpływające na wyniki treningu
         if (bonuses.type === 'training') {
-          if (bonuses.strength) trainingBonuses.strength += BigInt(bonuses.strength);
-          if (bonuses.speed) trainingBonuses.speed += BigInt(bonuses.speed);
-          if (bonuses.endurance) trainingBonuses.endurance += BigInt(bonuses.endurance);
-          if (bonuses.technique) trainingBonuses.technique += BigInt(bonuses.technique);
-          if (bonuses.intelligence) trainingBonuses.intelligence += BigInt(bonuses.intelligence);
-          if (bonuses.mental_strength) trainingBonuses.mental_strength += BigInt(bonuses.mental_strength);
-          if (bonuses.bonus_hp) trainingBonuses.bonus_hp += BigInt(bonuses.bonus_hp);
-          if (bonuses.bonus_mp) trainingBonuses.bonus_mp += BigInt(bonuses.bonus_mp);
-          if (bonuses.bonus_coins_pct) trainingBonuses.bonus_coins_pct += BigInt(bonuses.bonus_coins_pct);
+          TRAINING_STATS.forEach(stat => {
+            if (bonuses[stat]) {
+              trainingBonuses[stat] += BigInt(bonuses[stat]);
+            }
+          });
         }
       }
     }); 
@@ -1004,9 +1032,10 @@ app.post('/api/missions/start', authenticateToken, requireAlive, async (req, res
             const deathFinalInt = maxBigInt(1n, currentInt - deathIntLoss);
             const deathFinalMen = maxBigInt(1n, currentMen - deathMenLoss);
 
-            const hospitalMinutes = Math.min(120, 5 + Math.floor(Math.pow(Number(pl), 0.25)));
-            const exactEndMs = Date.now() + hospitalMinutes * 60000;
-            const hospitalUntilUTC = new Date(exactEndMs).toISOString();
+            const hospitalData = calculateHospitalTime(pl);
+            const hospitalMinutes = hospitalData.minutes;
+            const exactEndMs = hospitalData.exactEndMs;
+            const hospitalUntilUTC = hospitalData.utcString;
 
             const deathStatsLostLog = {
                 strength: deathStrLoss.toString(),
@@ -2142,10 +2171,9 @@ app.post('/api/work/finish', authenticateToken, requireAlive, async (req, res) =
 
         if (isDead) {
             const pl = BigInt(fullStats.powerLevel);
-            const hospitalMinutes = Math.min(120, 5 + Math.floor(Math.pow(Number(pl), 0.25)));
-            const exactEndMs = Date.now() + hospitalMinutes * 60000;
+            const hospitalData = calculateHospitalTime(pl);
             
-            updateData.hospital_until = new Date(exactEndMs).toISOString();
+            updateData.hospital_until = hospitalData.utcString;
             updateData.current_form = 'Stan Podstawowy';
             updateData.last_death_penalty = {
                 strength: sLossStr.toString(),
@@ -2154,7 +2182,7 @@ app.post('/api/work/finish', authenticateToken, requireAlive, async (req, res) =
                 technique: sLossTech.toString(),
                 intelligence: '0',
                 mental_strength: '0',
-                hospital_end_ms: exactEndMs.toString(),
+                hospital_end_ms: hospitalData.exactEndMs.toString(),
                 source: 'work'
             };
         }
@@ -2240,10 +2268,10 @@ app.post('/api/work/finish', authenticateToken, requireAlive, async (req, res) =
 
     if (isDead) {
         const pl = BigInt(fullStats.powerLevel);
-        const hospitalMinutes = Math.min(120, 5 + Math.floor(Math.pow(Number(pl), 0.25)));
-        exactEndMs = Date.now() + hospitalMinutes * 60000;
+        const hospitalData = calculateHospitalTime(pl);
+        exactEndMs = hospitalData.exactEndMs; 
         
-        updateData.hospital_until = new Date(exactEndMs).toISOString();
+        updateData.hospital_until = hospitalData.utcString;
         updateData.current_form = 'Stan Podstawowy';
         updateData.last_death_penalty = {
             strength: '0', speed: '0', endurance: '0', intelligence: '0', mental_strength: '0',
