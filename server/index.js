@@ -308,7 +308,14 @@ async function getFullCharacterStats(userId) {
     const max_mp = 100n + (totalInt / 5n) + baseStats.bonus_mp + equipBonuses.bonus_mp;
     const max_stamina = 100n + baseStats.bonus_stamina;
 
-    // --- ⚡ OBLICZANIE CAŁKOWITEGO POZIOMU MOCY (Baza + Ekwipunek) ---
+    // --- ⚡ OBLICZANIE POZIOMÓW MOCY ---
+    // 1. Prawdziwa moc gracza (Tylko Baza) - do rankingu i kar
+    const base_power_level = 
+        baseStats.strength + baseStats.speed + baseStats.endurance + 
+        baseStats.technique + baseStats.intelligence + baseStats.mental_strength + 
+        baseStats.bonus_hp + (baseStats.bonus_mp * 2n) + (baseStats.bonus_stamina * 5n);
+
+    // 2. Całkowita moc (Baza + Ekwipunek) - do podglądu UI
     const total_stats_sum = 
         baseStats.strength + equipBonuses.strength + 
         baseStats.speed + equipBonuses.speed + 
@@ -317,13 +324,16 @@ async function getFullCharacterStats(userId) {
         baseStats.intelligence + equipBonuses.intelligence + 
         baseStats.mental_strength + equipBonuses.mental_strength;
 
-    const powerLevel = total_stats_sum + 
+    const total_power_level = total_stats_sum + 
         baseStats.bonus_hp + equipBonuses.bonus_hp + 
         ((baseStats.bonus_mp + equipBonuses.bonus_mp) * 2n) + 
         (baseStats.bonus_stamina * 5n);
 
     return {
-      character, profile, powerLevel, max_hp, max_mp, max_stamina,
+      character, profile, 
+      basePowerLevel: base_power_level, // Wysłanie bazy
+      totalPowerLevel: total_power_level, // Wysłanie całości
+      max_hp, max_mp, max_stamina,
       baseStats: {
         strength: baseStats.strength.toString(),
         speed: baseStats.speed.toString(),
@@ -516,7 +526,7 @@ app.get('/api/character', authenticateToken, async (req, res) => {
   try {
     const userId = req.user.id;
     const fullStats = await getFullCharacterStats(userId);
-    const { character, profile, powerLevel, max_hp, max_mp, max_stamina, baseStats, equipStats } = fullStats;
+    const { character, profile, basePowerLevel, totalPowerLevel, max_hp, max_mp, max_stamina, baseStats, equipStats } = fullStats;
 
     const ensureUTC = (dateVal) => {
         if (!dateVal || dateVal === 'null' || dateVal === 'undefined') return null;
@@ -628,8 +638,8 @@ app.get('/api/character', authenticateToken, async (req, res) => {
         updateData.last_calculation_time = newCalcTimeUTC;
     }
 
-    if (String(character.total_power_level || '0') !== powerLevel.toString()) {
-        updateData.total_power_level = parseInt(powerLevel.toString(), 10); 
+    if (String(character.total_power_level || '0') !== totalPowerLevel.toString()) {
+        updateData.total_power_level = parseInt(totalPowerLevel.toString(), 10); 
     }
 
     let features = character.unlocked_features || [];
@@ -647,7 +657,8 @@ app.get('/api/character', authenticateToken, async (req, res) => {
 
     const characterData = {
       username: profile.username,
-      power_level: powerLevel.toString(),
+      power_level: basePowerLevel.toString(),
+      total_power_level: totalPowerLevel.toString(),
       coins: character.coins ?? '0',
       bank_coins: character.bank_coins ?? '0',
       bank_coin_limit_level: character.bank_coin_limit_level ?? 1,
@@ -1084,7 +1095,7 @@ app.post('/api/missions/start', authenticateToken, requireAlive, async (req, res
       // KROK 3: Obsługa śmierci używając Helpera
       if (isDead) {
           const currentStatsObj = { str: currentStr, spd: currentSpd, end: currentEnd, tech: currentTech, int: currentInt, men: currentMen };
-          const deathData = calculateDeathPenalty(character, currentStatsObj, fullStats.powerLevel, 'mission');
+          const deathData = calculateDeathPenalty(character, currentStatsObj, fullStats.basePowerLevel, 'mission');
 
           await supabase.from('characters').update({
               hp: '0', mp: '0', stamina: newStamina.toString(), coins: deathData.newCoins,
@@ -1776,8 +1787,8 @@ async function getRanking() {
   try {
     const { data, error } = await supabase
       .from('characters')
-      .select(`id, total_power_level, profiles!inner(username)`)
-      .order('total_power_level', { ascending: false })
+      .select(`id, base_power_level, profiles!inner(username)`) // Zmienione z total na base
+      .order('base_power_level', { ascending: false }) // Sortujemy po bazie!
       .limit(10);
     
     if (error) throw error;
@@ -1799,7 +1810,7 @@ app.get('/api/ranking', async (req, res) => {
     const formattedRanking = ranking.map((player, index) => ({
       position: index + 1,
       username: player.profiles.username,
-      power_level: BigInt(player.total_power_level || '1').toString()
+      power_level: BigInt(player.base_power_level || '1').toString() // Zmienione z total
     }));
     
     res.json(formattedRanking);
@@ -2092,7 +2103,7 @@ app.post('/api/work/finish', authenticateToken, requireAlive, async (req, res) =
         };
 
         if (isDead) {
-            const hospitalData = calculateHospitalTime(BigInt(fullStats.powerLevel));
+            const hospitalData = calculateHospitalTime(BigInt(fullStats.basePowerLevel));
             updateData.hospital_until = hospitalData.utcString;
             updateData.current_form = 'Stan Podstawowy';
             updateData.last_death_penalty = {
@@ -2169,7 +2180,7 @@ app.post('/api/work/finish', authenticateToken, requireAlive, async (req, res) =
     };
 
     if (isDead) {
-        const hospitalData = calculateHospitalTime(BigInt(fullStats.powerLevel));
+        const hospitalData = calculateHospitalTime(BigInt(fullStats.basePowerLevel));
         exactEndMs = hospitalData.exactEndMs; 
         
         updateData.hospital_until = hospitalData.utcString;
