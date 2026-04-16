@@ -2427,26 +2427,25 @@ app.listen(port, async () => {
 
 const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 cron.schedule('0 2,10,18 * * *', async () => {
-  console.log('[Zegar DC] Wybiła Północ DC! Rozpoczynam zmianę dnia i losowanie zadań...');
-  try {
-    await supabase.from('global_server_state').update({ is_maintenance: true }).eq('id', 1);
-    await delay(5000); 
-    
-    // Reset Dziennych Limitów graczy ORAZ notatnika z postępami zadań
-    await supabase.from('characters').update({ 
-        daily_time_chamber_used: false,
-        daily_shop_buys: {},
+  console.log('[Zegar DC] Wybiła Północ DC! Rozpoczynam zmianę dnia i losowanie zadań...');
+  try {
+    await supabase.from('global_server_state').update({ is_maintenance: true }).eq('id', 1);
+    await delay(5000); 
+    
+    // Reset Dziennych Limitów graczy
+    await supabase.from('characters').update({ 
+        daily_time_chamber_used: false,
+        daily_shop_buys: {},
         daily_tasks_progress: {} 
-    }).neq('profile_id', '00000000-0000-0000-0000-000000000000');
-    
-    // --- LOGIKA SEZONÓW (RUND) ---
-    let nextDay = globalServerState.current_dc_day + 1;
+    }).neq('profile_id', '00000000-0000-0000-0000-000000000000');
+    
+    // --- LOGIKA SEZONÓW ---
+    let nextDay = (globalServerState?.current_dc_day || 0) + 1;
     if (nextDay > 76) nextDay = 76;
 
     // --- LOSOWANIE ZADAŃ SPECJALNYCH ---
     let newDailyTasks = [];
     if (nextDay <= 75) {
-        // Pobieramy tylko te zadania, które pasują do obecnego dnia Rundy
         const { data: allTasks, error: tasksErr } = await supabase
             .from('special_tasks_templates')
             .select('*')
@@ -2454,31 +2453,29 @@ cron.schedule('0 2,10,18 * * *', async () => {
             .gte('max_dc_day', nextDay);
 
         if (!tasksErr && allTasks && allTasks.length > 0) {
-            // Tasujemy tablicę (Fisher-Yates / Math.random)
             const shuffled = allTasks.sort(() => 0.5 - Math.random());
-            // Losujemy od 3 do 5 zadań
             const numTasks = Math.floor(Math.random() * 3) + 3; 
             newDailyTasks = shuffled.slice(0, numTasks);
         }
     }
 
-    // Aktualizacja Globalnego Stanu
-    await supabase.from('global_server_state').update({ 
-        current_dc_day: nextDay,
+    // Aktualizacja Bazy Danych
+    const { data: newState, error: updateErr } = await supabase.from('global_server_state').update({ 
+        current_dc_day: nextDay,
         daily_global_tasks: newDailyTasks,
-        is_maintenance: false
-    }).eq('id', 1);
+        is_maintenance: false
+    }).eq('id', 1).select().single();
 
-    if (nextDay > 75) {
-        console.log(`[Zegar DC] Runda ${globalServerState.current_round} zakończona! Trwa przerwa międzysezonowa.`);
-    } else {
-        console.log(`[Zegar DC] Nowy dzień DC (${nextDay}). Wylosowano ${newDailyTasks.length} Zadań Specjalnych! Serwer odblokowany.`);
+    // --- KLUCZOWA POPRAWKA: Synchronizacja RAM serwera ---
+    if (!updateErr && newState) {
+        globalServerState = newState; 
+        console.log(`[Zegar DC] Serwer zsynchronizowany. Nowy dzień: ${nextDay}`);
     }
 
-  } catch (error) {
-    console.error('[Zegar DC] ⚠️ Krytyczny błąd podczas zmiany dnia:', error);
-    await supabase.from('global_server_state').update({ is_maintenance: false }).eq('id', 1);
-  }
+  } catch (error) {
+    console.error('[Zegar DC] Krytyczny błąd:', error);
+    await supabase.from('global_server_state').update({ is_maintenance: false }).eq('id', 1);
+  }
 }, {
   scheduled: true,
   timezone: "Europe/Warsaw"
