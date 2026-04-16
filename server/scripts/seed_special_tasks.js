@@ -32,7 +32,7 @@ const specialTasksData = [
         goal_amount: 5,
         min_dc_day: 5,
         max_dc_day: 75,
-        reward: { icon: '🏗️', items: [{ id: "00000000-0000-0000-0000-000000000014", qty: 2, name: "Mała Sakiewka" }] } 
+        reward: { icon: '🏗️', items: [{ id: "00000000-0000-0000-0000-000000000020", qty: 2, name: "Mała Sakiewka" }] } 
     },
     {
         id: generateTaskId(3),

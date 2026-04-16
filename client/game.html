@@ -2502,14 +2502,24 @@
 
         // --- NOWE FUNKCJE DLA ZADAŃ SPECJALNYCH ---
         function getTaskIcon(task) {
-            // Pobiera ikonę ze struktury zadania (jeśli dodano ją w seed_special_tasks)
-            if (task.reward && task.reward.icon) return task.reward.icon;
+            let reward = task.reward;
+            if (typeof reward === 'string') {
+                try { reward = JSON.parse(reward); } catch(e) {}
+            }
+            
+            if (reward && reward.icon) return reward.icon;
             const icons = { 'mission': '⚔️', 'work': '💼', 'training': '🧘‍♂️', 'shop': '🛒' };
             return icons[task.task_type] || '📜';
         }
 
         function formatTaskReward(reward) {
             if (!reward) return 'Standardowa Nagroda';
+            
+            // 🔴 KLUCZOWA POPRAWKA
+            if (typeof reward === 'string') {
+                try { reward = JSON.parse(reward); } catch(e) {}
+            }
+            
             let texts = [];
             
             // 1. Monety

@@ -1449,12 +1449,23 @@ app.post('/api/tasks/claim', authenticateToken, requireAlive, async (req, res) =
             if (p.current < task.goal_amount) return res.status(400).json({ error: 'Zadanie nie jest jeszcze ukończone!' });
 
             if (task.reward) {
-                if (task.reward.coins) { rewardsToGive.coins = BigInt(task.reward.coins); rewardsText.push(`${task.reward.coins} Monet`); }
-                if (task.reward.stats) {
-                    for (const [s, val] of Object.entries(task.reward.stats)) { rewardsToGive.stats[s] = BigInt(val); rewardsText.push(`+${val} ${s}`); }
+                let rewardData = task.reward;
+                if (typeof rewardData === 'string') {
+                    try { rewardData = JSON.parse(rewardData); } catch (e) {}
                 }
-                if (task.reward.items && Array.isArray(task.reward.items)) {
-                    task.reward.items.forEach(i => rewardsToGive.items.push({ id: i.id, qty: BigInt(i.qty) }));
+
+                if (rewardData.coins) { 
+                    rewardsToGive.coins = BigInt(rewardData.coins); 
+                    rewardsText.push(`${rewardData.coins} Monet`); 
+                }
+                if (rewardData.stats) {
+                    for (const [s, val] of Object.entries(rewardData.stats)) { 
+                        rewardsToGive.stats[s] = BigInt(val); 
+                        rewardsText.push(`+${val} ${s}`); 
+                    }
+                }
+                if (rewardData.items && Array.isArray(rewardData.items)) {
+                    rewardData.items.forEach(i => rewardsToGive.items.push({ id: i.id, qty: BigInt(i.qty) }));
                 }
             } else {
                 rewardsToGive.coins = 500n; rewardsText.push('500 Monet');
@@ -2453,44 +2464,6 @@ app.post('/api/work/finish', authenticateToken, requireAlive, async (req, res) =
     });
   } catch (err) { res.status(500).json({ error: 'Błąd serwera' }); }
 });
-
-// --- FUNKCJA POMOCNICZA DO LOSOWANIA I WZBOGACANIA ZADAŃ ---
-async function generateAndEnrichDailyTasks(nextDay) {
-    if (nextDay > 75) return [];
-
-    const { data: allTasks, error: tasksErr } = await supabase
-        .from('special_tasks_templates')
-        .select('*')
-        .lte('min_dc_day', nextDay)
-        .gte('max_dc_day', nextDay);
-
-    if (tasksErr || !allTasks || allTasks.length === 0) return [];
-
-    // Pobieramy szablony przedmiotów, żeby wstrzyknąć nazwy i kategorie do zadań!
-    const { data: allItems } = await supabase.from('item_templates').select('id, name, category');
-    const itemMap = {};
-    if (allItems) allItems.forEach(i => itemMap[i.id] = i);
-
-    // Losujemy od 3 do 5 zadań
-    const shuffled = allTasks.sort(() => 0.5 - Math.random());
-    const numTasks = Math.floor(Math.random() * 3) + 3; 
-    const selectedTasks = shuffled.slice(0, numTasks);
-
-    // Automatyczne wstrzykiwanie nazwy i kategorii przedmiotu
-    return selectedTasks.map(task => {
-        if (task.reward && task.reward.items && Array.isArray(task.reward.items)) {
-            task.reward.items = task.reward.items.map(reqItem => {
-                const template = itemMap[reqItem.id];
-                if (template) {
-                    reqItem.name = template.name;
-                    reqItem.category = template.category;
-                }
-                return reqItem;
-            });
-        }
-        return task;
-    });
-}
 
 // --- FUNKCJA POMOCNICZA: Losowanie i wstrzykiwanie nazw/kategorii przedmiotów ---
 async function generateAndEnrichDailyTasks(nextDay) {
