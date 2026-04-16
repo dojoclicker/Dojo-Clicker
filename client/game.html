@@ -775,14 +775,14 @@
 
         function renderSpecialTasks() {
             const tasksListEl = document.getElementById('special-tasks-list');
-            const hubTasksEl = document.querySelector('.special-tasks'); // Widget w Hubie
+            const hubTasksEl = document.querySelector('.special-tasks'); 
             const completionStatusEl = document.getElementById('tasks-completion-status');
             const claimAllBtn = document.getElementById('claim-all-tasks-btn');
             
             if (!tasksListEl) return;
 
-            const globalTasks = GameState.dailyGlobalTasks; // Zmiana źródła
-            const progressDict = GameState.dailyTasksProgress; // Zmiana źródła
+            const globalTasks = GameState.dailyGlobalTasks; 
+            const progressDict = GameState.dailyTasksProgress; 
             
             if (!globalTasks || globalTasks.length === 0) {
                 tasksListEl.innerHTML = '<div style="text-align: center; color: var(--text-muted); padding: 2rem;">Oczekujemy na wytyczne z centrali...</div>';
@@ -801,11 +801,9 @@
                 const isClaimed = progressData.claimed;
                 
                 if (isCompleted) completedCount++;
-
-                // Pasek postępu procentowo
                 const pct = Math.min(100, (currentAmt / task.goal_amount) * 100);
 
-                // --- 1. RENDEROWANIE DO ZAKŁADKI ---
+                // --- 1. RENDEROWANIE DO ZAKŁADKI (NOWY WYGLĄD) ---
                 const card = document.createElement('div');
                 card.style.background = 'rgba(0,0,0,0.4)';
                 card.style.border = `1px solid ${isClaimed ? 'var(--success)' : 'var(--goku-panel-border)'}`;
@@ -814,63 +812,90 @@
                 card.style.display = 'flex';
                 card.style.justifyContent = 'space-between';
                 card.style.alignItems = 'center';
-                if (isClaimed) card.style.opacity = '0.7';
+                if (isClaimed) card.style.opacity = '0.6';
 
                 card.innerHTML = `
+                    <div style="font-size: 2rem; margin-right: 15px; filter: drop-shadow(0 0 5px rgba(255,255,255,0.2));">
+                        ${getTaskIcon(task.task_type)}
+                    </div>
                     <div style="flex: 1; padding-right: 15px;">
                         <h4 style="color: ${isClaimed ? 'var(--success)' : 'var(--goku-accent)'}; margin-bottom: 5px;">
                             ${isClaimed ? '✅ ' : ''}${task.name}
                         </h4>
-                        <div style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 10px;">${task.description || ''}</div>
+                        <div style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 5px;">${task.description || ''}</div>
+                        <div style="font-size: 0.8rem; color: #fbbf24; margin-bottom: 10px; font-weight: bold;">🎁 Nagroda: <span style="color: #fff; font-weight: normal;">${formatTaskReward(task.reward)}</span></div>
                         
-                        <div style="background: #000; height: 10px; border-radius: 5px; overflow: hidden; position: relative;">
-                            <div style="width: ${pct}%; background: ${isCompleted ? 'var(--success)' : '#3b82f6'}; height: 100%; transition: width 0.3s;"></div>
+                        <div style="background: #000; height: 10px; border-radius: 5px; overflow: hidden; position: relative; border: 1px solid rgba(255,255,255,0.1);">
+                            <div style="width: ${pct}%; background: ${isCompleted ? 'var(--success)' : 'linear-gradient(90deg, #3b82f6, #60a5fa)'}; height: 100%; transition: width 0.4s ease-out;"></div>
                         </div>
-                        <div style="font-size: 0.8rem; color: var(--text-muted); text-align: right; margin-top: 3px;">
+                        <div style="font-size: 0.8rem; color: var(--text-muted); text-align: right; margin-top: 4px; font-family: monospace;">
                             ${currentAmt} / ${task.goal_amount}
                         </div>
                     </div>
-                    <div style="min-width: 120px; text-align: right;">
+                    <div style="min-width: 100px; text-align: right;">
                         ${isClaimed 
-                            ? '<span style="color: var(--success); font-weight: bold;">Odebrano</span>' 
-                            : `<button class="btn-header claim-task-btn" data-task-id="${task.id}" ${isCompleted ? 'style="background: var(--success);"' : 'disabled style="opacity: 0.5; cursor: not-allowed;"'}>Odbierz</button>`
+                            ? '<span style="color: var(--success); font-weight: bold; padding: 10px;">Odebrano</span>' 
+                            : `<button class="btn-header claim-task-btn" data-task-id="${task.id}" ${isCompleted ? 'style="background: var(--success); border-color: #15803d;"' : 'disabled style="opacity: 0.5; cursor: not-allowed;"'}>Odbierz</button>`
                         }
                     </div>
                 `;
                 tasksListEl.appendChild(card);
 
-                // --- 2. RENDEROWANIE DO WIDGETU W HUBIE ---
+                // --- 2. RENDEROWANIE DO WIDGETU W HUBIE (Z TOOLTIPAMI) ---
+                const taskTooltipData = {
+                    id: task.id, name: task.name, description: task.description, type: task.task_type,
+                    rewardText: formatTaskReward(task.reward), progress: `${currentAmt} / ${task.goal_amount}`, isCompleted: isCompleted
+                };
+                const tooltipAttr = encodeURIComponent(JSON.stringify(taskTooltipData));
+
                 hubHtml += `
-                    <div style="display: flex; justify-content: space-between; font-size: 0.9rem; margin-bottom: 8px; border-bottom: 1px dashed rgba(255,255,255,0.1); padding-bottom: 8px;">
-                        <span style="color: ${isClaimed ? 'var(--success)' : 'var(--text-primary)'}">${task.name}</span>
-                        <span style="color: ${isCompleted ? 'var(--success)' : 'var(--text-muted)'}">${currentAmt}/${task.goal_amount} ${isClaimed ? '✅' : ''}</span>
+                    <div class="task-card" data-task-id="${task.id}" data-task-template="${tooltipAttr}" style="display: flex; justify-content: space-between; align-items: center; font-size: 0.9rem; margin-bottom: 8px; border-bottom: 1px dashed rgba(255,255,255,0.1); padding-bottom: 8px; cursor: help; transition: background 0.2s; padding: 4px; border-radius: 4px;">
+                        <span style="color: ${isClaimed ? 'var(--success)' : 'var(--text-primary)'}">
+                            <span style="margin-right: 5px;">${getTaskIcon(task.task_type)}</span>${task.name}
+                        </span>
+                        <span style="color: ${isCompleted ? 'var(--success)' : 'var(--text-muted)'}; font-family: monospace; font-size: 0.85rem;">
+                            ${currentAmt}/${task.goal_amount} ${isClaimed ? '✅' : ''}
+                        </span>
                     </div>
                 `;
             });
 
-            // Aktualizacja widgetu w HUB
-            if (hubTasksEl) {
-                hubTasksEl.innerHTML = hubHtml;
-            }
-
-            // Podsumowanie ukończenia całości
+            if (hubTasksEl) hubTasksEl.innerHTML = hubHtml;
             if (completionStatusEl) completionStatusEl.innerText = `Zrobione: ${completedCount}/${globalTasks.length}`;
 
+            // --- 3. AKTUALIZACJA ZŁOTEJ NAGRODY ---
             const allClaimed = globalTasks.every(t => (progressDict[t.id] && progressDict[t.id].claimed));
-            const allCompletedButNotAllClaimed = completedCount === globalTasks.length && !allClaimed;
+            const tasksLeft = globalTasks.length - completedCount;
             
-            // Logika guzika "Odbierz wszystkie / Nagrodę główną"
+            // Określamy Złotą Nagrodę tekstowo (odpowiednik z index.js)
+            const day = GameState.currentDcDay || 1;
+            let mainRewardText = "";
+            if (day <= 25) mainRewardText = "🎁 +50 Max HP ❤️ | +50 Max MP 💧";
+            else if (day <= 50) mainRewardText = "🎁 +100 Max HP ❤️ | +100 Max MP 💧";
+            else mainRewardText = "🎁 50,000 Monet 💰";
+
+            const rewardBox = claimAllBtn.parentElement;
+            if (rewardBox) {
+                rewardBox.querySelector('p').innerHTML = `
+                    <div style="font-size: 1.1rem; color: #fbbf24; font-weight: bold; margin-bottom: 8px; background: rgba(0,0,0,0.4); padding: 5px; border-radius: 4px; display: inline-block;">
+                        ${mainRewardText}
+                    </div><br>
+                    ${tasksLeft > 0 
+                        ? `Brakuje Ci jeszcze <b style="color: var(--error);">${tasksLeft}</b> zadań do odblokowania Nagrody Głównej za obecny dzień.` 
+                        : `<span style="color: var(--success); font-weight: bold;">Wszystkie zadania wykonane!</span>`}
+                `;
+            }
+            
             if (progressDict['main_reward_claimed']) {
                 claimAllBtn.innerText = '✅ Nagroda Główna Odebrana';
                 claimAllBtn.classList.add('disabled');
                 claimAllBtn.disabled = true;
+                claimAllBtn.style.background = '';
             } else if (completedCount === globalTasks.length) {
                 claimAllBtn.innerText = 'Odbierz Nagrodę Główną!';
                 claimAllBtn.classList.remove('disabled');
                 claimAllBtn.disabled = false;
                 claimAllBtn.style.background = 'linear-gradient(135deg, #16a34a, #15803d)';
-                
-                // Unikamy wielokrotnego dodawania listenera
                 claimAllBtn.onclick = () => claimSpecialTask('main');
             } else {
                 claimAllBtn.innerText = 'Wykonaj wszystkie zadania';
@@ -879,14 +904,12 @@
                 claimAllBtn.style.background = '';
             }
 
-            // Listenery dla poszczególnych zadań
             document.querySelectorAll('.claim-task-btn').forEach(btn => {
                 btn.addEventListener('click', function() {
                     claimSpecialTask(this.getAttribute('data-task-id'));
                 });
             });
         }
-
         async function claimSpecialTask(taskId) {
             const res = await apiCall('/api/tasks/claim', 'POST', { task_id: taskId }, true);
             if (!res) return;
@@ -2474,6 +2497,40 @@
             `;
         }
 
+        // --- NOWE FUNKCJE DLA ZADAŃ SPECJALNYCH ---
+        function getTaskIcon(taskType) {
+            const icons = { 'mission': '⚔️', 'work': '💼', 'training': '🧘‍♂️', 'shop': '🛒' };
+            return icons[taskType] || '📜';
+        }
+
+        function formatTaskReward(reward) {
+            if (!reward) return 'Standardowa Nagroda';
+            let texts = [];
+            if (reward.coins) texts.push(`${reward.coins} 💰`);
+            if (reward.stats) {
+                const s = reward.stats;
+                if (s.strength) texts.push(`+${s.strength} Siła`);
+                if (s.speed) texts.push(`+${s.speed} Szyb.`);
+                if (s.endurance) texts.push(`+${s.endurance} Wytrz.`);
+                if (s.technique) texts.push(`+${s.technique} Tech.`);
+            }
+            if (reward.items && reward.items.length > 0) {
+                texts.push(`🎁 Przedmiot (x${reward.items[0].qty})`);
+            }
+            return texts.join(' | ');
+        }
+
+        function createTaskTooltip(template) {
+            if (!template) return '';
+            return `
+                <div class="tooltip-title">${template.name}</div>
+                <div class="tooltip-mission-type" style="color: #94a3b8;">Zadanie Dzienne</div>
+                <div class="tooltip-mission-desc" style="margin-bottom: 10px;">${template.description}</div>
+                <div class="tooltip-mission-detail" style="font-size: 0.9rem;"><b>Postęp:</b> <span style="color: ${template.isCompleted ? 'var(--success)' : '#3b82f6'}; font-weight: bold;">${template.progress}</span></div>
+                <div class="tooltip-mission-detail" style="color: #fbbf24; font-size: 0.9rem; margin-top: 5px;"><b>Nagroda:</b> ${template.rewardText}</div>
+            `;
+        }
+
         function createItemTooltip(template) {
             if (!template) return '';
 
@@ -3299,8 +3356,8 @@
                 
                 // Poprawiony fragment obsługi Hovera
                 document.body.addEventListener('mouseover', function(e) {
-                    const card = e.target.closest('.item-card, .shop-item-card, .mission-card');
-                    // Szukamy elementu z data-tooltip (np. wartości paska HP) LUB samego targetu jeśli ma ten atrybut
+                    // DODANO .task-card do listy łapanych klas
+                    const card = e.target.closest('.item-card, .shop-item-card, .mission-card, .task-card');
                     const simpleTooltip = e.target.hasAttribute('data-tooltip') ? e.target : e.target.closest('[data-tooltip]');
                     
                     if (card || simpleTooltip) {
@@ -3311,20 +3368,31 @@
                             if (simpleTooltip && !document.body.contains(simpleTooltip)) return;
 
                             if (card) {
-                                const cardId = card.dataset.inventoryId || card.dataset.templateId || card.dataset.missionId || card.className;
+                                // Zmodyfikowano logikę cardId
+                                const cardId = card.dataset.inventoryId || card.dataset.templateId || card.dataset.missionId || card.dataset.taskId || card.className;
                                 if (globalTooltip.dataset.currentCard === cardId && globalTooltip.style.opacity === '1') return; 
                                 
                                 const isMission = card.classList.contains('mission-card');
-                                const templateData = card.getAttribute(isMission ? 'data-mission-template' : 'data-item-template');
+                                const isTask = card.classList.contains('task-card'); // NOWE
+                                
+                                let templateData;
+                                if (isMission) templateData = card.getAttribute('data-mission-template');
+                                else if (isTask) templateData = card.getAttribute('data-task-template'); // NOWE
+                                else templateData = card.getAttribute('data-item-template');
+
                                 if (!templateData) return;
                                 
                                 try {
                                     const template = JSON.parse(decodeURIComponent(templateData));
+                                    
                                     if (isMission) {
                                         globalTooltip.innerHTML = createMissionTooltip(template);
+                                    } else if (isTask) {
+                                        globalTooltip.innerHTML = createTaskTooltip(template); // NOWE
                                     } else {
                                         globalTooltip.innerHTML = createItemTooltip(template);
                                     }
+                                    
                                     positionTooltip(lastMouseX, lastMouseY); 
                                     
                                     globalTooltip.style.opacity = '1';
@@ -3332,6 +3400,7 @@
                                     globalTooltip.dataset.currentCard = cardId;
                                 } catch (err) { console.error('[Tooltip] Błąd:', err); }
                             } else if (simpleTooltip) {
+                                // (Dalsza część kodu bez zmian)
                                 const text = simpleTooltip.getAttribute('data-tooltip');
                                 if (!text) return;
                                 if (globalTooltip.dataset.currentCard === text && globalTooltip.style.opacity === '1') return;
@@ -3368,7 +3437,8 @@
                 });
 
                 document.body.addEventListener('mouseout', function(e) {
-                    const card = e.target.closest('.item-card, .shop-item-card, .mission-card');
+                    // DODANO .task-card
+                    const card = e.target.closest('.item-card, .shop-item-card, .mission-card, .task-card');
                     const simpleTooltip = e.target.closest('[data-tooltip]');
                     if ((card && !card.contains(e.relatedTarget)) || (simpleTooltip && !simpleTooltip.contains(e.relatedTarget))) {
                         clearTimeout(GameState.tooltipTimeout); 
@@ -3867,7 +3937,8 @@
         function spawnObject() {
             if (!GameState.isWorkMinigameActive) return;
             
-            const dropTimesLUT = [1.9, 1.8, 1.7, 1.6, 1.5, 1.4, 1.3, 1.2, 1.1, 1.0, 0.9, 0.8, 0.7, 0.6, 0.5];
+            // POPRAWKA: Znacznie szybsze czasy spadania obiektów (od 1.3s do 0.2s)
+            const dropTimesLUT = [1.3, 1.2, 1.1, 1.0, 0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2];
             
             const workIndex = WORK_FRONTEND_DATA.findIndex(w => w.id === currentSelectedWorkId);
             const safeIndex = Math.max(0, Math.min(workIndex, dropTimesLUT.length - 1));
