@@ -1424,21 +1424,36 @@ app.post('/api/tasks/claim', authenticateToken, requireAlive, async (req, res) =
             if (!allDone) return res.status(400).json({ error: 'Nie wykonałeś jeszcze wszystkich zadań!' });
 
             const day = globalServerState.current_dc_day || 1;
-            
-            // Szukamy odpowiedniej nagrody na podstawie dnia Rundy
             const config = MAIN_DAILY_REWARDS.find(r => day <= r.max_day) || MAIN_DAILY_REWARDS[MAIN_DAILY_REWARDS.length - 1];
 
+            // 🔴 SKALOWANIE NAGRODY WZGLĘDEM ILOŚCI ZADAŃ
+            // Bazowa wartość w słowniku dotyczy wykonania 3 zadań.
+            const taskCount = BigInt(globalTasks.length);
+            const baseTaskCount = 3n; 
+            
+            let dynamicTexts = [];
+
             if (config.reward.stats) {
-                for (const [s, val] of Object.entries(config.reward.stats)) { rewardsToGive.stats[s] = val; }
+                for (const [s, val] of Object.entries(config.reward.stats)) { 
+                    // Skalowanie: np. 50 HP * 10 misji / 3 = 166 HP (Proporcjonalny wzrost!)
+                    const scaledVal = (val * taskCount) / baseTaskCount;
+                    rewardsToGive.stats[s] = scaledVal; 
+                    dynamicTexts.push(`+${scaledVal} Max ${s.replace('bonus_', '').toUpperCase()}`);
+                }
             }
             if (config.reward.coins) {
-                rewardsToGive.coins = config.reward.coins;
+                const scaledCoins = (config.reward.coins * taskCount) / baseTaskCount;
+                rewardsToGive.coins = scaledCoins;
+                dynamicTexts.push(`${scaledCoins} Monet`);
             }
             if (config.reward.items) {
-                config.reward.items.forEach(i => rewardsToGive.items.push({ id: i.id, qty: BigInt(i.qty) }));
+                config.reward.items.forEach(i => {
+                    const scaledQty = maxBigInt(1n, (BigInt(i.qty) * taskCount) / baseTaskCount);
+                    rewardsToGive.items.push({ id: i.id, qty: scaledQty });
+                });
             }
             
-            rewardsText.push(config.text);
+            rewardsText.push(dynamicTexts.join(', ') + ' (Skalowana Nagroda Dnia)');
             progress['main_reward_claimed'] = true;
         } else {
             const task = globalTasks.find(t => t.id === task_id);
@@ -2477,16 +2492,75 @@ async function generateAndEnrichDailyTasks(nextDay) {
 
     if (tasksErr || !allTasks || allTasks.length === 0) return [];
 
-    // 🔴 ZMIANA: Pobieramy cały szablon przedmiotu (select('*'))
     const { data: allItems } = await supabase.from('item_templates').select('*');
     const itemMap = {};
     if (allItems) allItems.forEach(i => itemMap[i.id] = i);
 
-    // Losujemy od 3 do 5 zadań
-    const shuffled = allTasks.sort(() => 0.5 - Math.random());
-    const numTasks = Math.floor(Math.random() * 3) + 3; 
-    const selectedTasks = shuffled.slice(0, numTasks);
+    // 🔴 KROK 1: Obliczenie docelowej ilości zadań na dany dzień
+    let minTasks = 3, maxTasks = 3;
+    if (nextDay <= 40) { minTasks = 3; maxTasks = 4; }
+    else if (nextDay <= 50) { minTasks = 4; maxTasks = 5; }
+    else if (nextDay <= 60) { minTasks = 5; maxTasks = 6; }
+    else if (nextDay < 70) { minTasks = 6; maxTasks = 7; }
+    else if (nextDay === 70) { minTasks = 7; maxTasks = 7; }
+    else if (nextDay === 71) { minTasks = 8; maxTasks = 8; }
+    else if (nextDay === 72) { minTasks = 9; maxTasks = 9; }
+    else { minTasks = 10; maxTasks = 10; } // Dni 73, 74, 75 zawsze równe 10!
 
+    let targetNumTasks = Math.floor(Math.random() * (maxTasks - minTasks + 1)) + minTasks;
+
+    // 🔴 KROK 2: Ustawienie rygorystycznych limitów i filtrów
+    const limits = {
+        'work': 2, 'training': 1, 'shop_buy': 2, 'shop_sell': 2,
+        'bank_upgrade': 1, 'mission': 3, 'consume': 3, 'training_stats': 1
+    };
+
+    const currentCounts = {
+        'work': 0, 'training': 0, 'shop_buy': 0, 'shop_sell': 0,
+        'bank_upgrade': 0, 'mission': 0, 'consume': 0, 'training_stats': 0
+    };
+
+    const selectedTasks = [];
+    const usedTargets = new Set(); // Blokada różnych poziomów tego samego zadania
+
+    // Tasujemy pulę zadań
+    const shuffled = allTasks.sort(() => 0.5 - Math.random());
+
+    // Główna pętla filtrująca
+    for (const task of shuffled) {
+        if (selectedTasks.length >= targetNumTasks) break;
+
+        const type = task.task_type;
+        const target = task.target_id;
+
+        // Czy przekroczono limit kategorii na dziś?
+        if (limits[type] !== undefined && currentCounts[type] >= limits[type]) continue;
+
+        // Czy wylosowano już dzisiaj to samo zadanie (nawet z innym poziomem)?
+        const familyKey = `${type}_${target}`;
+        if (usedTargets.has(familyKey)) continue;
+
+        // Zadanie przechodzi przez filtry!
+        selectedTasks.push(task);
+        if (limits[type] !== undefined) currentCounts[type]++;
+        usedTargets.add(familyKey);
+    }
+    
+    // 🔴 KROK 3: BEZPIECZNIK. 
+    // Jeśli rygorystyczne limity sprawiły, że nie dobraliśmy np. 10 misji,
+    // dobieramy brakujące misje ignorując max. limity kategorii (ale wciąż blokujemy duble poziomów!).
+    if (selectedTasks.length < targetNumTasks) {
+        for (const task of shuffled) {
+            if (selectedTasks.length >= targetNumTasks) break;
+            const familyKey = `${task.task_type}_${task.target_id}`;
+            if (!usedTargets.has(familyKey)) {
+                selectedTasks.push(task);
+                usedTargets.add(familyKey);
+            }
+        }
+    }
+
+    // 🔴 KROK 4: Wstrzyknięcie pełnych danych i przygotowanie na front
     return selectedTasks.map(task => {
         let rewardObj = task.reward;
         if (typeof rewardObj === 'string') {
@@ -2499,7 +2573,6 @@ async function generateAndEnrichDailyTasks(nextDay) {
                 if (template) {
                     reqItem.name = template.name;
                     reqItem.category = template.category;
-                    // 🔴 ZMIANA: Przekazujemy pełen szablon do frontendu
                     reqItem.template = template; 
                 }
                 return reqItem;

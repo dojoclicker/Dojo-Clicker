@@ -41,7 +41,7 @@
                 <div class="nav-text">Szpital</div>
             </button>
             <button class="nav-btn disabled" data-tab="training" id="nav-training-btn">
-                <div class="nav-icon">🧘‍♂️</div>
+                <div class="nav-icon">🏋️‍♂️</div>
                 <div class="nav-text">Trening</div>
             </button>
             <button class="nav-btn disabled locked" data-tab="work" id="nav-work-btn">
@@ -258,7 +258,7 @@
                     </div>
                     
                     <div id="training-progress-panel" style="display: none; text-align: center; flex-direction: column; justify-content: center; flex: 1;">
-                        <div style="font-size: 5rem; line-height: 1; margin-bottom: 1rem; filter: drop-shadow(0 0 15px rgba(163,230,53,0.5));">🧘‍♂️</div>
+                        <div style="font-size: 5rem; line-height: 1; margin-bottom: 1rem; filter: drop-shadow(0 0 15px rgba(163,230,53,0.5));">🏋️‍♂️</div>
                         <h3 id="active-mentor-name" style="color: var(--goku-accent); margin-bottom: 1rem; font-size: 1.5rem;">Mentor</h3>
                         <div id="training-countdown" style="font-size: 3rem; font-weight: bold; color: var(--success); text-shadow: 2px 2px 4px rgba(0,0,0,0.5); margin-bottom: 1rem; font-family: monospace;">00:00:00</div>
                         <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 2rem;">Postać medytuje w tle. <br><span style="color: var(--error);">Misje i Praca są zablokowane.</span></p>
@@ -629,7 +629,7 @@
 
         const MISSION_UNLOCKS_DICTIONARY = {
             '10000000-0000-0000-0000-000000000004': { shop: 'Poziom 2 🛒' },
-            '00000000-0000-0000-0000-000000000005': { tab: 'Trening 🧘‍♂️', mentor: 'Stary Mistrz 👴' },
+            '00000000-0000-0000-0000-000000000005': { tab: 'Trening 🏋️‍♂️', mentor: 'Stary Mistrz 👴' },
             '10000000-0000-0000-0000-000000000006': { tab: 'Praca 💼', work: 'Roznoszenie Mleka 🥛' },
             '10000000-0000-0000-0000-000000000007': { work: 'Praca na Budowie 🧱', shop: 'Poziom 3 🛒' },
             '10000000-0000-0000-0000-000000000008': { work: 'Praca w Polu 🌱' },
@@ -2508,7 +2508,7 @@
             }
             
             if (reward && reward.icon) return reward.icon;
-            const icons = { 'mission': '⚔️', 'work': '💼', 'training': '🧘‍♂️', 'shop': '🛒' };
+            const icons = { 'mission': '⚔️', 'work': '💼', 'training': '🏋️‍♂️', 'shop': '🛒' };
             return icons[task.task_type] || '📜';
         }
 
@@ -2531,15 +2531,16 @@
                 if (s.technique) texts.push(`<span title="Technika">🎯 +${s.technique}</span>`);
             }
             
-            // 🔴 ZMIANA TUTAJ: Renderowanie przedmiotu z tooltipem
             if (reward.items && reward.items.length > 0) {
                 reward.items.forEach(item => {
                     const itemName = item.name || "Nieznany przedmiot";
                     const itemCategory = item.category || "consumable";
                     const imgPath = getItemImage(itemName, itemCategory);
                     
-                    // Przygotowujemy zakodowany szablon dla tooltipa
-                    const templateAttr = item.template ? `data-item-template="${encodeURIComponent(JSON.stringify(item.template))}"` : '';
+                    // 🟢 ZMIANA: Dodano data-template-id, aby system tooltipów odróżniał poszczególne nagrody
+                    const templateAttr = item.template 
+                        ? `data-item-template="${encodeURIComponent(JSON.stringify(item.template))}" data-template-id="${item.template.id}"` 
+                        : '';
                     
                     texts.push(`
                         <span class="reward-item-hover" ${templateAttr} style="display:inline-flex; align-items:center; gap:5px; background: rgba(0,0,0,0.3); padding: 2px 8px; border-radius: 4px; border: 1px solid rgba(255,255,255,0.1); cursor: help; transition: background 0.2s;">
