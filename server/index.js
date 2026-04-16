@@ -2477,8 +2477,8 @@ async function generateAndEnrichDailyTasks(nextDay) {
 
     if (tasksErr || !allTasks || allTasks.length === 0) return [];
 
-    // Pobieramy nazwy i kategorie wszystkich przedmiotów z bazy
-    const { data: allItems } = await supabase.from('item_templates').select('id, name, category');
+    // 🔴 ZMIANA: Pobieramy cały szablon przedmiotu (select('*'))
+    const { data: allItems } = await supabase.from('item_templates').select('*');
     const itemMap = {};
     if (allItems) allItems.forEach(i => itemMap[i.id] = i);
 
@@ -2487,18 +2487,26 @@ async function generateAndEnrichDailyTasks(nextDay) {
     const numTasks = Math.floor(Math.random() * 3) + 3; 
     const selectedTasks = shuffled.slice(0, numTasks);
 
-    // Automatyczne wstrzykiwanie danych przedmiotu (aby frontend widział nazwę i grafikę)
     return selectedTasks.map(task => {
-        if (task.reward && task.reward.items && Array.isArray(task.reward.items)) {
-            task.reward.items = task.reward.items.map(reqItem => {
+        let rewardObj = task.reward;
+        if (typeof rewardObj === 'string') {
+            try { rewardObj = JSON.parse(rewardObj); } catch (e) {}
+        }
+
+        if (rewardObj && rewardObj.items && Array.isArray(rewardObj.items)) {
+            rewardObj.items = rewardObj.items.map(reqItem => {
                 const template = itemMap[reqItem.id];
                 if (template) {
                     reqItem.name = template.name;
                     reqItem.category = template.category;
+                    // 🔴 ZMIANA: Przekazujemy pełen szablon do frontendu
+                    reqItem.template = template; 
                 }
                 return reqItem;
             });
         }
+        
+        task.reward = rewardObj;
         return task;
     });
 }
