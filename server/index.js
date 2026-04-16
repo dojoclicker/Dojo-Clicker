@@ -496,23 +496,11 @@ app.get('/api/test_next_day', async (req, res) => {
             daily_tasks_progress: {} 
         }).neq('profile_id', '00000000-0000-0000-0000-000000000000');
         
+        // 4. Losujemy i wzbogacamy nowe zadania
         let nextDay = (globalServerState?.current_dc_day || 0) + 1;
         if (nextDay > 76) nextDay = 76;
 
-        let newDailyTasks = [];
-        if (nextDay <= 75) {
-            const { data: allTasks, error: tasksErr } = await supabase
-                .from('special_tasks_templates')
-                .select('*')
-                .lte('min_dc_day', nextDay)
-                .gte('max_dc_day', nextDay);
-
-            if (!tasksErr && allTasks && allTasks.length > 0) {
-                const shuffled = allTasks.sort(() => 0.5 - Math.random());
-                const numTasks = Math.floor(Math.random() * 3) + 3; 
-                newDailyTasks = shuffled.slice(0, numTasks);
-            }
-        }
+        const newDailyTasks = await generateAndEnrichDailyTasks(nextDay);
 
         const { data: newState, error: updateErr } = await supabase.from('global_server_state').update({ 
             current_dc_day: nextDay,
@@ -2465,6 +2453,44 @@ app.post('/api/work/finish', authenticateToken, requireAlive, async (req, res) =
   } catch (err) { res.status(500).json({ error: 'Błąd serwera' }); }
 });
 
+// --- FUNKCJA POMOCNICZA DO LOSOWANIA I WZBOGACANIA ZADAŃ ---
+async function generateAndEnrichDailyTasks(nextDay) {
+    if (nextDay > 75) return [];
+
+    const { data: allTasks, error: tasksErr } = await supabase
+        .from('special_tasks_templates')
+        .select('*')
+        .lte('min_dc_day', nextDay)
+        .gte('max_dc_day', nextDay);
+
+    if (tasksErr || !allTasks || allTasks.length === 0) return [];
+
+    // Pobieramy szablony przedmiotów, żeby wstrzyknąć nazwy i kategorie do zadań!
+    const { data: allItems } = await supabase.from('item_templates').select('id, name, category');
+    const itemMap = {};
+    if (allItems) allItems.forEach(i => itemMap[i.id] = i);
+
+    // Losujemy od 3 do 5 zadań
+    const shuffled = allTasks.sort(() => 0.5 - Math.random());
+    const numTasks = Math.floor(Math.random() * 3) + 3; 
+    const selectedTasks = shuffled.slice(0, numTasks);
+
+    // Automatyczne wstrzykiwanie nazwy i kategorii przedmiotu
+    return selectedTasks.map(task => {
+        if (task.reward && task.reward.items && Array.isArray(task.reward.items)) {
+            task.reward.items = task.reward.items.map(reqItem => {
+                const template = itemMap[reqItem.id];
+                if (template) {
+                    reqItem.name = template.name;
+                    reqItem.category = template.category;
+                }
+                return reqItem;
+            });
+        }
+        return task;
+    });
+}
+
 // ==========================================
 // ⏰ 9. CRON JOBS I START SERWERA
 // ==========================================
@@ -2491,17 +2517,11 @@ cron.schedule('0 2,10,18 * * *', async () => {
         daily_tasks_progress: {} 
     }).neq('profile_id', '00000000-0000-0000-0000-000000000000');
     
-    // 4. Losujemy nowe zadania
+    // 4. Losujemy i wzbogacamy nowe zadania
     let nextDay = (globalServerState?.current_dc_day || 0) + 1;
     if (nextDay > 76) nextDay = 76;
 
-    let newDailyTasks = [];
-    if (nextDay <= 75) {
-        const { data: allTasks } = await supabase.from('special_tasks_templates').select('*').lte('min_dc_day', nextDay).gte('max_dc_day', nextDay);
-        if (allTasks && allTasks.length > 0) {
-            newDailyTasks = allTasks.sort(() => 0.5 - Math.random()).slice(0, Math.floor(Math.random() * 3) + 3);
-        }
-    }
+    const newDailyTasks = await generateAndEnrichDailyTasks(nextDay);
 
     // 5. Zapisujemy i odblokowujemy (is_maintenance: false)
     const { data: newState } = await supabase.from('global_server_state').update({ 

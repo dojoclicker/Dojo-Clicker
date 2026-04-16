@@ -866,17 +866,15 @@
             const allClaimed = globalTasks.every(t => (progressDict[t.id] && progressDict[t.id].claimed));
             const tasksLeft = globalTasks.length - completedCount;
             
-            // Określamy Złotą Nagrodę tekstowo (odpowiednik z index.js)
             const day = GameState.currentDcDay || 1;
             let mainRewardText = "";
             if (day <= 25) mainRewardText = "🎁 +50 Max HP ❤️ | +50 Max MP 💧";
             else if (day <= 50) mainRewardText = "🎁 +100 Max HP ❤️ | +100 Max MP 💧";
             else mainRewardText = "🎁 50,000 Monet 💰";
 
-            // CAŁKOWICIE NOWA STRUKTURA ZŁOTEJ NAGRODY
             const rewardBox = claimAllBtn.parentElement;
             if (rewardBox) {
-                // Zachowujemy tytuł i podmieniamy tylko środek:
+                // CAŁKOWITA ZMIANA STRUKTURY NAGRODY
                 rewardBox.innerHTML = `
                     <h5 style="color: var(--goku-accent); margin-bottom: 10px; font-size: 1.1rem;">Złota Nagroda za wszystko!</h5>
                     <div style="font-size: 1.1rem; color: #fbbf24; font-weight: bold; margin-bottom: 8px; background: rgba(0,0,0,0.4); padding: 8px; border-radius: 4px; display: inline-block;">
@@ -2516,16 +2514,18 @@
             if (reward.coins) texts.push(`${reward.coins} 💰`);
             if (reward.stats) {
                 const s = reward.stats;
-                // Dodane odpowiednie emotikony statystyk
                 if (s.strength) texts.push(`+${s.strength} 💪 Siła`);
                 if (s.speed) texts.push(`+${s.speed} ⚡ Szyb.`);
                 if (s.endurance) texts.push(`+${s.endurance} 🛡️ Wytrz.`);
                 if (s.technique) texts.push(`+${s.technique} 🎯 Tech.`);
             }
             if (reward.items && reward.items.length > 0) {
-                // Pobiera prawdziwą nazwę przedmiotu zamiast ogólnika
-                const itemName = reward.items[0].name || 'Przedmiot';
-                texts.push(`🎁 ${itemName} (x${reward.items[0].qty})`);
+                const item = reward.items[0];
+                const itemName = item.name || 'Przedmiot';
+                const imgPath = getItemImage(itemName, item.category);
+                
+                // Generowanie ładnej mini-karty przedmiotu z ikonką
+                texts.push(`<span style="display:inline-flex; align-items:center; gap:4px; vertical-align:middle; background: rgba(0,0,0,0.3); padding: 2px 6px; border-radius: 4px; border: 1px solid rgba(255,255,255,0.1);"><img src="${imgPath}" style="width:18px; height:18px; object-fit:contain; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));"> ${itemName} (x${item.qty})</span>`);
             }
             return texts.join(' | ');
         }
@@ -3163,11 +3163,6 @@
             });
 
             activateTab(savedTab);
-
-            document.getElementById('logout-btn').addEventListener('click', function() {
-                localStorage.removeItem('session_token');
-                window.location.href = 'index.html';
-            });
 
             // Zmienna do przechowywania interwału tykania
             let clockInterval = null;
@@ -4213,13 +4208,13 @@
             }, isFailed ? 2500 : 0);
         } 
 
-        document.getElementById('logout-btn').addEventListener('click', function() {
-                localStorage.removeItem('session_token');
-                localStorage.setItem('active_game_tab', 'dashboard');
-                window.location.href = 'index.html';
+        const logoutBtnGame = document.getElementById('logout-btn');
+        if (logoutBtnGame) {
+            logoutBtnGame.addEventListener('click', () => {
+                localStorage.clear(); // CAŁKOWITE WYZEROWANIE PAMIĘCI ŚMIECI
+                window.location.href = 'index.html'; 
             });
-
-        fetchTrainingStatus();
+        }
         
         setInterval(() => {
             const activeTab = localStorage.getItem('active_game_tab');
