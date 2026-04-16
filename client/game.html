@@ -816,14 +816,13 @@
 
                 card.innerHTML = `
                     <div style="font-size: 2rem; margin-right: 15px; filter: drop-shadow(0 0 5px rgba(255,255,255,0.2));">
-                        ${getTaskIcon(task.task_type)}
-                    </div>
+                        ${getTaskIcon(task)} </div>
                     <div style="flex: 1; padding-right: 15px;">
                         <h4 style="color: ${isClaimed ? 'var(--success)' : 'var(--goku-accent)'}; margin-bottom: 5px;">
                             ${isClaimed ? '✅ ' : ''}${task.name}
                         </h4>
                         <div style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 5px;">${task.description || ''}</div>
-                        <div style="font-size: 0.8rem; color: #fbbf24; margin-bottom: 10px; font-weight: bold;">🎁 Nagroda: <span style="color: #fff; font-weight: normal;">${formatTaskReward(task.reward)}</span></div>
+                        <div style="font-size: 0.8rem; color: #fbbf24; margin-bottom: 10px; font-weight: bold;">Nagroda: <span style="color: #fff; font-weight: normal;">${formatTaskReward(task.reward)}</span></div>
                         
                         <div style="background: #000; height: 10px; border-radius: 5px; overflow: hidden; position: relative; border: 1px solid rgba(255,255,255,0.1);">
                             <div style="width: ${pct}%; background: ${isCompleted ? 'var(--success)' : 'linear-gradient(90deg, #3b82f6, #60a5fa)'}; height: 100%; transition: width 0.4s ease-out;"></div>
@@ -841,7 +840,7 @@
                 `;
                 tasksListEl.appendChild(card);
 
-                // --- 2. RENDEROWANIE DO WIDGETU W HUBIE (Z TOOLTIPAMI) ---
+                // --- 2. RENDEROWANIE DO WIDGETU W HUBIE ---
                 const taskTooltipData = {
                     id: task.id, name: task.name, description: task.description, type: task.task_type,
                     rewardText: formatTaskReward(task.reward), progress: `${currentAmt} / ${task.goal_amount}`, isCompleted: isCompleted
@@ -851,7 +850,7 @@
                 hubHtml += `
                     <div class="task-card" data-task-id="${task.id}" data-task-template="${tooltipAttr}" style="display: flex; justify-content: space-between; align-items: center; font-size: 0.9rem; margin-bottom: 8px; border-bottom: 1px dashed rgba(255,255,255,0.1); padding-bottom: 8px; cursor: help; transition: background 0.2s; padding: 4px; border-radius: 4px;">
                         <span style="color: ${isClaimed ? 'var(--success)' : 'var(--text-primary)'}">
-                            <span style="margin-right: 5px;">${getTaskIcon(task.task_type)}</span>${task.name}
+                            <span style="margin-right: 5px;">${getTaskIcon(task)}</span>${task.name}
                         </span>
                         <span style="color: ${isCompleted ? 'var(--success)' : 'var(--text-muted)'}; font-family: monospace; font-size: 0.85rem;">
                             ${currentAmt}/${task.goal_amount} ${isClaimed ? '✅' : ''}
@@ -874,16 +873,22 @@
             else if (day <= 50) mainRewardText = "🎁 +100 Max HP ❤️ | +100 Max MP 💧";
             else mainRewardText = "🎁 50,000 Monet 💰";
 
+            // CAŁKOWICIE NOWA STRUKTURA ZŁOTEJ NAGRODY
             const rewardBox = claimAllBtn.parentElement;
             if (rewardBox) {
-                rewardBox.querySelector('p').innerHTML = `
-                    <div style="font-size: 1.1rem; color: #fbbf24; font-weight: bold; margin-bottom: 8px; background: rgba(0,0,0,0.4); padding: 5px; border-radius: 4px; display: inline-block;">
+                // Zachowujemy tytuł i podmieniamy tylko środek:
+                rewardBox.innerHTML = `
+                    <h5 style="color: var(--goku-accent); margin-bottom: 10px; font-size: 1.1rem;">Złota Nagroda za wszystko!</h5>
+                    <div style="font-size: 1.1rem; color: #fbbf24; font-weight: bold; margin-bottom: 8px; background: rgba(0,0,0,0.4); padding: 8px; border-radius: 4px; display: inline-block;">
                         ${mainRewardText}
                     </div><br>
-                    ${tasksLeft > 0 
-                        ? `Brakuje Ci jeszcze <b style="color: var(--error);">${tasksLeft}</b> zadań do odblokowania Nagrody Głównej za obecny dzień.` 
-                        : `<span style="color: var(--success); font-weight: bold;">Wszystkie zadania wykonane!</span>`}
+                    <p style="color: var(--text-secondary); font-size: 0.95rem; margin-bottom: 15px;">
+                        ${tasksLeft > 0 
+                            ? `Brakuje Ci jeszcze <b style="color: var(--error);">${tasksLeft}</b> zadań do odblokowania Nagrody Głównej.` 
+                            : `<span style="color: var(--success); font-weight: bold;">Wszystkie zadania wykonane! Odbierz nagrodę!</span>`}
+                    </p>
                 `;
+                rewardBox.appendChild(claimAllBtn); // Przywracamy guzik na sam dół
             }
             
             if (progressDict['main_reward_claimed']) {
@@ -2498,9 +2503,11 @@
         }
 
         // --- NOWE FUNKCJE DLA ZADAŃ SPECJALNYCH ---
-        function getTaskIcon(taskType) {
+        function getTaskIcon(task) {
+            // Pobiera ikonę ze struktury zadania (jeśli dodano ją w seed_special_tasks)
+            if (task.reward && task.reward.icon) return task.reward.icon;
             const icons = { 'mission': '⚔️', 'work': '💼', 'training': '🧘‍♂️', 'shop': '🛒' };
-            return icons[taskType] || '📜';
+            return icons[task.task_type] || '📜';
         }
 
         function formatTaskReward(reward) {
@@ -2509,13 +2516,16 @@
             if (reward.coins) texts.push(`${reward.coins} 💰`);
             if (reward.stats) {
                 const s = reward.stats;
-                if (s.strength) texts.push(`+${s.strength} Siła`);
-                if (s.speed) texts.push(`+${s.speed} Szyb.`);
-                if (s.endurance) texts.push(`+${s.endurance} Wytrz.`);
-                if (s.technique) texts.push(`+${s.technique} Tech.`);
+                // Dodane odpowiednie emotikony statystyk
+                if (s.strength) texts.push(`+${s.strength} 💪 Siła`);
+                if (s.speed) texts.push(`+${s.speed} ⚡ Szyb.`);
+                if (s.endurance) texts.push(`+${s.endurance} 🛡️ Wytrz.`);
+                if (s.technique) texts.push(`+${s.technique} 🎯 Tech.`);
             }
             if (reward.items && reward.items.length > 0) {
-                texts.push(`🎁 Przedmiot (x${reward.items[0].qty})`);
+                // Pobiera prawdziwą nazwę przedmiotu zamiast ogólnika
+                const itemName = reward.items[0].name || 'Przedmiot';
+                texts.push(`🎁 ${itemName} (x${reward.items[0].qty})`);
             }
             return texts.join(' | ');
         }
@@ -2527,7 +2537,7 @@
                 <div class="tooltip-mission-type" style="color: #94a3b8;">Zadanie Dzienne</div>
                 <div class="tooltip-mission-desc" style="margin-bottom: 10px;">${template.description}</div>
                 <div class="tooltip-mission-detail" style="font-size: 0.9rem;"><b>Postęp:</b> <span style="color: ${template.isCompleted ? 'var(--success)' : '#3b82f6'}; font-weight: bold;">${template.progress}</span></div>
-                <div class="tooltip-mission-detail" style="color: #fbbf24; font-size: 0.9rem; margin-top: 5px;"><b>Nagroda:</b> ${template.rewardText}</div>
+                <div class="tooltip-mission-detail" style="color: #fbbf24; font-size: 0.9rem; margin-top: 5px;"><b>Nagroda:</b> <br><span style="color: #fff; font-weight: normal;">${template.rewardText}</span></div>
             `;
         }
 
@@ -3526,20 +3536,17 @@
                 }
 
                 if (newTrainingState) {
-                    if (!isCurrentlyTraining || progressView.style.display === 'none') {
-                        GameState.isPlayerTraining = true;
-                        const [mentorId, hours, stat] = data.activeTraining.split(':');
-                        const mentor = trainingMentors.find(m => m.id === mentorId) || { name: 'Mistrz' };
-                        showActiveTrainingState(mentor, data.endTime);
-                        if (typeof updateTabsLockState === 'function') updateTabsLockState();
-                    }
+                    GameState.isPlayerTraining = true;
+                    const [mentorId, hours, stat] = data.activeTraining.split(':');
+                    const mentor = trainingMentors.find(m => m.id === mentorId) || { name: 'Mistrz' };
+                    showActiveTrainingState(mentor, data.endTime);
                 } else {
-                    if (isCurrentlyTraining || setupView.style.display === 'none') {
-                        GameState.isPlayerTraining = false;
-                        showSetupState();
-                        if (typeof updateTabsLockState === 'function') updateTabsLockState();
-                    }
+                    GameState.isPlayerTraining = false;
+                    showSetupState();
                 }
+                
+                // FORCE UPDATE LOCK STATE (To odblokuje zakładki nowemu graczowi!)
+                if (typeof updateTabsLockState === 'function') updateTabsLockState();
 
             } catch (err) { console.error('Błąd statusu treningu:', err); }
         }
@@ -4206,12 +4213,11 @@
             }, isFailed ? 2500 : 0);
         } 
 
-        const logoutBtnGame = document.getElementById('logout-btn');
-        if (logoutBtnGame) {
-            logoutBtnGame.addEventListener('click', () => {
-                localStorage.setItem('active_game_tab', 'dashboard'); 
+        document.getElementById('logout-btn').addEventListener('click', function() {
+                localStorage.removeItem('session_token');
+                localStorage.setItem('active_game_tab', 'dashboard');
+                window.location.href = 'index.html';
             });
-        }
 
         fetchTrainingStatus();
         

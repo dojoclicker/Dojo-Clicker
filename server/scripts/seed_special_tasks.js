@@ -20,8 +20,8 @@ const specialTasksData = [
         goal_amount: 50,
         min_dc_day: 1,
         max_dc_day: 15,
-        // ID 1 to Kawałek Mięsa
-        reward: { coins: 500, items: [{ id: "00000000-0000-0000-0000-000000000001", qty: 10 }] } 
+        // DODANO: icon oraz name dla przedmiotu
+        reward: { icon: '🏃‍♂️', coins: 500, items: [{ id: "00000000-0000-0000-0000-000000000001", qty: 10, name: "Kawałek Mięsa" }] } 
     },
     {
         id: generateTaskId(2),
@@ -32,8 +32,7 @@ const specialTasksData = [
         goal_amount: 5,
         min_dc_day: 5,
         max_dc_day: 75,
-        // ID 14 to Mała Sakiewka (+250 monet). Skoro nie chcesz stałego procentu, damy im tu czysty zastrzyk gotówki.
-        reward: { items: [{ id: "00000000-0000-0000-0000-000000000014", qty: 2 }] } 
+        reward: { icon: '🏗️', items: [{ id: "00000000-0000-0000-0000-000000000014", qty: 2, name: "Mała Sakiewka" }] } 
     },
     {
         id: generateTaskId(3),
@@ -44,8 +43,7 @@ const specialTasksData = [
         goal_amount: 240,
         min_dc_day: 2,
         max_dc_day: 75,
-        // ID 30 to Kropla Wigoru (+10 Max Staminy)
-        reward: { items: [{ id: "00000000-0000-0000-0000-000000000030", qty: 1 }] } 
+        reward: { icon: '🏋️‍♂️', items: [{ id: "00000000-0000-0000-0000-000000000030", qty: 1, name: "Kropla Wigoru" }] } 
     },
     {
         id: generateTaskId(4),
@@ -56,8 +54,7 @@ const specialTasksData = [
         goal_amount: 1,
         min_dc_day: 3,
         max_dc_day: 75,
-        // Dodano ID 32 (Esencja Wigoru)
-        reward: { coins: 2500, stats: { strength: 250, speed: 250, endurance: 250, technique: 250 }, items: [{ id: "00000000-0000-0000-0000-000000000032", qty: 1 }] }
+        reward: { icon: '🏆', coins: 2500, stats: { strength: 250, speed: 250, endurance: 250, technique: 250 }, items: [{ id: "00000000-0000-0000-0000-000000000032", qty: 1, name: "Esencja Wigoru" }] }
     },
     {
         id: generateTaskId(5),
@@ -68,8 +65,7 @@ const specialTasksData = [
         goal_amount: 5,
         min_dc_day: 15,
         max_dc_day: 75,
-        // Nektar Wigoru
-        reward: { items: [{ id: "00000000-0000-0000-0000-000000000031", qty: 1 }] } 
+        reward: { icon: '🛍️', items: [{ id: "00000000-0000-0000-0000-000000000031", qty: 1, name: "Nektar Wigoru" }] } 
     }
 ];
 
