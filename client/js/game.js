@@ -1,0 +1,3701 @@
+/* Dojo-Clicker - Główna Logika Gry */
+
+// --- KONFIGURACJA I STAN GRY ---
+const API_URL = 'http://localhost:3000/api'; // Upewnij się, że adres jest poprawny dla Twojego serwera
+// 
+
+// ==========================================
+// 🚀 CENTRUM DOWODZENIA (STAN GLOBALNY GRY)
+// ==========================================
+// --- 1. & 2. STAN GRACZA I SYSTEMU (GameState) ---
+const GameState = {
+    isInventoryActionLocked: false,
+    isPlayerHospitalized: false,
+    isPlayerTraining: false,
+    isWorkMinigameActive: false,
+    tooltipTimeout: null,
+
+    currentRound: 1,
+    currentDcDay: 1,
+    isDowntime: false,
+    
+    playerCurrentStats: null,
+    playerEquipStats: null,
+    inventoryData: null,
+    allMissions: null,
+    
+    playerCurrentCoins: 0,
+    playerBankCoins: 0,
+    playerBankCoinLimitLevel: 1,
+    playerBankSlotsUnlocked: 5,
+
+    dailyGlobalTasks: [],    // NOWE: Przechowujemy zadania poza statsami
+    dailyTasksProgress: {},  // NOWE: Przechowujemy progress osobno
+    
+    playerCompletedMissions: [],
+    playerAttemptedOneTry: [],
+    chatChannel: null
+    
+};
+
+// --- 3. TIMERY I INTERWAŁY ---
+let hospitalInterval = null;
+let trainingCountdownInterval = null;
+let workTimerInterval = null;
+let workAnimationId = null;
+
+// --- 4. DANE SKLEPU ---
+let playerDailyBuys = {};
+let unlockedShopLevel = 1;
+let currentShopCategory = 'consumables';
+let currentShopLevel = 1;
+let shopData = { 1:{}, 2:{}, 3:{}, 4:{}, 5:{} };
+
+// --- 5. DANE TRENINGU ---
+let trainingMentors = [];
+let activeTrainingEndTime = null;
+let currentSelectedMentor = null;
+let dailyTimeChamberUsed = false;
+
+// --- 6. DANE PRACY (MINIGRY) ---
+let currentSelectedWorkId = null;
+let currentWorkDifficulty = 1;
+let currentWorkReward = 0;
+let gameState = { 
+    timeLeft: 0, caught: 0, missed: 0, objects: [], 
+    floatingTexts: [], extraHpPenalty: 0, 
+    bonusSpawned: 0, maxBonus: 0, 
+    thiefSpawned: 0, maxThief: 0, trapsSpawned: 0,
+    player: { x: 125, y: 380, w: 50, h: 20, speed: 6 }, 
+    keys: { left: false, right: false } 
+};
+
+// --- 7. SŁOWNIKI I STAŁE ---
+const WORK_FRONTEND_DATA = [
+    { id: 'praca_mleko', name: 'Roznoszenie Mleka', reqMission: '10000000-0000-0000-0000-000000000006', reqName: 'Misję 6', costStamina: 10, costHpPct: 2, reward: 2, reqStatValue: 500, goodEmoji: '🥛', badEmoji: '🫙' },
+    { id: 'praca_budowa', name: 'Praca na Budowie', reqMission: '10000000-0000-0000-0000-000000000007', reqName: 'Misję 7', costStamina: 10, costHpPct: 5, reward: 5, reqStatValue: 1000, goodEmoji: '🧱', badEmoji: '🧨' },
+    { id: 'praca_pole', name: 'Praca w Polu', reqMission: '10000000-0000-0000-0000-000000000008', reqName: 'Misję 8', costStamina: 15, costHpPct: 8, reward: 12, reqStatValue: 2500, goodEmoji: '🌱', badEmoji: '🐛' },
+    { id: 'praca_drwal', name: 'Drwal', reqMission: '10000000-0000-0000-0000-000000000009', reqName: 'Misję 9', costStamina: 15, costHpPct: 15, reward: 25, reqStatValue: 5000, goodEmoji: '🪵', badEmoji: '🪓' },
+    { id: 'praca_kurier', name: 'Ekstremalny Kurier', reqMission: '10000000-0000-0000-0000-000000000010', reqName: 'Misję 10', costStamina: 20, costHpPct: 25, reward: 60, reqStatValue: 10000, goodEmoji: '📦', badEmoji: '🦈' },
+    { id: 'praca_rosa', name: 'Zbiór Magicznej Rosy', reqMission: '10000000-0000-0000-0000-000000000015', reqName: 'Misję 15', costStamina: 25, costHpPct: 10, reward: 150, reqStatValue: 80000, goodEmoji: '💦', badEmoji: '🕷️' },
+    { id: 'praca_ogrody', name: 'Boskie Ogrody', reqMission: '10000000-0000-0000-0000-000000000020', reqName: 'Misję 20', costStamina: 40, costHpPct: 15, reward: 500, reqStatValue: 700000, goodEmoji: '🌸', badEmoji: '🐝' }
+];
+
+const MISSION_UNLOCKS_DICTIONARY = {
+    '10000000-0000-0000-0000-000000000004': { shop: 'Poziom 2 🛒' },
+    '00000000-0000-0000-0000-000000000005': { tab: 'Trening 🏋️‍♂️', mentor: 'Stary Mistrz 👴' },
+    '10000000-0000-0000-0000-000000000006': { tab: 'Praca 💼', work: 'Roznoszenie Mleka 🥛' },
+    '10000000-0000-0000-0000-000000000007': { work: 'Praca na Budowie 🧱', shop: 'Poziom 3 🛒' },
+    '10000000-0000-0000-0000-000000000008': { work: 'Praca w Polu 🌱' },
+    '10000000-0000-0000-0000-000000000009': { work: 'Drwal 🪵' },
+    '10000000-0000-0000-0000-000000000010': { tab: 'Zadania Specjalne 📜', work: 'Ekstremalny Kurier 📦' },
+    '00000000-0000-0000-0000-000000000014': { shop: 'Poziom 4 🛒' },
+    '10000000-0000-0000-0000-000000000015': { tab: 'Laboratorium Zwojów 🧪', work: 'Zbiór Magicznej Rosy 💦', mentor: 'Koci Pustelnik 🐈' },
+    '10000000-0000-0000-0000-000000000020': { tab: 'Głęboka Medytacja 🧘‍♀️', work: 'Boskie Ogrody 🌸', mentor: 'Pan Niebiańskiego Pałacu ☁️' },
+    '00000000-0000-0000-0000-000000000023': { shop: 'Poziom 5 🛒' },
+    '00000000-0000-0000-0000-000000000024': { mentor: 'Sala Czasu ⏳' },
+    '00000000-0000-0000-0000-000000000025': { tab: 'Arena PVP ⚔️' }
+};
+
+// ==========================================
+// ⚙️ 1. KONFIGURACJA I CORE (API, Alerty, Auth)
+// ==========================================
+
+const API_BASE_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.protocol === 'file:'
+    ? 'http://localhost:3000' 
+    : 'https://dojo-clicker.onrender.com';
+
+const SUPABASE_URL = 'https://mtilsthiwqoquwpecyln.supabase.co'; 
+const SUPABASE_ANON_KEY = 'sb_publishable_36PlexFXBSJOQyDG3WDItA_jq1s6zm6'; 
+const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+function checkAuthentication() {
+    const sessionToken = localStorage.getItem('session_token');
+    if (!sessionToken) {
+        window.location.href = 'index.html';
+        return false;
+    }
+    return sessionToken;
+}
+
+async function apiCall(endpoint, method = 'GET', body = null, useActionLock = false) {
+    if (useActionLock) {
+        if (GameState.isInventoryActionLocked) return null;
+        GameState.isInventoryActionLocked = true;
+    }
+    
+    try {
+        const options = {
+            method,
+            headers: {
+                'Authorization': `Bearer ${localStorage.getItem('session_token')}`,
+                'Content-Type': 'application/json'
+            }
+        };
+        if (body) options.body = JSON.stringify(body);
+
+        const response = await fetch(`${API_BASE_URL}${endpoint}`, options);
+
+        if (!response.ok) {
+            if (response.status === 401 || response.status === 403) {
+                localStorage.removeItem('session_token');
+                window.location.href = 'index.html';
+                return null; 
+            }
+            const errorData = await response.json().catch(() => ({}));
+            return { success: false, error: errorData.error || 'Błąd serwera' };
+        }
+
+        const data = await response.json();
+        
+        if (data.success === false) {
+                return { success: false, error: data.error || data.message || 'Błąd akcji', data };
+        }
+        
+        return { success: true, data };
+        
+    } catch (error) {
+        console.error(`[API] Błąd połączenia z ${endpoint}:`, error);
+        return { success: false, error: 'Wystąpił problem z połączeniem sieciowym.' };
+    } finally {
+        if (useActionLock) GameState.isInventoryActionLocked = false;
+    }
+}
+
+// ==========================================
+// 🎨 1.5. NARZĘDZIA UI (HELPERS)
+// ==========================================
+function createDropZone(slotElement, dropAction) {
+    slotElement.addEventListener('dragover', function(e) {
+        if (GameState.isInventoryActionLocked) return;
+        e.preventDefault();
+        this.style.backgroundColor = 'rgba(255, 107, 0, 0.3)';
+    });
+    
+    slotElement.addEventListener('dragleave', function(e) {
+        this.style.backgroundColor = '';
+    });
+    
+    slotElement.addEventListener('drop', function(e) {
+        if (GameState.isInventoryActionLocked) return;
+        e.preventDefault();
+        e.stopPropagation();
+        this.style.backgroundColor = '';
+        dropAction(e, this); // Przekazujemy zdarzenie i samą kratkę do logiki
+    });
+}
+
+function formatDcTime(dateString) {
+    const date = new Date(dateString);
+    const now = new Date();
+
+    const realHour = date.getHours();
+    const realMinute = date.getMinutes();
+    const realSecond = date.getSeconds();
+
+    // 1. Obliczanie Godziny DC
+    const currentMins = (realHour * 60) + realMinute;
+    let elapsedMins = 0;
+
+    if (currentMins < 120) elapsedMins = currentMins + (24 * 60) - 1080; 
+    else if (currentMins >= 120 && currentMins < 600) elapsedMins = currentMins - 120;
+    else if (currentMins >= 600 && currentMins < 1080) elapsedMins = currentMins - 600;
+    else elapsedMins = currentMins - 1080;
+
+    const secondsInBlock = (elapsedMins * 60) + realSecond;
+    const dcTotalSeconds = secondsInBlock * 3;
+    
+    const dcHour = Math.floor(dcTotalSeconds / 3600) % 24;
+    const dcMinute = Math.floor((dcTotalSeconds % 3600) / 60);
+
+    // 2. Obliczanie Dnia DC
+    const offsetMs = 120 * 60 * 1000; // Przesunięcie 02:00 (120 minut)
+    const adjustedNow = now.getTime() - (now.getTimezoneOffset() * 60000) - offsetMs;
+    const adjustedDate = date.getTime() - (date.getTimezoneOffset() * 60000) - offsetMs;
+    
+    const blockNow = Math.floor(adjustedNow / (8 * 3600 * 1000));
+    const blockDate = Math.floor(adjustedDate / (8 * 3600 * 1000));
+    
+    const blockDiff = blockNow - blockDate;
+    let messageDcDay = GameState.currentDcDay - blockDiff;
+    if (messageDcDay < 1) messageDcDay = 1;
+
+    return `Dz. ${messageDcDay} | ${dcHour.toString().padStart(2, '0')}:${dcMinute.toString().padStart(2, '0')}`;
+}
+
+// ==========================================
+// 📜 1.8. ZADANIA SPECJALNE (DZIENNE)
+// ==========================================
+
+function renderSpecialTasks() {
+    const tasksListEl = document.getElementById('special-tasks-list');
+    const hubTasksEl = document.querySelector('.special-tasks'); 
+    const completionStatusEl = document.getElementById('tasks-completion-status');
+    const claimAllBtn = document.getElementById('claim-all-tasks-btn');
+    
+    if (!tasksListEl) return;
+
+    const globalTasks = GameState.dailyGlobalTasks; 
+    const progressDict = GameState.dailyTasksProgress; 
+    
+    if (!globalTasks || globalTasks.length === 0) {
+        tasksListEl.innerHTML = '<div style="text-align: center; color: var(--text-muted); padding: 2rem;">Oczekujemy na wytyczne z centrali...</div>';
+        if (hubTasksEl) hubTasksEl.innerHTML = '<div class="empty-state-text"><div>🎯 Brak aktywnych zadań</div></div>';
+        return;
+    }
+
+    tasksListEl.innerHTML = '';
+    let hubHtml = '';
+    let completedCount = 0;
+
+    globalTasks.forEach(task => {
+        const progressData = progressDict[task.id] || { current: 0, claimed: false };
+        const currentAmt = Math.min(progressData.current, task.goal_amount);
+        const isCompleted = currentAmt >= task.goal_amount;
+        const isClaimed = progressData.claimed;
+        
+        if (isCompleted) completedCount++;
+        const pct = Math.min(100, (currentAmt / task.goal_amount) * 100);
+
+        // --- 1. RENDEROWANIE DO ZAKŁADKI (NOWY WYGLĄD) ---
+        const card = document.createElement('div');
+        card.style.background = 'rgba(0,0,0,0.4)';
+        card.style.border = `1px solid ${isClaimed ? 'var(--success)' : 'var(--goku-panel-border)'}`;
+        card.style.borderRadius = '8px';
+        card.style.padding = '15px';
+        card.style.display = 'flex';
+        card.style.justifyContent = 'space-between';
+        card.style.alignItems = 'center';
+        if (isClaimed) card.style.opacity = '0.6';
+
+        card.innerHTML = `
+            <div style="font-size: 2rem; margin-right: 15px; filter: drop-shadow(0 0 5px rgba(255,255,255,0.2));">
+                ${getTaskIcon(task)} </div>
+            <div style="flex: 1; padding-right: 15px;">
+                <h4 style="color: ${isClaimed ? 'var(--success)' : 'var(--goku-accent)'}; margin-bottom: 5px;">
+                    ${isClaimed ? '✅ ' : ''}${task.name}
+                </h4>
+                <div style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 5px;">${task.description || ''}</div>
+                <div style="font-size: 0.8rem; color: #fbbf24; margin-bottom: 10px; font-weight: bold;">Nagroda: <span style="color: #fff; font-weight: normal;">${formatTaskReward(task.reward)}</span></div>
+                
+                <div style="background: #000; height: 10px; border-radius: 5px; overflow: hidden; position: relative; border: 1px solid rgba(255,255,255,0.1);">
+                    <div style="width: ${pct}%; background: ${isCompleted ? 'var(--success)' : 'linear-gradient(90deg, #3b82f6, #60a5fa)'}; height: 100%; transition: width 0.4s ease-out;"></div>
+                </div>
+                <div style="font-size: 0.8rem; color: var(--text-muted); text-align: right; margin-top: 4px; font-family: monospace;">
+                    ${currentAmt} / ${task.goal_amount}
+                </div>
+            </div>
+            <div style="min-width: 100px; text-align: right;">
+                ${isClaimed 
+                    ? '<span style="color: var(--success); font-weight: bold; padding: 10px;">Odebrano</span>' 
+                    : `<button class="btn-header claim-task-btn" data-task-id="${task.id}" ${isCompleted ? 'style="background: var(--success); border-color: #15803d;"' : 'disabled style="opacity: 0.5; cursor: not-allowed;"'}>Odbierz</button>`
+                }
+            </div>
+        `;
+        tasksListEl.appendChild(card);
+
+        // --- 2. RENDEROWANIE DO WIDGETU W HUBIE ---
+        const taskTooltipData = {
+            id: task.id, name: task.name, description: task.description, type: task.task_type,
+            rewardText: formatTaskReward(task.reward), progress: `${currentAmt} / ${task.goal_amount}`, isCompleted: isCompleted
+        };
+        const tooltipAttr = encodeURIComponent(JSON.stringify(taskTooltipData));
+
+        hubHtml += `
+            <div class="task-card" data-task-id="${task.id}" data-task-template="${tooltipAttr}" style="display: flex; justify-content: space-between; align-items: center; font-size: 0.9rem; margin-bottom: 8px; border-bottom: 1px dashed rgba(255,255,255,0.1); padding-bottom: 8px; cursor: help; transition: background 0.2s; padding: 4px; border-radius: 4px;">
+                <span style="color: ${isClaimed ? 'var(--success)' : 'var(--text-primary)'}">
+                    <span style="margin-right: 5px;">${getTaskIcon(task)}</span>${task.name}
+                </span>
+                <span style="color: ${isCompleted ? 'var(--success)' : 'var(--text-muted)'}; font-family: monospace; font-size: 0.85rem;">
+                    ${currentAmt}/${task.goal_amount} ${isClaimed ? '✅' : ''}
+                </span>
+            </div>
+        `;
+    });
+
+    if (hubTasksEl) hubTasksEl.innerHTML = hubHtml;
+    if (completionStatusEl) completionStatusEl.innerText = `Zrobione: ${completedCount}/${globalTasks.length}`;
+
+    // --- 3. AKTUALIZACJA ZŁOTEJ NAGRODY ---
+    const allClaimed = globalTasks.every(t => (progressDict[t.id] && progressDict[t.id].claimed));
+    const tasksLeft = globalTasks.length - completedCount;
+    
+    const day = GameState.currentDcDay || 1;
+    let mainRewardText = "";
+    if (day <= 25) mainRewardText = "🎁 +50 Max HP ❤️ | +50 Max MP 💧";
+    else if (day <= 50) mainRewardText = "🎁 +100 Max HP ❤️ | +100 Max MP 💧";
+    else mainRewardText = "🎁 50,000 Monet 💰";
+
+    const rewardBox = claimAllBtn.parentElement;
+    if (rewardBox) {
+        // CAŁKOWITA ZMIANA STRUKTURY NAGRODY
+        rewardBox.innerHTML = `
+            <h5 style="color: var(--goku-accent); margin-bottom: 10px; font-size: 1.1rem;">Złota Nagroda za wszystko!</h5>
+            <div style="font-size: 1.1rem; color: #fbbf24; font-weight: bold; margin-bottom: 8px; background: rgba(0,0,0,0.4); padding: 8px; border-radius: 4px; display: inline-block;">
+                ${mainRewardText}
+            </div><br>
+            <p style="color: var(--text-secondary); font-size: 0.95rem; margin-bottom: 15px;">
+                ${tasksLeft > 0 
+                    ? `Brakuje Ci jeszcze <b style="color: var(--error);">${tasksLeft}</b> zadań do odblokowania Nagrody Głównej.` 
+                    : `<span style="color: var(--success); font-weight: bold;">Wszystkie zadania wykonane! Odbierz nagrodę!</span>`}
+            </p>
+        `;
+        rewardBox.appendChild(claimAllBtn); // Przywracamy guzik na sam dół
+    }
+    
+    if (progressDict['main_reward_claimed']) {
+        claimAllBtn.innerText = '✅ Nagroda Główna Odebrana';
+        claimAllBtn.classList.add('disabled');
+        claimAllBtn.disabled = true;
+        claimAllBtn.style.background = '';
+    } else if (completedCount === globalTasks.length) {
+        claimAllBtn.innerText = 'Odbierz Nagrodę Główną!';
+        claimAllBtn.classList.remove('disabled');
+        claimAllBtn.disabled = false;
+        claimAllBtn.style.background = 'linear-gradient(135deg, #16a34a, #15803d)';
+        claimAllBtn.onclick = () => claimSpecialTask('main');
+    } else {
+        claimAllBtn.innerText = 'Odbierz nagrodę specjalną';
+        claimAllBtn.classList.add('disabled');
+        claimAllBtn.disabled = true;
+        claimAllBtn.style.background = '';
+    }
+
+    document.querySelectorAll('.claim-task-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            claimSpecialTask(this.getAttribute('data-task-id'));
+        });
+    });
+}
+async function claimSpecialTask(taskId) {
+    const res = await apiCall('/api/tasks/claim', 'POST', { task_id: taskId }, true);
+    if (!res) return;
+
+    if (res.success) {
+        let msgHtml = `<div>Odebrano nagrodę!</div>`;
+        if (res.data.rewards_text && res.data.rewards_text.length > 0) {
+            msgHtml += `<ul style="text-align: left; padding-left: 20px; font-size: 0.9rem; margin-top: 5px;">`;
+            res.data.rewards_text.forEach(txt => {
+                msgHtml += `<li>🎁 ${txt}</li>`;
+            });
+            msgHtml += `</ul>`;
+        }
+
+        if (res.data.overflow_warnings && res.data.overflow_warnings.length > 0) {
+            msgHtml += `<div style="margin-top: 8px; color: #fbbf24; font-size: 0.85rem;">⚠️ Info o depozycie:</div>`;
+            msgHtml += `<ul style="text-align: left; padding-left: 20px; font-size: 0.8rem; color: #fbbf24;">`;
+            res.data.overflow_warnings.forEach(txt => {
+                msgHtml += `<li>${txt}</li>`;
+            });
+            msgHtml += `</ul>`;
+        }
+
+        showNotification('Zadanie Wykonane!', msgHtml, res.data.overflow_warnings?.length > 0 ? 'warning' : 'success', 5000);
+        
+        await fetchInventory();
+        await fetchCharacterData();
+    } else {
+        showWarningMessage(res.error || 'Błąd podczas odbierania nagrody.');
+    }
+}
+
+// ==========================================
+// ⚔️ 2. SYSTEM MISJI
+// ==========================================
+async function fetchMissions() {
+    const sessionToken = localStorage.getItem('session_token');
+    
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/missions`, {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${sessionToken}`,
+                'Content-Type': 'application/json'
+            }
+        });
+
+        if (!response.ok) {
+            if (response.status === 401 || response.status === 403) {
+                localStorage.removeItem('session_token');
+                window.location.href = 'index.html';
+                return;
+            }
+            throw new Error(`Błąd HTTP: ${response.status}`);
+        }
+
+        const missions = await response.json();
+        GameState.allMissions = missions;
+        renderMissions(missions);
+        
+    } catch (error) {
+        console.error('[Missions] Błąd pobierania misji:', error);
+        showMissionsError('Nie udało się pobrać misji. Spróbuj odświeżyć stronę.');
+    }
+}
+
+function renderMissions(missions) {
+    const missionsGrid = document.querySelector('.missions-grid');
+    
+    if (!missionsGrid) {
+        console.error('[Missions] Nie znaleziono kontenera .missions-grid');
+        return;
+    }
+
+    missionsGrid.innerHTML = '';
+
+    if (!missions || missions.length === 0) {
+        missionsGrid.innerHTML = `
+            <div style="grid-column: 1 / -1; text-align: center; padding: 2rem;">
+                <h3 style="color: var(--text-secondary); margin-bottom: 1rem;">Brak misji w bazie danych</h3>
+                <p style="color: var(--text-muted);">Oczekuję na wgranie danych przez Administratora.</p>
+            </div>
+        `;
+        return;
+    }
+
+    missions.forEach((mission, index) => {
+        const card = createMissionCard(mission, index);
+        missionsGrid.appendChild(card);
+    });
+
+    console.log(`[Missions] Wyrenderowano ${missions.length} misji`);
+}
+
+function createMissionCard(mission, index) {
+    const card = document.createElement('div');
+    card.className = 'mission-card';
+    card.dataset.missionId = mission.id;
+    
+    const completed = GameState.playerCompletedMissions || [];
+    const attempted = GameState.playerAttemptedOneTry || [];
+    
+    const isCompleted = mission.is_repeatable === false && completed.includes(mission.id);
+    const isFailedOneTry = mission.is_one_try === true && attempted.includes(mission.id) && !completed.includes(mission.id);
+    const isLockedByStory = isCompleted || isFailedOneTry;
+
+    const isUnlocked = index === 0 || completed.includes(GameState.allMissions[index - 1].id) || completed.includes(mission.id);
+    
+    const missionIcons = [
+        '🌲', '🦅', '🐢', '⚔️', '👴', 
+        '🥛', '🧱', '🌾', '🪓', '📦', 
+        '🏆', '🎖️', '🗼', '🎯', '🐈', 
+        '🤖', '👿', '👹', '👑', '⛩️', 
+        '🥊', '👤', '🎫', '⏳', '🌍'  
+    ];
+    const icon = isUnlocked ? missionIcons[index] || '📋' : '🔒';
+    
+    const reqs = mission.req_stats || {};
+    const statNamesPL = { 
+        strength: 'Siła', 
+        speed: 'Szybkość', 
+        endurance: 'Wytrzymałość',
+        technique: 'Technika', 
+        intelligence: 'Inteligencja', 
+        mental_strength: 'Siła Mentalna' 
+    };
+    const reqStatsText = Object.entries(reqs).map(([k, v]) => `<b>${statNamesPL[k] || k}</b>: ${v}`).join(', ') || 'Brak wymagań';
+    
+    const rewardStatsText = mission.reward_stats ? 'Losowo od ' + mission.reward_stats.min + ' do ' + mission.reward_stats.max + ' pkt.' : 'Brak';
+    
+    const dropsText = (mission.drop_table && Array.isArray(mission.drop_table) && mission.drop_table.length > 0) 
+        ? mission.drop_table.map(d => `${d.item_name || 'Przedmiot'} (${d.chance_pct}%)`).join(', ') 
+        : 'Brak';
+
+    let totalCappedRatio = 0n;
+    let reqCount = 0n;
+    
+    if (GameState.playerCurrentStats) {
+        ['strength', 'speed', 'endurance', 'technique'].forEach(key => {
+            if (reqs[key] && Number(reqs[key]) > 0) {
+                const baseStat = BigInt(GameState.playerCurrentStats[key] || '1');
+                const equipBonus = BigInt((GameState.playerEquipStats && GameState.playerEquipStats[key]) ? GameState.playerEquipStats[key] : '0');
+                const pStat = baseStat + equipBonus; 
+                
+                const rStat = BigInt(reqs[key]);
+                const rawRatio = (pStat * 100n) / rStat;
+                
+                const cappedRatio = rawRatio > 100n ? 100n : rawRatio;
+                totalCappedRatio += cappedRatio;
+                reqCount += 1n;
+            }
+        });
+    }
+    
+    const chanceNum = reqCount > 0n ? Number(totalCappedRatio / reqCount) : 100;
+
+    let chanceColor = '#ef4444'; 
+    if (chanceNum > 60 && chanceNum <= 90) chanceColor = '#f59e0b'; 
+    else if (chanceNum > 90 && chanceNum <= 97) chanceColor = '#84cc16'; 
+    else if (chanceNum > 97) chanceColor = '#10b981'; 
+
+    let titleColor = '';
+    let titlePrefix = '';
+    if (isCompleted) {
+        titleColor = 'color: #4ade80;';
+        titlePrefix = '[UKOŃCZONO] ';
+    } else if (isFailedOneTry) {
+        titleColor = 'color: #ef4444;';
+        titlePrefix = '[SZANSA PRZEPADŁA] ';
+    }
+
+    card.innerHTML = `
+        <div class="mission-icon">${icon}</div>
+        <div class="mission-title" style="${titleColor}">${titlePrefix}${mission.name}</div>
+        <div class="mission-cost">🟢 ${mission.stamina_cost} Stamina</div>
+    `; 
+
+    const missionTooltipData = {
+        id: mission.id,
+        name: mission.name, 
+        description: mission.description, 
+        chanceColor: chanceColor,
+        chanceNum: chanceNum, 
+        stamina_cost: mission.stamina_cost, 
+        reqStatsText: reqStatsText,
+        reward_coins_min: mission.reward_coins_min, 
+        reward_coins_max: mission.reward_coins_max,
+        rewardStatsText: rewardStatsText, 
+        dropsText: dropsText, 
+        is_repeatable: mission.is_repeatable 
+    };
+    card.setAttribute('data-mission-template', encodeURIComponent(JSON.stringify(missionTooltipData)));
+
+    if (!isUnlocked || isLockedByStory) {
+        card.classList.add('locked');
+        card.style.pointerEvents = 'none'; 
+        card.style.filter = 'grayscale(100%) opacity(0.6)'; 
+    } else {
+        card.addEventListener('click', () => {
+            startMission(mission.id);
+        });
+    }
+
+    return card;
+}
+
+function showMissionsError(message) {
+    const missionsGrid = document.querySelector('.missions-grid');
+    if (missionsGrid) {
+        missionsGrid.innerHTML = `
+            <div style="grid-column: 1 / -1; text-align: center; padding: 2rem;">
+                <h3 style="color: var(--error); margin-bottom: 1rem;">⚠️ Błąd</h3>
+                <p style="color: var(--text-muted); margin-bottom: 1rem;">${message}</p>
+                <button onclick="fetchMissions()" class="btn-header">Spróbuj ponownie</button>
+            </div>
+        `;
+    }
+}
+
+function showNotification(title, message, type = 'info', duration = 3500) {
+    let container = document.getElementById('notification-container');
+    if (!container) {
+        container = document.createElement('div');
+        container.id = 'notification-container';
+        document.body.appendChild(container);
+    }
+
+    const popup = document.createElement('div');
+    popup.className = 'toast-popup';
+    
+    let bgColor = 'var(--goku-panel-bg)';
+    let borderColor = 'var(--goku-panel-border)';
+    let icon = 'ℹ️';
+    
+    if (type === 'success') { bgColor = 'var(--success, #22c55e)'; borderColor = '#15803d'; icon = '✅'; }
+    else if (type === 'warning') { bgColor = 'var(--warning, #f59e0b)'; borderColor = '#b45309'; icon = '⚠️'; }
+    else if (type === 'error') { bgColor = '#cc0000'; borderColor = '#990000'; icon = '❌'; }
+    else if (type === 'death') { bgColor = '#8b0000'; borderColor = '#5c0000'; icon = '🏥'; }
+
+    popup.style.backgroundColor = bgColor;
+    popup.style.borderLeft = `6px solid ${borderColor}`;
+    
+    popup.innerHTML = `
+        <div class="toast-header" style="${message ? 'margin-bottom: 6px;' : 'margin-bottom: 0;'}">
+            <span class="toast-icon">${icon}</span>
+            <h3 class="toast-title">${title}</h3>
+        </div>
+        ${message ? `<div class="toast-body">${message}</div>` : ''}
+    `;
+    
+    container.appendChild(popup);
+    requestAnimationFrame(() => {
+        popup.style.transform = 'translateX(0)';
+        popup.style.opacity = '1';
+    });
+
+    const closePopup = () => {
+        popup.style.transform = 'translateX(120%)';
+        popup.style.opacity = '0';
+        setTimeout(() => { if (popup.parentNode) popup.remove(); }, 300);
+    };
+
+    popup.addEventListener('click', closePopup);
+    setTimeout(() => { if (popup.parentNode) closePopup(); }, duration);
+}
+
+const showCustomPopup = (title, msg) => showNotification(title, msg, 'info');
+const showErrorMessage = (msg) => showNotification('Błąd', msg, 'error');
+const showSuccessMessage = (msg) => showNotification('Sukces', msg, 'success');
+const showWarningMessage = (msg) => showNotification('Uwaga', msg, 'warning');
+
+async function startMission(missionId) {
+    const sessionToken = localStorage.getItem('session_token');
+    
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/missions/start`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${sessionToken}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ missionId })
+        });
+
+        if (!response.ok) {
+            if (response.status === 401 || response.status === 403) {
+                localStorage.removeItem('session_token');
+                window.location.href = 'index.html';
+                return;
+            }
+            const errorData = await response.json();
+            const errorMessage = errorData.message || 'Nie udało się rozpocząć misji. Spróbuj ponownie.';
+            
+            showCustomPopup('❌ Błąd', errorMessage);
+            return;
+        }
+
+        const data = await response.json();
+        
+        if (data.status === 'error') {
+            const errorMessage = data.message || 'Nie udało się rozpocząć misji. Spróbuj ponownie.';
+            showCustomPopup('❌ Błąd', errorMessage);
+            fetchCharacterData();
+            return;
+        }
+        
+        let notifType = 'info';
+        let notifTitle = '';
+        let notifMsg = '';
+        let duration = 4000; 
+
+        if (data.result === 'success') {
+            notifType = 'success';
+            notifTitle = data.message;
+            
+            let penaltyText = '';
+            if (data.multiplier === 75) {
+                notifType = 'warning';
+                penaltyText = '<div style="font-size: 0.85rem; margin-top: 6px; color: #ffffff; font-weight: bold;">⚠️ Zyski obniżone o 25% (Mała kara za potęgę)</div>';
+            } else if (data.multiplier === 50) {
+                notifType = 'warning';
+                penaltyText = '<div style="font-size: 0.85rem; margin-top: 6px; color: #ffffff; font-weight: bold;">⚠️ Zyski obniżone o 50% (Średnia kara za potęgę)</div>';
+            } else if (data.multiplier === 10) {
+                notifType = 'warning';
+                penaltyText = '<div style="font-size: 0.85rem; margin-top: 6px; color: #ffffff; font-weight: bold;">⚠️ Zyski obniżone o 90% (Duża kara za potęgę)</div>';
+            }
+
+            const tg = data.rewards.training_gains;
+            let trainingTextList = [];
+            if (tg) {
+                if (Number(tg.strength) > 0) trainingTextList.push(`+${tg.strength} Siła`);
+                if (Number(tg.speed) > 0) trainingTextList.push(`+${tg.speed} Szybk.`);
+                if (Number(tg.endurance) > 0) trainingTextList.push(`+${tg.endurance} Wytrz.`);
+                if (Number(tg.technique) > 0) trainingTextList.push(`+${tg.technique} Tech.`);
+                if (Number(tg.bonus_hp) > 0) trainingTextList.push(`+${tg.bonus_hp} Max HP`);
+                if (Number(tg.bonus_mp) > 0) trainingTextList.push(`+${tg.bonus_mp} Max MP`);
+            }
+            
+            if (data.rewards.bonus_coins_training && data.rewards.bonus_coins_training !== "0") {
+                trainingTextList.push(`+${data.rewards.bonus_coins_training} Monet (Trening)`);
+            }
+            if (data.rewards.bonus_coins_passive && data.rewards.bonus_coins_passive !== "0") {
+                trainingTextList.push(`+${data.rewards.bonus_coins_passive} Monet (Pasyw)`);
+            }
+
+            const hasTrainingGains = trainingTextList.length > 0;
+
+            const boredomDmg = data.rewards.boredom_damage ? BigInt(data.rewards.boredom_damage) : 0n;
+            const boredomHtml = boredomDmg > 0n ? `<div style="font-size: 0.85rem; margin-top: 6px; color: #fca5a5; font-weight: bold;">🩸 Wydarzenie losowe: -${boredomDmg.toString()} HP</div>` : '';
+
+            const drops = data.rewards.dropped_items || [];
+            const dropsHtml = drops.map(d => `<div style="font-size: 0.85rem; margin-top: 6px; color: #4ade80; font-weight: bold;">🎁 Zdobyto: ${d.name} (x${d.quantity})</div>`).join('');
+
+            const lostDrops = data.rewards.lost_items || [];
+            let lostDropsHtml = '';
+            if (lostDrops.length > 0) {
+                const lostCounts = {};
+                lostDrops.forEach(name => { lostCounts[name] = (lostCounts[name] || 0) + 1; });
+                const lostStrings = Object.entries(lostCounts).map(([name, count]) => `${name} (x${count})`);
+                lostDropsHtml = `<div style="font-size: 0.85rem; margin-top: 6px; color: #ef4444; font-weight: bold;">❌ Pełny plecak! Utracono: ${lostStrings.join(', ')}</div>`;
+            }
+
+            notifMsg = `
+                <div style="margin-bottom: 4px;">💰 Monety: <b style="color:#ffffff;">+${data.rewards.base_coins || data.rewards.coins}</b></div>
+                <div style="margin-bottom: 4px;">📊 <b style="color:#ffffff;">+${data.rewards.gains.strength}</b> Siła, <b style="color:#ffffff;">+${data.rewards.gains.speed}</b> Szybk., <b style="color:#ffffff;">+${data.rewards.gains.endurance}</b> Wytrz., <b style="color:#ffffff;">+${data.rewards.gains.technique}</b> Tech.</div>
+                ${hasTrainingGains ? `<div style="font-size: 0.85rem; margin-top: 6px; color: #ffffff; border-top: 1px dashed rgba(255,255,255,0.3); padding-top: 6px; font-weight: bold;">🏋️ Trening: ${trainingTextList.join(', ')}</div>` : ''}
+                ${penaltyText}
+                ${boredomHtml}
+                ${dropsHtml}
+                ${lostDropsHtml}
+            `;
+        } else if (data.result === 'failure') {
+            notifType = 'warning';
+            notifTitle = 'Porażka';
+            notifMsg = data.message;
+        } else if (data.result === 'hurt') {
+            notifType = 'error';
+            notifTitle = 'Rany w walce!';
+            
+            let statsLostHtml = '';
+            const statsLost = data.penalty?.stats_lost || {};
+            const lostList = [];
+            if (Number(statsLost.strength) > 0) lostList.push(`-${statsLost.strength} Siła`);
+            if (Number(statsLost.speed) > 0) lostList.push(`-${statsLost.speed} Szybk.`);
+            if (Number(statsLost.endurance) > 0) lostList.push(`-${statsLost.endurance} Wytrz.`);
+            if (Number(statsLost.technique) > 0) lostList.push(`-${statsLost.technique} Tech.`); 
+            if (Number(statsLost.intelligence) > 0) lostList.push(`-${statsLost.intelligence} Int.`);
+            if (Number(statsLost.mental_strength) > 0) lostList.push(`-${statsLost.mental_strength} Ment.`);
+
+            if (lostList.length > 0) {
+                statsLostHtml = `<div style="margin-top: 4px; font-weight: bold; color: #ffffff;">📊 Utrata: ${lostList.join(', ')}</div>`;
+            }
+
+            notifMsg = `
+                <div style="font-size: 0.85rem; margin-bottom: 6px;">${data.message}</div>
+                <div style="background: rgba(0,0,0,0.25); padding: 8px; border-radius: 6px; font-size: 0.85rem; font-weight: 500;">
+                    <div style="color:#ffffff;">❤️ <b style="color:#ffffff;">-${data.damage.hp}</b> HP | 💧 <b style="color:#ffffff;">-${data.damage.mp}</b> MP | 🟢 <b style="color:#ffffff;">-${data.damage.stamina}</b> Sta</div>
+                    <div style="color:#fbbf24; margin-top:4px;">💰 Utrata monet: <b style="color:#fbbf24;">-${data.penalty?.coins_lost || 0}</b></div>
+                    ${statsLostHtml}
+                </div>
+            `;
+            duration = 5000; 
+        } else if (data.result === 'death') {
+            notifType = 'death';
+            notifTitle = 'Krytyczna Porażka!';
+            
+            const statsLost = data.penalty.stats_lost;
+            const statsList = [];
+            if (statsLost.strength && statsLost.strength !== '0') statsList.push(`-${statsLost.strength} Siła`);
+            if (statsLost.speed && statsLost.speed !== '0') statsList.push(`-${statsLost.speed} Szybk.`);
+            if (statsLost.endurance && statsLost.endurance !== '0') statsList.push(`-${statsLost.endurance} Wytrz.`);
+            if (statsLost.technique && statsLost.technique !== '0') statsList.push(`-${statsLost.technique} Tech.`); 
+            if (statsLost.intelligence && statsLost.intelligence !== '0') statsList.push(`-${statsLost.intelligence} Int.`);
+            if (statsLost.mental_strength && statsLost.mental_strength !== '0') statsList.push(`-${statsLost.mental_strength} Ment.`);
+            
+            notifMsg = `
+                <div style="font-size: 0.85rem; margin-bottom: 6px;">${data.message}</div>
+                <div style="background: rgba(0,0,0,0.3); padding: 8px; border-radius: 6px; font-size: 0.85rem;">
+                    <div style="color:#fbbf24;">💰 Utrata monet: <b style="color:#fbbf24;">-${data.penalty.coins_lost}</b></div>
+                    <div style="color:#ffffff; margin-top:4px;">🏥 Czas w szpitalu: <b style="color:#ffffff;">${data.penalty.hospital_minutes}</b> min</div>
+                    ${statsList.length > 0 ? `<div style="margin-top:4px; font-weight: bold; color: #ffffff;">📊 Utrata statystyk: ${statsList.join(', ')}</div>` : ''}
+                </div>
+            `;
+            duration = 6000;
+            
+            setTimeout(() => { fetchCharacterData(); }, 1000);
+            
+            if (typeof window.hideAllActiveTooltips === 'function') {
+                window.hideAllActiveTooltips();
+            }
+        }
+
+        showNotification(notifTitle, notifMsg, notifType, duration);
+        
+        await fetchCharacterData();
+        await fetchInventory(); 
+        
+    } catch (error) {
+        console.error('[Missions] Błąd podczas rozpoczynania misji:', error);
+        showCustomPopup('❌ Błąd serwera', 'Nie udało się rozpocząć misji. Spróbuj ponownie.');
+    }
+}
+
+// ==========================================
+// 🏥 3. SZPITAL I REGENERACJA
+// ==========================================
+
+function startHospitalCountdown(hospitalUntilStr, reason = null) {
+    if (hospitalInterval) clearInterval(hospitalInterval);
+    
+    const hospitalUntil = new Date(hospitalUntilStr).getTime();
+    const countdownEl = document.getElementById('hospital-countdown');
+    
+    lockTabsForHospital(true);
+    
+    if (countdownEl) {
+        countdownEl.classList.remove('text-hospital-success');
+        countdownEl.classList.add('text-hospital-danger');
+    }
+    
+    const headerEl = document.getElementById('hospital-header');
+    const descEl = document.getElementById('hospital-desc');
+    const graphicEl = document.querySelector('.hospital-big-graphic');
+    
+    if (headerEl) {
+        headerEl.innerText = 'Jesteś Ranny!';
+        headerEl.style.color = '#ef4444'; 
+        headerEl.style.backgroundColor = 'transparent';
+        headerEl.style.textShadow = '0 0 10px rgba(239, 68, 68, 0.5)';
+    }
+    if (descEl) {
+        let reasonText = 'Straciłeś przytomność. Twój organizm musi się zregenerować.';
+        if (reason === 'mission') {
+            reasonText = 'Straciłeś przytomność podczas wykonywania misji. Twój organizm musi się zregenerować.';
+        } else if (reason === 'work') {
+            reasonText = 'Wycieńczyłeś swój organizm podczas ciężkiej pracy. Musisz się zregenerować.';
+        } else if (reason === 'combat') { 
+            reasonText = 'Straciłeś przytomność w walce. Twój organizm musi się zregenerować.';
+        }
+        descEl.innerHTML = `<strong style="color: #ef4444;">${reasonText}</strong>`;
+    }
+    if (graphicEl) graphicEl.style.borderColor = '#dc2626';
+    
+    function updateTimer() {
+    const now = Date.now();
+    const distance = hospitalUntil - now;
+    
+    if (distance <= 0) {
+        clearInterval(hospitalInterval);
+        if (countdownEl) countdownEl.innerText = "00:00:00";
+        
+        if (countdownEl) {
+            countdownEl.classList.remove('text-hospital-danger');
+            countdownEl.classList.add('text-hospital-success');
+        }
+        
+        if (headerEl) {
+            headerEl.innerText = 'Jesteś Zdrowy!';
+            headerEl.style.color = '#ffffff';
+            headerEl.style.backgroundColor = '#166534';
+            headerEl.style.textShadow = 'none';
+        }
+        if (descEl) {
+            descEl.innerHTML = '<span style="color: #ffffff;">Twoje ciało jest w pełni sił. Możesz opuścić to miejsce!</span>';
+        }
+        if (graphicEl) graphicEl.style.borderColor = '#166534';
+        
+        lockTabsForHospital(false);
+        fetchCharacterData(); 
+        return;
+    }
+    
+    const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+    const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+    const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+    
+    if (countdownEl) {
+        countdownEl.innerText = 
+            (hours < 10 ? "0" + hours : hours) + ":" + 
+            (minutes < 10 ? "0" + minutes : minutes) + ":" + 
+            (seconds < 10 ? "0" + seconds : seconds);
+    }
+    }
+    
+    updateTimer();
+    hospitalInterval = setInterval(updateTimer, 1000);
+}
+
+function updateTabsLockState() {
+const tabs = {
+    missions: document.querySelector('[data-tab="missions"]'),
+    equipment: document.querySelector('[data-tab="equipment"]'),
+    shop: document.querySelector('[data-tab="shop"]'),
+    bank: document.querySelector('[data-tab="bank"]'),
+    hospital: document.querySelector('[data-tab="hospital"]'),
+    training: document.querySelector('[data-tab="training"]'),
+    work: document.querySelector('[data-tab="work"]'),
+    special_tasks: document.querySelector('[data-tab="special_tasks"]')
+};
+
+    Object.values(tabs).forEach(tab => {
+        if (tab) tab.style.transition = 'none';
+    });
+
+    Object.values(tabs).forEach(tab => {
+        if (tab) tab.classList.remove('tab-disabled');
+    });
+
+    if (GameState.isPlayerHospitalized || GameState.isPlayerTraining) {
+        if (tabs.missions) tabs.missions.classList.add('tab-disabled');
+        if (tabs.equipment) tabs.equipment.classList.add('tab-disabled');
+        if (tabs.shop) tabs.shop.classList.add('tab-disabled');
+        if (tabs.bank) tabs.bank.classList.add('tab-disabled');
+        if (tabs.work) tabs.work.classList.add('tab-disabled');
+        if (tabs.special_tasks) tabs.special_tasks.classList.add('tab-disabled'); // NOWE
+    }
+
+    if (GameState.isPlayerHospitalized) {
+        if (tabs.training) tabs.training.classList.add('tab-disabled');
+    }
+
+    if (GameState.isPlayerTraining) {
+        if (tabs.hospital) tabs.hospital.classList.add('tab-disabled');
+    }
+
+    requestAnimationFrame(() => {
+        setTimeout(() => {
+            Object.values(tabs).forEach(tab => {
+                if (tab) tab.style.transition = '';
+            });
+        }, 50);
+    });
+}
+
+function lockTabsForHospital(isLocked) {
+    GameState.isPlayerHospitalized = isLocked;
+    updateTabsLockState();
+}
+
+// ==========================================
+// 🧍‍♂️ 4. DANE POSTACI I INTERFEJS GŁÓWNY
+// ==========================================
+
+async function fetchCharacterData(isBackground = false) {
+    const sessionToken = localStorage.getItem('session_token');
+    
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/character`, {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${sessionToken}`,
+                'Content-Type': 'application/json'
+            }
+        });
+
+        if (!response.ok) {
+            if (response.status === 401 || response.status === 403) {
+                localStorage.removeItem('session_token');
+                window.location.href = 'index.html';
+                return;
+            }
+            throw new Error(`Błąd HTTP: ${response.status}`);
+        }
+
+        const data = await response.json();
+        updateUIWithCharacterData(data);
+        
+    } catch (error) {
+        console.error('[Character] Błąd pobierania danych:', error);
+        if (!isBackground) {
+            showErrorMessage('Nie udało się pobrać danych postaci. Spróbuj odświeżyć stronę.');
+        }
+    }
+}
+
+function updateUIWithCharacterData(data) {
+    try {
+        document.querySelector('.player-name').textContent = data.username;
+        document.querySelector('#power-level').textContent = data.power_level;
+        document.querySelector('.current-form').textContent = `Forma: ${data.current_form}`;
+        document.querySelector('.coins').textContent = `💰 Monety: ${data.coins}`;
+        
+        GameState.playerCurrentCoins = Number(data.coins);
+        
+        GameState.playerBankCoins = Number(data.bank_coins || 0);
+        GameState.playerBankCoinLimitLevel = Number(data.bank_coin_limit_level || 1);
+        GameState.playerBankSlotsUnlocked = Number(data.bank_slots_unlocked || 5);
+        
+        if (data.stats) GameState.playerCurrentStats = data.stats;
+
+        // POPRAWKA: Mapowanie zadań z głównego poziomu obiektu
+        GameState.dailyGlobalTasks = data.daily_global_tasks || [];
+        GameState.dailyTasksProgress = data.daily_tasks_progress || {};
+
+        if (GameState.inventoryData) {
+            renderInventory(GameState.inventoryData);
+            if (typeof renderShopBackpack === 'function') renderShopBackpack();
+            if (typeof renderShopItems === 'function') renderShopItems();
+        }
+        if (typeof renderBank === 'function') renderBank();
+
+        const hpBonus = data.equip_stats?.bonus_hp || '0';
+        const mpBonus = data.equip_stats?.bonus_mp || '0';
+        
+        updateResourceBar('hp', data.current_hp, data.max_hp, hpBonus, data.equip_stats?.breakdown?.bonus_hp || []);
+        updateResourceBar('mp', data.current_mp, data.max_mp, mpBonus, data.equip_stats?.breakdown?.bonus_mp || []);
+        updateResourceBar('stamina', data.current_stamina, data.max_stamina, '0', []);
+
+        const currentHp = parseInt(data.current_hp);
+        
+        const headerEl = document.getElementById('hospital-header');
+        const descEl = document.getElementById('hospital-desc');
+        const graphicEl = document.querySelector('.hospital-big-graphic');
+        const countdownEl = document.getElementById('hospital-countdown');
+
+        if (currentHp <= 0 && data.hospital_until) {
+            const currentTab = localStorage.getItem('active_game_tab');
+            if (currentTab !== 'dashboard' && currentTab !== 'hospital') {
+                activateTab('hospital');
+            }
+            startHospitalCountdown(data.hospital_until, data.hospital_reason);
+        } else {
+            if (hospitalInterval) clearInterval(hospitalInterval);
+            lockTabsForHospital(false);
+            
+            if (countdownEl) {
+                countdownEl.innerText = "00:00:00";
+                countdownEl.classList.remove('text-hospital-danger');
+                countdownEl.classList.add('text-hospital-success');
+            }
+            if (headerEl) {
+                headerEl.innerText = 'Jesteś Zdrowy!';
+                headerEl.style.color = '#ffffff';
+                headerEl.style.backgroundColor = '#166534'; 
+                headerEl.style.textShadow = 'none';
+            }
+            if (descEl) {
+                descEl.innerHTML = '<span style="color: #ffffff;">Twoje ciało jest w pełni sił. Możesz opuścić to miejsce!</span>';
+            }
+            if (graphicEl) graphicEl.style.borderColor = '#166534';
+        }
+
+        const updateStatDisplay = (statId, baseValue, equipBonus, breakdownArray = []) => {
+            const baseNum = parseInt(baseValue);
+            const bonusNum = parseInt(equipBonus);
+            const element = document.getElementById(statId);
+
+            if (bonusNum > 0) {
+                const sum = baseNum + bonusNum;
+                element.textContent = sum;
+                element.style.color = 'var(--success, #22c55e)';
+
+                const breakdownText = `Baza: ${baseNum}\nBonus: +${bonusNum}\n\nŹródła:\n` + breakdownArray.join('\n');
+                element.setAttribute('data-tooltip', breakdownText);
+                element.style.cursor = 'help';
+            } else {
+                element.textContent = baseNum;
+                element.style.color = 'var(--text-primary)';
+                element.removeAttribute('data-tooltip');
+                element.style.cursor = 'default';
+            }
+        };
+
+        if (data.equip_stats) {
+            updateStatDisplay('stat-strength', data.stats.strength, data.equip_stats.strength, data.equip_stats.breakdown?.strength || []);
+            updateStatDisplay('stat-speed', data.stats.speed, data.equip_stats.speed, data.equip_stats.breakdown?.speed || []);
+            updateStatDisplay('stat-endurance', data.stats.endurance, data.equip_stats.endurance, data.equip_stats.breakdown?.endurance || []);
+            updateStatDisplay('stat-technique', data.stats.technique, data.equip_stats.technique, data.equip_stats.breakdown?.technique || []); 
+            updateStatDisplay('stat-intelligence', data.stats.intelligence, data.equip_stats.intelligence, data.equip_stats.breakdown?.intelligence || []);
+            updateStatDisplay('stat-mental_strength', data.stats.mental_strength, data.equip_stats.mental_strength, data.equip_stats.breakdown?.mental_strength || []);
+        }
+
+        GameState.playerCompletedMissions = data.completed_missions;
+        GameState.playerAttemptedOneTry = data.attempted_one_try_missions || [];
+        if (data.strength !== undefined) GameState.playerCurrentStats = data;
+        GameState.playerEquipStats = data.equip_stats || {}; 
+        if (GameState.allMissions) {
+            renderMissions(GameState.allMissions);
+            if (typeof window.refreshActiveTooltip === 'function') window.refreshActiveTooltip();
+        }
+
+        const navWorkBtn = document.getElementById('nav-work-btn');
+        const navTasksBtn = document.getElementById('nav-tasks-btn'); // NOWE
+
+        const maZrobionaMisje6 = data.completed_missions && data.completed_missions.includes('10000000-0000-0000-0000-000000000006');
+        const maZrobionaMisje10 = data.completed_missions && data.completed_missions.includes('10000000-0000-0000-0000-000000000010'); // NOWE
+
+        if ((data.unlocked_features && data.unlocked_features.includes('work')) || maZrobionaMisje6) {
+            if (navWorkBtn) navWorkBtn.classList.remove('disabled', 'locked');
+        }
+        
+        // Odblokowanie Zadań Specjalnych
+        if ((data.unlocked_features && data.unlocked_features.includes('special_tasks')) || maZrobionaMisje10) {
+            if (navTasksBtn) navTasksBtn.classList.remove('disabled', 'locked');
+        }
+        if (typeof renderWorkList === 'function') renderWorkList();
+        if (typeof renderSpecialTasks === 'function') renderSpecialTasks();
+
+        if (typeof fetchTrainingStatus === 'function') fetchTrainingStatus();
+
+        console.log('[UI] Dane postaci załadowane pomyślnie:', data);
+        
+    } catch (error) {
+        console.error('[UI] Błąd aktualizacji interfejsu:', error);
+    }
+}
+
+function updateResourceBar(resourceType, current, max, equipBonus = '0', breakdown = []) {
+    const currentBigInt = BigInt(current);
+    const maxBigInt = BigInt(max);
+    
+    const percentage = Number((currentBigInt * 100n) / maxBigInt);
+    
+    const barContainer = document.querySelector(`.${resourceType}-bar`);
+    if (!barContainer) return;
+
+    const valueElement = barContainer.querySelector('.resource-value');
+    const fillElement = barContainer.querySelector('.bar-fill');
+
+    if (BigInt(equipBonus) > 0n) {
+        const baseMax = BigInt(max) - BigInt(equipBonus);
+        const breakdownText = `Baza: ${baseMax}\nBonus: +${equipBonus}\n\nŹródła:\n` + breakdown.join('\n');
+        valueElement.innerHTML = `<span style="color: var(--success, #22c55e);" data-tooltip="${breakdownText}">${current} / ${max}</span>`;
+    } else {
+        valueElement.textContent = `${current} / ${max}`;
+    }
+    
+    fillElement.style.width = `${Math.max(0, Math.min(100, percentage))}%`;
+}
+
+function activateTab(tabName) {
+    localStorage.setItem('active_game_tab', tabName);
+
+    const allViews = document.querySelectorAll('[id$="-view"]');
+    allViews.forEach(view => {
+        view.style.display = 'none';
+    });
+
+    const targetView = document.getElementById(`${tabName}-view`);
+    if (targetView) {
+        if (tabName === 'hospital') {
+            targetView.style.display = 'flex'; 
+        } else {
+            targetView.style.display = 'block'; 
+        }
+    }
+
+    const navButtons = document.querySelectorAll('.nav-btn');
+    navButtons.forEach(btn => btn.classList.remove('active'));
+    
+    if (tabName !== 'dashboard') {
+        const activeBtn = document.querySelector(`[data-tab="${tabName}"]`);
+        if (activeBtn) activeBtn.classList.add('active');
+    }
+
+    if (tabName === 'bank') {
+        renderBank();
+    }
+
+    if (tabName === 'shop') {
+        renderShopItems();
+        renderShopBackpack();
+    }
+
+    if (tabName === 'dashboard') {
+        setTimeout(initializeDashboard, 100);
+    }
+}
+
+// ==========================================
+// 🎒 5. EKWIPUNEK I DRAG & DROP
+// ==========================================
+
+async function fetchInventory() {
+    const sessionToken = localStorage.getItem('session_token');
+    
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/inventory`, {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${sessionToken}`,
+                'Content-Type': 'application/json'
+            }
+        });
+
+        if (!response.ok) {
+            if (response.status === 401 || response.status === 403) {
+                localStorage.removeItem('session_token');
+                window.location.href = 'index.html';
+                return;
+            }
+            throw new Error(`Błąd HTTP: ${response.status}`);
+        }
+
+        const inventory = await response.json();
+        GameState.inventoryData = inventory;
+        renderInventory(inventory);
+        
+    } catch (error) {
+        console.error('[Inventory] Błąd pobierania ekwipunku:', error);
+        showInventoryError('Nie udało się pobrać ekwipunku. Spróbuj odświeżyć stronę.');
+    }
+}
+
+function updateMagicBeanButton(items) {
+    const button = document.getElementById('btn-use-senzu');
+    if (!button) return;
+    
+    const magicBeans = items.filter(item => 
+        item.item_template_id === '00000000-0000-0000-0000-000000000019' &&
+        item.equipped_slot === null
+    );
+    
+    const count = magicBeans.reduce((sum, item) => sum + parseInt(item.quantity || '1'), 0);
+    
+    if (count > 0) {
+        button.textContent = `Zjedz Magiczną Fasolkę (${count})`;
+        button.disabled = false;
+        button.style.backgroundColor = '#28a745';
+        button.style.cursor = 'pointer';
+        button.style.opacity = '1';
+    } else {
+        button.textContent = 'Zjedz Magiczną Fasolkę (0)';
+        button.disabled = true;
+        button.style.backgroundColor = '#6c757d';
+        button.style.cursor = 'not-allowed';
+        button.style.opacity = '0.6';
+    }
+}
+
+function getDefaultSlotText(slotId) {
+    const slotNames = {
+        'head': 'Głowa',
+        'chest': 'Tors',
+        'legs': 'Nogi',
+        'feet': 'Stopy',
+        'hands': 'Dłonie',
+        'ear_l': 'L. Kolczyk',
+        'ear_r': 'P. Kolczyk',
+        'ring_l': 'L. Pierścień',
+        'ring_r': 'P. Pierścień',
+        'necklace': 'Naszyjnik'
+    };
+    return slotNames[slotId] || '';
+}
+
+function renderInventory(items) {
+    const equipmentSlots = document.querySelectorAll('[data-slot]');
+    const inventoryGrid = document.querySelector('.inventory-panel .inventory-grid');
+    
+    equipmentSlots.forEach(slot => {
+        const slotType = slot.getAttribute('data-slot');
+        const defaultText = getDefaultSlotText(slotType);
+        slot.innerHTML = `<span>${defaultText}</span>`;
+    });
+
+    if (inventoryGrid) inventoryGrid.innerHTML = '';
+
+    const allItems = items || [];
+    
+    const equippedItems = allItems.filter(item => item.equipped_slot !== null && item.equipped_slot !== 'bank');
+    equippedItems.forEach(item => {
+        const slot = document.querySelector(`[data-slot="${item.equipped_slot}"]`);
+        if (slot) {
+            const card = createItemCard(item);
+            slot.innerHTML = '';
+            slot.appendChild(card);
+        }
+    });
+
+    const backpackItems = allItems.filter(item => item.equipped_slot === null);
+    const maxSlots = calculateMaxBackpackSlots();
+    
+    for (let i = 1; i <= maxSlots; i++) {
+        const slot = document.createElement('div');
+        slot.className = 'inventory-slot';
+        slot.setAttribute('data-index', i);
+        
+        // Używamy naszego nowego Helpera
+        createDropZone(slot, (e, currentSlot) => {
+            const inventoryId = e.dataTransfer.getData('inventory_id');
+            const sourceSlot = e.dataTransfer.getData('source_slot');
+            const targetIndex = currentSlot.getAttribute('data-index');
+            
+            const droppedOnCard = e.target.closest('.item-card');
+            if (droppedOnCard) {
+                const targetInventoryId = droppedOnCard.dataset.inventoryId;
+                const targetItemSlot = droppedOnCard.dataset.itemSlot;
+                
+                if (sourceSlot !== 'null' && sourceSlot !== 'backpack' && sourceSlot !== '') {
+                    if (sourceSlot !== targetItemSlot) {
+                        showWarningMessage("Nie możesz zamienić z przedmiotem z innego slotu!");
+                        return;
+                    }
+                }
+                performItemSwap(inventoryId, 'backpack', targetIndex, targetInventoryId);
+                return; 
+            }
+            performItemSwap(inventoryId, 'backpack', targetIndex, null);
+        });
+        
+        const item = backpackItems.find(b => b.backpack_index === i);
+        if (item) {
+            const card = createItemCard(item);
+            slot.appendChild(card);
+        }
+        if (inventoryGrid) inventoryGrid.appendChild(slot);
+    }
+
+    console.log(`[Inventory] Wyrenderowano ${allItems.length} przedmiotów`);
+    
+    updateMagicBeanButton(items);
+    
+    if (typeof renderShopBackpack === 'function') {
+        renderShopBackpack();
+    }
+
+    const activeTab = localStorage.getItem('active_game_tab');
+    if (activeTab === 'bank' && typeof renderBankBackpack === 'function') {
+        renderBankBackpack();
+    }
+}
+
+function getItemImage(itemName, category) {
+    if (!itemName) return 'img/items/default_box.png';
+
+    let slug = itemName.toLowerCase().trim();
+
+    const polishChars = {'ą':'a','ć':'c','ę':'e','ł':'l','ń':'n','ó':'o','ś':'s','ź':'z','ż':'z'};
+    slug = slug.split('').map(char => polishChars[char] || char).join('');
+
+    slug = slug.replace(/[\s\.]+/g, '_') 
+                .replace(/[^a-z0-9_]/g, '') 
+                .replace(/_+/g, '_') 
+                .replace(/_$/g, ''); 
+
+    return `img/items/${slug}.png`;
+}
+
+function calculateMaxBackpackSlots() {
+    if (!GameState.playerCurrentStats) return 5;
+    const strength = BigInt(GameState.playerCurrentStats.strength || '0');
+    const speed = BigInt(GameState.playerCurrentStats.speed || '0');
+    const endurance = BigInt(GameState.playerCurrentStats.endurance || '0');
+    let minStat = strength;
+    if (speed < minStat) minStat = speed;
+    if (endurance < minStat) minStat = endurance;
+    const bonusSlots = Number(minStat / 10000n);
+    return Math.min(50, 5 + bonusSlots);
+}
+
+function createItemCard(item) {
+    const card = document.createElement('div');
+    card.className = 'item-card';
+    card.dataset.inventoryId = item.id;
+    card.dataset.templateId = item.item_template_id;
+    
+    if (item.item_templates) {
+        card.dataset.itemSlot = item.item_templates.slot || 'null';
+        card.dataset.itemCategory = item.item_templates.category || 'null';
+        card.setAttribute('data-item-template', encodeURIComponent(JSON.stringify(item.item_templates)));
+    }
+    
+    card.draggable = true;
+
+    const imagePath = getItemImage(item.item_templates?.name, item.item_templates?.category);
+    const quantity = item.quantity || '1';
+    
+    card.innerHTML = `
+        <img src="${imagePath}" alt="Ikona" style="width: 44px; height: 44px; object-fit: contain; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));">
+        ${(item.item_templates?.category === 'consumable' || item.item_templates?.category === 'special_consumable') ? `<div class="item-quantity">${quantity}</div>` : ''}
+    `;
+
+    card.addEventListener('dragstart', function(e) {
+        if (GameState.isInventoryActionLocked) {
+            e.preventDefault();
+            return;
+        }
+        e.dataTransfer.setData('inventory_id', item.id);
+        e.dataTransfer.setData('template_id', item.item_template_id);
+        e.dataTransfer.setData('item_name', item.item_templates?.name);
+        e.dataTransfer.setData('item_slot', item.item_templates?.slot || 'null');
+        e.dataTransfer.setData('item_category', item.item_templates?.category || 'null');
+        e.dataTransfer.setData('source_slot', item.equipped_slot || 'backpack');
+        
+        const tooltip = document.getElementById('global-tooltip');
+        if (tooltip) {
+            tooltip.style.opacity = '0';
+            tooltip.style.visibility = 'hidden';
+            tooltip.dataset.currentCard = '';
+        }
+    });
+
+    card.addEventListener('dblclick', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        
+        if (GameState.tooltipTimeout) clearTimeout(GameState.tooltipTimeout); 
+        const tooltip = document.getElementById('global-tooltip');
+        if (tooltip) {
+            tooltip.style.opacity = '0';
+            tooltip.style.visibility = 'hidden';
+            tooltip.dataset.currentCard = '';
+        }
+        
+        if (GameState.isInventoryActionLocked) return;
+
+        const activeTab = localStorage.getItem('active_game_tab');
+        if (activeTab === 'bank') {
+            const targetPanel = item.equipped_slot === 'bank' ? 'backpack' : 'bank';
+            if (typeof transferBankItem === 'function') transferBankItem(item.id, targetPanel, '1'); 
+        } else if (activeTab === 'shop') {
+            sellItem(item.id, 1); 
+        } else {
+            consumeItem(item.id); 
+        }
+    });
+
+    card.addEventListener('click', function(e) {
+        if (e.shiftKey && (item.item_templates?.category === 'consumable' || item.item_templates?.category === 'special_consumable') && parseInt(item.quantity) > 1) {
+            e.preventDefault();
+            e.stopPropagation();
+            if (GameState.isInventoryActionLocked) return;
+            
+            const splitAmount = prompt(`Ile sztuk chcesz wydzielić? (Max: ${parseInt(item.quantity) - 1})`, "1");
+            if (splitAmount && !isNaN(splitAmount) && parseInt(splitAmount) > 0 && parseInt(splitAmount) < parseInt(item.quantity)) {
+                const activeTab = localStorage.getItem('active_game_tab');
+                if (activeTab === 'bank') {
+                    if (typeof splitBankItem === 'function') splitBankItem(item.id, splitAmount);
+                } else {
+                    splitItem(item.id, splitAmount);
+                }
+            }
+        }
+    });
+
+    card.addEventListener('dragend', function() {
+        const tooltip = document.getElementById('global-tooltip');
+        if (tooltip) {
+            tooltip.style.opacity = '0';
+            tooltip.style.visibility = 'hidden';
+            tooltip.dataset.currentCard = '';
+        }
+    });
+
+    return card;
+}
+
+// ==========================================
+// 🛒 6. SYSTEM SKLEPU
+// ==========================================
+
+async function fetchShopItems() {
+    try {
+        const res = await apiCall('/api/shop/items', 'GET');
+        if (!res || !res.success) return;
+
+        unlockedShopLevel = res.data.unlockedLevel;
+        playerDailyBuys = res.data.dailyBuys || {};
+        const templates = res.data.items || [];
+        
+        [1,2,3,4,5].forEach(lvl => {
+            shopData[lvl] = { consumables: [], training: [], equipment: [] };
+        });
+
+        templates.forEach(template => {
+            const lvl = template.shop_level || 1;
+            const shopItem = {
+                ...template, 
+                imagePath: getItemImage(template.name, template.category),
+                price: template.buy_price_coins
+            };
+
+            if (template.category === 'consumable' || template.category === 'special_consumable') {
+                shopData[lvl].consumables.push(shopItem);
+            } else if (template.category === 'equipment') {
+                if (template.bonuses && template.bonuses.type === 'training') {
+                    shopData[lvl].training.push(shopItem);
+                } else {
+                    shopData[lvl].equipment.push(shopItem);
+                }
+            }
+        });
+
+        document.querySelectorAll('.shop-tab').forEach(btn => {
+            const btnLvl = parseInt(btn.dataset.level);
+            if (btnLvl <= unlockedShopLevel) {
+                btn.classList.remove('disabled');
+                btn.disabled = false;
+            } else {
+                btn.classList.add('disabled');
+                btn.disabled = true;
+            }
+        });
+        
+    } catch (error) { console.error('[Shop] Błąd:', error); }
+}
+
+function initShop() {
+    fetchShopItems().then(() => {
+        renderShopItems();
+        renderShopBackpack();
+    });
+    
+    document.querySelectorAll('.shop-tab').forEach(tab => {
+        tab.addEventListener('click', function() {
+            document.querySelectorAll('.shop-tab').forEach(t => t.classList.remove('active'));
+            this.classList.add('active');
+            currentShopLevel = parseInt(this.getAttribute('data-level'));
+            renderShopItems();
+        });
+    });
+
+    document.querySelectorAll('.category-tab').forEach(tab => {
+        tab.addEventListener('click', function() {
+            document.querySelectorAll('.category-tab').forEach(t => t.classList.remove('active'));
+            this.classList.add('active');
+            currentShopCategory = this.getAttribute('data-category');
+            renderShopItems();
+        });
+    });
+}
+
+function renderShopItems() {
+    const grid = document.getElementById('shop-items-grid');
+    if (!grid) return;
+    
+    const items = shopData[currentShopLevel][currentShopCategory] || [];
+    grid.innerHTML = '';
+    
+    items.forEach(item => {
+        const card = createShopItemCard(item);
+        grid.appendChild(card);
+    });
+
+    if (items.length === 0) {
+        grid.innerHTML = '<div style="text-align: center; color: #666; grid-column: 1/-1;">Brak przedmiotów w tej kategorii na tym poziomie</div>';
+    }
+}
+
+function renderShopBackpack() {
+    const grid = document.getElementById('shop-backpack-grid');
+    if (!grid) return;
+    const backpackItems = (GameState.inventoryData || []).filter(item => item.equipped_slot === null);
+    
+    grid.innerHTML = '';
+    const maxSlots = calculateMaxBackpackSlots(GameState.playerCurrentStats || {});
+    
+    for (let i = 1; i <= maxSlots; i++) {
+        const slot = document.createElement('div');
+        slot.className = 'inventory-slot';
+        slot.setAttribute('data-index', i);
+        
+        // Używamy Helpera w sklepie
+        createDropZone(slot, (e, currentSlot) => {
+            const inventoryId = e.dataTransfer.getData('inventory_id');
+            const targetIndex = currentSlot.getAttribute('data-index');
+            
+            const droppedOnCard = e.target.closest('.item-card');
+            if (droppedOnCard) {
+                const targetInventoryId = droppedOnCard.dataset.inventoryId;
+                if (typeof performItemSwap === 'function') performItemSwap(inventoryId, 'backpack', targetIndex, targetInventoryId);
+                return; 
+            }
+            if (typeof performItemSwap === 'function') performItemSwap(inventoryId, 'backpack', targetIndex, null);
+        });
+        
+        const item = backpackItems.find(b => b.backpack_index === i);
+        if (item) {
+            const card = createItemCard(item);
+            slot.appendChild(card);
+        }
+        grid.appendChild(slot);
+    }
+}
+
+function createShopItemCard(item) {
+    const card = document.createElement('div');
+    card.className = 'shop-item-card';
+    card.setAttribute('data-item-template', encodeURIComponent(JSON.stringify(item)));
+    
+    const playerCoins = GameState.playerCurrentCoins || 0;
+    const backpackItems = (GameState.inventoryData || []).filter(i => i.equipped_slot === null);
+    const isStackable = item.category === 'consumable' || item.category === 'special_consumable';
+    
+    const maxDaily = 11 - (item.shop_level || 1);
+    const alreadyBought = playerDailyBuys[item.id] || 0;
+    const remaining = Math.max(0, maxDaily - alreadyBought);
+    
+    const canAfford = playerCoins >= Number(item.price);
+    const hasLimitLeft = remaining > 0;
+    
+    let hasSpace = false;
+    const existingInInv = backpackItems.find(i => i.item_template_id === item.id);
+    if (existingInInv && isStackable) hasSpace = true;
+    else hasSpace = backpackItems.length < calculateMaxBackpackSlots(GameState.playerCurrentStats || {});
+
+    card.innerHTML = `
+        <div class="shop-item-content">
+            <img src="${item.imagePath}" alt="${item.name}" style="width: 48px; height: 48px; object-fit: contain; margin-right: 10px; flex-shrink: 0; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));">
+            <div style="display: flex; flex-direction: column;">
+                <div class="shop-item-name">${item.name}</div>
+                <div style="font-size: 0.75rem; color: ${hasLimitLeft ? 'var(--success)' : 'var(--error)'}">Dziś: ${remaining} / ${maxDaily} szt.</div>
+            </div>
+        </div>
+        <div class="shop-item-bottom">
+            <div class="shop-item-price">
+                <span>💰</span>
+                <span>${Number(item.price).toLocaleString()}</span>
+            </div>
+            <button class="shop-buy-btn" ${!canAfford || !hasSpace || !hasLimitLeft ? 'disabled' : ''}>
+                ${!hasLimitLeft ? 'Limit dobowy' : (!canAfford ? 'Brak monet' : !hasSpace ? 'Brak miejsca' : 'Kup')}
+            </button>
+        </div>
+    `;
+    
+    const buyBtn = card.querySelector('.shop-buy-btn');
+    if (canAfford && hasSpace && hasLimitLeft) {
+        buyBtn.addEventListener('click', () => buyItem(item));
+    }
+    
+    return card;
+}
+
+async function buyItem(item) {
+    const res = await apiCall('/api/shop/buy', 'POST', { template_id: item.id }, true);
+    if (!res) return;
+
+    if (res.success) {
+        showSuccessMessage(`Kupiono ${item.name}!`);
+        await fetchInventory();
+        await fetchCharacterData();
+        await fetchShopItems(); 
+        renderShopItems();
+    } else {
+        showWarningMessage(res.error || 'Błąd podczas kupna');
+    }
+}
+
+async function sellItem(inventoryId, amount = 'all') {
+    const res = await apiCall('/api/shop/sell', 'POST', { inventory_id: inventoryId, amount: amount }, true);
+    if (!res) return;
+
+    if (res.success) {
+        showSuccessMessage(`Sprzedano przedmiot za ${res.data.item.total_sell_price} monet!`);
+        await fetchInventory();
+        await fetchCharacterData();
+        renderShopBackpack();
+    } else {
+        showWarningMessage(res.error || 'Błąd podczas sprzedaży');
+    }
+}
+
+// ==========================================
+// 🏦 7. SYSTEM BANKU I LOKATY
+// ==========================================
+
+function renderBank() {
+    if (!document.getElementById('bank-view')) return;
+
+    const coinsDisplay = document.getElementById('bank-coins-display');
+    const bankCoinsDisplay = document.getElementById('bank-bank-coins-display');
+    const limitDisplay = document.getElementById('bank-limit-display');
+    const nextLevelDisplay = document.getElementById('bank-next-level');
+    const upgradeCostDisplay = document.getElementById('bank-upgrade-cost');
+    const slotsDisplay = document.getElementById('bank-slots-display');
+
+    const currentLimitLevel = GameState.playerBankCoinLimitLevel || 1;
+    const currentCoins = GameState.playerCurrentCoins || 0;
+    const bankCoins = GameState.playerBankCoins || 0;
+
+    if (coinsDisplay) coinsDisplay.textContent = `${currentCoins.toLocaleString()} 💰`;
+    if (bankCoinsDisplay) bankCoinsDisplay.textContent = `${bankCoins.toLocaleString()} 💰`;
+    if (limitDisplay) limitDisplay.textContent = getBankLimit(currentLimitLevel).toLocaleString();
+    
+    const nextLevel = currentLimitLevel + 1;
+    const limitCosts = { 2: 5000, 3: 25000, 4: 100000, 5: 500000, 6: 2500000, 7: 10000000, 8: 50000000, 9: 200000000, 10: 1000000000 };
+    
+    if (nextLevelDisplay) nextLevelDisplay.textContent = nextLevel <= 10 ? nextLevel : "MAX";
+    if (upgradeCostDisplay) upgradeCostDisplay.textContent = nextLevel <= 10 ? limitCosts[nextLevel].toLocaleString() : "---";
+
+    const limitValueEl = document.getElementById('bank-next-limit-value');
+    if (limitValueEl) {
+        const limitsBank = { 1: 10000, 2: 50000, 3: 250000, 4: 1000000, 5: 5000000, 6: 25000000, 7: 100000000, 8: 500000000, 9: 2000000000, 10: 9007199254740991 };
+        if (nextLevel <= 10) {
+            limitValueEl.innerText = limitsBank[nextLevel].toLocaleString();
+        } else {
+            limitValueEl.innerText = 'MAX';
+        }
+    }
+
+    const bankItems = (GameState.inventoryData || []).filter(item => item.equipped_slot === 'bank');
+    if (slotsDisplay) slotsDisplay.textContent = `${bankItems.length}/${GameState.playerBankSlotsUnlocked}`;
+
+    renderBankSlots();
+    renderBankBackpack();
+}
+
+function getBankLimit(level) {
+    const limits = {
+        1: 10000, 2: 50000, 3: 250000, 4: 1000000, 5: 5000000,
+        6: 25000000, 7: 100000000, 8: 500000000, 9: 2000000000, 10: 9007199254740991
+    };
+    return limits[level] || 10000;
+}
+
+function renderBankSlots() {
+    const bankGrid = document.getElementById('bank-items-grid');
+    if (!bankGrid) return;
+
+    bankGrid.innerHTML = '';
+    const bankItems = (GameState.inventoryData || []).filter(item => item.equipped_slot === 'bank');
+    const unlocked = GameState.playerBankSlotsUnlocked || 5;
+
+    function getSlotCost(n) {
+        if (n >= 6 && n <= 10) return 5000;
+        if (n >= 11 && n <= 15) return 25000;
+        if (n >= 16 && n <= 20) return 100000;
+        if (n >= 21 && n <= 25) return 500000;
+        return 0;
+    }
+
+    for (let i = 1; i <= 25; i++) {
+        const slot = document.createElement('div');
+        slot.className = 'bank-slot';
+        slot.style.width = '75px';
+        slot.style.height = '75px';
+        slot.setAttribute('data-index', i);
+        
+        if (i <= unlocked) {
+            createDropZone(slot, (e, currentSlot) => {
+                const inventoryId = e.dataTransfer.getData('inventory_id');
+                const targetIndex = currentSlot.getAttribute('data-index');
+                
+                if (typeof transferBankItem === 'function') {
+                    transferBankItem(inventoryId, 'bank', 'all', targetIndex);
+                }
+            });
+
+            const item = bankItems.find(item => item.backpack_index === i);
+            if (item) {
+                const itemCard = createItemCard(item);
+                slot.appendChild(itemCard);
+            }
+        } else if (i === unlocked + 1) {
+            const cost = getSlotCost(i);
+            slot.classList.add('locked');
+            slot.style.cursor = 'pointer';
+            slot.style.border = '1px dashed var(--goku-accent)';
+            slot.innerHTML = `<div style="font-size: 1.2rem;">🔓</div><div style="font-size: 0.65rem; color: #4ade80; font-weight: bold;">Kup slot ${i}</div><div style="font-size: 0.6rem;">${cost.toLocaleString()} 💰</div>`;
+            slot.addEventListener('click', () => showBuySlotModal(i));
+        } else {
+            slot.classList.add('locked');
+            slot.style.cursor = 'not-allowed';
+            slot.style.opacity = '0.4';
+            slot.innerHTML = `<div style="font-size: 1rem;">🔒</div><div style="font-size: 0.6rem; color: var(--text-muted);">Zablokowane</div>`;
+        }
+        bankGrid.appendChild(slot);
+    }
+}
+
+function renderBankBackpack() {
+    const grid = document.getElementById('bank-backpack-grid');
+    if (!grid) return;
+    
+    const backpackItems = (GameState.inventoryData || []).filter(item => item.equipped_slot === null);
+    grid.innerHTML = '';
+    
+    const maxSlots = calculateMaxBackpackSlots();
+    for (let i = 1; i <= maxSlots; i++) {
+        const slot = document.createElement('div');
+        slot.className = 'inventory-slot';
+        slot.setAttribute('data-index', i);
+        
+        createDropZone(slot, (e, currentSlot) => {
+            const inventoryId = e.dataTransfer.getData('inventory_id');
+            const sourceSlot = e.dataTransfer.getData('source_slot');
+            const targetIndex = currentSlot.getAttribute('data-index');
+            
+            if (sourceSlot === 'bank') {
+                if (typeof transferBankItem === 'function') transferBankItem(inventoryId, 'backpack', 'all', targetIndex);
+                return;
+            }
+            
+            const droppedOnCard = e.target.closest('.item-card');
+            if (droppedOnCard) {
+                const targetInventoryId = droppedOnCard.dataset.inventoryId;
+                if (typeof performItemSwap === 'function') performItemSwap(inventoryId, 'backpack', targetIndex, targetInventoryId);
+                return; 
+            }
+            if (typeof performItemSwap === 'function') performItemSwap(inventoryId, 'backpack', targetIndex, null);
+        });
+        
+        const item = backpackItems.find(b => b.backpack_index === i);
+        if (item) {
+            const card = createItemCard(item);
+            slot.appendChild(card);
+        }
+        grid.appendChild(slot);
+    }
+}
+
+async function transferBankCoins(action) {
+    const input = document.getElementById('bank-amount-input');
+    const amount = input.value.replace(/\D/g, ''); 
+    
+    if (!amount || parseInt(amount) <= 0) {
+        showWarningMessage('Podaj prawidłową ilość monet');
+        return;
+    }
+
+    const res = await apiCall('/api/bank/transfer_coins', 'POST', { action: action, amount: amount }, true);
+    if (!res) return; 
+
+    if (res.success) {
+        showSuccessMessage(res.data.message);
+        input.value = ''; 
+        await fetchCharacterData();
+        await fetchInventory();
+        renderBank();
+    } else {
+        showWarningMessage(res.error || 'Błąd podczas transferu monet');
+    }
+}
+
+async function upgradeBank(upgradeType) {
+    const res = await apiCall('/api/bank/upgrade', 'POST', { upgrade_type: upgradeType }, true);
+    if (!res) return;
+
+    if (res.success) {
+        showSuccessMessage(res.data.message);
+        await fetchCharacterData(); 
+        renderBank();
+    } else {
+        showWarningMessage(res.error || 'Błąd podczas ulepszania banku');
+    }
+}
+
+async function transferBankItem(inventoryId, targetPanel, amount, targetIndex = null) {
+    const res = await apiCall('/api/bank/transfer_item', 'POST', {
+        inventory_id: inventoryId, target_panel: targetPanel, amount: amount, target_index: targetIndex
+    }, true);
+    if (!res) return;
+
+    if (res.success) {
+        showSuccessMessage(res.data.message);
+        await fetchInventory(); 
+        renderBank();
+    } else {
+        showWarningMessage(res.error || 'Błąd podczas transferu przedmiotu');
+    }
+}
+
+async function splitBankItem(inventoryId, amount) {
+    const res = await apiCall('/api/bank/split', 'POST', {
+        inventory_id: inventoryId, amount_to_split: amount
+    }, true);
+    if (!res) return;
+
+    if (res.success) {
+        showSuccessMessage(res.data.message);
+        await fetchInventory(); 
+        renderBank();
+    } else {
+        showWarningMessage(res.error || 'Błąd podczas dzielenia przedmiotu');
+    }
+}
+
+function showBuySlotModal(slotNumber) {
+    const costs = {
+        '6-10': 5000, '11-15': 25000, '16-20': 100000, '21-25': 500000
+    };
+    
+    let cost = 0;
+    if (slotNumber >= 6 && slotNumber <= 10) cost = costs['6-10'];
+    else if (slotNumber >= 11 && slotNumber <= 15) cost = costs['11-15'];
+    else if (slotNumber >= 16 && slotNumber <= 20) cost = costs['16-20'];
+    else if (slotNumber >= 21 && slotNumber <= 25) cost = costs['21-25'];
+    
+    const message = `Czy chcesz kupić slot ${slotNumber} za ${cost.toLocaleString()} monet?`;
+    
+    if (confirm(message)) {
+        upgradeBank('slot');
+    }
+}
+
+async function splitItem(inventoryId, amount) {
+    const tooltip = document.getElementById('global-tooltip');
+    if (tooltip) { tooltip.style.opacity = '0'; tooltip.style.visibility = 'hidden'; tooltip.dataset.currentCard = ''; }
+    
+    const res = await apiCall('/api/inventory/split', 'POST', {
+        inventory_id: inventoryId,
+        amount_to_split: amount
+    }, true);
+    if (!res) return;
+
+    if (res.success) {
+        await fetchInventory(); 
+    } else {
+        showWarningMessage(res.error || 'Błąd podczas dzielenia przedmiotu');
+    }
+}
+
+function createMissionTooltip(template) {
+    if (!template) return '';
+
+    const unlockInfo = MISSION_UNLOCKS_DICTIONARY[template.id] || {};
+    
+    let unlockHtml = `
+        <div class="tooltip-unlock-box">
+            <span class="tooltip-unlock-title">Sukces odblokowuje:</span>
+            <ul class="tooltip-unlock-list">
+                <li class="tooltip-unlock-item" style="color: #94a3b8;">Kolejną Misję ⚔️</li>`;
+
+    if (unlockInfo.tab) {
+        unlockHtml += `<li class="tooltip-unlock-item" style="color: #4ade80;">Zakładkę: <b>${unlockInfo.tab}</b></li>`;
+    }
+    if (unlockInfo.work) {
+        unlockHtml += `<li class="tooltip-unlock-item" style="color: #3b82f6;">Pracę: <b>${unlockInfo.work}</b></li>`;
+    }
+    if (unlockInfo.mentor) {
+        unlockHtml += `<li class="tooltip-unlock-item" style="color: #fbbf24;">Mentor: ${unlockInfo.mentor}</li>`;
+    }
+    if (unlockInfo.shop) { 
+        unlockHtml += `<li class="tooltip-unlock-item" style="color: #ff6b00;">Sklep: <b>${unlockInfo.shop}</b></li>`;
+    }
+    
+    unlockHtml += `</ul></div>`;
+
+    const isRepeatable = template.is_repeatable !== false; 
+    const typeText = isRepeatable ? 'Misja Powtarzalna' : 'Misja Jednorazowa';
+    const typeColor = isRepeatable ? '#94a3b8' : '#fbbf24'; 
+
+    return `
+        <div class="tooltip-title">${template.name}</div>
+        <div class="tooltip-mission-type" style="color: ${typeColor};">${typeText}</div>
+        <div class="tooltip-mission-desc">${template.description || ''}</div>
+        <div class="tooltip-mission-chance">Szansa na sukces: <span style="color: ${template.chanceColor}; font-weight: bold;">${template.chanceNum}%</span></div>
+        <div class="tooltip-mission-detail" style="color: var(--goku-accent); font-weight: bold;">Koszt Staminy: ${template.stamina_cost}</div>
+        <div class="tooltip-mission-detail"><b>Wymagania:</b> ${template.reqStatsText}</div>
+        <div class="tooltip-mission-detail"><b>Nagroda Monety:</b> ${template.reward_coins_min || '0'} - ${template.reward_coins_max || '0'}</div>
+        <div class="tooltip-mission-detail"><b>Statystyki:</b> ${template.rewardStatsText}</div>
+        <div class="tooltip-mission-detail"><b>Dodatkowe Drop:</b> ${template.dropsText}</div>
+        ${unlockHtml}
+    `;
+}
+
+// --- NOWE FUNKCJE DLA ZADAŃ SPECJALNYCH ---
+function getTaskIcon(task) {
+    let reward = task.reward;
+    if (typeof reward === 'string') {
+        try { reward = JSON.parse(reward); } catch(e) {}
+    }
+    
+    if (reward && reward.icon) return reward.icon;
+    const icons = { 'mission': '⚔️', 'work': '💼', 'training': '🏋️‍♂️', 'shop': '🛒' };
+    return icons[task.task_type] || '📜';
+}
+
+function formatTaskReward(reward) {
+    if (!reward) return 'Standardowa Nagroda';
+    
+    if (typeof reward === 'string') {
+        try { reward = JSON.parse(reward); } catch(e) {}
+    }
+    
+    let texts = [];
+    
+    if (reward.coins) texts.push(`<span style="color: #fbbf24;">${Number(reward.coins).toLocaleString()} 💰</span>`);
+    
+    if (reward.stats) {
+        const s = reward.stats;
+        if (s.strength) texts.push(`<span title="Siła">💪 +${s.strength}</span>`);
+        if (s.speed) texts.push(`<span title="Szybkość">⚡ +${s.speed}</span>`);
+        if (s.endurance) texts.push(`<span title="Wytrzymałość">🛡️ +${s.endurance}</span>`);
+        if (s.technique) texts.push(`<span title="Technika">🎯 +${s.technique}</span>`);
+    }
+    
+    if (reward.items && reward.items.length > 0) {
+        reward.items.forEach(item => {
+            const itemName = item.name || "Nieznany przedmiot";
+            const itemCategory = item.category || "consumable";
+            const imgPath = getItemImage(itemName, itemCategory);
+            
+            // 🟢 ZMIANA: Dodano data-template-id, aby system tooltipów odróżniał poszczególne nagrody
+            const templateAttr = item.template 
+                ? `data-item-template="${encodeURIComponent(JSON.stringify(item.template))}" data-template-id="${item.template.id}"` 
+                : '';
+            
+            texts.push(`
+                <span class="reward-item-hover" ${templateAttr} style="display:inline-flex; align-items:center; gap:5px; background: rgba(0,0,0,0.3); padding: 2px 8px; border-radius: 4px; border: 1px solid rgba(255,255,255,0.1); cursor: help; transition: background 0.2s;">
+                    <img src="${imgPath}" style="width:20px; height:20px; object-fit:contain;" onerror="this.src='img/items/default_box.png'">
+                    <b style="color: #4ade80;">${itemName}</b> (x${item.qty})
+                </span>
+            `);
+        });
+    }
+    return texts.join(' <span style="color: #334155;">|</span> ');
+}
+
+function createTaskTooltip(template) {
+    if (!template) return '';
+    return `
+        <div class="tooltip-title">${template.name}</div>
+        <div class="tooltip-mission-type" style="color: #94a3b8;">Zadanie Dzienne</div>
+        <div class="tooltip-mission-desc" style="margin-bottom: 10px;">${template.description}</div>
+        <div class="tooltip-mission-detail" style="font-size: 0.9rem;"><b>Postęp:</b> <span style="color: ${template.isCompleted ? 'var(--success)' : '#3b82f6'}; font-weight: bold;">${template.progress}</span></div>
+        <div class="tooltip-mission-detail" style="color: #fbbf24; font-size: 0.9rem; margin-top: 5px;"><b>Nagroda:</b> <br><span style="color: #fff; font-weight: normal;">${template.rewardText}</span></div>
+    `;
+}
+
+function createItemTooltip(template) {
+    if (!template) return '';
+
+    let tooltipHTML = `<div class="tooltip-title">${template.name || 'Nieznany Przedmiot'}</div>`;
+
+    let categoryName = 'Przedmiot';
+    if (template.category === 'equipment') categoryName = 'Ekwipunek';
+    else if (template.category === 'consumable') categoryName = 'Używalne';
+    else if (template.category === 'special_consumable') categoryName = 'Przedmiot Specjalny';
+
+    tooltipHTML += `<div style="text-align: center; color: var(--text-secondary); margin-bottom: 10px; font-size: 0.85rem;"><i>${categoryName}</i></div>`;
+
+    if (template.name === 'Magiczna Fasolka') {
+        tooltipHTML += '<div class="tooltip-section"><span class="tooltip-section-title">Efekt poza szpitalem:</span><span class="tooltip-bullet">• Leczy 100% zasobów (❤️ HP, 💧 MP, 🟢 Stamina)</span></div>';
+        tooltipHTML += '<div class="tooltip-section"><span class="tooltip-section-title">Efekt w szpitalu:</span><span class="tooltip-bullet">• Leczy 100% zasobów ❤️💧🟢, zdejmuje karę czasu i przywraca statystyki ✨</span></div>';
+    }
+
+    const statNamesPL = { strength: 'Siła', speed: 'Szybkość', endurance: 'Wytrzymałość', technique: 'Technika', intelligence: 'Inteligencja', mental_strength: 'Siła Mentalna', bonus_hp: 'Max HP', bonus_mp: 'Max MP', bonus_coins_pct: '% Monet', bonus_coins: 'Monety (Pasywnie)' };
+
+    if (template.slot) {
+        const slotNamesPL = { head: 'Głowa', chest: 'Tors', legs: 'Nogi', feet: 'Stopy', hands: 'Ręce', ear_l: 'L. Kolczyk', ear_r: 'P. Kolczyk', ring_l: 'L. Pierścień', ring_r: 'P. Pierścień', necklace: 'Naszyjnik' };
+        tooltipHTML += `<div class="tooltip-slot-badge"><strong>Miejsce:</strong> ${slotNamesPL[template.slot] || template.slot}</div>`;
+    }
+
+    if (template.req_stats && Object.keys(template.req_stats).length > 0) {
+        tooltipHTML += '<div class="tooltip-section"><span class="tooltip-section-title">Wymagania:</span>';
+        for (const [stat, val] of Object.entries(template.req_stats)) {
+            tooltipHTML += `<span class="tooltip-bullet req">• ${statNamesPL[stat] || stat}: ${val}</span><br>`;
+        }
+        tooltipHTML += '</div>';
+    }
+
+    if (template.bonuses && Object.keys(template.bonuses).length > 0) {
+        const isTraining = template.bonuses.type === 'training';
+        const bonusTitle = isTraining ? '<span style="color: #f59e0b;">Bonusy Treningowe:</span>' : '<span style="color: #4ade80;">Bonusy Pasywne:</span>';
+        const bonusSuffix = isTraining ? ' <small style="color: #94a3b8;">(za misję/pracę)</small>' : '';
+
+        tooltipHTML += `<div class="tooltip-section"><span class="tooltip-section-title">${bonusTitle}</span>`;
+        for (const [bonus, val] of Object.entries(template.bonuses)) {
+            if (bonus === 'type') continue;
+            const statName = statNamesPL[bonus] || bonus;
+            tooltipHTML += `<span class="tooltip-bullet pass">• +${val} do ${statName}${bonusSuffix}</span><br>`;
+        }
+        tooltipHTML += '</div>';
+    }
+
+    if (template.consumable_effect && Object.keys(template.consumable_effect).length > 0 && template.name !== 'Magiczna Fasolka') {
+        tooltipHTML += '<div class="tooltip-section"><span class="tooltip-section-title">Efekt użycia:</span>';
+        
+        const translateStat = (stat, value) => {
+            if (stat === 'strength') return `+${value} Siły na stałe 💪`;
+            if (stat === 'speed') return `+${value} Szybkości na stałe ⚡`;
+            if (stat === 'endurance') return `+${value} Wytrzymałości na stałe 🛡️`;
+            if (stat === 'technique') return `+${value} Techniki na stałe 🎯`;
+            if (stat === 'intelligence') return `+${value} Inteligencji na stałe 🧠`;
+            if (stat === 'mental_strength') return `+${value} Siły Mentalnej na stałe 🌀`;
+            if (stat === 'bonus_hp') return `+${value} Max HP na stałe ❤️`;
+            if (stat === 'bonus_mp') return `+${value} Max MP na stałe 💧`;
+            if (stat === 'bonus_stamina') return `+${value} Max Staminy na stałe 🟢`;
+            return null;
+        };
+
+        for (const [effect, val] of Object.entries(template.consumable_effect)) {
+            if (effect === 'permanent_bonus' && typeof val === 'object' && val !== null) {
+                for (const [subStat, subVal] of Object.entries(val)) {
+                    const translated = translateStat(subStat, subVal);
+                    if (translated) tooltipHTML += `<span class="tooltip-bullet">• ${translated}</span><br>`;
+                }
+                continue;
+            }
+
+            if (effect === 'permanent_bonus' && (val === true || val === 'true')) continue;
+
+            let displayEffect = effect;
+            const flatStatTranslation = translateStat(effect, val);
+            
+            if (flatStatTranslation) {
+                displayEffect = flatStatTranslation;
+            } else if (effect === 'restore_hp') displayEffect = `Przywraca ${val} HP ❤️`;
+            else if (effect === 'restore_mp') displayEffect = `Przywraca ${val} MP 💧`;
+            else if (effect === 'restore_stamina') displayEffect = `Przywraca ${val} Staminy 🟢`;
+            else if (effect === 'full_resurrection' || effect === 'hospital_exit_recovery') displayEffect = 'Pełne wyleczenie (Przebudzenie) 🌟';
+            else if (effect === 'permanent_bonus') displayEffect = 'Trwały bonus statystyk 📈'; 
+            else if (effect === 'unlock_transformation') displayEffect = 'Odblokowuje transformację ⚡';
+            else if (effect === 'temporary_buff') displayEffect = 'Tymczasowe błogosławieństwo ⏱️';
+            else if (effect === 'restore_hp_pct') displayEffect = `Przywraca ${val}% HP ❤️`;
+            else if (effect === 'restore_mp_pct') displayEffect = `Przywraca ${val}% MP 💧`;
+            else if (effect === 'restore_stamina_pct') displayEffect = `Przywraca ${val}% Staminy 🟢`;
+            else if (effect === 'add_coins') displayEffect = `Otrzymujesz ${val} Monet 💰`;
+            
+            tooltipHTML += `<span class="tooltip-bullet">• ${displayEffect}</span><br>`;
+        }
+        tooltipHTML += '</div>';
+    }
+
+    if (template.buy_price_coins) {
+        const buyPrice = template.buy_price_coins;
+        const sellPrice = Math.floor(Number(buyPrice) / 2);
+        tooltipHTML += `<div class="tooltip-price-box">
+            <div class="tooltip-price-row" style="color: #fbbf24;">
+                <span>Cena Kupna:</span> <strong>${buyPrice} 💰</strong>
+            </div>
+            <div class="tooltip-price-row" style="color: #cbd5e1;">
+                <span>Cena Sprzedaży:</span> <strong>${sellPrice} 💰</strong>
+            </div>
+        </div>`;
+    }
+
+    return tooltipHTML;
+}
+
+async function consumeItem(inventoryId) {
+    const tooltip = document.getElementById('global-tooltip');
+    if (tooltip) { tooltip.style.opacity = '0'; tooltip.style.visibility = 'hidden'; tooltip.dataset.currentCard = ''; }
+    
+    const res = await apiCall('/api/inventory/consume', 'POST', { inventory_id: inventoryId }, true);
+    if (!res) return;
+
+    if (res.success) {
+        await fetchInventory();
+        await fetchCharacterData();
+        showSuccessMessage(res.data.message);
+    } else {
+        if (res.data && res.data.status === 'warning') {
+            showWarningMessage(res.data.message);
+        } else {
+            showWarningMessage(res.error || 'Błąd podczas używania przedmiotu');
+        }
+    }
+}
+
+async function performItemSwap(inventoryId, slotTarget, backpackIndexTarget = null, targetItemId = null) {
+    if (GameState.isInventoryActionLocked) return;
+    GameState.isInventoryActionLocked = true;
+    
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/inventory/swap`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${localStorage.getItem('session_token')}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                item_id_1: inventoryId,
+                slot_target: slotTarget,
+                backpack_index_target: backpackIndexTarget ? parseInt(backpackIndexTarget) : null,
+                item_id_2: targetItemId
+            })
+        });
+
+        const data = await response.json();
+        
+        if (data.success) {
+            const item1 = GameState.inventoryData.find(i => i.id === inventoryId);
+            const item2 = targetItemId ? GameState.inventoryData.find(i => i.id === targetItemId) : null;
+            
+            const isEquipAction = (slotTarget !== 'backpack' && slotTarget !== 'bank') || 
+                                    (item1 && item1.equipped_slot !== null && item1.equipped_slot !== 'bank');
+
+            if (data.message.includes('połączone')) {
+                await fetchInventory();
+                showSuccessMessage(data.message);
+            } else {
+                const dbSlotTarget = slotTarget === 'backpack' ? null : slotTarget;
+                const parsedIndexTarget = backpackIndexTarget ? parseInt(backpackIndexTarget) : null;
+
+                if (item1 && item2) {
+                    const tempSlot = item1.equipped_slot;
+                    const tempIndex = item1.backpack_index;
+                    
+                    item1.equipped_slot = item2.equipped_slot;
+                    item1.backpack_index = item2.backpack_index;
+                    
+                    item2.equipped_slot = tempSlot;
+                    item2.backpack_index = tempIndex;
+                } else if (item1) {
+                    item1.equipped_slot = dbSlotTarget;
+                    item1.backpack_index = parsedIndexTarget;
+                }
+
+                renderInventory(GameState.inventoryData);
+                
+                const activeTab = localStorage.getItem('active_game_tab');
+                if (activeTab === 'bank' && typeof renderBank === 'function') renderBank();
+                if (activeTab === 'shop' && typeof renderShopBackpack === 'function') renderShopBackpack();
+                
+                if (isEquipAction) showSuccessMessage(data.message);
+            }
+
+            if (isEquipAction) {
+                await fetchCharacterData(true); 
+            }
+        } else {
+            showWarningMessage(data.error || 'Błąd podczas zamiany przedmiotów');
+        }
+        
+    } catch (error) {
+        console.error('[Swap] Błąd komunikacji z backendem:', error);
+        showWarningMessage('Wystąpił błąd podczas zamiany przedmiotów');
+    } finally {
+        GameState.isInventoryActionLocked = false;
+    }
+}
+
+function initializeDragAndDrop() {
+    const equipmentSlots = document.querySelectorAll('[data-slot]');
+    equipmentSlots.forEach(slot => {
+        slot.addEventListener('dragover', function(e) {
+            e.preventDefault(); 
+            this.style.backgroundColor = 'rgba(255, 107, 0, 0.3)'; 
+        });
+        
+        slot.addEventListener('dragleave', function(e) {
+            this.style.backgroundColor = ''; 
+        });
+        
+        slot.addEventListener('drop', function(e) {
+            e.preventDefault();
+            this.style.backgroundColor = ''; 
+            
+            const inventoryId = e.dataTransfer.getData('inventory_id');
+            const templateId = e.dataTransfer.getData('template_id');
+            const itemName = e.dataTransfer.getData('item_name');
+            const itemSlot = e.dataTransfer.getData('item_slot');
+            const itemCategory = e.dataTransfer.getData('item_category');
+            const sourceSlot = e.dataTransfer.getData('source_slot');
+            const targetSlot = this.getAttribute('data-slot');
+            
+            if (itemCategory !== 'equipment') {
+                showWarningMessage('Na ciało możesz założyć tylko ekwipunek!');
+                return;
+            }
+            
+            if (sourceSlot === 'backpack' && targetSlot === null) {
+                return;
+            }
+            
+            const draggedElement = document.querySelector(`[data-inventory-id="${inventoryId}"]`);
+            if (draggedElement && draggedElement.parentElement === this) {
+                return;
+            }
+            
+            let slotTarget = targetSlot; 
+            
+            if (itemCategory === 'equipment' && itemSlot && itemSlot !== targetSlot) {
+                const slotNames = {
+                    'head': 'Głowa', 'chest': 'Klatka piersiowa', 'legs': 'Nogi',
+                    'feet': 'Stopy', 'hands': 'Dłonie', 'ear_l': 'Lewe ucho',
+                    'ear_r': 'Prawe ucho', 'ring_l': 'Lewy pierścień', 'ring_r': 'Prawy pierścień',
+                    'necklace': 'Naszyjnik'
+                };
+                
+                const targetSlotName = slotNames[targetSlot] || targetSlot;
+                const requiredSlotName = slotNames[itemSlot] || itemSlot;
+                
+                showWarningMessage(`Ten przedmiot nie pasuje do tego miejsca! Wymaga: ${requiredSlotName}`);
+                return;
+            }
+            
+            const existingCard = this.querySelector('.item-card');
+            const targetItemId = existingCard ? existingCard.dataset.inventoryId : null;
+            
+            performItemSwap(inventoryId, slotTarget, null, targetItemId);
+        });
+    });
+
+    const shopItemsGrid = document.getElementById('shop-items-grid');
+    if (shopItemsGrid) {
+        shopItemsGrid.addEventListener('dragover', function(e) {
+            e.preventDefault();
+            this.style.backgroundColor = 'rgba(255, 107, 0, 0.1)';
+            this.style.border = '2px dashed #ff6b00';
+        });
+        
+        shopItemsGrid.addEventListener('dragleave', function(e) {
+            this.style.backgroundColor = '';
+            this.style.border = '';
+        });
+        
+        shopItemsGrid.addEventListener('drop', function(e) {
+            e.preventDefault();
+            e.stopPropagation(); 
+            this.style.backgroundColor = '';
+            this.style.border = '';
+            
+            const inventoryId = e.dataTransfer.getData('inventory_id');
+            const itemName = e.dataTransfer.getData('item_name');
+            const sourceSlot = e.dataTransfer.getData('source_slot');
+            
+            if (inventoryId) {
+                if (confirm(`Czy na pewno chcesz sprzedać "${itemName}"?`)) {
+                    sellItem(inventoryId, 'all');
+                }
+            }
+        });
+    }
+
+    const shopLeftColumn = document.querySelector('.shop-left-column');
+    if (shopLeftColumn) {
+        shopLeftColumn.addEventListener('dragover', function(e) {
+            e.preventDefault();
+            this.style.backgroundColor = 'rgba(255, 107, 0, 0.05)';
+        });
+        
+        shopLeftColumn.addEventListener('dragleave', function(e) {
+            this.style.backgroundColor = '';
+        });
+        
+        shopLeftColumn.addEventListener('drop', function(e) {
+            e.preventDefault();
+            e.stopPropagation(); 
+            this.style.backgroundColor = '';
+            
+            const inventoryId = e.dataTransfer.getData('inventory_id');
+            const itemName = e.dataTransfer.getData('item_name');
+            const sourceSlot = e.dataTransfer.getData('source_slot');
+            
+            if (sourceSlot === 'null' && inventoryId) {
+                if (confirm(`Czy na pewno chcesz sprzedać "${itemName}"?`)) {
+                    sellItem(inventoryId, 'all');
+                }
+            }
+        });
+    }
+
+}
+
+// ==========================================
+// 💬 8. DASHBOARD (CZAT I RANKING)
+// ==========================================
+
+async function fetchRanking() {
+    const rankingList = document.getElementById('ranking-list');
+    try {
+        const res = await apiCall('/api/ranking');
+        if (res.success) {
+            renderRanking(res.data);
+        } else {
+            console.error('[Ranking] Błąd:', res.error);
+            if (rankingList) rankingList.innerHTML = `<div style="color: var(--error); text-align: center; padding: 2rem;">⚠️ Błąd: ${res.error}</div>`;
+        }
+    } catch (err) {
+        console.error('[Ranking] Błąd pobierania:', err);
+        if (rankingList) rankingList.innerHTML = `<div style="color: var(--error); text-align: center; padding: 2rem;">⚠️ Błąd połączenia z serwerem</div>`;
+    }
+}
+
+function renderRanking(rankingData) {
+    const rankingList = document.getElementById('ranking-list');
+    if (!rankingList) return;
+
+    if (!rankingData || rankingData.length === 0) {
+        rankingList.innerHTML = `
+            <div style="color: var(--text-muted); text-align: center; padding: 2rem;">
+                <div>🏆 Brak danych rankingu</div>
+            </div>
+        `;
+        return;
+    }
+
+    const rankingHTML = rankingData.map((player, index) => {
+        const position = player.position;
+        const powerLevel = parseInt(player.power_level).toLocaleString('pl-PL');
+        
+        let glowStyle = '';
+        let positionIcon = '';
+        if (position === 1) {
+            glowStyle = 'box-shadow: 0 0 20px rgba(255, 215, 0, 0.6); border: 2px solid gold;';
+            positionIcon = '🥇';
+        } else if (position === 2) {
+            glowStyle = 'box-shadow: 0 0 20px rgba(192, 192, 192, 0.6); border: 2px solid silver;';
+            positionIcon = '🥈';
+        } else if (position === 3) {
+            glowStyle = 'box-shadow: 0 0 20px rgba(205, 127, 50, 0.6); border: 2px solid #cd7f32;';
+            positionIcon = '🥉';
+        } else {
+            positionIcon = `${position}.`;
+        }
+
+        return `
+            <div class="ranking-item-card" style="${glowStyle}">
+                <div style="font-weight: bold; margin-right: 0.75rem; min-width: 30px;">${positionIcon}</div>
+                <div style="flex: 1; color: var(--text-primary);">${player.username}</div>
+                <div style="color: var(--goku-accent); font-weight: bold; font-size: 0.9rem;">${powerLevel}</div>
+            </div>
+        `;
+    }).join('');
+
+    rankingList.innerHTML = rankingHTML;
+}
+
+async function fetchChatMessages() {
+    try {
+        const { data, error } = await supabaseClient
+            .from('global_messages')
+            .select('id, content, username, is_ghost, created_at')
+            .order('created_at', { ascending: false })
+            .limit(50);
+
+        if (error) throw error;
+        
+        renderChatMessages(data.reverse()); 
+    } catch (err) {
+        console.error('[Chat] Błąd pobierania wiadomości:', err);
+        const chatMessages = document.getElementById('chat-messages');
+        if (chatMessages) chatMessages.innerHTML = '<div style="text-align: center; padding: 1rem; color: var(--error);">Błąd wczytywania czatu</div>';
+    }
+}
+
+function renderChatMessages(messages) {
+    const chatMessages = document.getElementById('chat-messages');
+    if (!chatMessages) return;
+
+    if (!messages || messages.length === 0) {
+        chatMessages.innerHTML = `
+            <div style="color: var(--text-muted); text-align: center; padding: 1rem;">
+                <div>💬 Brak wiadomości</div>
+            </div>
+        `;
+        return;
+    }
+
+    const messagesHTML = messages.map(msg => {
+        const time = formatDcTime(msg.created_at); // UŻYCIE NOWEGO CZASU DC
+        
+        const ghostIcon = msg.is_ghost ? '👻 ' : '';
+        const ghostStyle = msg.is_ghost ? 
+            'opacity: 0.7; color: #87ceeb;' : 
+            'color: var(--text-primary);';
+
+        return `
+            <div class="chat-message-row" style="${ghostStyle}">
+                <div style="font-size: 0.7rem; color: var(--text-muted); flex-shrink: 0;">[${time}]</div>
+                <div style="font-size: 0.85rem; font-weight: 700; color: var(--goku-accent); flex-shrink: 0; margin-left: 5px;">${ghostIcon}${msg.username}:</div>
+                <div style="font-size: 0.85rem; color: var(--text-primary); word-break: break-word; margin-left: 5px;">${msg.content}</div>
+            </div>
+        `;
+    }).join('');
+
+    chatMessages.innerHTML = messagesHTML;
+    
+    setTimeout(() => {
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+    }, 100);
+}
+
+async function sendChatMessage() {
+    const chatInput = document.getElementById('chat-input');
+    if (!chatInput) return;
+    const message = chatInput.value.trim();
+    
+    if (!message) return;
+
+    try {
+        const res = await apiCall('/api/chat/send', 'POST', { message });
+        if (res && res.success) {
+            chatInput.value = '';
+            showNotification('Czat', res.data.message, 'success', 2000);
+        } else if (res) {
+            showNotification('Błąd czatu', res.error, 'error');
+        }
+    } catch (err) {
+        console.error('[Chat] Błąd wysyłania:', err);
+        showNotification('Błąd czatu', 'Nie udało się wysłać wiadomości', 'error');
+    }
+}
+
+function initializeDashboard() {
+    const dashboardView = document.getElementById('dashboard-view');
+    if (!dashboardView) return;
+
+    if (dashboardView.style.display !== 'none') {
+        fetchRanking();
+        fetchChatMessages();
+        initializeRealtimeChat();
+    }
+}
+
+function initializeRealtimeChat() {
+    const channel = supabaseClient
+        .channel('global_chat')
+        .on(
+            'postgres_changes',
+            { event: 'INSERT', schema: 'public', table: 'global_messages' },
+            (payload) => {
+                const chatMessages = document.getElementById('chat-messages');
+                if (chatMessages && chatMessages.style.display !== 'none') {
+                    addNewChatMessage(payload.new);
+                }
+            }
+        )
+        .subscribe((status) => {
+            if (status === 'TIMED_OUT' || status === 'CLOSED') {
+                setTimeout(() => initializeRealtimeChat(), 5000);
+            }
+        });
+    GameState.chatChannel = channel;
+}
+
+function addNewChatMessage(message) {
+    const chatMessages = document.getElementById('chat-messages');
+    if (!chatMessages) return;
+
+    if (chatMessages.innerHTML.includes('Brak wiadomości') || chatMessages.innerHTML.includes('Ładowanie czatu')) {
+        chatMessages.innerHTML = '';
+    }
+
+    const time = formatDcTime(message.created_at); // UŻYCIE NOWEGO CZASU DC
+    
+    const ghostIcon = message.is_ghost ? '👻 ' : '';
+    const ghostStyle = message.is_ghost ? 
+        'opacity: 0.7; color: #87ceeb;' : 
+        'color: var(--text-primary);';
+
+    const messageHTML = `
+        <div class="chat-message-row" style="${ghostStyle}">
+            <div style="font-size: 0.7rem; color: var(--text-muted); flex-shrink: 0;">[${time}]</div>
+            <div style="font-size: 0.85rem; font-weight: 700; color: var(--goku-accent); flex-shrink: 0; margin-left: 5px;">${ghostIcon}${message.username}:</div>
+            <div style="font-size: 0.85rem; color: var(--text-primary); word-break: break-word; margin-left: 5px;">${message.content}</div>
+        </div>
+    `;
+
+    chatMessages.insertAdjacentHTML('beforeend', messageHTML);
+    
+    setTimeout(() => {
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+    }, 100);
+}
+
+window.hideAllActiveTooltips = function() {
+    const tooltip = document.getElementById('global-tooltip');
+    if (tooltip) {
+        tooltip.style.opacity = '0';
+        tooltip.style.visibility = 'hidden';
+        tooltip.dataset.currentCard = '';
+    }
+    if (GameState.tooltipTimeout) {
+        clearTimeout(GameState.tooltipTimeout);
+    }
+};
+
+window.refreshActiveTooltip = function() {
+    const tooltip = document.getElementById('global-tooltip');
+    if (tooltip && tooltip.style.opacity === '1' && tooltip.dataset.currentCard) {
+        const activeCardId = tooltip.dataset.currentCard;
+        const newCard = document.querySelector(`[data-inventory-id="${activeCardId}"], [data-template-id="${activeCardId}"], [data-mission-id="${activeCardId}"]`);
+        
+        if (newCard) {
+            const isMission = newCard.classList.contains('mission-card');
+            const templateData = newCard.getAttribute(isMission ? 'data-mission-template' : 'data-item-template');
+            if (templateData) {
+                try {
+                    const template = JSON.parse(decodeURIComponent(templateData));
+                    tooltip.innerHTML = isMission ? createMissionTooltip(template) : createItemTooltip(template);
+                } catch(e) {}
+            }
+        }
+    }
+};
+
+// ==========================================
+// 🚀 9. GŁÓWNA INICJALIZACJA (START GRY)
+// ==========================================
+
+document.addEventListener('DOMContentLoaded', function() {
+    const sessionToken = checkAuthentication();
+    if (!sessionToken) return;
+
+    fetchCharacterData();
+    fetchMissions();
+    fetchInventory();
+
+    if (document.getElementById('shop-view')) initShop();
+    setTimeout(() => initializeDragAndDrop(), 500); 
+
+    const chatSendBtn = document.getElementById('chat-send-btn');
+    const chatInput = document.getElementById('chat-input');
+    if (chatSendBtn) chatSendBtn.addEventListener('click', sendChatMessage);
+    if (chatInput) {
+        chatInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') sendChatMessage();
+        });
+    }
+
+    document.getElementById('btn-use-senzu')?.addEventListener('click', async function() {
+        const magicBean = GameState.inventoryData?.find(item => 
+            item.item_template_id === '00000000-0000-0000-0000-000000000019' && 
+            item.equipped_slot === null
+        );
+        if (!magicBean) {
+            showWarningMessage('Nie masz Magicznej Fasolki w plecaku!');
+            return;
+        }
+        consumeItem(magicBean.id);
+    });
+
+    const navButtons = document.querySelectorAll('.nav-btn');
+    const savedTab = localStorage.getItem('active_game_tab') || 'dashboard';
+
+    const bankAmountInput = document.getElementById('bank-amount-input');
+    if (bankAmountInput) {
+        bankAmountInput.addEventListener('input', function() {
+            this.value = this.value.replace(/\D/g, '');
+        });
+    }
+
+    document.getElementById('bank-deposit-btn')?.addEventListener('click', () => transferBankCoins('deposit'));
+    document.getElementById('bank-withdraw-btn')?.addEventListener('click', () => transferBankCoins('withdraw'));
+    document.getElementById('bank-upgrade-limit-btn')?.addEventListener('click', () => upgradeBank('coin_limit'));
+    document.getElementById('bank-upgrade-slots-btn')?.addEventListener('click', () => upgradeBank('slot'));
+
+    navButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            activateTab(this.getAttribute('data-tab'));
+        });
+    });
+
+    document.getElementById('home-btn').addEventListener('click', function() {
+        activateTab('dashboard'); 
+    });
+
+    activateTab(savedTab);
+
+    // Zmienna do przechowywania interwału tykania
+    let clockInterval = null;
+
+    function updateGameTime(state) {
+        const timeElement = document.getElementById('game-time');
+        if (!timeElement || !state) return;
+
+        // Zatrzymujemy poprzedni zegar, jeśli istniał
+        if (clockInterval) clearInterval(clockInterval);
+
+        GameState.currentRound = state.current_round || 1;
+        GameState.currentDcDay = state.current_dc_day || 1;
+        GameState.isDowntime = GameState.current_dc_day > 75;
+
+        if (state.is_maintenance) {
+            timeElement.innerHTML = `<span style="color: var(--warning); font-weight: bold;">ZMIANA DNIA...</span>`;
+            // Możesz tu wywołać handleDowntimeMode() z innym tekstem
+            return; 
+        }
+
+        if (GameState.isDowntime) {
+            timeElement.innerHTML = `<span style="color: var(--error); font-weight: bold;">RUNDA ZAKOŃCZONA</span>`;
+            handleDowntimeMode();
+        } else {
+            // Startujemy lokalne "tykanie" co sekundę
+            const startClock = () => {
+                const now = new Date();
+                const realHour = now.getHours();
+                const realMinute = now.getMinutes();
+                const realSecond = now.getSeconds();
+
+                // Wyliczamy obecny czas jako minuty od północy czasu rzeczywistego
+                const currentMins = (realHour * 60) + realMinute;
+                let elapsedMins = 0;
+
+                // Sprawdzamy, w którym z 3 bloków dziennych się znajdujemy (02:00 to 120 min, 10:00 to 600 min, 18:00 to 1080 min)
+                if (currentMins < 120) { 
+                    // Jesteśmy przed 02:00 w nocy (czyli trwa jeszcze blok wczorajszy od 18:00)
+                    elapsedMins = currentMins + (24 * 60) - 1080; 
+                } else if (currentMins >= 120 && currentMins < 600) { 
+                    // Między 02:00 a 10:00
+                    elapsedMins = currentMins - 120;
+                } else if (currentMins >= 600 && currentMins < 1080) { 
+                    // Między 10:00 a 18:00
+                    elapsedMins = currentMins - 600;
+                } else { 
+                    // Po 18:00
+                    elapsedMins = currentMins - 1080;
+                }
+
+                // Przeliczamy minuty i sekundy bloku na łączną ilość sekund
+                const secondsInBlock = (elapsedMins * 60) + realSecond;
+
+                // 1 sekunda RL = 3 sekundy DC
+                const dcTotalSeconds = secondsInBlock * 3;
+                
+                const dcHour = Math.floor(dcTotalSeconds / 3600) % 24;
+                const dcMinute = Math.floor((dcTotalSeconds % 3600) / 60);
+
+                timeElement.textContent = `Runda ${GameState.currentRound} | Dzień: ${GameState.currentDcDay}/75 | ${dcHour.toString().padStart(2, '0')}:${dcMinute.toString().padStart(2, '0')}`;
+            };
+
+            startClock(); // Wywołanie natychmiastowe
+            clockInterval = setInterval(startClock, 1000); // Tykanie co sekundę
+            releaseDowntimeMode();
+        }
+    }
+
+    function handleDowntimeMode() {
+        const navSection = document.getElementById('main-nav-section');
+        if (navSection) navSection.style.display = 'none'; // Ukryj zakładki
+        
+        const allViews = document.querySelectorAll('[id$="-view"]');
+        allViews.forEach(view => view.style.display = 'none'); // Ukryj całą grę
+        
+        const downtimeView = document.getElementById('downtime-view');
+        if (downtimeView) downtimeView.style.display = 'flex'; // Pokaż ekran końca rundy
+
+        // Odliczanie do pierwszego dnia następnego miesiąca
+        updateDowntimeCountdown();
+    }
+
+    function releaseDowntimeMode() {
+        const navSection = document.getElementById('main-nav-section');
+        if (navSection && navSection.style.display === 'none') {
+            navSection.style.display = 'flex'; // Przywróć zakładki
+            
+            const downtimeView = document.getElementById('downtime-view');
+            if (downtimeView) downtimeView.style.display = 'none'; // Ukryj ekran kary
+            
+            const savedTab = localStorage.getItem('active_game_tab') || 'dashboard';
+            activateTab(savedTab); // Przywróć aktywną grę
+        }
+    }
+
+    function updateDowntimeCountdown() {
+        const countdownEl = document.getElementById('downtime-countdown');
+        if (!countdownEl || !GameState.isDowntime) return;
+
+        const now = new Date();
+        const nextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1, 0, 0, 0); // 1 dzień nastepnego miesiąca
+        const diff = nextMonth - now;
+
+        if (diff <= 0) {
+            countdownEl.textContent = "00:00:00";
+            return;
+        }
+
+        const d = Math.floor(diff / (1000 * 60 * 60 * 24));
+        const h = Math.floor((diff / (1000 * 60 * 60)) % 24).toString().padStart(2, '0');
+        const m = Math.floor((diff / 1000 / 60) % 60).toString().padStart(2, '0');
+        const s = Math.floor((diff / 1000) % 60).toString().padStart(2, '0');
+
+        countdownEl.textContent = `${d}d ${h}:${m}:${s}`;
+        setTimeout(updateDowntimeCountdown, 1000);
+    }
+
+    // Nasłuchiwanie na zmiany Globalnego Stanu z Bazy Danych
+    function initServerStateListener() {
+        supabaseClient
+            .channel('global_server_state')
+            .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'global_server_state', filter: 'id=eq.1' }, (payload) => {
+                const oldDay = GameState.currentDcDay;
+                const newData = payload.new;
+
+                // 1. Aktualizujemy czas i dzień
+                updateGameTime(newData);
+
+                // 2. Aktualizujemy listę zadań w pamięci gry
+                if (GameState.playerCurrentStats) {
+                    GameState.playerCurrentStats.daily_global_tasks = newData.daily_global_tasks;
+                    renderSpecialTasks(); // Przerysowujemy UI zadań
+                }
+
+                // 3. Jeśli zmienił się dzień, opóźniamy pobranie o 3 sekundy (aby uniknąć nadpisania z serwera!)
+                if (newData.current_dc_day !== oldDay) {
+                    console.log("[System] Dzień się zmienił! Odświeżam dane gracza za 3 sekundy...");
+                    setTimeout(() => { fetchCharacterData(true); }, 3000);
+                }
+            })
+            .subscribe();
+
+        // Pierwsze pobranie przy wejściu do gry
+        supabaseClient.from('global_server_state').select('*').eq('id', 1).single().then(res => {
+            if (res.data) {
+                updateGameTime(res.data);
+                if (GameState.playerCurrentStats) {
+                    GameState.playerCurrentStats.daily_global_tasks = res.data.daily_global_tasks;
+                    renderSpecialTasks();
+                }
+            }
+        });
+    }
+
+    initServerStateListener();
+    setInterval(() => {
+        if (!GameState.isDowntime) fetchCharacterData(true);
+    }, 30000);
+
+    const plBtn = document.getElementById('pl-info-btn');
+    const plTooltip = document.getElementById('pl-tooltip');
+    if (plBtn && plTooltip) {
+        plBtn.addEventListener('click', (e) => {
+            e.stopPropagation(); 
+            if (plTooltip.style.display === 'block') {
+                plTooltip.style.display = 'none';
+            } else {
+                const rect = plBtn.getBoundingClientRect();
+                plTooltip.style.left = (rect.right + 20) + 'px'; 
+                plTooltip.style.top = (rect.top + (rect.height / 2)) + 'px';
+                plTooltip.style.transform = 'translateY(-50%)'; 
+                plTooltip.style.display = 'block';
+            }
+        });
+        plTooltip.addEventListener('mouseleave', () => plTooltip.style.display = 'none');
+        document.addEventListener('click', (e) => {
+            if (e.target !== plBtn && !plTooltip.contains(e.target)) plTooltip.style.display = 'none';
+        });
+    }
+
+    setInterval(updateGameTime, 1000);
+    updateGameTime(); 
+    setInterval(() => fetchCharacterData(true), 30000);
+
+    const globalTooltip = document.getElementById('global-tooltip');
+    if (globalTooltip) {
+        globalTooltip.style.position = 'fixed';
+        globalTooltip.style.pointerEvents = 'none';
+        globalTooltip.style.zIndex = '999999';
+        globalTooltip.style.transition = 'opacity 0.2s ease'; 
+        
+        let lastMouseX = 0; 
+        let lastMouseY = 0; 
+
+        
+        // Poprawiony fragment obsługi Hovera
+        document.body.addEventListener('mouseover', function(e) {
+            // 🔴 ZMIANA: Dopisz .reward-item-hover do najbliższych elementów
+            const card = e.target.closest('.item-card, .shop-item-card, .mission-card, .task-card, .reward-item-hover');
+            const simpleTooltip = e.target.hasAttribute('data-tooltip') ? e.target : e.target.closest('[data-tooltip]');
+            
+            if (card || simpleTooltip) {
+                clearTimeout(GameState.tooltipTimeout); 
+                GameState.tooltipTimeout = setTimeout(() => {
+                    if (GameState.isInventoryActionLocked) return;
+                    if (card && !document.body.contains(card)) return;
+                    if (simpleTooltip && !document.body.contains(simpleTooltip)) return;
+
+                    if (card) {
+                        // Zmodyfikowano logikę cardId
+                        const cardId = card.dataset.inventoryId || card.dataset.templateId || card.dataset.missionId || card.dataset.taskId || card.className;
+                        if (globalTooltip.dataset.currentCard === cardId && globalTooltip.style.opacity === '1') return; 
+                        
+                        const isMission = card.classList.contains('mission-card');
+                        const isTask = card.classList.contains('task-card'); // NOWE
+                        
+                        let templateData;
+                        if (isMission) templateData = card.getAttribute('data-mission-template');
+                        else if (isTask) templateData = card.getAttribute('data-task-template'); // NOWE
+                        else templateData = card.getAttribute('data-item-template');
+
+                        if (!templateData) return;
+                        
+                        try {
+                            const template = JSON.parse(decodeURIComponent(templateData));
+                            
+                            if (isMission) {
+                                globalTooltip.innerHTML = createMissionTooltip(template);
+                            } else if (isTask) {
+                                globalTooltip.innerHTML = createTaskTooltip(template); // NOWE
+                            } else {
+                                globalTooltip.innerHTML = createItemTooltip(template);
+                            }
+                            
+                            positionTooltip(lastMouseX, lastMouseY); 
+                            
+                            globalTooltip.style.opacity = '1';
+                            globalTooltip.style.visibility = 'visible';
+                            globalTooltip.dataset.currentCard = cardId;
+                        } catch (err) { console.error('[Tooltip] Błąd:', err); }
+                    } else if (simpleTooltip) {
+                        // (Dalsza część kodu bez zmian)
+                        const text = simpleTooltip.getAttribute('data-tooltip');
+                        if (!text) return;
+                        if (globalTooltip.dataset.currentCard === text && globalTooltip.style.opacity === '1') return;
+                        
+                        globalTooltip.innerHTML = `<div style="white-space: pre-wrap; font-size: 0.85rem; padding: 4px; color: var(--text-primary, #e2e8f0);">${text}</div>`;
+                        positionTooltip(lastMouseX, lastMouseY);
+                        
+                        globalTooltip.style.opacity = '1';
+                        globalTooltip.style.visibility = 'visible';
+                        globalTooltip.dataset.currentCard = text;
+                    }
+                }, 400);
+            }
+        });
+
+        function positionTooltip(mouseX, mouseY) {
+            const rect = globalTooltip.getBoundingClientRect();
+            let x = mouseX - (rect.width / 2);
+            let y = mouseY + 20;
+            
+            if (x < 10) x = 10;
+            if (x + rect.width > window.innerWidth - 10) x = window.innerWidth - rect.width - 10;
+            if (y + rect.height > window.innerHeight - 10) y = mouseY - rect.height - 10;
+            if (y < 10) y = 10; 
+            
+            globalTooltip.style.left = x + 'px';
+            globalTooltip.style.top = y + 'px';
+        }
+
+        document.body.addEventListener('mousemove', function(e) {
+            lastMouseX = e.clientX;
+            lastMouseY = e.clientY;
+            if (globalTooltip.style.opacity === '1') positionTooltip(e.clientX, e.clientY);
+        });
+
+        document.body.addEventListener('mouseout', function(e) {
+            // DODANO .task-card
+            const card = e.target.closest('.item-card, .shop-item-card, .mission-card, .task-card, .reward-item-hover');
+            const simpleTooltip = e.target.closest('[data-tooltip]');
+            if ((card && !card.contains(e.relatedTarget)) || (simpleTooltip && !simpleTooltip.contains(e.relatedTarget))) {
+                clearTimeout(GameState.tooltipTimeout); 
+                globalTooltip.style.opacity = '0';
+                globalTooltip.style.visibility = 'hidden';
+                globalTooltip.dataset.currentCard = '';
+            }
+        });
+    }
+
+    const toggleHeaderBtn = document.getElementById('toggle-header-btn');
+    const headerPanel = document.getElementById('top-panel-1');
+    if (localStorage.getItem('header_collapsed') === 'true') {
+        headerPanel.classList.add('header-collapsed');
+        toggleHeaderBtn.textContent = '🔽';
+    }
+    toggleHeaderBtn.addEventListener('click', function() {
+        const isCollapsed = headerPanel.classList.toggle('header-collapsed');
+        localStorage.setItem('header_collapsed', isCollapsed.toString());
+        this.textContent = isCollapsed ? '🔽' : '🔼';
+    });
+
+    const toggleStatsBtn = document.getElementById('toggle-stats-details');
+    const leftSidebar = document.getElementById('left-sidebar');
+    if (toggleStatsBtn) {
+        toggleStatsBtn.addEventListener('click', function() {
+            const isExpanded = leftSidebar.classList.toggle('stats-expanded');
+            this.textContent = isExpanded ? 'Zwiń 🔼' : 'Szczegóły postaci 🔽';
+        });
+    }
+});
+
+// ==========================================
+// 🧘‍♂️ 10. TRENING IDLE
+// ==========================================
+
+const navTrainingBtn = document.querySelector('.nav-btn[data-tab="training"]');
+const mentorsGrid = document.getElementById('mentors-grid');
+
+const setupView = document.getElementById('training-setup-panel');
+const setupMentorInfo = document.getElementById('selected-mentor-info');
+const setupMentorName = document.getElementById('setup-mentor-name');
+const setupMentorCost = document.getElementById('setup-mentor-cost');
+const setupMentorMultiplier = document.getElementById('setup-mentor-multiplier');
+const trainingControls = document.getElementById('training-controls');
+const hoursSlider = document.getElementById('training-hours-slider');
+const hoursDisplay = document.getElementById('training-hours-display');
+const totalCostDisplay = document.getElementById('training-total-cost');
+const statSelect = document.getElementById('training-stat-select'); 
+const startBtn = document.getElementById('start-training-btn');
+
+const progressView = document.getElementById('training-progress-panel');
+const activeMentorName = document.getElementById('active-mentor-name');
+const countdownDisplay = document.getElementById('training-countdown');
+const claimBtn = document.getElementById('claim-training-btn');
+const stopBtn = document.getElementById('stop-training-btn');
+
+async function fetchTrainingStatus() {
+    try {
+        const res = await apiCall('/api/training/status', 'GET');
+        if (!res || !res.success) return;
+        
+        const data = res.data;
+
+        if (data.isUnlocked) {
+            if (navTrainingBtn) navTrainingBtn.classList.remove('disabled', 'locked'); 
+        } else {
+            if (navTrainingBtn) navTrainingBtn.classList.add('disabled', 'locked'); 
+            const trainingView = document.getElementById('training-view');
+            if (trainingView && trainingView.style.display !== 'none') {
+                const missionsBtn = document.querySelector('[data-tab="missions"]');
+                if (missionsBtn) missionsBtn.click();
+            }
+            return; 
+        }
+
+        const isCurrentlyTraining = localStorage.getItem('is_training_active') === 'true';
+        const newTrainingState = !!data.activeTraining;
+        
+        trainingMentors = data.mentors || [];
+        dailyTimeChamberUsed = data.dailyTimeChamberUsed;
+        
+        if (mentorsGrid.children.length === 0 || isCurrentlyTraining !== newTrainingState) {
+            renderMentors();
+        }
+
+        if (newTrainingState) {
+            GameState.isPlayerTraining = true;
+            const [mentorId, hours, stat] = data.activeTraining.split(':');
+            const mentor = trainingMentors.find(m => m.id === mentorId) || { name: 'Mistrz' };
+            showActiveTrainingState(mentor, data.endTime);
+        } else {
+            GameState.isPlayerTraining = false;
+            showSetupState();
+        }
+        
+        // FORCE UPDATE LOCK STATE (To odblokuje zakładki nowemu graczowi!)
+        if (typeof updateTabsLockState === 'function') updateTabsLockState();
+
+    } catch (err) { console.error('Błąd statusu treningu:', err); }
+}
+
+function renderMentors() {
+    mentorsGrid.innerHTML = '';
+    trainingMentors.forEach(mentor => {
+        const card = document.createElement('div');
+        card.className = 'mentor-card';
+        
+        const isTimeChamber = mentor.id === 'time_chamber';
+        const chamberLocked = isTimeChamber && dailyTimeChamberUsed;
+
+        if (mentor.isLocked) {
+            card.style.opacity = '0.5';
+            card.style.filter = 'grayscale(100%)';
+            card.innerHTML = `
+                <div class="mentor-emoji">🔒</div>
+                <div class="mentor-info">
+                    <div class="mentor-name">${mentor.name}</div>
+                    <div class="mentor-stats"><span style="color: var(--error);">Wymaga Misji</span></div>
+                </div>`;
+        } else if (chamberLocked) {
+            card.style.border = '1px solid var(--error)';
+            card.innerHTML = `
+                <div class="mentor-emoji">⏳</div>
+                <div class="mentor-info">
+                    <div class="mentor-name">${mentor.name}</div>
+                    <div class="mentor-stats"><span style="color: var(--error);">Limit zużyty</span></div>
+                </div>`;
+        } else {
+            card.innerHTML = `
+                <div class="mentor-emoji">${mentor.emoji}</div>
+                <div class="mentor-info">
+                    <div class="mentor-name">${mentor.name}</div>
+                    <div class="mentor-stats">
+                        <span style="color: var(--warning)">-${mentor.cost} Stam/h</span>
+                        <span style="color: var(--success)">Mnożnik: x${mentor.multiplier}</span>
+                    </div>
+                </div>`;
+            card.addEventListener('click', () => selectMentor(mentor, card));
+        }
+        mentorsGrid.appendChild(card);
+    });
+}
+
+function selectMentor(mentor, cardElement) {
+    if (activeTrainingEndTime) return;
+
+    document.querySelectorAll('.mentor-card').forEach(c => c.classList.remove('selected'));
+    cardElement.classList.add('selected');
+    currentSelectedMentor = mentor;
+
+    setupMentorInfo.style.display = 'block';
+    trainingControls.style.display = 'block';
+    setupMentorName.textContent = mentor.name;
+    setupMentorCost.textContent = mentor.cost;
+    setupMentorMultiplier.textContent = `x${mentor.multiplier}`;
+    
+    if (mentor.id === 'time_chamber') {
+        hoursSlider.min = 5;
+        hoursSlider.max = 60;
+        hoursSlider.step = 5;
+        hoursSlider.value = 5;
+    } else {
+        hoursSlider.min = 1;
+        hoursSlider.max = 12;
+        hoursSlider.step = 1;
+        hoursSlider.value = 1;
+    }
+    
+    updateTotalCost();
+}
+
+function updateTotalCost() {
+    if (!currentSelectedMentor) return;
+    const val = parseInt(hoursSlider.value);
+    const isTimeChamber = currentSelectedMentor.id === 'time_chamber';
+    
+    const effectiveHours = isTimeChamber ? (val / 5) : val;
+
+    hoursDisplay.textContent = val;
+    
+    const textNode = hoursDisplay.nextSibling;
+    if (textNode) {
+        textNode.textContent = isTimeChamber ? ' minut (rzeczywistych)' : ' godzin(y)';
+    }
+
+    totalCostDisplay.textContent = Math.ceil(currentSelectedMentor.cost * effectiveHours);
+
+    const powerEl = document.getElementById('total-power-level') || document.getElementById('power-level');
+    let effectivePower = 1000;
+    if (powerEl) {
+        const rawText = powerEl.innerText.replace(/\s/g, '');
+        const match = rawText.match(/\d+/);
+        if (match) effectivePower = Math.max(1000, parseInt(match[0]));
+    }
+
+    let baseGain = Math.floor((400 + Math.pow(effectivePower, 0.55)) * currentSelectedMentor.multiplier * effectiveHours);
+    const targetStat = statSelect ? statSelect.value : 'balanced';
+
+    let gainText = (targetStat === 'balanced') 
+        ? `po +${Math.floor(baseGain / 4)} (Siła, Szybkość, Wytrz., Tech.)` 
+        : `+${baseGain} pkt`;
+
+    if (document.getElementById('training-projected-gain')) {
+        document.getElementById('training-projected-gain').textContent = gainText;
+    }
+}
+
+hoursSlider.addEventListener('input', updateTotalCost);
+if (statSelect) statSelect.addEventListener('change', updateTotalCost);
+
+startBtn.addEventListener('click', async () => {
+    if (!currentSelectedMentor) return;
+    const val = parseInt(hoursSlider.value);
+    const isTimeChamber = currentSelectedMentor.id === 'time_chamber';
+    
+    const effectiveHours = isTimeChamber ? (val / 5) : val;
+
+    const res = await apiCall('/api/training/start', 'POST', { 
+        mentorId: currentSelectedMentor.id, 
+        hours: effectiveHours, 
+        targetStat: statSelect.value
+    }, true);
+    
+    if (res && res.success) {
+        showSuccessMessage('Wkroczono do Sali Czasu!');
+        fetchTrainingStatus(); 
+        fetchCharacterData(true); 
+    }
+});
+
+async function handleStopTraining(action) {
+    if (action === 'cancel' && !confirm('Na pewno? Stracisz całą wydaną staminę i nie dostaniesz nagrody!')) return;
+
+    const res = await apiCall('/api/training/stop', 'POST', { action: action }, true);
+    if (!res) return;
+
+    if (res.success) {
+        if (action === 'claim') showSuccessMessage(res.data.message);
+        else showWarningMessage(res.data.message);
+        
+        if (typeof fetchCharacterData === 'function') fetchCharacterData();
+        fetchTrainingStatus(); 
+    } else {
+        showErrorMessage(res.error || 'Błąd zamykania treningu');
+    }
+}
+
+claimBtn.addEventListener('click', () => handleStopTraining('claim'));
+stopBtn.addEventListener('click', () => handleStopTraining('cancel'));
+
+function showSetupState() {
+    activeTrainingEndTime = null;
+    setupView.style.display = 'flex';
+    progressView.style.display = 'none';
+    if (trainingCountdownInterval) clearInterval(trainingCountdownInterval);
+    
+    document.querySelectorAll('.mentor-card').forEach(c => c.classList.remove('selected'));
+    currentSelectedMentor = null;
+    setupMentorInfo.style.display = 'none';
+    trainingControls.style.display = 'none';
+}
+
+function showActiveTrainingState(mentor, endTimeStr) {
+    setupView.style.display = 'none';
+    progressView.style.display = 'flex';
+    
+    activeMentorName.textContent = mentor.name;
+    activeTrainingEndTime = new Date(endTimeStr);
+    
+    claimBtn.style.display = 'none';
+    stopBtn.style.display = 'block';
+    
+    if (trainingCountdownInterval) clearInterval(trainingCountdownInterval);
+    
+    function update() {
+        const diff = activeTrainingEndTime - new Date();
+        if (diff <= 0) {
+            clearInterval(trainingCountdownInterval);
+            countdownDisplay.textContent = "00:00:00";
+            claimBtn.style.display = 'block';
+            stopBtn.style.display = 'none';
+            return;
+        }
+        const h = Math.floor(diff / 3600000).toString().padStart(2, '0');
+        const m = Math.floor((diff % 3600000) / 60000).toString().padStart(2, '0');
+        const s = Math.floor((diff % 60000) / 1000).toString().padStart(2, '0');
+        countdownDisplay.textContent = `${h}:${m}:${s}`;
+    }
+    update();
+    trainingCountdownInterval = setInterval(update, 1000);
+}
+
+// ==========================================
+// ⛏️ 11. TRYB PRACA (MINIGRA ZRĘCZNOŚCIOWA)
+// ==========================================
+
+function lockTabsForWork(isWorking) {
+    GameState.isWorkMinigameActive = isWorking;
+    const tabs = document.querySelectorAll('.nav-btn');
+    tabs.forEach(tab => {
+        if (tab.id !== 'nav-work-btn') {
+            if (isWorking) {
+                tab.style.pointerEvents = 'none';
+                tab.style.filter = 'grayscale(100%) brightness(0.5)';
+                tab.style.opacity = '0.5';
+            } else {
+                tab.style.pointerEvents = '';
+                tab.style.filter = '';
+                tab.style.opacity = '';
+            }
+        }
+    });
+    
+    const headerBtns = document.querySelectorAll('.header-buttons .btn-header');
+    headerBtns.forEach(btn => {
+        btn.style.pointerEvents = isWorking ? 'none' : '';
+        btn.style.opacity = isWorking ? '0.5' : '';
+    });
+}
+
+function renderWorkList() {
+    const container = document.getElementById('work-list-container');
+    if (!container) return;
+    
+    const completedMissions = GameState.playerCompletedMissions || [];
+    container.innerHTML = '';
+    
+    WORK_FRONTEND_DATA.forEach(work => {
+        const isUnlocked = completedMissions.includes(work.reqMission);
+        const card = document.createElement('div');
+        card.className = `mentor-card ${isUnlocked ? '' : 'locked'}`; 
+        card.id = `work-card-${work.id}`;
+        
+        card.innerHTML = `
+            <div class="mentor-emoji" style="font-size: 2rem;">${isUnlocked ? work.goodEmoji : '🔒'}</div>
+            <div class="mentor-info">
+                <div class="mentor-name">${work.name}</div>
+                <div class="mentor-stats">
+                    ${isUnlocked ? `<span style="color: var(--success)">✅ Odblokowane</span>` : `<span style="color: var(--error)">Wymaga: ${work.reqName}</span>`}
+                </div>
+            </div>`;
+        
+        if (isUnlocked) {
+            card.addEventListener('click', () => selectWork(work, card));
+        }
+        container.appendChild(card);
+    });
+}
+
+function selectWork(workObj, cardElement) {
+    if (GameState.isWorkMinigameActive) return; 
+    currentSelectedWorkId = workObj.id;
+    currentWorkReward = workObj.reward;
+    currentWorkDifficulty = WORK_FRONTEND_DATA.findIndex(w => w.id === workObj.id) + 1;
+    
+    document.querySelectorAll('#work-list-container .mentor-card').forEach(c => c.classList.remove('selected'));
+    cardElement.classList.add('selected');
+    
+    const mission = (GameState.allMissions || []).find(m => m.id === workObj.reqMission);
+    const reqs = mission ? mission.req_stats : { strength: 0, speed: 0, endurance: 0 };
+
+    const baseStats = GameState.playerCurrentStats || {};
+    const equipStats = GameState.playerEquipStats || {};
+    
+    const pStr = BigInt(baseStats.strength || 0) + BigInt(equipStats.strength || 0);
+    const pSpd = BigInt(baseStats.speed || 0) + BigInt(equipStats.speed || 0);
+    const pEnd = BigInt(baseStats.endurance || 0) + BigInt(equipStats.endurance || 0);
+    const pTech = BigInt(baseStats.technique || 0) + BigInt(equipStats.technique || 0);
+
+    const canStr = pStr >= BigInt(reqs.strength || 0);
+    const canSpd = pSpd >= BigInt(reqs.speed || 0);
+    const canEnd = pEnd >= BigInt(reqs.endurance || 0);
+    const canTech = pTech >= BigInt(reqs.technique || 0);
+    const canWork = canStr && canSpd && canEnd && canTech;
+
+    const reqHtml = `
+        <span style="color: ${canStr ? 'var(--success)' : 'var(--error)'}">Siła: ${reqs.strength || 0}</span>, 
+        <span style="color: ${canSpd ? 'var(--success)' : 'var(--error)'}">Szybk.: ${reqs.speed || 0}</span>, 
+        <span style="color: ${canEnd ? 'var(--success)' : 'var(--error)'}">Wytrz.: ${reqs.endurance || 0}</span>,
+        <span style="color: ${canTech ? 'var(--success)' : 'var(--error)'}">Tech.: ${reqs.technique || 0}</span>
+    `;
+
+    document.getElementById('work-main-emoji').innerText = workObj.goodEmoji;
+    document.getElementById('work-title').innerText = workObj.name;
+    document.getElementById('work-stats').innerHTML = `
+        <div style="margin-bottom: 15px; font-size: 1.2rem; background: rgba(0,0,0,0.4); padding: 10px; border-radius: 8px; border: 1px dashed var(--goku-panel-border);">
+            Złap: <span style="font-size: 1.8rem; vertical-align: middle;">${workObj.goodEmoji}</span> &nbsp;|&nbsp; Unikaj: <span style="font-size: 1.8rem; vertical-align: middle;">${workObj.badEmoji}</span>
+        </div>
+        <div style="margin-bottom: 15px; padding: 10px; background: rgba(0,0,0,0.3); border-radius: 4px; border: 1px dashed #fbbf24;">
+            <p style="font-weight: bold; margin-bottom: 5px; color: #fbbf24;">✨ Zdarzenia Specjalne:</p>
+            <p style="font-size: 0.95rem;">Złap <b>💸</b> (+3x Zysk) | Unikaj <b>🦹‍♂️</b> (-3x Zysk lub Utrata HP!)</p>
+            <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 3px;"><i>(Te obiekty spadają znacznie szybciej!)</i></p>
+        </div>
+        <p style="margin-bottom: 5px;">❤️ Koszt: <b style="color: var(--error);">${workObj.costHpPct}% HP</b></p>
+        <p style="margin-bottom: 5px;">🟢 Koszt: <b style="color: var(--success);">${workObj.costStamina} Stamina</b></p>
+        <p style="margin-bottom: 15px;">💰 Zarobek: <b style="color: var(--warning);">${workObj.reward} Monet / Złapany obiekt</b></p>
+        <div style="margin-top:10px; padding: 10px; background: rgba(0,0,0,0.2); border-radius: 4px;">
+            <p style="font-weight: bold; margin-bottom: 5px;">Wymagania pracy:</p>
+            <p style="font-size: 0.95rem;">${reqHtml}</p>
+            <p style="margin-top: 8px; font-weight: bold; color: ${canWork ? 'var(--success)' : 'var(--error)'}">
+                ${canWork ? '✅ Spełniasz wymagania' : '❌ Masz zbyt niskie statystyki'}
+            </p>
+        </div>
+    `;
+    
+    const startBtn = document.getElementById('start-work-btn');
+    startBtn.style.display = 'inline-block';
+    
+    if (canWork) {
+        startBtn.classList.remove('disabled');
+        startBtn.removeAttribute('disabled');
+    } else {
+        startBtn.classList.add('disabled');
+        startBtn.setAttribute('disabled', 'true');
+    }
+}
+
+const canvas = document.getElementById('workCanvas');
+const ctx = canvas ? canvas.getContext('2d') : null;
+
+window.addEventListener('keydown', (e) => { if (e.key === 'ArrowLeft' || e.key === 'a') gameState.keys.left = true; if (e.key === 'ArrowRight' || e.key === 'd') gameState.keys.right = true; });
+window.addEventListener('keyup', (e) => { if (e.key === 'ArrowLeft' || e.key === 'a') gameState.keys.left = false; if (e.key === 'ArrowRight' || e.key === 'd') gameState.keys.right = false; });
+
+if (canvas) {
+    canvas.addEventListener('mousemove', (e) => {
+        if (!GameState.isWorkMinigameActive) return;
+        const rect = canvas.getBoundingClientRect(); const scaleX = canvas.width / rect.width;
+        gameState.player.x = ((e.clientX - rect.left) * scaleX) - (gameState.player.w / 2);
+    });
+    canvas.addEventListener('touchmove', (e) => {
+        if (!GameState.isWorkMinigameActive) return; e.preventDefault();
+        const rect = canvas.getBoundingClientRect(); const scaleX = canvas.width / rect.width;
+        gameState.player.x = ((e.touches[0].clientX - rect.left) * scaleX) - (gameState.player.w / 2);
+    }, { passive: false });
+}
+
+function updateLiveCounter() {
+    let netScore = Math.max(0, gameState.caught - gameState.missed);
+    let coinsBase = netScore * currentWorkReward;
+    
+    let tStr = 0, tSpd = 0, tEnd = 0, tTech = 0, tHp = 0, tMp = 0, tCoinsPct = 0, tCoinsFlat = 0;
+    if (GameState.inventoryData) {
+        GameState.inventoryData.forEach(item => {
+            if (item.equipped_slot && item.equipped_slot !== 'bank' && item.item_templates && item.item_templates.bonuses) {
+                let b = item.item_templates.bonuses;
+                if (b.type === 'training') {
+                    if (b.strength) tStr += Number(b.strength);
+                    if (b.speed) tSpd += Number(b.speed);
+                    if (b.endurance) tEnd += Number(b.endurance);
+                    if (b.technique) tTech += Number(b.technique);
+                    if (b.bonus_hp) tHp += Number(b.bonus_hp);
+                    if (b.bonus_mp) tMp += Number(b.bonus_mp);
+                    if (b.bonus_coins_pct) tCoinsPct += Number(b.bonus_coins_pct);
+                } else if (b.type === 'passive' || b.type === undefined) {
+                    if (b.bonus_coins) tCoinsFlat += Number(b.bonus_coins);
+                }
+            }
+        });
+    }
+
+    let liveBonusCoins = 0;
+    if (tCoinsPct > 0 && coinsBase > 0) {
+        liveBonusCoins = Math.floor((coinsBase * tCoinsPct) / 100);
+        if (liveBonusCoins === 0) liveBonusCoins = 1;
+    }
+    
+    let totalDisplayCoins = coinsBase + liveBonusCoins + tCoinsFlat;
+
+    document.getElementById('live-coins').innerText = `💰 ${totalDisplayCoins} Monet`;
+    
+    let statsHtml = [];
+    if (tStr > 0) statsHtml.push(`<div style="display:flex; justify-content:space-between; margin-bottom:3px;"><span>💪 Siła:</span> <span>+${netScore * tStr}</span></div>`);
+    if (tSpd > 0) statsHtml.push(`<div style="display:flex; justify-content:space-between; margin-bottom:3px;"><span>⚡ Szyb:</span> <span>+${netScore * tSpd}</span></div>`);
+    if (tEnd > 0) statsHtml.push(`<div style="display:flex; justify-content:space-between; margin-bottom:3px;"><span>🛡️ Wytrz:</span> <span>+${netScore * tEnd}</span></div>`);
+    if (tTech > 0) statsHtml.push(`<div style="display:flex; justify-content:space-between; margin-bottom:3px;"><span>🎯 Tech:</span> <span>+${netScore * tTech}</span></div>`);
+    if (tHp > 0)  statsHtml.push(`<div style="display:flex; justify-content:space-between; margin-bottom:3px;"><span>❤️ Max HP:</span> <span>+${netScore * tHp}</span></div>`);
+    if (tMp > 0)  statsHtml.push(`<div style="display:flex; justify-content:space-between; margin-bottom:3px;"><span>💧 Max MP:</span> <span>+${netScore * tMp}</span></div>`);
+    
+    if (liveBonusCoins > 0) statsHtml.push(`<div style="display:flex; justify-content:space-between; margin-bottom:3px; color: #fbbf24;"><span>💰 Monety (Trening):</span> <span>+${liveBonusCoins}</span></div>`);
+    if (tCoinsFlat > 0) statsHtml.push(`<div style="display:flex; justify-content:space-between; margin-bottom:3px; color: #fbbf24;"><span>💰 Monety (Pasyw):</span> <span>+${tCoinsFlat}</span></div>`);
+    
+    let hpPenaltyHtml = '';
+    if (gameState.extraHpPenalty > 0) {
+        hpPenaltyHtml = `<div style="color: #ef4444; font-weight: bold; margin-top: 10px; text-align: center;">🩸 Utracono: ${gameState.extraHpPenalty}% Max HP!</div>`;
+    }
+
+    document.getElementById('live-stats').innerHTML = (statsHtml.length > 0 
+        ? `<div style="text-align: center; margin-bottom: 6px; color: #fff; font-size: 0.9rem;">🏋️ Trening:</div>` + statsHtml.join('') 
+        : `<div style="color: var(--text-muted); text-align: center; margin-top: auto; margin-bottom: auto;">Brak sprzętu trening.</div>`) + hpPenaltyHtml;
+}
+
+function spawnObject() {
+    if (!GameState.isWorkMinigameActive) return;
+    
+    // POPRAWKA: Znacznie szybsze czasy spadania obiektów (od 1.3s do 0.2s)
+    const dropTimesLUT = [1.3, 1.2, 1.1, 1.0, 0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2];
+    
+    const workIndex = WORK_FRONTEND_DATA.findIndex(w => w.id === currentSelectedWorkId);
+    const safeIndex = Math.max(0, Math.min(workIndex, dropTimesLUT.length - 1));
+    const targetTimeSeconds = dropTimesLUT[safeIndex];
+    
+    let baseSpeed = 500 / (targetTimeSeconds * 60);
+    let speed = baseSpeed + (Math.random() * (baseSpeed * 0.1));
+    
+    let trapChance = Math.min(0.15 + (safeIndex * 0.03), 0.50);
+    
+    let isObst = false;
+    let isBonus = false;
+    let isThief = false;
+    
+    let r = Math.random();
+    let hasSpecials = (gameState.bonusSpawned < gameState.maxBonus) || (gameState.thiefSpawned < gameState.maxThief);
+    
+    if (hasSpecials && r < 0.10) { 
+        let canSpawnBonus = gameState.bonusSpawned < gameState.maxBonus;
+        let canSpawnThief = gameState.thiefSpawned < gameState.maxThief;
+        
+        if (canSpawnBonus && canSpawnThief) {
+            if (Math.random() < 0.33) isBonus = true; 
+            else isThief = true;
+        } else if (canSpawnBonus) {
+            isBonus = true;
+        } else {
+            isThief = true;
+        }
+    } else {
+        isObst = Math.random() < trapChance;
+        if (gameState.timeLeft < 6 && gameState.trapsSpawned < 3) isObst = true;
+    }
+    
+    let currentEmoji = WORK_FRONTEND_DATA[safeIndex].goodEmoji;
+    let type = 'normal';
+    let finalSpeed = speed;
+
+    if (isBonus) {
+        currentEmoji = '💸'; type = 'bonus'; finalSpeed = speed * 1.4; gameState.bonusSpawned++;
+    } else if (isThief) {
+        currentEmoji = '🦹‍♂️'; type = 'thief'; finalSpeed = speed * 1.4; gameState.thiefSpawned++;
+    } else if (isObst) {
+        currentEmoji = WORK_FRONTEND_DATA[safeIndex].badEmoji; type = 'obstacle'; gameState.trapsSpawned++;
+    }
+
+    gameState.objects.push({ 
+        x: Math.random() * (canvas.width - 28), 
+        y: -28, w: 28, h: 28, 
+        type: type, speed: finalSpeed, emoji: currentEmoji 
+    });
+    
+    let baseDelay = Math.max(600 - (safeIndex * 32), 150); 
+    let finalDelay = baseDelay + (Math.random() * 100);
+    
+    setTimeout(spawnObject, finalDelay);
+}
+
+function gameLoop() {
+    if (!GameState.isWorkMinigameActive) return;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    
+    if (gameState.keys.left) gameState.player.x -= gameState.player.speed;
+    if (gameState.keys.right) gameState.player.x += gameState.player.speed;
+    
+    if (gameState.player.x < 0) gameState.player.x = 0;
+    if (gameState.player.x + gameState.player.w > canvas.width) gameState.player.x = canvas.width - gameState.player.w;
+    
+    ctx.fillStyle = '#ff6b00';
+    ctx.fillRect(gameState.player.x, gameState.player.y, gameState.player.w, gameState.player.h);
+    
+    for (let i = gameState.objects.length - 1; i >= 0; i--) {
+        let obj = gameState.objects[i];
+        obj.y += obj.speed;
+        
+        ctx.font = "26px Arial"; 
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText(obj.emoji, obj.x + obj.w/2, obj.y + obj.h/2);
+        
+        if (obj.x < gameState.player.x + gameState.player.w && obj.x + obj.w > gameState.player.x && obj.y < gameState.player.y + gameState.player.h && obj.y + obj.h > gameState.player.y) {
+            if (obj.type === 'obstacle') {
+                gameState.missed++;
+                document.getElementById('work-score-bad').innerText = `❌ Błędy: ${gameState.missed} / 3`;
+                canvas.style.borderColor = '#ef4444'; setTimeout(() => canvas.style.borderColor = 'var(--goku-panel-border)', 200);
+                if (gameState.missed >= 3) { finishWorkMinigame(true); return; }
+            } else if (obj.type === 'bonus') {
+                gameState.caught += 3;
+                gameState.floatingTexts.push({x: obj.x + obj.w/2, y: obj.y, text: "+3 Łupy!", color: "#fbbf24", life: 50});
+            } else if (obj.type === 'thief') {
+                let lost = 0; let hpPenalty = 0;
+                if (gameState.caught >= 3) { gameState.caught -= 3; lost = 3; } 
+                else if (gameState.caught === 2) { gameState.caught = 0; lost = 2; hpPenalty = 10; } 
+                else if (gameState.caught === 1) { gameState.caught = 0; lost = 1; hpPenalty = 20; } 
+                else { hpPenalty = 30; }
+
+                gameState.extraHpPenalty += hpPenalty;
+                let text = lost > 0 ? `-${lost} Łup!` : "";
+                if (hpPenalty > 0) text += (text ? " " : "") + `-${hpPenalty}% HP!`;
+                
+                gameState.floatingTexts.push({x: obj.x + obj.w/2, y: obj.y, text: text, color: "#ef4444", life: 50});
+                canvas.style.borderColor = '#ef4444'; setTimeout(() => canvas.style.borderColor = 'var(--goku-panel-border)', 200);
+            } else {
+                gameState.caught++;
+                document.getElementById('work-score-good').innerText = `✅ Złapane: ${gameState.caught}`;
+            }
+            updateLiveCounter();
+            gameState.objects.splice(i, 1);
+            continue;
+        }
+        if (obj.y > canvas.height) gameState.objects.splice(i, 1);
+    }
+    
+    for (let i = gameState.floatingTexts.length - 1; i >= 0; i--) {
+        let ft = gameState.floatingTexts[i];
+        ctx.font = "bold 16px Arial";
+        ctx.fillStyle = ft.color;
+        ctx.textAlign = "center";
+        ctx.globalAlpha = ft.life / 50; 
+        ctx.fillText(ft.text, ft.x, ft.y);
+        ctx.globalAlpha = 1.0;
+        ft.y -= 1.5; 
+        ft.life--;
+        if (ft.life <= 0) gameState.floatingTexts.splice(i, 1);
+    }
+
+    workAnimationId = requestAnimationFrame(gameLoop);
+}
+
+document.getElementById('start-work-btn')?.addEventListener('click', async () => {
+    if (!currentSelectedWorkId || GameState.isWorkMinigameActive) return;
+    const res = await apiCall('/api/work/start', 'POST', { workId: currentSelectedWorkId }, true);
+    if (!res) return;
+
+    if (res.success) {
+        GameState.isWorkMinigameActive = true; lockTabsForWork(true);
+        
+        const listPanel = document.getElementById('work-list-panel');
+        if (listPanel) listPanel.style.display = 'none';
+        
+        const detailsContainer = document.getElementById('work-details-container');
+        if (detailsContainer) detailsContainer.style.display = 'none';
+        
+        const canvasBox = document.getElementById('work-canvas-container');
+        if (canvasBox) {
+            canvasBox.style.display = 'flex';
+            canvasBox.style.width = '100%'; 
+        }
+        
+        gameState.caught = 0; gameState.missed = 0; gameState.objects = []; gameState.trapsSpawned = 0;
+        gameState.floatingTexts = []; gameState.extraHpPenalty = 0;
+        gameState.bonusSpawned = 0; gameState.maxBonus = currentWorkDifficulty;
+        gameState.thiefSpawned = 0; gameState.maxThief = currentWorkDifficulty * 2;
+        gameState.player = { x: canvas.width / 2 - 25, y: canvas.height - 40, w: 50, h: 20, speed: 8 }; 
+        
+        gameState.timeLeft = res.data.duration;
+        
+        document.getElementById('work-score-good').innerHTML = `<span>✅ Złapane:</span> <span>0</span>`;
+        document.getElementById('work-score-bad').innerHTML = `<span>❌ Błędy:</span> <span>0 / 3</span>`;
+        document.getElementById('work-timer').innerText = `${gameState.timeLeft}s`;
+        document.getElementById('work-timer').style.color = 'var(--goku-accent)';
+        updateLiveCounter();
+        
+        workTimerInterval = setInterval(() => {
+            gameState.timeLeft--;
+            document.getElementById('work-timer').innerText = `Czas: ${gameState.timeLeft}s`;
+            if (gameState.timeLeft <= 0) finishWorkMinigame(false);
+        }, 1000);
+        
+        spawnObject(); gameLoop();
+        fetchCharacterData(true);
+    } else { showWarningMessage(res.error || 'Nie można rozpocząć pracy.'); }
+});
+
+async function finishWorkMinigame(isFailed = false) {
+    GameState.isWorkMinigameActive = false;
+    clearInterval(workTimerInterval); cancelAnimationFrame(workAnimationId);
+    
+    if (isFailed) {
+        document.getElementById('work-timer').innerText = `OBLICZANIE KARY...`;
+        document.getElementById('work-timer').style.color = 'var(--error)';
+        
+        const canvasBox = document.getElementById('workCanvas');
+        if (canvasBox) {
+            canvasBox.style.transition = 'all 0.3s ease';
+            canvasBox.style.filter = 'blur(6px) sepia(1) hue-rotate(315deg) saturate(5)';
+        }
+    } else {
+        document.getElementById('work-timer').innerText = `Raport...`;
+    }
+    
+    const res = await apiCall('/api/work/finish', 'POST', { workId: currentSelectedWorkId, goodObjectsCaught: gameState.caught, obstaclesCaught: gameState.missed, failed: isFailed, extraHpPenaltyPct: gameState.extraHpPenalty }, true);
+    
+    if (res && res.success) {
+        if (isFailed) {
+            const p = res.data.penalty;
+            const pct = p.resources_pct;
+            const penaltyMsg = `
+                Zrobiłeś 3 błędy!<br><br>
+                <div style="background: rgba(0,0,0,0.3); padding: 8px; border-radius: 6px; font-size: 0.85rem;">
+                    <div style="color:#ef4444; margin-bottom: 2px;">❤️ <b>-${pct}%</b> HP</div>
+                    <div style="color:#3b82f6; margin-bottom: 2px;">💧 <b>-${pct}%</b> MP</div>
+                    <div style="color:#84cc16; margin-bottom: 6px;">🟢 <b>-${pct}%</b> Stamina</div>
+                    <div style="color:#ffffff; border-top: 1px dashed rgba(255,255,255,0.2); padding-top: 6px;">📊 <b>-${p.loss_str}</b> Siła, <b>-${p.loss_spd}</b> Szybk., <b>-${p.loss_end}</b> Wytrz., <b>-${p.loss_tech}</b> Tech.</div>
+                </div>
+            `;
+            showNotification('Wyrzucono Cię z pracy!', penaltyMsg, 'error', 7000);
+        } else {
+            if (res.data.isDead) {
+                showNotification('Szpital!', `Przetrwałeś zmianę, ale ataki Złodziei całkowicie Cię wycieńczyły! Trafiasz do szpitala.`, 'death', 7000);
+            } else {
+                const data = res.data;
+                let msg = `<div style="margin-bottom: 4px;">💰 Monety: <b style="color:#ffffff;">+${data.baseCoins || data.finalCoins}</b></div>`;
+                
+                let gains = [];
+                if (data.gains.str !== "0") gains.push(`+${data.gains.str} Siła`);
+                if (data.gains.spd !== "0") gains.push(`+${data.gains.spd} Szybk.`);
+                if (data.gains.end !== "0") gains.push(`+${data.gains.end} Wytrz.`);
+                if (data.gains.tech !== "0") gains.push(`+${data.gains.tech} Tech.`);
+                if (data.gains.hp !== "0") gains.push(`+${data.gains.hp} HP`);
+                if (data.gains.mp !== "0") gains.push(`+${data.gains.mp} MP`);
+                
+                if (data.bonusCoinsPct && data.bonusCoinsPct !== "0") gains.push(`+${data.bonusCoinsPct} Monet (Trening)`);
+                if (data.bonusCoinsFlat && data.bonusCoinsFlat !== "0") gains.push(`+${data.bonusCoinsFlat} Monet (Pasywnie)`);
+                
+                if (gains.length > 0) {
+                    msg += `<div style="font-size: 0.85rem; margin-top: 6px; color: #ffffff; border-top: 1px dashed rgba(255,255,255,0.3); padding-top: 6px; font-weight: bold;">🏋️ Trening: <span style="font-weight: normal;">${gains.join(', ')}</span></div>`;
+                }
+                
+                if (data.server_warning) {
+                    msg += `<div style="font-size: 0.85rem; margin-top: 8px; color: #ffffff; font-weight: bold; border-top: 1px dashed rgba(255,255,255,0.3); padding-top: 8px;">⚠️ ${data.server_warning}</div>`;
+                }
+
+                if (data.drops && data.drops.length > 0) {
+                    msg += `<div style="font-size: 0.85rem; margin-top: 6px; color: #4ade80; font-weight: bold;">🎁 Zdobyto: Święta Woda!</div>`;
+                }
+                
+                showNotification('Koniec Zmiany', msg, data.server_warning ? 'warning' : 'success', 6000);
+            }
+        }
+    }
+
+    setTimeout(() => {
+        fetchCharacterData(); fetchInventory();
+        
+        const workCanvasElement = document.getElementById('workCanvas');
+        if (workCanvasElement) {
+            workCanvasElement.style.filter = 'none';
+            workCanvasElement.style.transition = 'none';
+        }
+        
+        const listPanel = document.getElementById('work-list-panel');
+        if (listPanel) listPanel.style.display = 'block';
+        
+        const detailsContainer = document.getElementById('work-details-container');
+        if (detailsContainer) detailsContainer.style.display = 'flex';
+        
+        const canvasBox = document.getElementById('work-canvas-container');
+        if (canvasBox) {
+            canvasBox.style.display = 'none';
+            canvasBox.style.width = '';
+        }
+        
+        lockTabsForWork(false);
+    }, isFailed ? 2500 : 0);
+} 
+
+const logoutBtnGame = document.getElementById('logout-btn');
+if (logoutBtnGame) {
+    logoutBtnGame.addEventListener('click', () => {
+        localStorage.clear(); // CAŁKOWITE WYZEROWANIE PAMIĘCI ŚMIECI
+        window.location.href = 'index.html'; 
+    });
+}
+
+setInterval(() => {
+    const activeTab = localStorage.getItem('active_game_tab');
+    if (activeTab === 'dashboard') {
+        fetchRanking();
+    }
+}, 60000);
