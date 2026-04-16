@@ -500,6 +500,7 @@ app.get('/api/test_next_day', async (req, res) => {
         let nextDay = (globalServerState?.current_dc_day || 0) + 1;
         if (nextDay > 76) nextDay = 76;
 
+        // Używamy nowej funkcji wzbogacania
         const newDailyTasks = await generateAndEnrichDailyTasks(nextDay);
 
         const { data: newState, error: updateErr } = await supabase.from('global_server_state').update({ 
@@ -2491,6 +2492,44 @@ async function generateAndEnrichDailyTasks(nextDay) {
     });
 }
 
+// --- FUNKCJA POMOCNICZA: Losowanie i wstrzykiwanie nazw/kategorii przedmiotów ---
+async function generateAndEnrichDailyTasks(nextDay) {
+    if (nextDay > 75) return [];
+
+    const { data: allTasks, error: tasksErr } = await supabase
+        .from('special_tasks_templates')
+        .select('*')
+        .lte('min_dc_day', nextDay)
+        .gte('max_dc_day', nextDay);
+
+    if (tasksErr || !allTasks || allTasks.length === 0) return [];
+
+    // Pobieramy nazwy i kategorie wszystkich przedmiotów z bazy
+    const { data: allItems } = await supabase.from('item_templates').select('id, name, category');
+    const itemMap = {};
+    if (allItems) allItems.forEach(i => itemMap[i.id] = i);
+
+    // Losujemy od 3 do 5 zadań
+    const shuffled = allTasks.sort(() => 0.5 - Math.random());
+    const numTasks = Math.floor(Math.random() * 3) + 3; 
+    const selectedTasks = shuffled.slice(0, numTasks);
+
+    // Automatyczne wstrzykiwanie danych przedmiotu (aby frontend widział nazwę i grafikę)
+    return selectedTasks.map(task => {
+        if (task.reward && task.reward.items && Array.isArray(task.reward.items)) {
+            task.reward.items = task.reward.items.map(reqItem => {
+                const template = itemMap[reqItem.id];
+                if (template) {
+                    reqItem.name = template.name;
+                    reqItem.category = template.category;
+                }
+                return reqItem;
+            });
+        }
+        return task;
+    });
+}
+
 // ==========================================
 // ⏰ 9. CRON JOBS I START SERWERA
 // ==========================================
@@ -2530,7 +2569,7 @@ cron.schedule('0 2,10,18 * * *', async () => {
         is_maintenance: false
     }).eq('id', 1).select().single();
 
-    if (newState) globalServerState = newState; // Kluczowa synchronizacja RAM
+    if (newState) globalServerState = newState;
 
   } catch (error) {
     console.error('[Zegar DC] Błąd:', error);
