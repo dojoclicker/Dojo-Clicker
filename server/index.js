@@ -2476,56 +2476,44 @@ app.listen(port, async () => {
 
 const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 cron.schedule('0 2,10,18 * * *', async () => {
-  console.log('[Zegar DC] Wybiła Północ DC! Rozpoczynam zmianę dnia i losowanie zadań...');
+  console.log('[Zegar DC] Rozpoczynam 60-sekundową zmianę dnia...');
   try {
+    // 1. Blokujemy serwer
     await supabase.from('global_server_state').update({ is_maintenance: true }).eq('id', 1);
-    await delay(5000); 
     
-    // Reset Dziennych Limitów graczy
+    // 2. Czekamy 55 sekund (dając graczom czas na zobaczenie komunikatu)
+    await delay(55000); 
+    
+    // 3. Resetujemy postępy i limity graczy
     await supabase.from('characters').update({ 
         daily_time_chamber_used: false,
         daily_shop_buys: {},
         daily_tasks_progress: {} 
     }).neq('profile_id', '00000000-0000-0000-0000-000000000000');
     
-    // --- LOGIKA SEZONÓW ---
+    // 4. Losujemy nowe zadania
     let nextDay = (globalServerState?.current_dc_day || 0) + 1;
     if (nextDay > 76) nextDay = 76;
 
-    // --- LOSOWANIE ZADAŃ SPECJALNYCH ---
     let newDailyTasks = [];
     if (nextDay <= 75) {
-        const { data: allTasks, error: tasksErr } = await supabase
-            .from('special_tasks_templates')
-            .select('*')
-            .lte('min_dc_day', nextDay)
-            .gte('max_dc_day', nextDay);
-
-        if (!tasksErr && allTasks && allTasks.length > 0) {
-            const shuffled = allTasks.sort(() => 0.5 - Math.random());
-            const numTasks = Math.floor(Math.random() * 3) + 3; 
-            newDailyTasks = shuffled.slice(0, numTasks);
+        const { data: allTasks } = await supabase.from('special_tasks_templates').select('*').lte('min_dc_day', nextDay).gte('max_dc_day', nextDay);
+        if (allTasks && allTasks.length > 0) {
+            newDailyTasks = allTasks.sort(() => 0.5 - Math.random()).slice(0, Math.floor(Math.random() * 3) + 3);
         }
     }
 
-    // Aktualizacja Bazy Danych
-    const { data: newState, error: updateErr } = await supabase.from('global_server_state').update({ 
+    // 5. Zapisujemy i odblokowujemy (is_maintenance: false)
+    const { data: newState } = await supabase.from('global_server_state').update({ 
         current_dc_day: nextDay,
         daily_global_tasks: newDailyTasks,
         is_maintenance: false
     }).eq('id', 1).select().single();
 
-    // --- KLUCZOWA POPRAWKA: Synchronizacja RAM serwera ---
-    if (!updateErr && newState) {
-        globalServerState = newState; 
-        console.log(`[Zegar DC] Serwer zsynchronizowany. Nowy dzień: ${nextDay}`);
-    }
+    if (newState) globalServerState = newState; // Kluczowa synchronizacja RAM
 
   } catch (error) {
-    console.error('[Zegar DC] Krytyczny błąd:', error);
+    console.error('[Zegar DC] Błąd:', error);
     await supabase.from('global_server_state').update({ is_maintenance: false }).eq('id', 1);
   }
-}, {
-  scheduled: true,
-  timezone: "Europe/Warsaw"
-});
+}, { scheduled: true, timezone: "Europe/Warsaw" });

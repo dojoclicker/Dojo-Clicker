@@ -574,10 +574,14 @@
             playerBankCoins: 0,
             playerBankCoinLimitLevel: 1,
             playerBankSlotsUnlocked: 5,
+
+            dailyGlobalTasks: [],    // NOWE: Przechowujemy zadania poza statsami
+            dailyTasksProgress: {},  // NOWE: Przechowujemy progress osobno
             
             playerCompletedMissions: [],
             playerAttemptedOneTry: [],
             chatChannel: null
+            
         };
 
         // --- 3. TIMERY I INTERWAŁY ---
@@ -777,8 +781,8 @@
             
             if (!tasksListEl) return;
 
-            const globalTasks = GameState.playerCurrentStats?.daily_global_tasks || [];
-            const progressDict = GameState.playerCurrentStats?.daily_tasks_progress || {};
+            const globalTasks = GameState.dailyGlobalTasks; // Zmiana źródła
+            const progressDict = GameState.dailyTasksProgress; // Zmiana źródła
             
             if (!globalTasks || globalTasks.length === 0) {
                 tasksListEl.innerHTML = '<div style="text-align: center; color: var(--text-muted); padding: 2rem;">Oczekujemy na wytyczne z centrali...</div>';
@@ -1512,6 +1516,10 @@
                 GameState.playerBankSlotsUnlocked = Number(data.bank_slots_unlocked || 5);
                 
                 if (data.stats) GameState.playerCurrentStats = data.stats;
+
+                // POPRAWKA: Mapowanie zadań z głównego poziomu obiektu
+                GameState.dailyGlobalTasks = data.daily_global_tasks || [];
+                GameState.dailyTasksProgress = data.daily_tasks_progress || {};
 
                 if (GameState.inventoryData) {
                     renderInventory(GameState.inventoryData);
@@ -3107,6 +3115,12 @@
                 GameState.currentRound = state.current_round || 1;
                 GameState.currentDcDay = state.current_dc_day || 1;
                 GameState.isDowntime = GameState.current_dc_day > 75;
+
+                if (state.is_maintenance) {
+                    timeElement.innerHTML = `<span style="color: var(--warning); font-weight: bold;">ZMIANA DNIA...</span>`;
+                    // Możesz tu wywołać handleDowntimeMode() z innym tekstem
+                    return; 
+                }
 
                 if (GameState.isDowntime) {
                     timeElement.innerHTML = `<span style="color: var(--error); font-weight: bold;">RUNDA ZAKOŃCZONA</span>`;
