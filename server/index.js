@@ -252,7 +252,8 @@ async function updateTaskProgress(userId, taskType, targetId, amountToAdd) {
     if (activeTasks.length === 0) return;
 
     try {
-        const { data: char } = await supabase.from('characters').select('id, daily_tasks_progress').eq('profile_id', userId).single();
+        // Upewniamy się, że szukamy po profile_id (jako string UUID)
+        const { data: char } = await supabase.from('characters').select('id, daily_tasks_progress').eq('profile_id', String(userId)).single();
         if (!char) return;
 
         let progress = char.daily_tasks_progress || {};
@@ -261,7 +262,6 @@ async function updateTaskProgress(userId, taskType, targetId, amountToAdd) {
         activeTasks.forEach(task => {
             if (!progress[task.id]) progress[task.id] = { current: 0, claimed: false };
             
-            // Dodajemy postęp tylko, jeśli zadanie nie zostało jeszcze odebrane i ukończone
             if (!progress[task.id].claimed && progress[task.id].current < task.goal_amount) {
                 progress[task.id].current += amountToAdd;
                 updated = true;
@@ -270,6 +270,7 @@ async function updateTaskProgress(userId, taskType, targetId, amountToAdd) {
 
         if (updated) {
             await supabase.from('characters').update({ daily_tasks_progress: progress }).eq('id', char.id);
+            console.log(`[Tasks] Zaktualizowano zadanie ${taskType} dla gracza. Dodano: ${amountToAdd}`);
         }
     } catch(err) {
         console.error('[Tasks] Błąd aktualizacji postępu:', err.message);
@@ -277,7 +278,6 @@ async function updateTaskProgress(userId, taskType, targetId, amountToAdd) {
 }
 
 // --- FUNKCJA POMOCNICZA: Losowanie i wstrzykiwanie nazw/kategorii przedmiotów ---
-
 async function generateAndEnrichDailyTasks(nextDay) {
 
     if (nextDay > 75) return [];

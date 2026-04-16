@@ -1087,21 +1087,43 @@ function updateUIWithCharacterData(data) {
         const navWorkBtn = document.getElementById('nav-work-btn');
         const navTasksBtn = document.getElementById('nav-tasks-btn'); // NOWE
 
-        const maZrobionaMisje6 = data.completed_missions && data.completed_missions.includes('10000000-0000-0000-0000-000000000006');
-        const maZrobionaMisje10 = data.completed_missions && data.completed_missions.includes('10000000-0000-0000-0000-000000000010'); // NOWE
+        // Dynamiczne odblokowywanie zakładek na podstawie misji
+        const completed = data.completed_missions || [];
+        const maTrening = completed.includes('10000000-0000-0000-0000-000000000005');
+        const maPrace = completed.includes('10000000-0000-0000-0000-000000000006');
+        const maZadania = completed.includes('10000000-0000-0000-0000-000000000010');
 
-        if ((data.unlocked_features && data.unlocked_features.includes('work')) || maZrobionaMisje6) {
-            if (navWorkBtn) navWorkBtn.classList.remove('disabled', 'locked');
-        }
+        const navTrainingBtn = document.getElementById('nav-training-btn'); // Musimy go pobrać
         
-        // Odblokowanie Zadań Specjalnych
-        if ((data.unlocked_features && data.unlocked_features.includes('special_tasks')) || maZrobionaMisje10) {
-            if (navTasksBtn) navTasksBtn.classList.remove('disabled', 'locked');
+        // Trening
+        if (navTrainingBtn) {
+            if (maTrening) navTrainingBtn.classList.remove('disabled', 'locked');
+            else navTrainingBtn.classList.add('disabled', 'locked');
+        }
+        // Praca
+        if (navWorkBtn) {
+            if (maPrace) navWorkBtn.classList.remove('disabled', 'locked');
+            else navWorkBtn.classList.add('disabled', 'locked');
+        }
+        // Zadania
+        if (navTasksBtn) {
+            if (maZadania) navTasksBtn.classList.remove('disabled', 'locked');
+            else navTasksBtn.classList.add('disabled', 'locked');
         }
         if (typeof renderWorkList === 'function') renderWorkList();
         if (typeof renderSpecialTasks === 'function') renderSpecialTasks();
 
         if (typeof fetchTrainingStatus === 'function') fetchTrainingStatus();
+        
+        // Wymuś odświeżenie zakładek Sklepu po każdej zmianie w misjach
+        const unlockedLvl = getFrontendShopLevel(data.completed_missions);
+        document.querySelectorAll('.shop-tab').forEach(btn => {
+            const btnLvl = parseInt(btn.dataset.level);
+            if (btnLvl <= unlockedLvl) {
+                btn.classList.remove('disabled');
+                btn.disabled = false;
+            }
+        });
 
         console.log('[UI] Dane postaci załadowane pomyślnie:', data);
         
@@ -1499,6 +1521,15 @@ async function fetchShopItems() {
         });
         
     } catch (error) { console.error('[Shop] Błąd:', error); }
+}
+
+function getFrontendShopLevel(completedMissions) {
+    const completed = completedMissions || [];
+    if (completed.includes('10000000-0000-0000-0000-000000000023')) return 5;
+    if (completed.includes('10000000-0000-0000-0000-000000000014')) return 4;
+    if (completed.includes('10000000-0000-0000-0000-000000000007')) return 3;
+    if (completed.includes('10000000-0000-0000-0000-000000000004')) return 2;
+    return 1;
 }
 
 function initShop() {
@@ -3410,14 +3441,15 @@ function updateLiveCounter() {
 function spawnObject() {
     if (!GameState.isWorkMinigameActive) return;
     
-    // Spowolnione czasy spadania dla minigry
-    const dropTimesLUT = [2.0, 1.8, 1.6, 1.4, 1.2, 1.0, 0.8, 0.6, 0.5];
+    // Mocno spowolnione czasy spadania (przerwy między obiektami)
+    const dropTimesLUT = [2.0, 1.8, 1.6, 1.4, 1.2, 1.0, 0.8];
     
     const workIndex = WORK_FRONTEND_DATA.findIndex(w => w.id === currentSelectedWorkId);
     const safeIndex = Math.max(0, Math.min(workIndex, dropTimesLUT.length - 1));
     const targetTimeSeconds = dropTimesLUT[safeIndex];
     
-    let baseSpeed = 500 / (targetTimeSeconds * 60);
+    // Zmniejszona prędkość na ekranie (dzielnik zwiększony z 60 do 90)
+    let baseSpeed = 500 / (targetTimeSeconds * 90);
     let speed = baseSpeed + (Math.random() * (baseSpeed * 0.1));
     
     let trapChance = Math.min(0.15 + (safeIndex * 0.03), 0.50);
