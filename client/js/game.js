@@ -79,18 +79,18 @@ const WORK_FRONTEND_DATA = [
 
 const MISSION_UNLOCKS_DICTIONARY = {
     '10000000-0000-0000-0000-000000000004': { shop: 'Poziom 2 🛒' },
-    '00000000-0000-0000-0000-000000000005': { tab: 'Trening 🏋️‍♂️', mentor: 'Stary Mistrz 👴' },
+    '10000000-0000-0000-0000-000000000005': { tab: 'Trening 🏋️‍♂️', mentor: 'Stary Mistrz 👴' },
     '10000000-0000-0000-0000-000000000006': { tab: 'Praca 💼', work: 'Roznoszenie Mleka 🥛' },
     '10000000-0000-0000-0000-000000000007': { work: 'Praca na Budowie 🧱', shop: 'Poziom 3 🛒' },
     '10000000-0000-0000-0000-000000000008': { work: 'Praca w Polu 🌱' },
     '10000000-0000-0000-0000-000000000009': { work: 'Drwal 🪵' },
     '10000000-0000-0000-0000-000000000010': { tab: 'Zadania Specjalne 📜', work: 'Ekstremalny Kurier 📦' },
-    '00000000-0000-0000-0000-000000000014': { shop: 'Poziom 4 🛒' },
+    '10000000-0000-0000-0000-000000000014': { shop: 'Poziom 4 🛒' },
     '10000000-0000-0000-0000-000000000015': { tab: 'Laboratorium Zwojów 🧪', work: 'Zbiór Magicznej Rosy 💦', mentor: 'Koci Pustelnik 🐈' },
     '10000000-0000-0000-0000-000000000020': { tab: 'Głęboka Medytacja 🧘‍♀️', work: 'Boskie Ogrody 🌸', mentor: 'Pan Niebiańskiego Pałacu ☁️' },
-    '00000000-0000-0000-0000-000000000023': { shop: 'Poziom 5 🛒' },
-    '00000000-0000-0000-0000-000000000024': { mentor: 'Sala Czasu ⏳' },
-    '00000000-0000-0000-0000-000000000025': { tab: 'Arena PVP ⚔️' }
+    '10000000-0000-0000-0000-000000000023': { shop: 'Poziom 5 🛒' },
+    '10000000-0000-0000-0000-000000000024': { mentor: 'Sala Czasu ⏳' },
+    '10000000-0000-0000-0000-000000000025': { tab: 'Arena PVP ⚔️' }
 };
 
 // ==========================================
@@ -3410,8 +3410,8 @@ function updateLiveCounter() {
 function spawnObject() {
     if (!GameState.isWorkMinigameActive) return;
     
-    // POPRAWKA: Znacznie szybsze czasy spadania obiektów (od 1.3s do 0.2s)
-    const dropTimesLUT = [1.3, 1.2, 1.1, 1.0, 0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2];
+    // Spowolnione czasy spadania dla minigry
+    const dropTimesLUT = [2.0, 1.8, 1.6, 1.4, 1.2, 1.0, 0.8, 0.6, 0.5];
     
     const workIndex = WORK_FRONTEND_DATA.findIndex(w => w.id === currentSelectedWorkId);
     const safeIndex = Math.max(0, Math.min(workIndex, dropTimesLUT.length - 1));

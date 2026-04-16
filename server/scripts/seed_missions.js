@@ -8,7 +8,7 @@ const supabase = createClient(supabaseUrl, supabaseKey);
 
 const missionsData = [
     {
-        id: "00000000-0000-0000-0000-000000000001", name: "Trening w pobliskim lesie",
+        id: "10000000-0000-0000-0000-000000000001", name: "Trening w pobliskim lesie",
         description: "Wzmocnij swoje statystyki, trenując rąbanie drewna i bieganie.",
         stamina_cost: 2, req_stats: { "strength": "1", "speed": "1", "endurance": "1", "technique": "1" },
         reward_coins_min: 0, reward_coins_max: 1, reward_stats: { "min": "2", "max": "3" },
@@ -16,7 +16,7 @@ const missionsData = [
         is_repeatable: true, is_one_try: false
     },
     {
-        id: "00000000-0000-0000-0000-000000000002", name: "Bestia z Nieba",
+        id: "10000000-0000-0000-0000-000000000002", name: "Bestia z Nieba",
         description: "Z nieba niespodziewanie pikuje na ciebie gigantyczna, wygłodniała bestia. Odeprzyj atak!",
         stamina_cost: 3, req_stats: { "strength": "15", "speed": "15", "endurance": "15", "technique": "15" },
         reward_coins_min: 0, reward_coins_max: 2, reward_stats: { "min": "3", "max": "5" },
@@ -40,7 +40,7 @@ const missionsData = [
         is_repeatable: true, is_one_try: false
     },
     {
-        id: "00000000-0000-0000-0000-000000000005", name: "Test Starego Mistrza (Jednorazowa)",
+        id: "10000000-0000-0000-0000-000000000005", name: "Test Starego Mistrza (Jednorazowa)",
         description: "Mistrz zgadza się wziąć cię pod swoje skrzydła. Udowodnij swój potencjał w sparingu.",
         stamina_cost: 10, req_stats: { "strength": "250", "speed": "250", "endurance": "250", "technique": "250" },
         reward_coins_min: 2, reward_coins_max: 6, reward_stats: { "min": "15", "max": "25" },
@@ -88,7 +88,7 @@ const missionsData = [
         is_repeatable: true, is_one_try: false
     },
     {
-        id: "00000000-0000-0000-0000-000000000011", name: "Lokalny Turniej Sztuk Walki (Jednorazowa)",
+        id: "10000000-0000-0000-0000-000000000011", name: "Lokalny Turniej Sztuk Walki (Jednorazowa)",
         description: "Masz tylko jedną szansę! W finale czeka na ciebie dziwny starzec w peruce.",
         stamina_cost: 25, req_stats: { "strength": "15000", "speed": "15000", "endurance": "15000", "technique": "15000" },
         reward_coins_min: 500, reward_coins_max: 1500, reward_stats: { "min": "1500", "max": "2000" },
@@ -112,7 +112,7 @@ const missionsData = [
         is_repeatable: true, is_one_try: false
     },
     {
-        id: "00000000-0000-0000-0000-000000000014", name: "Płatny Morderca Tao",
+        id: "10000000-0000-0000-0000-000000000014", name: "Płatny Morderca Tao",
         description: "Przeciwnik przyleciał na kamiennym filarze. Jego technika to śmiercionośny promień z palca!",
         stamina_cost: 40, req_stats: { "strength": "55000", "speed": "55000", "endurance": "55000", "technique": "55000" },
         reward_coins_min: 80, reward_coins_max: 100, reward_stats: { "min": "1500", "max": "2500" },
@@ -168,7 +168,7 @@ const missionsData = [
         is_repeatable: false, is_one_try: false
     },
     {
-        id: "00000000-0000-0000-0000-000000000021", name: "Misja 21: Nadludzki Ciężar",
+        id: "10000000-0000-0000-0000-000000000021", name: "Misja 21: Nadludzki Ciężar",
         description: "Otrzymujesz od asystenta Wszechmogącego strój ważący setki kilogramów. Musisz go dogonić, gdy on porusza się z prędkością błyskawicy. To wyciśnie z ciebie maksimum szybkości i wytrzymałości.",
         stamina_cost: 75, req_stats: { "strength": "1000000", "speed": "1000000", "endurance": "1000000", "technique": "1000000" },
         reward_coins_min: 600, reward_coins_max: 1000, reward_stats: { "min": "80000", "max": "120000" },
@@ -176,7 +176,7 @@ const missionsData = [
         is_repeatable: true, is_one_try: false
     },
     {
-        id: "00000000-0000-0000-0000-000000000022", name: "Misja 22: Własny Cień",
+        id: "10000000-0000-0000-0000-000000000022", name: "Misja 22: Własny Cień",
         description: "Fizyczna siła to nie wszystko. Usiądź w ciszy i wejdź we własny umysł. Stocz najtrudniejszą walkę z iluzją własnego strachu i gniewu, ucieleśnioną jako twój mroczny sobowtór.",
         stamina_cost: 85, req_stats: { "strength": "1500000", "speed": "1500000", "endurance": "1500000", "technique": "1500000" },
         reward_coins_min: 800, reward_coins_max: 1200, reward_stats: { "min": "150000", "max": "200000" },
@@ -184,7 +184,7 @@ const missionsData = [
         is_repeatable: true, is_one_try: false
     },
     {
-        id: "00000000-0000-0000-0000-000000000023", name: "Misja 23: Podróż w Przeszłość",
+        id: "10000000-0000-0000-0000-000000000023", name: "Misja 23: Podróż w Przeszłość",
         description: "Mistrz używa Wahadła Czasu, by przenieść cię do przeszłości. Zmierz się tam z wirtualnymi widmami legendarnych wojowników z dawnych stuleci, aby pojąć prawdziwą naturę walki.",
         stamina_cost: 90, req_stats: { "strength": "2500000", "speed": "2500000", "endurance": "2500000", "technique": "2500000" },
         reward_coins_min: 1000, reward_coins_max: 1500, reward_stats: { "min": "250000", "max": "350000" },
@@ -192,7 +192,7 @@ const missionsData = [
         is_repeatable: true, is_one_try: false
     },
     {
-        id: "00000000-0000-0000-0000-000000000024", name: "Misja 24: Trening w Sali Czasu",
+        id: "10000000-0000-0000-0000-000000000024", name: "Misja 24: Trening w Sali Czasu",
         description: "Reinkarnacja Króla Demonów rośnie w siłę. Wszechmogący pozwala ci wejść do Sali Czasu, gdzie jeden dzień to cały rok. Hartuj swoje ciało do granic ludzkich możliwości!",
         stamina_cost: 95, req_stats: { "strength": "4000000", "speed": "4000000", "endurance": "4000000", "technique": "4000000" },
         reward_coins_min: 2000, reward_coins_max: 3000, reward_stats: { "min": "400000", "max": "600000" },
@@ -200,7 +200,7 @@ const missionsData = [
         is_repeatable: true, is_one_try: false
     },
     {
-        id: "00000000-0000-0000-0000-000000000025", name: "Finał Turnieju (Jednorazowa)",
+        id: "10000000-0000-0000-0000-000000000025", name: "Finał Turnieju (Jednorazowa)",
         description: "Finał! Przed tobą staje reinkarnacja Króla Demonów. Stawką jest los całego świata.",
         stamina_cost: 100, req_stats: { "strength": "6000000", "speed": "6000000", "endurance": "6000000", "technique": "6000000" },
         reward_coins_min: 5000, reward_coins_max: 8000, reward_stats: { "min": "1500000", "max": "2500000" },

@@ -193,7 +193,7 @@ body {
 .equipment-container { display: flex; gap: 1rem; justify-content: center; align-items: flex-start; padding: 1rem; width: 100%; min-height: 500px; }
 .equipment-panel { flex: 1; display: flex; flex-direction: column; }
 .character-body-container { padding: 0.75rem; background: rgba(0, 0, 0, 0.2); border: 1px solid var(--goku-panel-border); border-radius: 8px; display: flex; justify-content: center; align-items: center; height: 420px; }
-.character-body { display: grid; grid-template-columns: 80px 100px 80px; grid-template-rows: 80px 60px 80px 80px; gap: 15px; justify-content: center; grid-template-areas: "ear_l head ear_r" "ring_l necklace ring_r" ". chest ." "hands legs feet"; }
+.character-body { display: grid; grid-template-columns: 80px 100px 80px; grid-template-rows: 80px 80px 80px 80px; gap: 15px; justify-content: center; grid-template-areas: "ear_l head ear_r" "ring_l necklace ring_r" ". chest ." "hands legs feet"; }
 .equipment-slot { width: 55px; height: 55px; background: rgba(0, 0, 0, 0.4); border: 1px solid var(--goku-panel-border); border-radius: 8px; display: flex; align-items: center; justify-content: center; color: var(--text-muted); font-size: 0.65rem; font-weight: 600; text-align: center; transition: all var(--transition-fast); cursor: pointer; place-self: center; }
 .equipment-slot[data-slot="head"], .equipment-slot[data-slot="chest"], .equipment-slot[data-slot="legs"], .equipment-slot[data-slot="feet"], .equipment-slot[data-slot="hands"] { width: 80px; height: 80px; font-size: 0.75rem; }
 .equipment-slot:hover { background: rgba(0, 0, 0, 0.6); border-color: var(--goku-accent); box-shadow: 0 0 8px rgba(255, 107, 0, 0.4); transform: scale(1.05); }
@@ -209,6 +209,7 @@ body {
 
 /* BANK */
 .bank-wrapper { display: flex; flex-direction: column; gap: 1rem; width: 100%; }
+.bank-wrapper .game-panel-row { margin-top: 1rem; }
 .bank-top-panel { width: 100%; }
 .bank-money-section { background: rgba(0, 0, 0, 0.3); border: 1px solid var(--goku-panel-border); border-radius: 8px; padding: 1rem; margin-bottom: 1.5rem; }
 .bank-money-section.no-margin { margin-bottom: 0; }

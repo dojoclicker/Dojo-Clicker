@@ -7,12 +7,12 @@ const supabase = createClient(supabaseUrl, supabaseKey);
 
 const generateTaskId = (num) => `20000000-0000-0000-0000-${String(num).padStart(12, '0')}`;
 const generateItemId = (num) => `00000000-0000-0000-0000-${String(num).padStart(12, '0')}`;
-const generateMissionId = (num) => `00000000-0000-0000-0000-${String(num).padStart(12, '0')}`;
+// 🟢 POPRAWKA: ID misji teraz z "1" na początku
+const generateMissionId = (num) => `10000000-0000-0000-0000-${String(num).padStart(12, '0')}`;
 
 const specialTasksData = [];
 let tid = 1;
 
-// Pomocnicza funkcja do dodawania zadań
 function addTask(type, target, name, desc, goal, minD, maxD, icon, coins, items, stats) {
     let rewardObj = { icon, coins };
     if (items && items.length > 0) rewardObj.items = items.map(i => ({ id: generateItemId(i.id), qty: i.qty }));
@@ -26,7 +26,7 @@ function addTask(type, target, name, desc, goal, minD, maxD, icon, coins, items,
 }
 
 // ==========================================
-// KATEGORIA 1: PRACA (3 poziomy dla każdej)
+// KATEGORIA 1: PRACA
 // ==========================================
 const works = [
     { id: 'praca_mleko', name: 'Roznoszenie Mleka', icon: '🥛', goals: [3, 5, 10], days: [[1,5], [1,10], [1,25]], items: [7, 7, 7], qtys: [3, 5, 10], coins: [200, 400, 800] },
@@ -45,7 +45,7 @@ works.forEach(w => {
 });
 
 // ==========================================
-// KATEGORIA 2: TRENING (1h / 3h / 6h) + Sala Czasu
+// KATEGORIA 2: TRENING
 // ==========================================
 const mentors = [
     { id: 'any', name: 'Dowolny Trening', icon: '🏋️‍♂️', minD: 1 },
@@ -54,9 +54,9 @@ const mentors = [
     { id: 'mentor_3', name: 'Trening u Pustelnika', icon: '☁️', minD: 35 },
     { id: 'mentor_4', name: 'Boski Trening', icon: '✨', minD: 50 }
 ];
-const trainGoals = [60, 180, 360]; // Minuty w DC (1h, 3h, 6h)
+const trainGoals = [60, 180, 360]; 
 const trainCoins = [500, 1500, 3500];
-const trainItems = [16, 17, 33]; // Różne kapsułki/wody
+const trainItems = [16, 17, 33]; 
 
 mentors.forEach(m => {
     trainGoals.forEach((goal, idx) => {
@@ -64,35 +64,38 @@ mentors.forEach(m => {
     });
 });
 
-// Sala Czasu (Prawdziwy czas: 5, 15, 30 minut)
 const timeChamberGoals = [5, 15, 30];
 timeChamberGoals.forEach((g, idx) => {
     addTask('training', 'time_chamber', `Nagięcie Czasu (Poziom ${idx+1})`, `Spędź ${g} minut realnego czasu w Sali Czasu.`, g, 20, 75, '⏳', 1000 * (idx+1), [{ id: 59, qty: 1 }]);
 });
 
 // ==========================================
-// KATEGORIA 3 & 4: SKLEP KUP / SPRZEDAJ
+// KATEGORIA 3 & 4: SKLEP KUP / SPRZEDAJ (ZMIENIONE)
 // ==========================================
 const shopLevels = ['any', 'shop_1', 'shop_2', 'shop_3', 'shop_4'];
 const shopGoals = [5, 15, 30];
 
+// KUPOWANIE (Zostaje z poziomami, bo kupujesz W konkretnym sklepie)
 shopLevels.forEach((level, l_idx) => {
     shopGoals.forEach((g, idx) => {
-        // Kupowanie
         addTask('shop_buy', level, `Klient: ${level === 'any' ? 'Gdziekolwiek' : `Poziom ${l_idx}`} (Poz ${idx+1})`, `Kup ${g} przedmiotów (${level === 'any' ? 'dowolny poziom' : `sklep poziom ${l_idx}`}).`, g, l_idx*10 + 1, 75, '🛒', g*100, [{ id: 20 + l_idx, qty: 1 }]);
-        // Sprzedawanie
-        addTask('shop_sell', level, `Handlarz: ${level === 'any' ? 'Gdziekolwiek' : `Poziom ${l_idx}`} (Poz ${idx+1})`, `Sprzedaj ${g} przedmiotów (${level === 'any' ? 'dowolny poziom' : `sklep poziom ${l_idx}`}).`, g, l_idx*10 + 5, 75, '⚖️', g*150, [{ id: 20 + l_idx, qty: 1 }]);
     });
 });
 
+// SPRZEDAWANIE (Uproszczone: po prostu pozbądź się X przedmiotów)
+const sellGoals = [5, 15, 30, 50, 100];
+sellGoals.forEach((g, idx) => {
+    addTask('shop_sell', 'any', `Handlarz (Poziom ${idx+1})`, `Sprzedaj ze swojego plecaka łącznie ${g} dowolnych przedmiotów.`, g, idx*5 + 1, 75, '⚖️', g*150, [{ id: 20, qty: idx+1 }]);
+});
+
 // ==========================================
-// KATEGORIA 6: MISJE (25 misji)
+// KATEGORIA 6: MISJE
 // ==========================================
 for(let m = 1; m <= 25; m++) {
-    const minDay = Math.min(1 + (m * 2), 70); // Misja 25 ukaże się najwcześniej ok. 51 dnia
-    const goal = m <= 5 ? 10 : (m <= 10 ? 8 : (m <= 15 ? 5 : (m <= 20 ? 3 : 1))); // Ilość powtórzeń spada z trudnością
+    const minDay = Math.min(1 + (m * 2), 70); 
+    const goal = m <= 5 ? 10 : (m <= 10 ? 8 : (m <= 15 ? 5 : (m <= 20 ? 3 : 1))); 
     const coins = m * 300;
-    const dropItem = (m % 5) + 16; // Przedmioty z zakresu 16-20 (różne kapsułki/sakwy)
+    const dropItem = (m % 5) + 16; 
     
     addTask('mission', generateMissionId(m), `Zlecenie Bojowe #${m}`, `Ukończ pomyślnie misję numer ${m} dokładnie ${goal} razy.`, goal, minDay, 75, '⚔️', coins, [{ id: dropItem, qty: m <= 15 ? 2 : 1 }]);
 }
@@ -114,22 +117,21 @@ consumeItems.forEach(ci => {
 });
 
 // ==========================================
-// KATEGORIA 8: BONUS TRENINGOWY (Statystyki)
+// KATEGORIA 8: BONUS TRENINGOWY
 // ==========================================
 const singleStats = ['strength', 'speed', 'endurance', 'technique'];
-const statGoals = [100, 500, 1500, 5000, 15000, 50000]; // 6 zadań na każdy stat
+const statGoals = [100, 500, 1500, 5000, 15000, 50000]; 
 
 singleStats.forEach(stat => {
     statGoals.forEach((g, idx) => {
         const statPl = stat === 'strength' ? 'Siły' : (stat === 'speed' ? 'Szybkości' : (stat === 'endurance' ? 'Wytrzymałości' : 'Techniki'));
-        const statKey = {}; statKey[stat] = g / 10; // Nagroda = 10% wymogu w darmowych statach
+        const statKey = {}; statKey[stat] = g / 10; 
         
         addTask('training_stats', stat, `Trening Specjalistyczny (Poziom ${idx+1})`, `Zdobądź łącznie ${g} pkt ${statPl} jako bonus z przedmiotów.`, g, idx * 10 + 1, 75, '🔥', g/2, [{ id: 40, qty: 1 }], statKey);
     });
 });
 
-// Multi-Statystyki (Wszystkie naraz)
-const allStatGoals = [200, 1000, 4000, 12000, 40000]; // 5 zadań na wszystkie staty
+const allStatGoals = [200, 1000, 4000, 12000, 40000]; 
 allStatGoals.forEach((g, idx) => {
     addTask('training_stats', 'all', `Perfekcyjna Harmonia (Poziom ${idx+1})`, `Zdobądź łącznie ${g} punktów WE WSZYSTKICH 4 statystykach jako bonus z przedmiotów.`, g, idx * 12 + 5, 75, '🌟', g, [{ id: 59, qty: 1 }], { strength: g/5, speed: g/5, endurance: g/5, technique: g/5 });
 });
@@ -140,9 +142,7 @@ allStatGoals.forEach((g, idx) => {
 async function seedSpecialTasks() {
     try {
         console.log('📜 Rozpoczynam generowanie i aktualizację Zadań Specjalnych...');
-        console.log(`🧮 Wygenerowano w pamięci: ${specialTasksData.length} unikalnych zadań!`);
         
-        // Upsertujemy zadania paczkami po 50, żeby nie przeciążyć bazy (Dobra praktyka)
         const chunkSize = 50;
         for (let i = 0; i < specialTasksData.length; i += chunkSize) {
             const chunk = specialTasksData.slice(i, i + chunkSize);
@@ -153,11 +153,9 @@ async function seedSpecialTasks() {
             if (error) throw error;
             console.log(`✅ Wgrano paczkę ${i / chunkSize + 1}...`);
         }
-        
         console.log(`🎉 SUKCES! Zaktualizowano wszystkie ${specialTasksData.length} zadań w bazie!`);
     } catch (err) {
         console.error('❌ Błąd podczas wgrywania zadań:', err);
     }
 }
-
 seedSpecialTasks();

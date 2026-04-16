@@ -27,8 +27,8 @@ const supabase = createClient(supabaseUrl, supabaseKey);
 // --- 1A. SŁOWNIKI I KONFIGURACJE ---
 // Zbiorczy słownik ID Misji używanych w logice (aby uniknąć literówek)
 const MISSION_IDS = {
-  TRAINING_FOREST: '00000000-0000-0000-0000-000000000004', // Poziom Sklepu 2
-  MENTOR_OLD_MASTER: '00000000-0000-0000-0000-000000000005',
+  TRAINING_FOREST: '10000000-0000-0000-0000-000000000004', // Poziom Sklepu 2
+  MENTOR_OLD_MASTER: '10000000-0000-0000-0000-000000000005',
   WORK_MILK: '10000000-0000-0000-0000-000000000006',
   WORK_BUILDING: '10000000-0000-0000-0000-000000000007',
   WORK_FIELD: '10000000-0000-0000-0000-000000000008',
@@ -38,8 +38,8 @@ const MISSION_IDS = {
   WORK_ROSA: '10000000-0000-0000-0000-000000000015',
   WORK_GARDENS: '10000000-0000-0000-0000-000000000020',
   SHOP_LVL_5: '10000000-0000-0000-0000-000000000023',
-  MENTOR_TIME_CHAMBER: '00000000-0000-0000-0000-000000000024',
-  PVP_FINALS: '00000000-0000-0000-0000-000000000025'
+  MENTOR_TIME_CHAMBER: '10000000-0000-0000-0000-000000000024',
+  PVP_FINALS: '10000000-0000-0000-0000-000000000025'
 };
 
 const TRAINING_MENTORS = {
@@ -1826,18 +1826,18 @@ app.post('/api/shop/buy', authenticateToken, requireAlive, async (req, res) => {
     }).eq('id', character.id);
 
     if (existingItem && isStackable) {
-      await supabase.from('inventory').update({ quantity: (BigInt(existingItem.quantity) + BigInt(quantity)).toString() }).eq('id', existingItem.id);
-    } else {
-      const occupied = backpackItems.map(i => i.backpack_index);
-      let freeIdx = 1; while (occupied.includes(freeIdx)) freeIdx++;
-      await supabase.from('inventory').insert({ character_id: character.id, item_template_id: template_id, quantity: quantity, equipped_slot: null, backpack_index: freeIdx });
-    }
+      await supabase.from('inventory').update({ quantity: (BigInt(existingItem.quantity) + BigInt(quantity)).toString() }).eq('id', existingItem.id);
+    } else {
+      const occupied = backpackItems.map(i => i.backpack_index);
+      let freeIdx = 1; while (occupied.includes(freeIdx)) freeIdx++;
+      await supabase.from('inventory').insert({ character_id: character.id, item_template_id: template_id, quantity: quantity, equipped_slot: null, backpack_index: freeIdx });
+    }
 
     // --- TRACKER ZADAŃ SPECJALNYCH (ZAKUPY) ---
-    // Śledzimy ilość zakupionych przedmiotów
-    await updateTaskProgress(userId, 'shop', 'buy', quantity);
+    await updateTaskProgress(userId, 'shop_buy', `shop_${itemTemplate.shop_level || 1}`, quantity);
+    await updateTaskProgress(userId, 'shop_buy', 'any', quantity);
 
-    res.json({ success: true, message: `Kupiono x${quantity}!`, item: { name: itemTemplate.name, quantity: quantity, total_cost: totalCost.toString() }});
+    res.json({ success: true, message: `Kupiono x${quantity}!`, item: { name: itemTemplate.name, quantity: quantity, total_cost: totalCost.toString() }});
   } catch (err) { res.status(500).json({ error: 'Błąd podczas zakupu' }); }
 });
 
@@ -1858,6 +1858,9 @@ app.post('/api/shop/sell', authenticateToken, requireAlive, async (req, res) => 
 
     if (sellQuantity === BigInt(item.quantity)) await supabase.from('inventory').delete().eq('id', inventory_id);
     else await supabase.from('inventory').update({ quantity: (BigInt(item.quantity) - sellQuantity).toString() }).eq('id', inventory_id);
+
+    // --- TRACKER ZADAŃ SPECJALNYCH (SPRZEDAŻ) ---
+    await updateTaskProgress(userId, 'shop_sell', 'any', Number(sellQuantity));
 
     res.json({ success: true, message: `Sprzedano za ${totalSellPrice}!`, item: { name: item.item_templates.name, quantity: sellQuantity.toString(), total_sell_price: totalSellPrice.toString() }});
   } catch (err) { res.status(500).json({ error: 'Błąd' }); }
