@@ -3222,10 +3222,10 @@
                             renderSpecialTasks(); // Przerysowujemy UI zadań
                         }
 
-                        // 3. Jeśli zmienił się dzień, wymuszamy pobranie danych postaci (reset progressu)
+                        // 3. Jeśli zmienił się dzień, opóźniamy pobranie o 3 sekundy (aby uniknąć nadpisania z serwera!)
                         if (newData.current_dc_day !== oldDay) {
-                            console.log("[System] Dzień się zmienił! Odświeżam dane gracza...");
-                            fetchCharacterData(true);
+                            console.log("[System] Dzień się zmienił! Odświeżam dane gracza za 3 sekundy...");
+                            setTimeout(() => { fetchCharacterData(true); }, 3000);
                         }
                     })
                     .subscribe();
