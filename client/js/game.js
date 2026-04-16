@@ -1,9 +1,5 @@
 /* Dojo-Clicker - Główna Logika Gry */
 
-// --- KONFIGURACJA I STAN GRY ---
-const API_URL = 'http://localhost:3000/api'; // Upewnij się, że adres jest poprawny dla Twojego serwera
-// 
-
 // ==========================================
 // 🚀 CENTRUM DOWODZENIA (STAN GLOBALNY GRY)
 // ==========================================
@@ -1207,7 +1203,7 @@ async function fetchInventory() {
         
     } catch (error) {
         console.error('[Inventory] Błąd pobierania ekwipunku:', error);
-        showInventoryError('Nie udało się pobrać ekwipunku. Spróbuj odświeżyć stronę.');
+        showErrorMessage('Nie udało się pobrać ekwipunku. Spróbuj odświeżyć stronę.');
     }
 }
 
@@ -2497,6 +2493,8 @@ function initializeDashboard() {
 }
 
 function initializeRealtimeChat() {
+    if (GameState.chatChannel) return; // Zabezpieczenie przed dublowaniem połączeń!
+    
     const channel = supabaseClient
         .channel('global_chat')
         .on(
@@ -2820,10 +2818,6 @@ document.addEventListener('DOMContentLoaded', function() {
             if (e.target !== plBtn && !plTooltip.contains(e.target)) plTooltip.style.display = 'none';
         });
     }
-
-    setInterval(updateGameTime, 1000);
-    updateGameTime(); 
-    setInterval(() => fetchCharacterData(true), 30000);
 
     const globalTooltip = document.getElementById('global-tooltip');
     if (globalTooltip) {
@@ -3281,7 +3275,7 @@ function selectWork(workObj, cardElement) {
     cardElement.classList.add('selected');
     
     const mission = (GameState.allMissions || []).find(m => m.id === workObj.reqMission);
-    const reqs = mission ? mission.req_stats : { strength: 0, speed: 0, endurance: 0 };
+    const reqs = mission ? mission.req_stats : { strength: 0, speed: 0, endurance: 0, technique: 0 };
 
     const baseStats = GameState.playerCurrentStats || {};
     const equipStats = GameState.playerEquipStats || {};
