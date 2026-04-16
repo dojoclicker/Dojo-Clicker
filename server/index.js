@@ -483,6 +483,55 @@ app.use((req, res, next) => {
   next(); 
 });
 
+// --- TYMCZASOWY ENDPOINT DO TESTÓW ZMIANY DNIA ---
+app.get('/api/test_next_day', async (req, res) => {
+    console.log('[TEST] Wymuszona zmiana dnia!');
+    try {
+        await supabase.from('global_server_state').update({ is_maintenance: true }).eq('id', 1);
+        await delay(2000); // Krótsze opóźnienie dla testu
+        
+        await supabase.from('characters').update({ 
+            daily_time_chamber_used: false,
+            daily_shop_buys: {},
+            daily_tasks_progress: {} 
+        }).neq('profile_id', '00000000-0000-0000-0000-000000000000');
+        
+        let nextDay = (globalServerState?.current_dc_day || 0) + 1;
+        if (nextDay > 76) nextDay = 76;
+
+        let newDailyTasks = [];
+        if (nextDay <= 75) {
+            const { data: allTasks, error: tasksErr } = await supabase
+                .from('special_tasks_templates')
+                .select('*')
+                .lte('min_dc_day', nextDay)
+                .gte('max_dc_day', nextDay);
+
+            if (!tasksErr && allTasks && allTasks.length > 0) {
+                const shuffled = allTasks.sort(() => 0.5 - Math.random());
+                const numTasks = Math.floor(Math.random() * 3) + 3; 
+                newDailyTasks = shuffled.slice(0, numTasks);
+            }
+        }
+
+        const { data: newState, error: updateErr } = await supabase.from('global_server_state').update({ 
+            current_dc_day: nextDay,
+            daily_global_tasks: newDailyTasks,
+            is_maintenance: false
+        }).eq('id', 1).select().single();
+
+        if (!updateErr && newState) {
+            globalServerState = newState; 
+        }
+
+        res.json({ success: true, message: `Zmieniono dzień na ${nextDay} i wylosowano ${newDailyTasks.length} zadań.` });
+    } catch (error) {
+        console.error(error);
+        await supabase.from('global_server_state').update({ is_maintenance: false }).eq('id', 1);
+        res.status(500).json({ error: 'Błąd testu' });
+    }
+});
+
 app.get('/api/status', (req, res) => {
   res.json({
     status: 'online',
