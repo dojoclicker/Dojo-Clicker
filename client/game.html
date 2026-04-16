@@ -142,41 +142,41 @@
         <div id="dashboard-view" style="display: none;">
             <div class="dashboard-container">
             <div class="game-panel-row">
-                <div class="dashboard-hub game-panel" style="flex: 7;">
+                <div class="dashboard-hub game-panel">
                     <div class="game-panel-header">
-                        <h4 class="game-panel-title" style="color: var(--goku-accent);">🏢 Hub</h4>
+                        <h4 class="game-panel-title hub-title">🏢 Hub</h4>
                     </div>
                     <div class="hub-content">
-                        <div class="hub-section">
-                            <h5 style="color: var(--text-primary); margin-bottom: 1rem;">📢 Aktualności</h5>
-                            <div class="news-feed dashboard-inner-box" style="min-height: 120px;">
+                        <div class="hub-section" style="margin-top: 0;">
+                            <h5 class="hub-section-title">📢 Aktualności</h5>
+                            <div class="news-feed dashboard-inner-box hub-box-news">
                                 <div class="empty-state-text">
                                     <div>🎮 Witaj w Dojo-Clicker!</div>
-                                    <div style="margin-top: 0.5rem; font-size: 0.9rem;">Trenuj, walcz misje, zostając najpotężniejszym wojownikiem!</div>
+                                    <div class="empty-state-subtext">Trenuj, walcz misje, zostając najpotężniejszym wojownikiem!</div>
                                 </div>
                             </div>
                         </div>
                         
-                        <div class="hub-section" style="margin-top: 1.5rem;">
-                            <h5 style="color: var(--text-primary); margin-bottom: 1rem;">📋 Specjalne Zadania</h5>
-                            <div class="special-tasks dashboard-inner-box" style="min-height: 100px;">
+                        <div class="hub-section">
+                            <h5 class="hub-section-title">📋 Specjalne Zadania</h5>
+                            <div class="special-tasks dashboard-inner-box hub-box-tasks">
                                 <div class="empty-state-text">
                                     <div>🎯 Brak aktywnych zadań specjalnych</div>
-                                    <div style="margin-top: 0.5rem; font-size: 0.9rem;">Sprawdzaj regularnie po nowe wyzwania!</div>
+                                    <div class="empty-state-subtext">Sprawdzaj regularnie po nowe wyzwania!</div>
                                 </div>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                <div class="dashboard-ranking game-panel" style="flex: 3;">
+                <div class="dashboard-ranking game-panel">
                     <div class="game-panel-header">
-                        <h4 class="game-panel-title" style="color: #f59e0b;">🏆 Top 10</h4>
+                        <h4 class="game-panel-title ranking-title">🏆 Top 10</h4>
                         <button class="nuke-help-btn" data-tooltip="Ranking 10 najsilniejszych wojowników wg Poziomu Mocy. Odświeżany co 5 minut.">?</button>
                     </div>
                     <div class="ranking-content">
-                        <div id="ranking-list" style="min-height: 300px;">
-                            <div style="color: var(--text-muted); text-align: center; padding: 2rem;">
+                        <div id="ranking-list" class="bank-grid-box">
+                            <div class="ranking-loading-box">
                                 <div>⏳ Ładowanie rankingu...</div>
                             </div>
                         </div>
@@ -184,9 +184,9 @@
                 </div>
             </div>
 
-            <div class="game-panel" style="margin-top: 1rem;">
+            <div class="game-panel chat-panel">
                 <div class="game-panel-header">
-                    <h4 class="game-panel-title" style="color: #06b6d4;">💬 Globalny Czat</h4>
+                    <h4 class="game-panel-title chat-title">💬 Globalny Czat</h4>
                     <button class="nuke-help-btn" data-tooltip="Czat globalny wszystkich graczy. Duchy (👻) mogą pisać będąc w szpitalu!">?</button>
                 </div>
                 <div class="chat-container">
@@ -197,7 +197,7 @@
                     </div>
                     <div class="chat-input-wrapper">
                         <input type="text" id="chat-input" class="chat-input-field" placeholder="Napisz wiadomość..." maxlength="200">
-                        <button id="chat-send-btn" class="btn-header" style="padding: 0.5rem 1rem;">Wyślij</button>
+                        <button id="chat-send-btn" class="btn-header btn-chat-send">Wyślij</button>
                     </div>
                 </div>
             </div>
@@ -225,21 +225,21 @@
                         <h4 class="game-panel-title" style="color: #a3e635;">Aktywny Trening</h4>
                     </div>
                     
-                    <div id="training-setup-panel" style="display: flex; flex-direction: column; flex: 1;">
-                        <div style="text-align: center; color: var(--text-muted); margin-bottom: 1rem;">Wybierz mentora z listy po lewej stronie.</div>
+                    <div id="training-setup-panel" class="training-panel-wrapper">
+                        <div class="training-info-text">Wybierz mentora z listy po lewej stronie.</div>
                         
-                        <div id="selected-mentor-info" style="display: none; background: rgba(0,0,0,0.2); padding: 1rem; border-radius: 8px; border: 1px solid var(--goku-panel-border); margin-bottom: 1.5rem; text-align: center;">
-                            <h3 id="setup-mentor-name" style="color: var(--goku-accent); margin-bottom: 0.5rem; font-size: 1.4rem;">Nazwa</h3>
-                            <div style="font-size: 0.95rem; color: var(--text-primary); margin-bottom: 0.5rem;">Koszt: <span id="setup-mentor-cost" style="color: var(--warning); font-weight: bold;">0</span> Stamina / h</div>
-                            <div style="font-size: 0.95rem; color: var(--text-primary);">Mnożnik zysku: <span id="setup-mentor-multiplier" style="color: var(--success); font-weight: bold;">x0</span></div>
+                        <div id="selected-mentor-info" class="mentor-details-box" style="display: none;">
+                            <h3 id="setup-mentor-name" class="mentor-details-name">Nazwa</h3>
+                            <div class="mentor-details-text">Koszt: <span id="setup-mentor-cost" style="color: var(--warning); font-weight: bold;">0</span> Stamina / h</div>
+                            <div class="mentor-details-text">Mnożnik zysku: <span id="setup-mentor-multiplier" style="color: var(--success); font-weight: bold;">x0</span></div>
                         </div>
                         
-                        <div id="training-controls" style="display: none; margin-top: auto;">
-                            <label style="display: block; margin-bottom: 0.5rem; color: var(--text-secondary); text-align: center;">Czas treningu: <span id="training-hours-display" style="color: white; font-weight: bold; font-size: 1.2rem;">1</span> godzina</label>
+                        <div id="training-controls" class="training-controls-wrapper" style="display: none;">
+                            <label class="training-label">Czas treningu: <span id="training-hours-display" class="training-highlight">1</span> godzina</label>
                             <input type="range" id="training-hours-slider" min="1" max="12" value="1" style="width: 100%; margin-bottom: 1rem;">
 
-                            <label style="display: block; margin-bottom: 0.5rem; color: var(--text-secondary); text-align: center;">Cel Treningu:</label>
-                            <select id="training-stat-select" style="width: 100%; margin-bottom: 1.5rem; background: var(--input-bg, #334155); color: #fff; border: 1px solid var(--goku-panel-border); padding: 8px; border-radius: 4px; text-align: center;">
+                            <label class="training-label">Cel Treningu:</label>
+                            <select id="training-stat-select" class="training-select">
                                 <option value="balanced">Zbalansowany (Wszystkie 4)</option>
                                 <option value="strength">Tylko Siła 💪</option>
                                 <option value="speed">Tylko Szybkość ⚡</option>
@@ -247,9 +247,9 @@
                                 <option value="technique">Tylko Technika 🎯</option>
                             </select>
                             
-                            <div style="text-align: center; font-size: 1.1rem; color: var(--text-primary); margin-bottom: 1.5rem; background: rgba(0,0,0,0.4); padding: 10px; border-radius: 6px;">
+                            <div class="training-summary-box">
                                 Pobierze: <span id="training-total-cost" style="color: var(--warning); font-weight: bold;">0</span> Staminy<br>
-                                <div style="font-size: 0.95rem; color: var(--success); margin-top: 5px;">
+                                <div class="training-projected-text">
                                     Szacowany zysk: <span id="training-projected-gain" style="font-weight: bold;">0</span>
                                 </div>
                             </div>
@@ -257,14 +257,14 @@
                         </div>
                     </div>
                     
-                    <div id="training-progress-panel" style="display: none; text-align: center; flex-direction: column; justify-content: center; flex: 1;">
-                        <div style="font-size: 5rem; line-height: 1; margin-bottom: 1rem; filter: drop-shadow(0 0 15px rgba(163,230,53,0.5));">🏋️‍♂️</div>
-                        <h3 id="active-mentor-name" style="color: var(--goku-accent); margin-bottom: 1rem; font-size: 1.5rem;">Mentor</h3>
-                        <div id="training-countdown" style="font-size: 3rem; font-weight: bold; color: var(--success); text-shadow: 2px 2px 4px rgba(0,0,0,0.5); margin-bottom: 1rem; font-family: monospace;">00:00:00</div>
-                        <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 2rem;">Postać medytuje w tle. <br><span style="color: var(--error);">Misje i Praca są zablokowane.</span></p>
+                    <div id="training-progress-panel" class="training-panel-wrapper" style="display: none; text-align: center; justify-content: center;">
+                        <div class="training-emoji-huge">🏋️‍♂️</div>
+                        <h3 id="active-mentor-name" class="training-active-mentor">Mentor</h3>
+                        <div id="training-countdown" class="training-countdown-timer">00:00:00</div>
+                        <p class="training-warning-text">Postać medytuje w tle. <br><span style="color: var(--error);">Misje i Praca są zablokowane.</span></p>
                         
-                        <button id="claim-training-btn" class="upgrade-btn" style="display: none; width: 100%; padding: 1rem; font-size: 1.1rem; background: linear-gradient(135deg, #16a34a, #15803d); margin-bottom: 1rem;">Zakończ i Odbierz Nagrodę</button>
-                        <button id="stop-training-btn" class="btn-header" style="background: #991b1b; width: 100%; padding: 1rem; font-size: 1rem;">Przerwij Trening (Utrata nagrody i staminy!)</button>
+                        <button id="claim-training-btn" class="upgrade-btn btn-claim-training" style="display: none;">Zakończ i Odbierz Nagrodę</button>
+                        <button id="stop-training-btn" class="btn-stop-training">Przerwij Trening (Utrata nagrody i staminy!)</button>
                     </div>
                 </div>
 
@@ -284,46 +284,38 @@
                 </div>
                 
                 <div id="work-active-panel" class="game-panel" style="flex: 1;">
-                    <div id="work-details-container" style="display: flex; flex-direction: column; height: 100%; justify-content: center; align-items: center; text-align: center;">
-                        <div id="work-main-emoji" style="font-size: 4rem; filter: drop-shadow(0 0 10px rgba(255,107,0,0.5)); margin-bottom: 1rem;">💼</div>
-                        <h3 id="work-title" style="color: var(--goku-accent); font-size: 1.5rem; margin-bottom: 1rem;">Wybierz pracę z listy</h3>
-                        <div id="work-stats" style="color: var(--text-secondary); margin-bottom: 2rem; font-size: 1.1rem; line-height: 1.5;">Koszty i nagrody pojawią się tutaj.</div>
-                        <button id="start-work-btn" class="upgrade-btn disabled" style="padding: 1rem 2rem; font-size: 1.2rem; display: none;">Rozpocznij Zmianę</button>
+                    <div id="work-details-container" class="work-details-wrapper">
+                        <div id="work-main-emoji" class="work-emoji-huge">💼</div>
+                        <h3 id="work-title" class="work-details-title">Wybierz pracę z listy</h3>
+                        <div id="work-stats" class="work-details-stats">Koszty i nagrody pojawią się tutaj.</div>
+                        <button id="start-work-btn" class="upgrade-btn disabled btn-start-work" style="display: none;">Rozpocznij Zmianę</button>
                     </div>
 
-                    <div id="work-canvas-container" style="display: none; flex-direction: column; align-items: center; width: 100%; height: 100%; justify-content: center; overflow: hidden;">
-                        
-                        <div class="work-game-area" style="display: flex; flex-direction: row; gap: 20px; width: 100%; max-width: 950px; justify-content: center; align-items: stretch;">
-                            
-                            <div class="work-canvas-wrapper" style="flex: 0 0 600px;">
-                                <canvas id="workCanvas" width="800" height="500" style="background: #000; border: 2px solid var(--goku-panel-border); border-radius: 8px; display: block; box-sizing: border-box;"></canvas>
+                    <div id="work-canvas-container" class="work-canvas-box" style="display: none;">
+                        <div class="work-game-area">
+                            <div class="work-canvas-wrapper">
+                                <canvas id="workCanvas" width="800" height="500"></canvas>
                             </div>
 
-                            <div class="work-hud-wrapper" style="flex: 0 0 300px; display: flex; flex-direction: column; height: 500px; padding: 15px; box-sizing: border-box; background: rgba(0,0,0,0.3); border: 1px solid var(--goku-panel-border); border-radius: 8px; gap: 15px; margin: 0;">
-                                
-                                <div class="work-hud-box" style="flex: 0 0 auto; padding: 15px 10px; background: rgba(0,0,0,0.6); border: 1px solid rgba(255,107,0,0.2); border-radius: 6px; text-align: center;">
-                                    <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px;">Pozostały Czas</div>
-                                    <div id="work-timer" style="font-size: 2.2rem; font-weight: bold; color: var(--goku-accent); font-family: monospace; margin-top: 5px;">0s</div>
+                            <div class="work-hud-wrapper">
+                                <div class="work-hud-box">
+                                    <div class="work-hud-label">Pozostały Czas</div>
+                                    <div id="work-timer" class="work-timer-display">0s</div>
                                 </div>
                                 
-                                <div class="work-hud-box" style="flex: 0 0 auto; font-size: 0.95rem; font-weight: bold; padding: 15px; background: rgba(0,0,0,0.6); border: 1px solid rgba(255,107,0,0.2); border-radius: 6px;">
-                                    <div id="work-score-good" style="color: var(--success); margin-bottom: 10px; display: flex; justify-content: space-between; border-bottom: 1px dashed rgba(255,255,255,0.1); padding-bottom: 10px;">
+                                <div class="work-hud-box">
+                                    <div id="work-score-good" class="work-score-row good">
                                         <span>✅ Złapane:</span> <span>0</span>
                                     </div>
-                                    <div id="work-score-bad" style="color: var(--error); display: flex; justify-content: space-between;">
+                                    <div id="work-score-bad" class="work-score-row bad">
                                         <span>❌ Błędy:</span> <span>0 / 3</span>
                                     </div>
                                 </div>
 
-                                <div class="work-hud-box" style="flex: 1; display: flex; flex-direction: column; padding: 15px; background: rgba(0,0,0,0.6); border: 1px solid rgba(255,107,0,0.2); border-radius: 6px; overflow: hidden; min-height: 0;">
-                                    <div style="color: var(--text-muted); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1px; border-bottom: 1px solid var(--goku-panel-border); padding-bottom: 8px; margin-bottom: 10px; text-align: center; flex: 0 0 auto;">Przewidywane Zyski</div>
-                                    
-                                    <div id="live-coins" style="color: #fbbf24; font-weight: bold; font-size: 1.3rem; text-align: center; margin-bottom: 10px; flex: 0 0 auto;">
-                                        💰 0 Monet
-                                    </div>
-
-                                    <div id="live-stats" style="color: var(--success); font-weight: bold; font-size: 0.85rem; background: rgba(0,0,0,0.3); padding: 10px; border-radius: 6px; flex: 1; overflow-y: auto; display: flex; flex-direction: column; justify-content: center;">
-                                        </div>
+                                <div class="work-hud-box grow">
+                                    <div class="work-hud-label bordered">Przewidywane Zyski</div>
+                                    <div id="live-coins" class="work-live-coins">💰 0 Monet</div>
+                                    <div id="live-stats" class="work-live-stats"></div>
                                 </div>
                             </div>
                         </div>
@@ -337,19 +329,19 @@
             <div class="tasks-container game-panel-row" style="padding: 1rem; width: 100%;">
                 
                 <div class="game-panel" style="flex: 1;">
-                    <div class="game-panel-header" style="display: flex; justify-content: space-between; align-items: center;">
+                    <div class="game-panel-header">
                         <h4 class="game-panel-title" style="color: #a3e635;">📜 Dzienne Zadania Specjalne</h4>
-                        <div id="tasks-completion-status" style="font-weight: bold; color: var(--text-muted);">Zrobione: 0/0</div>
+                        <div id="tasks-completion-status" class="tasks-status-text">Zrobione: 0/0</div>
                     </div>
                     
-                    <div style="background: rgba(0,0,0,0.3); padding: 15px; border-radius: 8px; border: 1px dashed var(--goku-accent); margin-bottom: 20px; text-align: center;">
-                        <h5 style="color: var(--goku-accent); margin-bottom: 10px; font-size: 1.1rem;">Złota Nagroda za wszystko!</h5>
-                        <p style="color: var(--text-secondary); font-size: 0.95rem; margin-bottom: 10px;">Wykonaj wszystkie poniższe zadania, aby odebrać super nagrodę (zależną od dnia Rundy).</p>
-                        <button id="claim-all-tasks-btn" class="upgrade-btn disabled" disabled style="padding: 10px 20px;">Odbierz Nagrodę Główną</button>
+                    <div class="tasks-reward-box">
+                        <h5 class="tasks-reward-title">Złota Nagroda za wszystko!</h5>
+                        <p class="tasks-reward-desc">Wykonaj wszystkie poniższe zadania, aby odebrać super nagrodę (zależną od dnia Rundy).</p>
+                        <button id="claim-all-tasks-btn" class="upgrade-btn disabled" disabled>Odbierz Nagrodę Główną</button>
                     </div>
 
-                    <div id="special-tasks-list" style="display: flex; flex-direction: column; gap: 15px; min-height: 200px;">
-                        <div style="text-align: center; color: var(--text-muted); padding: 2rem;">Ładowanie zadań...</div>
+                    <div id="special-tasks-list" class="tasks-list-container">
+                        <div class="tasks-loading-text">Ładowanie zadań...</div>
                     </div>
                 </div>
 
@@ -459,11 +451,11 @@
                 
                 <div class="game-panel bank-top-panel">
                     <div class="game-panel-header">
-                        <h4 class="game-panel-title" style="color: #f59e0b;">Zarządzanie Lokatą</h4>
+                        <h4 class="game-panel-title ranking-title">Zarządzanie Lokatą</h4>
                         <button class="nuke-help-btn" data-tooltip="Depozytuj monety, aby chronić je przed stratą po śmierci w misji.">?</button>
                     </div>
                     
-                    <div class="bank-money-section" style="margin-bottom: 0;">
+                    <div class="bank-money-section bank-money-section.no-margin">
                         <div class="bank-money-row">
                             <div class="money-info">
                                 <div class="money-label">Portfel</div>
@@ -474,7 +466,7 @@
                                 <div class="money-value" id="bank-bank-coins-display">0 💰</div>
                             </div>
                         </div>
-                        <div class="bank-limit-info" style="margin-bottom: 15px;">Limit: <span id="bank-limit-display">10,000</span> 💰</div>
+                        <div class="bank-limit-info spaced">Limit: <span id="bank-limit-display">10,000</span> 💰</div>
                         
                         <div class="bank-actions-wrapper">
                             <div class="bank-transfer-section bank-action-box">
@@ -482,8 +474,8 @@
                                 <div class="transfer-controls">
                                     <input type="text" id="bank-amount-input" class="bank-full-input" placeholder="Wpisz ilość...">
                                     <div class="bank-btn-group">
-                                        <button class="btn-header" id="bank-deposit-btn" style="flex: 1;">Wpłać</button>
-                                        <button class="btn-header" id="bank-withdraw-btn" style="flex: 1;">Wypłać</button>
+                                        <button class="btn-header bank-btn-flex" id="bank-deposit-btn">Wpłać</button>
+                                        <button class="btn-header bank-btn-flex" id="bank-withdraw-btn">Wypłać</button>
                                     </div>
                                 </div>
                             </div>
@@ -492,31 +484,31 @@
                                 <h4 class="bank-action-title">Ulepszenie Banku</h4>
                                 <button class="upgrade-btn bank-full-input" id="bank-upgrade-limit-btn">Zwiększ limit (Koszt: <span id="bank-upgrade-cost">5,000</span>)</button>
                                 <div class="bank-limit-info">Następny Poziom: <span id="bank-next-level">2</span></div>
-                                <div class="bank-limit-info" style="color: var(--success); margin-top: 4px;">Nowy Limit: <span id="bank-next-limit-value">50,000</span> 💰</div>
+                                <div class="bank-limit-info success-text">Nowy Limit: <span id="bank-next-limit-value">50,000</span> 💰</div>
                             </div>
                         </div>
                     </div>
                 </div>
 
                 <div class="game-panel-row">
-                    <div class="bank-left-column game-panel" style="flex: 1.4;">
+                    <div class="bank-left-column game-panel">
                         <div class="game-panel-header">
-                            <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
-                                <h4 class="game-panel-title" style="color: #f59e0b;">Skrytka Bankowa</h4>
-                                <span id="bank-slots-display" style="color: var(--goku-accent); font-weight: bold; font-size: 0.9rem;">0/5</span>
+                            <div class="bank-header-row">
+                                <h4 class="game-panel-title ranking-title">Skrytka Bankowa</h4>
+                                <span id="bank-slots-display" class="bank-slots-count">0/5</span>
                             </div>
                         </div>
                         
-                        <div class="bank-items-grid" id="bank-items-grid" style="flex: 1; min-height: 350px;">
+                        <div class="bank-items-grid bank-grid-box" id="bank-items-grid">
                         </div>
                     </div>
 
-                    <div class="game-panel" style="flex: 1;">
+                    <div class="game-panel bank-panel-flex">
                         <div class="game-panel-header">
                             <h4 class="game-panel-title" style="color: #a3e635;">Twój Plecak</h4>
                             <button class="nuke-help-btn" data-tooltip="Przeciągnij przedmioty do skrytki obok, aby je schować, lub kliknij na nie dwukrotnie, by przenieść je błyskawicznie.">?</button>
                         </div>
-                        <div class="bank-backpack-grid" id="bank-backpack-grid" style="flex: 1; min-height: 350px;">
+                        <div class="bank-backpack-grid bank-grid-box" id="bank-backpack-grid">
                         </div>
                     </div>
                 </div>
@@ -524,27 +516,27 @@
             </div>
         </div>
 
-        <section id="downtime-view" class="game-panel-row" style="display: none; height: 100%; align-items: center; justify-content: center; text-align: center; padding: 2rem;">
-            <div class="game-panel" style="padding: 3rem; max-width: 800px;">
-                <h1 style="color: var(--error); font-size: 3rem; margin-bottom: 1rem; text-shadow: 0 0 10px rgba(239,68,68,0.5);">RUNDA ZAKOŃCZONA</h1>
-                <h2 style="color: var(--goku-accent); font-size: 1.5rem; margin-bottom: 2rem;">Trwa podliczanie wyników i nagród...</h2>
-                <p style="color: var(--text-muted); font-size: 1.1rem; line-height: 1.6; margin-bottom: 2rem;">
+        <section id="downtime-view" class="game-panel-row downtime-section" style="display: none;">
+            <div class="game-panel downtime-panel">
+                <h1 class="downtime-h1">RUNDA ZAKOŃCZONA</h1>
+                <h2 class="downtime-h2">Trwa podliczanie wyników i nagród...</h2>
+                <p class="downtime-p">
                     Gracze stracili dostęp do swoich zasobów. Trzech najlepszych wojowników wkrótce otrzyma Walutę Premium. 
                     Przygotuj się! Oczekujemy na rozpoczęcie nowej Rundy pierwszego dnia kolejnego miesiąca.
                 </p>
-                <div style="padding: 1.5rem; background: rgba(0,0,0,0.4); border: 1px dashed var(--goku-panel-border); border-radius: 12px; display: inline-block;">
-                    <h3 style="color: var(--text-primary); margin-bottom: 10px;">Start Następnej Rundy za:</h3>
-                    <div id="downtime-countdown" style="font-size: 2.5rem; font-weight: bold; color: var(--success); font-family: monospace;">--:--:--</div>
+                <div class="downtime-timer-box">
+                    <h3 class="downtime-timer-title">Start Następnej Rundy za:</h3>
+                    <div id="downtime-countdown" class="downtime-timer-value">--:--:--</div>
                 </div>
             </div>
         </section>
 
     <div id="pl-tooltip" class="nuke-floating-tooltip">
-        <strong style="color: #ff6b00; font-size: 1.1rem;">Jak wyliczany jest Poziom Mocy?</strong>
-        <hr style="border-color: #334155; margin: 10px 0;">
-        <span style="font-size: 0.85rem; color: #cbd5e1; line-height: 1.4; display: block;">
+        <strong class="pl-tooltip-strong">Jak wyliczany jest Poziom Mocy?</strong>
+        <hr class="pl-tooltip-hr">
+        <span class="pl-tooltip-span">
             To suma 5 głównych statystyk wypracowanych na treningach oraz zdobytych rzadkich, trwałych eliksirów (podnoszących pulę Max HP, MP lub Staminy).<br>
-            <i style="color: #64748b; display: block; margin-top: 8px;">(Tymczasowe, pasywne bonusy z założonego na siebie ekwipunku NIE są wliczane do rankingu Poziomu Mocy).</i>
+            <i class="pl-tooltip-i">(Tymczasowe, pasywne bonusy z założonego na siebie ekwipunku NIE są wliczane do rankingu Poziomu Mocy).</i>
         </span>
     </div>
 

@@ -7,7 +7,13 @@ const { createClient } = require('@supabase/supabase-js');
 const app = express();
 const port = process.env.PORT || 3000;
 
-app.use(cors());
+app.use(cors({
+    origin: [
+        'http://localhost:3000', 
+        'http://127.0.0.1:3000',
+        'https://dojo-clicker.vercel.app'
+    ] 
+}));
 app.use(express.json());
 
 const supabaseUrl = process.env.SUPABASE_URL;
@@ -85,6 +91,7 @@ const CHAT_RATE_LIMIT_TTL = 3000; // 3 sekundy
 // --- 1C. FUNKCJE POMOCNICZE ---
 const minBigInt = (a, b) => (a < b ? a : b);
 const maxBigInt = (a, b) => (a > b ? a : b);
+const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
 function calculateMaxBackpackSlots(charStats) {
   const minPhysicalStat = minBigInt(BigInt(charStats.strength || '0'), minBigInt(BigInt(charStats.speed || '0'), BigInt(charStats.endurance || '0')));
@@ -269,10 +276,215 @@ async function updateTaskProgress(userId, taskType, targetId, amountToAdd) {
     }
 }
 
+// --- FUNKCJA POMOCNICZA: Losowanie i wstrzykiwanie nazw/kategorii przedmiotów ---
+
+async function generateAndEnrichDailyTasks(nextDay) {
+
+    if (nextDay > 75) return [];
+
+
+
+    const { data: allTasks, error: tasksErr } = await supabase
+
+        .from('special_tasks_templates')
+
+        .select('*')
+
+        .lte('min_dc_day', nextDay)
+
+        .gte('max_dc_day', nextDay);
+
+
+
+    if (tasksErr || !allTasks || allTasks.length === 0) return [];
+
+
+
+    const { data: allItems } = await supabase.from('item_templates').select('*');
+
+    const itemMap = {};
+
+    if (allItems) allItems.forEach(i => itemMap[i.id] = i);
+
+
+
+    // 🔴 KROK 1: Obliczenie docelowej ilości zadań na dany dzień
+
+    let minTasks = 3, maxTasks = 3;
+
+    if (nextDay <= 40) { minTasks = 3; maxTasks = 4; }
+
+    else if (nextDay <= 50) { minTasks = 4; maxTasks = 5; }
+
+    else if (nextDay <= 60) { minTasks = 5; maxTasks = 6; }
+
+    else if (nextDay < 70) { minTasks = 6; maxTasks = 7; }
+
+    else if (nextDay === 70) { minTasks = 7; maxTasks = 7; }
+
+    else if (nextDay === 71) { minTasks = 8; maxTasks = 8; }
+
+    else if (nextDay === 72) { minTasks = 9; maxTasks = 9; }
+
+    else { minTasks = 10; maxTasks = 10; } // Dni 73, 74, 75 zawsze równe 10!
+
+
+
+    let targetNumTasks = Math.floor(Math.random() * (maxTasks - minTasks + 1)) + minTasks;
+
+
+
+    // 🔴 KROK 2: Ustawienie rygorystycznych limitów i filtrów
+
+    const limits = {
+
+        'work': 2, 'training': 1, 'shop_buy': 2, 'shop_sell': 2,
+
+        'bank_upgrade': 1, 'mission': 3, 'consume': 3, 'training_stats': 1
+
+    };
+
+
+
+    const currentCounts = {
+
+        'work': 0, 'training': 0, 'shop_buy': 0, 'shop_sell': 0,
+
+        'bank_upgrade': 0, 'mission': 0, 'consume': 0, 'training_stats': 0
+
+    };
+
+
+
+    const selectedTasks = [];
+
+    const usedTargets = new Set(); // Blokada różnych poziomów tego samego zadania
+
+
+
+    // Tasujemy pulę zadań
+
+    const shuffled = allTasks.sort(() => 0.5 - Math.random());
+
+
+
+    // Główna pętla filtrująca
+
+    for (const task of shuffled) {
+
+        if (selectedTasks.length >= targetNumTasks) break;
+
+
+
+        const type = task.task_type;
+
+        const target = task.target_id;
+
+
+
+        // Czy przekroczono limit kategorii na dziś?
+
+        if (limits[type] !== undefined && currentCounts[type] >= limits[type]) continue;
+
+
+
+        // Czy wylosowano już dzisiaj to samo zadanie (nawet z innym poziomem)?
+
+        const familyKey = `${type}_${target}`;
+
+        if (usedTargets.has(familyKey)) continue;
+
+
+
+        // Zadanie przechodzi przez filtry!
+
+        selectedTasks.push(task);
+
+        if (limits[type] !== undefined) currentCounts[type]++;
+
+        usedTargets.add(familyKey);
+
+    }
+
+    
+
+    // 🔴 KROK 3: BEZPIECZNIK. 
+
+    // Jeśli rygorystyczne limity sprawiły, że nie dobraliśmy np. 10 misji,
+
+    // dobieramy brakujące misje ignorując max. limity kategorii (ale wciąż blokujemy duble poziomów!).
+
+    if (selectedTasks.length < targetNumTasks) {
+
+        for (const task of shuffled) {
+
+            if (selectedTasks.length >= targetNumTasks) break;
+
+            const familyKey = `${task.task_type}_${task.target_id}`;
+
+            if (!usedTargets.has(familyKey)) {
+
+                selectedTasks.push(task);
+
+                usedTargets.add(familyKey);
+
+            }
+
+        }
+
+    }
+
+
+
+    // 🔴 KROK 4: Wstrzyknięcie pełnych danych i przygotowanie na front
+
+    return selectedTasks.map(task => {
+
+        let rewardObj = task.reward;
+
+        if (typeof rewardObj === 'string') {
+
+            try { rewardObj = JSON.parse(rewardObj); } catch (e) {}
+
+        }
+
+
+
+        if (rewardObj && rewardObj.items && Array.isArray(rewardObj.items)) {
+
+            rewardObj.items = rewardObj.items.map(reqItem => {
+
+                const template = itemMap[reqItem.id];
+
+                if (template) {
+
+                    reqItem.name = template.name;
+
+                    reqItem.category = template.category;
+
+                    reqItem.template = template; 
+
+                }
+
+                return reqItem;
+
+            });
+
+        }
+
+        
+
+        task.reward = rewardObj;
+
+        return task;
+
+    });
+
+}
+
 // ==========================================
 // 📊 2. SILNIK STATYSTYK I AUTORYZACJA (MIDDLEWARE)
 // ==========================================
-
 async function getFullCharacterStats(userId) {
   try {
     const { data: character, error: characterError } = await supabase
@@ -481,44 +693,6 @@ app.use((req, res, next) => {
   }
   
   next(); 
-});
-
-// --- TYMCZASOWY ENDPOINT DO TESTÓW ZMIANY DNIA ---
-app.get('/api/test_next_day', async (req, res) => {
-    console.log('[TEST] Wymuszona zmiana dnia!');
-    try {
-        await supabase.from('global_server_state').update({ is_maintenance: true }).eq('id', 1);
-        await delay(2000); // Krótsze opóźnienie dla testu
-        
-        await supabase.from('characters').update({ 
-            daily_time_chamber_used: false,
-            daily_shop_buys: {},
-            daily_tasks_progress: {} 
-        }).neq('profile_id', '00000000-0000-0000-0000-000000000000');
-        
-        // 4. Losujemy i wzbogacamy nowe zadania
-        let nextDay = (globalServerState?.current_dc_day || 0) + 1;
-        if (nextDay > 76) nextDay = 76;
-
-        // Używamy nowej funkcji wzbogacania
-        const newDailyTasks = await generateAndEnrichDailyTasks(nextDay);
-
-        const { data: newState, error: updateErr } = await supabase.from('global_server_state').update({ 
-            current_dc_day: nextDay,
-            daily_global_tasks: newDailyTasks,
-            is_maintenance: false
-        }).eq('id', 1).select().single();
-
-        if (!updateErr && newState) {
-            globalServerState = newState; 
-        }
-
-        res.json({ success: true, message: `Zmieniono dzień na ${nextDay} i wylosowano ${newDailyTasks.length} zadań.` });
-    } catch (error) {
-        console.error(error);
-        await supabase.from('global_server_state').update({ is_maintenance: false }).eq('id', 1);
-        res.status(500).json({ error: 'Błąd testu' });
-    }
 });
 
 app.get('/api/status', (req, res) => {
@@ -2480,109 +2654,7 @@ app.post('/api/work/finish', authenticateToken, requireAlive, async (req, res) =
   } catch (err) { res.status(500).json({ error: 'Błąd serwera' }); }
 });
 
-// --- FUNKCJA POMOCNICZA: Losowanie i wstrzykiwanie nazw/kategorii przedmiotów ---
-async function generateAndEnrichDailyTasks(nextDay) {
-    if (nextDay > 75) return [];
 
-    const { data: allTasks, error: tasksErr } = await supabase
-        .from('special_tasks_templates')
-        .select('*')
-        .lte('min_dc_day', nextDay)
-        .gte('max_dc_day', nextDay);
-
-    if (tasksErr || !allTasks || allTasks.length === 0) return [];
-
-    const { data: allItems } = await supabase.from('item_templates').select('*');
-    const itemMap = {};
-    if (allItems) allItems.forEach(i => itemMap[i.id] = i);
-
-    // 🔴 KROK 1: Obliczenie docelowej ilości zadań na dany dzień
-    let minTasks = 3, maxTasks = 3;
-    if (nextDay <= 40) { minTasks = 3; maxTasks = 4; }
-    else if (nextDay <= 50) { minTasks = 4; maxTasks = 5; }
-    else if (nextDay <= 60) { minTasks = 5; maxTasks = 6; }
-    else if (nextDay < 70) { minTasks = 6; maxTasks = 7; }
-    else if (nextDay === 70) { minTasks = 7; maxTasks = 7; }
-    else if (nextDay === 71) { minTasks = 8; maxTasks = 8; }
-    else if (nextDay === 72) { minTasks = 9; maxTasks = 9; }
-    else { minTasks = 10; maxTasks = 10; } // Dni 73, 74, 75 zawsze równe 10!
-
-    let targetNumTasks = Math.floor(Math.random() * (maxTasks - minTasks + 1)) + minTasks;
-
-    // 🔴 KROK 2: Ustawienie rygorystycznych limitów i filtrów
-    const limits = {
-        'work': 2, 'training': 1, 'shop_buy': 2, 'shop_sell': 2,
-        'bank_upgrade': 1, 'mission': 3, 'consume': 3, 'training_stats': 1
-    };
-
-    const currentCounts = {
-        'work': 0, 'training': 0, 'shop_buy': 0, 'shop_sell': 0,
-        'bank_upgrade': 0, 'mission': 0, 'consume': 0, 'training_stats': 0
-    };
-
-    const selectedTasks = [];
-    const usedTargets = new Set(); // Blokada różnych poziomów tego samego zadania
-
-    // Tasujemy pulę zadań
-    const shuffled = allTasks.sort(() => 0.5 - Math.random());
-
-    // Główna pętla filtrująca
-    for (const task of shuffled) {
-        if (selectedTasks.length >= targetNumTasks) break;
-
-        const type = task.task_type;
-        const target = task.target_id;
-
-        // Czy przekroczono limit kategorii na dziś?
-        if (limits[type] !== undefined && currentCounts[type] >= limits[type]) continue;
-
-        // Czy wylosowano już dzisiaj to samo zadanie (nawet z innym poziomem)?
-        const familyKey = `${type}_${target}`;
-        if (usedTargets.has(familyKey)) continue;
-
-        // Zadanie przechodzi przez filtry!
-        selectedTasks.push(task);
-        if (limits[type] !== undefined) currentCounts[type]++;
-        usedTargets.add(familyKey);
-    }
-    
-    // 🔴 KROK 3: BEZPIECZNIK. 
-    // Jeśli rygorystyczne limity sprawiły, że nie dobraliśmy np. 10 misji,
-    // dobieramy brakujące misje ignorując max. limity kategorii (ale wciąż blokujemy duble poziomów!).
-    if (selectedTasks.length < targetNumTasks) {
-        for (const task of shuffled) {
-            if (selectedTasks.length >= targetNumTasks) break;
-            const familyKey = `${task.task_type}_${task.target_id}`;
-            if (!usedTargets.has(familyKey)) {
-                selectedTasks.push(task);
-                usedTargets.add(familyKey);
-            }
-        }
-    }
-
-    // 🔴 KROK 4: Wstrzyknięcie pełnych danych i przygotowanie na front
-    return selectedTasks.map(task => {
-        let rewardObj = task.reward;
-        if (typeof rewardObj === 'string') {
-            try { rewardObj = JSON.parse(rewardObj); } catch (e) {}
-        }
-
-        if (rewardObj && rewardObj.items && Array.isArray(rewardObj.items)) {
-            rewardObj.items = rewardObj.items.map(reqItem => {
-                const template = itemMap[reqItem.id];
-                if (template) {
-                    reqItem.name = template.name;
-                    reqItem.category = template.category;
-                    reqItem.template = template; 
-                }
-                return reqItem;
-            });
-        }
-        
-        task.reward = rewardObj;
-        return task;
-    });
-}
 
 // ==========================================
 // ⏰ 9. CRON JOBS I START SERWERA
@@ -2593,7 +2665,6 @@ app.listen(port, async () => {
   console.log('[Dojo-Clicker API] Serwer wystartował pomyślnie!');
 });
 
-const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 cron.schedule('0 2,10,18 * * *', async () => {
   console.log('[Zegar DC] Rozpoczynam 60-sekundową zmianę dnia...');
   try {
