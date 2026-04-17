@@ -1117,6 +1117,12 @@ function updateUIWithCharacterData(data) {
         
         // Wymuś odświeżenie zakładek Sklepu po każdej zmianie w misjach
         const unlockedLvl = getFrontendShopLevel(data.completed_missions);
+        if (unlockedLvl > unlockedShopLevel) {
+            unlockedShopLevel = unlockedLvl;
+            if (typeof fetchShopItems === 'function') {
+                fetchShopItems().then(() => { if(GameState.activeTab === 'shop') renderShopItems(); });
+            }
+        }
         document.querySelectorAll('.shop-tab').forEach(btn => {
             const btnLvl = parseInt(btn.dataset.level);
             if (btnLvl <= unlockedLvl) {
@@ -1661,30 +1667,22 @@ function createShopItemCard(item) {
 async function buyItem(item) {
     const res = await apiCall('/api/shop/buy', 'POST', { template_id: item.id }, true);
     if (!res) return;
-
     if (res.success) {
         showSuccessMessage(`Kupiono ${item.name}!`);
-        await fetchInventory();
-        await fetchCharacterData();
-        await fetchShopItems(); 
+        // Błyskawiczne, równoległe odświeżanie
+        await Promise.all([fetchInventory(), fetchCharacterData(), fetchShopItems()]);
         renderShopItems();
-    } else {
-        showWarningMessage(res.error || 'Błąd podczas kupna');
-    }
+    } else { showWarningMessage(res.error || 'Błąd podczas kupna'); }
 }
 
 async function sellItem(inventoryId, amount = 'all') {
     const res = await apiCall('/api/shop/sell', 'POST', { inventory_id: inventoryId, amount: amount }, true);
     if (!res) return;
-
     if (res.success) {
         showSuccessMessage(`Sprzedano przedmiot za ${res.data.item.total_sell_price} monet!`);
-        await fetchInventory();
-        await fetchCharacterData();
+        await Promise.all([fetchInventory(), fetchCharacterData()]);
         renderShopBackpack();
-    } else {
-        showWarningMessage(res.error || 'Błąd podczas sprzedaży');
-    }
+    } else { showWarningMessage(res.error || 'Błąd podczas sprzedaży'); }
 }
 
 // ==========================================
@@ -2159,20 +2157,14 @@ function createItemTooltip(template) {
 async function consumeItem(inventoryId) {
     const tooltip = document.getElementById('global-tooltip');
     if (tooltip) { tooltip.style.opacity = '0'; tooltip.style.visibility = 'hidden'; tooltip.dataset.currentCard = ''; }
-    
     const res = await apiCall('/api/inventory/consume', 'POST', { inventory_id: inventoryId }, true);
     if (!res) return;
-
     if (res.success) {
-        await fetchInventory();
-        await fetchCharacterData();
+        await Promise.all([fetchInventory(), fetchCharacterData()]);
         showSuccessMessage(res.data.message);
     } else {
-        if (res.data && res.data.status === 'warning') {
-            showWarningMessage(res.data.message);
-        } else {
-            showWarningMessage(res.error || 'Błąd podczas używania przedmiotu');
-        }
+        if (res.data && res.data.status === 'warning') showWarningMessage(res.data.message);
+        else showWarningMessage(res.error || 'Błąd podczas używania przedmiotu');
     }
 }
 

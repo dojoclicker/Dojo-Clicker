@@ -1235,6 +1235,10 @@ app.post('/api/inventory/consume', authenticateToken, async (req, res) => {
     if (req.clearHospital) { updateData.hospital_until = null; updateData.last_death_penalty = null; }
     await supabase.from('characters').update(updateData).eq('id', character.id);
 
+    // --- TRACKER ZADAŃ SPECJALNYCH (ZUŻYCIE) ---
+    await updateTaskProgress(userId, 'consume', item.item_template_id, 1);
+    await updateTaskProgress(userId, 'consume', 'any', 1);
+
     res.json({ success: true, message: `Użyto ${item.item_templates.name}! ${effectMessages.join(', ')}`, effects: effectMessages, character_updates: { hp: currentHp.toString(), mp: currentMp.toString(), stamina: currentStamina.toString(), bonus_stamina: newBonusStamina.toString(), coins: (character.coins || '0').toString() } });
   } catch (err) {
     res.status(500).json({ error: 'Błąd serwera' });
@@ -1512,7 +1516,18 @@ app.post('/api/missions/start', authenticateToken, requireAlive, async (req, res
     if (missionId === STORY_MISSIONS_IDS.PVP && !newUnlockedFeatures.includes('pvp')) newUnlockedFeatures.push('pvp');
 
     // --- TRACKER ZADAŃ SPECJALNYCH ---
-    if (roll <= Number(successChance)) await updateTaskProgress(userId, 'mission', missionId, 1);
+    if (roll <= Number(successChance)) {
+        await updateTaskProgress(userId, 'mission', missionId, 1);
+        
+        const totalTrainGains = trainGainStr + trainGainSpd + trainGainEnd + trainGainTech;
+        if (totalTrainGains > 0n) {
+            await updateTaskProgress(userId, 'training_stats', 'strength', Number(trainGainStr));
+            await updateTaskProgress(userId, 'training_stats', 'speed', Number(trainGainSpd));
+            await updateTaskProgress(userId, 'training_stats', 'endurance', Number(trainGainEnd));
+            await updateTaskProgress(userId, 'training_stats', 'technique', Number(trainGainTech));
+            await updateTaskProgress(userId, 'training_stats', 'all', Number(totalTrainGains));
+        }
+    }
 
     await supabase.from('characters').update({
         coins: newCoins.toString(), strength: newStr.toString(), speed: newSpd.toString(), endurance: newEnd.toString(), technique: newTech.toString(),
@@ -1861,6 +1876,10 @@ app.post('/api/shop/sell', authenticateToken, requireAlive, async (req, res) => 
 
     // --- TRACKER ZADAŃ SPECJALNYCH (SPRZEDAŻ) ---
     await updateTaskProgress(userId, 'shop_sell', 'any', Number(sellQuantity));
+    await updateTaskProgress(userId, 'shop_sell', item.item_template_id, Number(sellQuantity));
+    if (item.item_templates.category) {
+        await updateTaskProgress(userId, 'shop_sell', item.item_templates.category, Number(sellQuantity));
+    }
 
     res.json({ success: true, message: `Sprzedano za ${totalSellPrice}!`, item: { name: item.item_templates.name, quantity: sellQuantity.toString(), total_sell_price: totalSellPrice.toString() }});
   } catch (err) { res.status(500).json({ error: 'Błąd' }); }
@@ -2632,7 +2651,18 @@ app.post('/api/work/finish', authenticateToken, requireAlive, async (req, res) =
     };
 
     // --- TRACKER ZADAŃ SPECJALNYCH ---
-    if (netScore > 0n) await updateTaskProgress(userId, 'work', workId, 1);
+    if (netScore > 0n) {
+        await updateTaskProgress(userId, 'work', workId, 1);
+        
+        const totalTrainGains = gStr + gSpd + gEnd + gTech;
+        if (totalTrainGains > 0n) {
+            await updateTaskProgress(userId, 'training_stats', 'strength', Number(gStr));
+            await updateTaskProgress(userId, 'training_stats', 'speed', Number(gSpd));
+            await updateTaskProgress(userId, 'training_stats', 'endurance', Number(gEnd));
+            await updateTaskProgress(userId, 'training_stats', 'technique', Number(gTech));
+            await updateTaskProgress(userId, 'training_stats', 'all', Number(totalTrainGains));
+        }
+    }
 
     if (isDead) {
         const hospitalData = calculateHospitalTime(BigInt(fullStats.basePowerLevel));
