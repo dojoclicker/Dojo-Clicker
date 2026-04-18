@@ -3114,12 +3114,11 @@ function selectMentor(mentor, cardElement) {
     setupMentorCost.textContent = mentor.cost;
     setupMentorMultiplier.parentElement.innerHTML = `Mnożnik zysku: <span id="setup-mentor-multiplier" style="color: var(--success); font-weight: bold;">x${mentor.multiplier}</span>${warningHtml}`;
     
-    // NAPRAWA: Zawsze resetujemy suwak przy zmianie mentora na właściwe dla niego wartości
-    if (mentor.id === 'time_chamber') {
-        hoursSlider.min = 5; hoursSlider.max = 60; hoursSlider.step = 5; hoursSlider.value = 5;
-    } else {
-        hoursSlider.min = 1; hoursSlider.max = 12; hoursSlider.step = 1; hoursSlider.value = 1;
-    }
+    // ZMIANA: Zawsze od 1 do 12 godzin treningu! Niezależnie od mentora.
+    hoursSlider.min = 1; 
+    hoursSlider.max = 12; 
+    hoursSlider.step = 1; 
+    hoursSlider.value = 1;
     
     updateTotalCost();
 }
@@ -3127,15 +3126,14 @@ function selectMentor(mentor, cardElement) {
 function updateTotalCost() {
     if (!currentSelectedMentor) return;
     const val = parseInt(hoursSlider.value);
-    const isTimeChamber = currentSelectedMentor.id === 'time_chamber';
     
-    // Ujednolicony mnożnik czasu: Sala czasu mnoży nagrody tak, jak normalny trening
-    const effectiveHours = isTimeChamber ? (val / 5) : val;
+    // ZMIANA: Czas to po prostu wartość z suwaka (w godzinach)
+    const effectiveHours = val; 
 
     hoursDisplay.textContent = val;
     const textNode = hoursDisplay.nextSibling;
     if (textNode) {
-        textNode.textContent = isTimeChamber ? ' minut (Czasu gry DC)' : ' godzin(y)';
+        textNode.textContent = ' godzin(y)'; // Zawsze piszemy "godziny"
     }
 
     totalCostDisplay.textContent = Math.ceil(currentSelectedMentor.cost * effectiveHours);

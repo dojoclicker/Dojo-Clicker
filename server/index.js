@@ -2413,15 +2413,14 @@ app.post('/api/training/start', authenticateToken, async (req, res) => {
 
     const validStat = ['strength', 'speed', 'endurance', 'technique', 'balanced'].includes(targetStat) ? targetStat : 'balanced';
     
-    // ZMIANA: Proste i bezbłędne przeliczanie czasu
+    // ZMIANA: Przelicznik Sali Czasu na 1 minutę i 40 sekund
     let realDurationMinutes;
     if (mentorId === 'time_chamber') {
-        // Przekazane "hours" w przypadku Sali Czasu to "efektywne godziny" (np. 1 jednostka = 5 min DC = 1 godzina zwykłego treningu).
-        // 1 efektywna godzina Sali Czasu = 100 sekund czasu rzeczywistego (1.666 minuty)
-        realDurationMinutes = (parseFloat(hours) * 100) / 60; 
+        // 1 godzina Sali Czasu to 100 sekund czasu rzeczywistego (czyli 100/60 minut)
+        realDurationMinutes = parseFloat(hours) * (100 / 60); 
     } else {
-        // Standardowy trening: 1 godzina w grze (DC) to 20 minut w rzeczywistości (RL)
-        realDurationMinutes = (parseFloat(hours) / 3) * 60; 
+        // Standardowy trening: 1 godzina w grze to 20 minut w rzeczywistości
+        realDurationMinutes = parseFloat(hours) * 20; 
     }
 
     const endTime = new Date(Date.now() + realDurationMinutes * 60 * 1000).toISOString();
@@ -2501,8 +2500,11 @@ app.post('/api/training/stop', authenticateToken, async (req, res) => {
       // --- KROK D: TRACKER ZADAŃ SPECJALNYCH ---
       // Zaliczenie spędzonych minut (Zadanie treningowe)
       await updateTaskProgress(userId, 'training', 'any', Math.floor(trainingHours * 60));
+      
       if (mentorId === 'time_chamber') {
-          await updateTaskProgress(userId, 'training', 'time_chamber', Math.floor(trainingHours * 5)); // 5 min RL = 1h DC
+          // Realny czas w Sali Czasu = godziny * (100 / 60)
+          const realTimeMinutes = Math.floor(trainingHours * (100 / 60));
+          await updateTaskProgress(userId, 'training', 'time_chamber', Math.max(1, realTimeMinutes)); 
       } else {
           await updateTaskProgress(userId, 'training', mentorId, Math.floor(trainingHours * 60));
       }
