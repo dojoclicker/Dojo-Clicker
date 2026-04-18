@@ -1662,28 +1662,34 @@ function createShopItemCard(item) {
 async function buyItem(item) {
     const res = await apiCall('/api/shop/buy', 'POST', { template_id: item.id }, true);
     if (!res) return;
+
     if (res.success) {
         showSuccessMessage(`Kupiono ${item.name}!`);
-        // Błyskawiczne, równoległe odświeżanie
-        await Promise.all([fetchInventory(), fetchCharacterData(), fetchShopItems()]);
+        // ODPALAMY RÓWNOLEGLE, ABY USUNĄĆ LAGI
+        await Promise.all([fetchInventory(), fetchCharacterData()]);
+        // fetchShopItems nie jest potrzebne po każdym kliknięciu, sklep działa na lokalnych danych
         renderShopItems();
-    } else { showWarningMessage(res.error || 'Błąd podczas kupna'); }
+    } else {
+        showWarningMessage(res.error || 'Błąd podczas kupna');
+    }
 }
 
 async function sellItem(inventoryId, amount = 'all') {
     const res = await apiCall('/api/shop/sell', 'POST', { inventory_id: inventoryId, amount: amount }, true);
     if (!res) return;
+
     if (res.success) {
         showSuccessMessage(`Sprzedano przedmiot za ${res.data.item.total_sell_price} monet!`);
         await Promise.all([fetchInventory(), fetchCharacterData()]);
         renderShopBackpack();
-    } else { showWarningMessage(res.error || 'Błąd podczas sprzedaży'); }
+    } else {
+        showWarningMessage(res.error || 'Błąd podczas sprzedaży');
+    }
 }
 
 // ==========================================
 // 🏦 7. SYSTEM BANKU I LOKATY
 // ==========================================
-
 function renderBank() {
     if (!document.getElementById('bank-view')) return;
 
@@ -2142,14 +2148,19 @@ function createItemTooltip(template) {
 async function consumeItem(inventoryId) {
     const tooltip = document.getElementById('global-tooltip');
     if (tooltip) { tooltip.style.opacity = '0'; tooltip.style.visibility = 'hidden'; tooltip.dataset.currentCard = ''; }
+    
     const res = await apiCall('/api/inventory/consume', 'POST', { inventory_id: inventoryId }, true);
     if (!res) return;
+
     if (res.success) {
         await Promise.all([fetchInventory(), fetchCharacterData()]);
         showSuccessMessage(res.data.message);
     } else {
-        if (res.data && res.data.status === 'warning') showWarningMessage(res.data.message);
-        else showWarningMessage(res.error || 'Błąd podczas używania przedmiotu');
+        if (res.data && res.data.status === 'warning') {
+            showWarningMessage(res.data.message);
+        } else {
+            showWarningMessage(res.error || 'Błąd podczas używania przedmiotu');
+        }
     }
 }
 
@@ -3018,11 +3029,17 @@ async function fetchTrainingStatus() {
             const mentor = trainingMentors.find(m => m.id === mentorId) || { name: 'Mistrz' };
             showActiveTrainingState(mentor, data.endTime);
         } else {
+            const wasTraining = GameState.isPlayerTraining;
             GameState.isPlayerTraining = false;
-            showSetupState();
+            
+            // RESETUJEMY UI TYLKO W 2 PRZYPADKACH:
+            // 1. Właśnie skończyliśmy trening (wasTraining było true)
+            // 2. Gracz dopiero wszedł do gry i panel ustawień jest jeszcze ukryty
+            if (wasTraining || (!currentSelectedMentor && setupView.style.display === 'none')) {
+                showSetupState();
+            }
         }
         
-        // FORCE UPDATE LOCK STATE (To odblokuje zakładki nowemu graczowi!)
         if (typeof updateTabsLockState === 'function') updateTabsLockState();
 
     } catch (err) { console.error('Błąd statusu treningu:', err); }
@@ -3079,12 +3096,12 @@ function selectMentor(mentor, cardElement) {
 
     const infoText = document.querySelector('.training-info-text');
     if (infoText) infoText.style.display = 'none';
-
+    
     const mentorMission = (GameState.allMissions || []).find(m => m.id === mentor.reqMission);
     const reqStat = mentorMission && mentorMission.req_stats ? BigInt(mentorMission.req_stats.strength || mentorMission.req_stats.speed || mentorMission.req_stats.endurance || 1) : 1n;
     const weakest = getPlayerWeakestStat();
     const penaltyPct = getPenaltyPercentage(weakest, reqStat);
-    currentSelectedMentor.penaltyPct = penaltyPct; // Zapisujemy kare dla kalkulatora zysków
+    currentSelectedMentor.penaltyPct = penaltyPct; 
 
     let warningHtml = '';
     if (penaltyPct > 0) {
@@ -3095,10 +3112,9 @@ function selectMentor(mentor, cardElement) {
     trainingControls.style.display = 'block';
     setupMentorName.textContent = mentor.name;
     setupMentorCost.textContent = mentor.cost;
-    
-    // Nadpisujemy Mnożnik dodając pod spodem komunikat kary
     setupMentorMultiplier.parentElement.innerHTML = `Mnożnik zysku: <span id="setup-mentor-multiplier" style="color: var(--success); font-weight: bold;">x${mentor.multiplier}</span>${warningHtml}`;
     
+    // NAPRAWA: Zawsze resetujemy suwak przy zmianie mentora na właściwe dla niego wartości
     if (mentor.id === 'time_chamber') {
         hoursSlider.min = 5; hoursSlider.max = 60; hoursSlider.step = 5; hoursSlider.value = 5;
     } else {
@@ -3113,10 +3129,10 @@ function updateTotalCost() {
     const val = parseInt(hoursSlider.value);
     const isTimeChamber = currentSelectedMentor.id === 'time_chamber';
     
+    // Ujednolicony mnożnik czasu: Sala czasu mnoży nagrody tak, jak normalny trening
     const effectiveHours = isTimeChamber ? (val / 5) : val;
 
     hoursDisplay.textContent = val;
-    
     const textNode = hoursDisplay.nextSibling;
     if (textNode) {
         textNode.textContent = isTimeChamber ? ' minut (Czasu gry DC)' : ' godzin(y)';
@@ -3124,7 +3140,6 @@ function updateTotalCost() {
 
     totalCostDisplay.textContent = Math.ceil(currentSelectedMentor.cost * effectiveHours);
 
-    // BAZA MOCY
     const powerEl = document.getElementById('power-level');
     let effectivePower = 1000;
     if (powerEl) {
@@ -3133,13 +3148,14 @@ function updateTotalCost() {
         if (match) effectivePower = Math.max(1000, parseInt(match[0]));
     }
 
+    // BAZA
     let baseGain = Math.floor((400 + Math.pow(effectivePower, 0.55)) * currentSelectedMentor.multiplier * effectiveHours);
     if (currentSelectedMentor.penaltyPct > 0) {
         baseGain = Math.floor(baseGain * ((100 - currentSelectedMentor.penaltyPct) / 100));
     }
 
-    // BONUS ZE SPRZĘTU TRENINGOWEGO (ZLICZANY W LOCIE)
-    let tStr=0n, tSpd=0n, tEnd=0n, tTech=0n;
+    // SPRZĘT TRENINGOWY
+    let tStr=0n, tSpd=0n, tEnd=0n, tTech=0n, tHp=0n, tMp=0n;
     if (GameState.inventoryData) {
         GameState.inventoryData.forEach(item => {
             if (item.equipped_slot && item.equipped_slot !== 'bank' && item.item_templates?.bonuses?.type === 'training') {
@@ -3148,6 +3164,8 @@ function updateTotalCost() {
                 if (b.speed) tSpd += BigInt(b.speed);
                 if (b.endurance) tEnd += BigInt(b.endurance);
                 if (b.technique) tTech += BigInt(b.technique);
+                if (b.bonus_hp) tHp += BigInt(b.bonus_hp);
+                if (b.bonus_mp) tMp += BigInt(b.bonus_mp);
             }
         });
     }
@@ -3156,27 +3174,43 @@ function updateTotalCost() {
     const multHours = BigInt(Math.max(1, Math.floor(effectiveHours)));
     const penMult = BigInt(100 - (currentSelectedMentor.penaltyPct || 0));
 
+    let gainText = `<div style="margin-bottom: 8px; font-weight: bold; color: var(--text-primary);">Szacowany zysk bazowy:</div>`;
+    
     if (targetStat === 'balanced') {
         let basePerStat = Math.floor(baseGain / 4);
-        let gainStr = (tStr * multHours * penMult) / 100n;
-        let gainSpd = (tSpd * multHours * penMult) / 100n;
-        let gainEnd = (tEnd * multHours * penMult) / 100n;
-        let gainTech = (tTech * multHours * penMult) / 100n;
-        
-        let gainText = `Baza: po +${basePerStat} (Siła, Szybk., Wytrz., Tech.)`;
-        if (gainStr > 0n || gainSpd > 0n || gainEnd > 0n || gainTech > 0n) {
-            gainText += `<br><span style="color: #a3e635; font-size: 0.85rem;">+ Sprzęt: Siła +${gainStr}, Szybk. +${gainSpd}, Wytrz. +${gainEnd}, Tech. +${gainTech}</span>`;
-        }
-        document.getElementById('training-projected-gain').innerHTML = gainText;
+        gainText += `<div style="color: #fff;">+${basePerStat} do każdej cechy (Siła, Szybk., Wytrz., Tech.)</div>`;
     } else {
-        let gainText = `Baza: +${baseGain} pkt`;
-        let activeBonus = targetStat === 'strength' ? tStr : (targetStat === 'speed' ? tSpd : (targetStat === 'endurance' ? tEnd : tTech));
-        let finalItemBonus = (activeBonus * multHours * penMult) / 100n;
-        
-        if (finalItemBonus > 0n) {
-            gainText += `<br><span style="color: #a3e635; font-size: 0.85rem;">+ Sprzęt: +${finalItemBonus} pkt</span>`;
-        }
-        document.getElementById('training-projected-gain').innerHTML = gainText;
+        let namePL = targetStat === 'strength' ? 'Siły' : (targetStat === 'speed' ? 'Szybkości' : (targetStat === 'endurance' ? 'Wytrzymałości' : 'Techniki'));
+        gainText += `<div style="color: #fff;">+${baseGain} ${namePL}</div>`;
+    }
+
+    // OSOBNY PANEL NA SPRZĘT
+    let equipGains = [];
+    const calcItem = (val) => Number((val * multHours * penMult) / 100n);
+    
+    if (calcItem(tStr) > 0) equipGains.push(`💪 Siła: +${calcItem(tStr)}`);
+    if (calcItem(tSpd) > 0) equipGains.push(`⚡ Szybkość: +${calcItem(tSpd)}`);
+    if (calcItem(tEnd) > 0) equipGains.push(`🛡️ Wytrzymałość: +${calcItem(tEnd)}`);
+    if (calcItem(tTech) > 0) equipGains.push(`🎯 Technika: +${calcItem(tTech)}`);
+    if (calcItem(tHp) > 0) equipGains.push(`❤️ Max HP: +${calcItem(tHp)}`);
+    if (calcItem(tMp) > 0) equipGains.push(`💧 Max MP: +${calcItem(tMp)}`);
+
+    if (equipGains.length > 0) {
+        gainText += `
+            <div style="margin-top: 15px; padding: 10px; background: rgba(163, 230, 53, 0.1); border: 1px dashed #a3e635; border-radius: 6px;">
+                <div style="color: #a3e635; font-weight: bold; margin-bottom: 8px;">✨ Dodatkowy Bonus ze Sprzętu:</div>
+                <div style="font-size: 0.95rem; color: #fff; display: grid; grid-template-columns: 1fr 1fr; gap: 6px; text-align: left;">
+                    ${equipGains.map(g => `<span>${g}</span>`).join('')}
+                </div>
+            </div>`;
+    } else {
+        gainText += `<div style="margin-top: 10px; font-size: 0.85rem; color: var(--text-muted); border-top: 1px dashed rgba(255,255,255,0.1); padding-top: 10px;">Brak bonusów ze sprzętu treningowego</div>`;
+    }
+
+    const projectedGainEl = document.getElementById('training-projected-gain');
+    if (projectedGainEl) {
+        projectedGainEl.innerHTML = gainText;
+        projectedGainEl.style.fontWeight = 'normal'; 
     }
 }
 
