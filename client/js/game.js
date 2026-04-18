@@ -219,10 +219,37 @@ function formatDcTime(dateString) {
     return `Dz. ${messageDcDay} | ${dcHour.toString().padStart(2, '0')}:${dcMinute.toString().padStart(2, '0')}`;
 }
 
+// --- HELPERY DO KAR ZA POTĘGĘ ---
+function getPlayerWeakestStat() {
+    if (!GameState.playerCurrentStats) return 0n;
+    const baseStats = GameState.playerCurrentStats;
+    const equipStats = GameState.playerEquipStats || {};
+    
+    const pStr = BigInt(baseStats.strength || 0) + BigInt(equipStats.strength || 0);
+    const pSpd = BigInt(baseStats.speed || 0) + BigInt(equipStats.speed || 0);
+    const pEnd = BigInt(baseStats.endurance || 0) + BigInt(equipStats.endurance || 0);
+    const pTech = BigInt(baseStats.technique || 0) + BigInt(equipStats.technique || 0);
+    
+    let min = pStr;
+    if (pSpd < min) min = pSpd;
+    if (pEnd < min) min = pEnd;
+    if (pTech < min) min = pTech;
+    
+    return min;
+}
+
+function getPenaltyPercentage(weakestStat, reqStat) {
+    const w = BigInt(weakestStat);
+    const r = BigInt(reqStat);
+    if (w >= (r * 8n) + 100n) return 90;
+    if (w >= (r * 4n) + 40n) return 50;
+    if (w >= (r * 2n) + 15n) return 25;
+    return 0;
+}
+
 // ==========================================
 // 📜 1.8. ZADANIA SPECJALNE (DZIENNE)
 // ==========================================
-
 function renderSpecialTasks() {
     const tasksListEl = document.getElementById('special-tasks-list');
     const hubTasksEl = document.querySelector('.special-tasks'); 
@@ -481,24 +508,15 @@ function createMissionCard(mission, index) {
     const icon = isUnlocked ? missionIcons[index] || '📋' : '🔒';
     
     const reqs = mission.req_stats || {};
-    const statNamesPL = { 
-        strength: 'Siła', 
-        speed: 'Szybkość', 
-        endurance: 'Wytrzymałość',
-        technique: 'Technika', 
-        intelligence: 'Inteligencja', 
-        mental_strength: 'Siła Mentalna' 
-    };
+    const statNamesPL = { strength: 'Siła', speed: 'Szybkość', endurance: 'Wytrzymałość', technique: 'Technika', intelligence: 'Inteligencja', mental_strength: 'Siła Mentalna' };
     const reqStatsText = Object.entries(reqs).map(([k, v]) => `<b>${statNamesPL[k] || k}</b>: ${v}`).join(', ') || 'Brak wymagań';
-    
     const rewardStatsText = mission.reward_stats ? 'Losowo od ' + mission.reward_stats.min + ' do ' + mission.reward_stats.max + ' pkt.' : 'Brak';
-    
-    const dropsText = (mission.drop_table && Array.isArray(mission.drop_table) && mission.drop_table.length > 0) 
-        ? mission.drop_table.map(d => `${d.item_name || 'Przedmiot'} (${d.chance_pct}%)`).join(', ') 
-        : 'Brak';
+    const dropsText = (mission.drop_table && Array.isArray(mission.drop_table) && mission.drop_table.length > 0) ? mission.drop_table.map(d => `${d.item_name || 'Przedmiot'} (${d.chance_pct}%)`).join(', ') : 'Brak';
 
     let totalCappedRatio = 0n;
     let reqCount = 0n;
+    let lowestRawPlayerStat = -1n;
+    let reqStatForThreshold = 1n;
     
     if (GameState.playerCurrentStats) {
         ['strength', 'speed', 'endurance', 'technique'].forEach(key => {
@@ -506,10 +524,14 @@ function createMissionCard(mission, index) {
                 const baseStat = BigInt(GameState.playerCurrentStats[key] || '1');
                 const equipBonus = BigInt((GameState.playerEquipStats && GameState.playerEquipStats[key]) ? GameState.playerEquipStats[key] : '0');
                 const pStat = baseStat + equipBonus; 
-                
                 const rStat = BigInt(reqs[key]);
-                const rawRatio = (pStat * 100n) / rStat;
                 
+                if (lowestRawPlayerStat === -1n || pStat < lowestRawPlayerStat) {
+                    lowestRawPlayerStat = pStat;
+                    reqStatForThreshold = rStat;
+                }
+                
+                const rawRatio = (pStat * 100n) / rStat;
                 const cappedRatio = rawRatio > 100n ? 100n : rawRatio;
                 totalCappedRatio += cappedRatio;
                 reqCount += 1n;
@@ -518,54 +540,27 @@ function createMissionCard(mission, index) {
     }
     
     const chanceNum = reqCount > 0n ? Number(totalCappedRatio / reqCount) : 100;
+    let penaltyPct = lowestRawPlayerStat !== -1n ? getPenaltyPercentage(lowestRawPlayerStat, reqStatForThreshold) : 0;
 
     let chanceColor = '#ef4444'; 
     if (chanceNum > 60 && chanceNum <= 90) chanceColor = '#f59e0b'; 
     else if (chanceNum > 90 && chanceNum <= 97) chanceColor = '#84cc16'; 
     else if (chanceNum > 97) chanceColor = '#10b981'; 
 
-    let titleColor = '';
-    let titlePrefix = '';
-    if (isCompleted) {
-        titleColor = 'color: #4ade80;';
-        titlePrefix = '[UKOŃCZONO] ';
-    } else if (isFailedOneTry) {
-        titleColor = 'color: #ef4444;';
-        titlePrefix = '[SZANSA PRZEPADŁA] ';
-    }
+    let titleColor = ''; let titlePrefix = '';
+    if (isCompleted) { titleColor = 'color: #4ade80;'; titlePrefix = '[UKOŃCZONO] '; } 
+    else if (isFailedOneTry) { titleColor = 'color: #ef4444;'; titlePrefix = '[SZANSA PRZEPADŁA] '; }
 
-    card.innerHTML = `
-        <div class="mission-icon">${icon}</div>
-        <div class="mission-title" style="${titleColor}">${titlePrefix}${mission.name}</div>
-        <div class="mission-cost">🟢 ${mission.stamina_cost} Stamina</div>
-    `; 
+    card.innerHTML = `<div class="mission-icon">${icon}</div><div class="mission-title" style="${titleColor}">${titlePrefix}${mission.name}</div><div class="mission-cost">🟢 ${mission.stamina_cost} Stamina</div>`; 
 
-    const missionTooltipData = {
-        id: mission.id,
-        name: mission.name, 
-        description: mission.description, 
-        chanceColor: chanceColor,
-        chanceNum: chanceNum, 
-        stamina_cost: mission.stamina_cost, 
-        reqStatsText: reqStatsText,
-        reward_coins_min: mission.reward_coins_min, 
-        reward_coins_max: mission.reward_coins_max,
-        rewardStatsText: rewardStatsText, 
-        dropsText: dropsText, 
-        is_repeatable: mission.is_repeatable 
-    };
+    const missionTooltipData = { id: mission.id, name: mission.name, description: mission.description, chanceColor: chanceColor, chanceNum: chanceNum, penaltyPct: penaltyPct, stamina_cost: mission.stamina_cost, reqStatsText: reqStatsText, reward_coins_min: mission.reward_coins_min, reward_coins_max: mission.reward_coins_max, rewardStatsText: rewardStatsText, dropsText: dropsText, is_repeatable: mission.is_repeatable };
     card.setAttribute('data-mission-template', encodeURIComponent(JSON.stringify(missionTooltipData)));
 
     if (!isUnlocked || isLockedByStory) {
-        card.classList.add('locked');
-        card.style.pointerEvents = 'none'; 
-        card.style.filter = 'grayscale(100%) opacity(0.6)'; 
+        card.classList.add('locked'); card.style.pointerEvents = 'none'; card.style.filter = 'grayscale(100%) opacity(0.6)'; 
     } else {
-        card.addEventListener('click', () => {
-            startMission(mission.id);
-        });
+        card.addEventListener('click', () => startMission(mission.id));
     }
-
     return card;
 }
 
@@ -1937,39 +1932,29 @@ async function splitItem(inventoryId, amount) {
 
 function createMissionTooltip(template) {
     if (!template) return '';
-
     const unlockInfo = MISSION_UNLOCKS_DICTIONARY[template.id] || {};
-    
-    let unlockHtml = `
-        <div class="tooltip-unlock-box">
-            <span class="tooltip-unlock-title">Sukces odblokowuje:</span>
-            <ul class="tooltip-unlock-list">
-                <li class="tooltip-unlock-item" style="color: #94a3b8;">Kolejną Misję ⚔️</li>`;
-
-    if (unlockInfo.tab) {
-        unlockHtml += `<li class="tooltip-unlock-item" style="color: #4ade80;">Zakładkę: <b>${unlockInfo.tab}</b></li>`;
-    }
-    if (unlockInfo.work) {
-        unlockHtml += `<li class="tooltip-unlock-item" style="color: #3b82f6;">Pracę: <b>${unlockInfo.work}</b></li>`;
-    }
-    if (unlockInfo.mentor) {
-        unlockHtml += `<li class="tooltip-unlock-item" style="color: #fbbf24;">Mentor: ${unlockInfo.mentor}</li>`;
-    }
-    if (unlockInfo.shop) { 
-        unlockHtml += `<li class="tooltip-unlock-item" style="color: #ff6b00;">Sklep: <b>${unlockInfo.shop}</b></li>`;
-    }
-    
+    let unlockHtml = `<div class="tooltip-unlock-box"><span class="tooltip-unlock-title">Sukces odblokowuje:</span><ul class="tooltip-unlock-list"><li class="tooltip-unlock-item" style="color: #94a3b8;">Kolejną Misję ⚔️</li>`;
+    if (unlockInfo.tab) unlockHtml += `<li class="tooltip-unlock-item" style="color: #4ade80;">Zakładkę: <b>${unlockInfo.tab}</b></li>`;
+    if (unlockInfo.work) unlockHtml += `<li class="tooltip-unlock-item" style="color: #3b82f6;">Pracę: <b>${unlockInfo.work}</b></li>`;
+    if (unlockInfo.mentor) unlockHtml += `<li class="tooltip-unlock-item" style="color: #fbbf24;">Mentor: ${unlockInfo.mentor}</li>`;
+    if (unlockInfo.shop) unlockHtml += `<li class="tooltip-unlock-item" style="color: #ff6b00;">Sklep: <b>${unlockInfo.shop}</b></li>`;
     unlockHtml += `</ul></div>`;
 
     const isRepeatable = template.is_repeatable !== false; 
     const typeText = isRepeatable ? 'Misja Powtarzalna' : 'Misja Jednorazowa';
     const typeColor = isRepeatable ? '#94a3b8' : '#fbbf24'; 
 
+    let penaltyHtml = '';
+    if (template.penaltyPct > 0) {
+        penaltyHtml = `<div style="color: #ef4444; font-weight: bold; margin-top: 5px; font-size: 0.85rem; text-align: center; border-bottom: 1px dashed rgba(255,255,255,0.1); padding-bottom: 0.5rem;">⚠️ Uwaga! Jesteś za silny! Zyski obniżone o ${template.penaltyPct}%</div>`;
+    }
+
     return `
         <div class="tooltip-title">${template.name}</div>
         <div class="tooltip-mission-type" style="color: ${typeColor};">${typeText}</div>
         <div class="tooltip-mission-desc">${template.description || ''}</div>
         <div class="tooltip-mission-chance">Szansa na sukces: <span style="color: ${template.chanceColor}; font-weight: bold;">${template.chanceNum}%</span></div>
+        ${penaltyHtml}
         <div class="tooltip-mission-detail" style="color: var(--goku-accent); font-weight: bold;">Koszt Staminy: ${template.stamina_cost}</div>
         <div class="tooltip-mission-detail"><b>Wymagania:</b> ${template.reqStatsText}</div>
         <div class="tooltip-mission-detail"><b>Nagroda Monety:</b> ${template.reward_coins_min || '0'} - ${template.reward_coins_max || '0'}</div>
@@ -3089,22 +3074,29 @@ function selectMentor(mentor, cardElement) {
     cardElement.classList.add('selected');
     currentSelectedMentor = mentor;
 
+    const mentorMission = (GameState.allMissions || []).find(m => m.id === mentor.reqMission);
+    const reqStat = mentorMission && mentorMission.req_stats ? BigInt(mentorMission.req_stats.strength || mentorMission.req_stats.speed || mentorMission.req_stats.endurance || 1) : 1n;
+    const weakest = getPlayerWeakestStat();
+    const penaltyPct = getPenaltyPercentage(weakest, reqStat);
+    currentSelectedMentor.penaltyPct = penaltyPct; // Zapisujemy kare dla kalkulatora zysków
+
+    let warningHtml = '';
+    if (penaltyPct > 0) {
+        warningHtml = `<div style="color: #ef4444; font-weight: bold; font-size: 0.85rem; margin-top: 10px; padding: 5px; border: 1px dashed #ef4444; border-radius: 4px; background: rgba(239,68,68,0.1);">⚠️ Uwaga! Jesteś za silny!<br>Zyski obniżone o ${penaltyPct}%</div>`;
+    }
+
     setupMentorInfo.style.display = 'block';
     trainingControls.style.display = 'block';
     setupMentorName.textContent = mentor.name;
     setupMentorCost.textContent = mentor.cost;
-    setupMentorMultiplier.textContent = `x${mentor.multiplier}`;
+    
+    // Nadpisujemy Mnożnik dodając pod spodem komunikat kary
+    setupMentorMultiplier.parentElement.innerHTML = `Mnożnik zysku: <span id="setup-mentor-multiplier" style="color: var(--success); font-weight: bold;">x${mentor.multiplier}</span>${warningHtml}`;
     
     if (mentor.id === 'time_chamber') {
-        hoursSlider.min = 5;
-        hoursSlider.max = 60;
-        hoursSlider.step = 5;
-        hoursSlider.value = 5;
+        hoursSlider.min = 5; hoursSlider.max = 60; hoursSlider.step = 5; hoursSlider.value = 5;
     } else {
-        hoursSlider.min = 1;
-        hoursSlider.max = 12;
-        hoursSlider.step = 1;
-        hoursSlider.value = 1;
+        hoursSlider.min = 1; hoursSlider.max = 12; hoursSlider.step = 1; hoursSlider.value = 1;
     }
     
     updateTotalCost();
@@ -3114,15 +3106,11 @@ function updateTotalCost() {
     if (!currentSelectedMentor) return;
     const val = parseInt(hoursSlider.value);
     const isTimeChamber = currentSelectedMentor.id === 'time_chamber';
-    
     const effectiveHours = isTimeChamber ? (val / 5) : val;
 
     hoursDisplay.textContent = val;
-    
     const textNode = hoursDisplay.nextSibling;
-    if (textNode) {
-        textNode.textContent = isTimeChamber ? ' minut (rzeczywistych)' : ' godzin(y)';
-    }
+    if (textNode) { textNode.textContent = isTimeChamber ? ' minut (rzeczywistych)' : ' godzin(y)'; }
 
     totalCostDisplay.textContent = Math.ceil(currentSelectedMentor.cost * effectiveHours);
 
@@ -3135,11 +3123,13 @@ function updateTotalCost() {
     }
 
     let baseGain = Math.floor((400 + Math.pow(effectivePower, 0.55)) * currentSelectedMentor.multiplier * effectiveHours);
-    const targetStat = statSelect ? statSelect.value : 'balanced';
+    
+    // Obniżenie przewidywanego zysku o karę za potęgę w UI
+    if (currentSelectedMentor.penaltyPct > 0) {
+        baseGain = Math.floor(baseGain * ((100 - currentSelectedMentor.penaltyPct) / 100));
+    }
 
-    let gainText = (targetStat === 'balanced') 
-        ? `po +${Math.floor(baseGain / 4)} (Siła, Szybkość, Wytrz., Tech.)` 
-        : `+${baseGain} pkt`;
+    let gainText = (targetStat === 'balanced') ? `po +${Math.floor(baseGain / 4)} (Siła, Szybk., Wytrz., Tech.)` : `+${baseGain} pkt`;
 
     if (document.getElementById('training-projected-gain')) {
         document.getElementById('training-projected-gain').textContent = gainText;
@@ -3314,6 +3304,16 @@ function selectWork(workObj, cardElement) {
     const canTech = pTech >= BigInt(reqs.technique || 0);
     const canWork = canStr && canSpd && canEnd && canTech;
 
+    // NOWE: Obliczanie Kary Frontendowej dla Pracy
+    let reqStat = BigInt(reqs.strength || reqs.speed || reqs.endurance || 1);
+    const weakest = getPlayerWeakestStat();
+    const penaltyPct = getPenaltyPercentage(weakest, reqStat);
+
+    let penaltyHtml = '';
+    if (penaltyPct > 0) {
+        penaltyHtml = `<div style="color: #ef4444; font-weight: bold; margin-bottom: 15px; padding: 10px; background: rgba(239, 68, 68, 0.15); border: 1px dashed #ef4444; border-radius: 4px;">⚠️ Uwaga! Jesteś za silny! Zyski zostaną obniżone o ${penaltyPct}%</div>`;
+    }
+
     const reqHtml = `
         <span style="color: ${canStr ? 'var(--success)' : 'var(--error)'}">Siła: ${reqs.strength || 0}</span>, 
         <span style="color: ${canSpd ? 'var(--success)' : 'var(--error)'}">Szybk.: ${reqs.speed || 0}</span>, 
@@ -3332,6 +3332,7 @@ function selectWork(workObj, cardElement) {
             <p style="font-size: 0.95rem;">Złap <b>💸</b> (+3x Zysk) | Unikaj <b>🦹‍♂️</b> (-3x Zysk lub Utrata HP!)</p>
             <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 3px;"><i>(Te obiekty spadają znacznie szybciej!)</i></p>
         </div>
+        ${penaltyHtml}
         <p style="margin-bottom: 5px;">❤️ Koszt: <b style="color: var(--error);">${workObj.costHpPct}% HP</b></p>
         <p style="margin-bottom: 5px;">🟢 Koszt: <b style="color: var(--success);">${workObj.costStamina} Stamina</b></p>
         <p style="margin-bottom: 15px;">💰 Zarobek: <b style="color: var(--warning);">${workObj.reward} Monet / Złapany obiekt</b></p>

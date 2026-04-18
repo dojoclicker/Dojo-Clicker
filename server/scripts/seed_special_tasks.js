@@ -30,9 +30,9 @@ function addTask(type, target, name, desc, goal, minD, maxD, icon, coins, items,
 const works = [
     { id: 'praca_mleko', name: 'Roznoszenie Mleka', icon: '🥛', goals: [3, 5, 10], days: [[1,5], [1,10], [1,25]], items: [7, 7, 7], qtys: [3, 5, 10], coins: [200, 400, 800] },
     { id: 'praca_budowa', name: 'Praca na Budowie', icon: '🧱', goals: [3, 5, 10], days: [[2,6], [5,15], [15,35]], items: [20, 20, 20], qtys: [1, 2, 3], coins: [200, 400, 900] },
-    { id: 'praca_pole', name: 'Praca na Polu', icon: '🌱', goals: [3, 5, 8], days: [[10,30], [15,35], [25,75]], items: [48, 48, 48], qtys: [1, 2, 3], coins: [500, 1000, 2000] },
-    { id: 'praca_drwal', name: 'Drwal', icon: '🪓', goals: [3, 5, 8], days: [[20,40], [25,50], [30,75]], items: [40, 40, 40], qtys: [1, 2, 3], coins: [1000, 2000, 4000] },
-    { id: 'praca_kurier', name: 'Ekstremalny Kurier', icon: '📦', goals: [3, 5, 8], days: [[30,50], [35,60], [40,75]], items: [42, 42, 42], qtys: [1, 2, 3], coins: [2000, 4000, 8000] },
+    { id: 'praca_pole', name: 'Praca na Polu', icon: '🌱', goals: [3, 5, 8], days: [[10,30], [15,35], [20,50]], items: [48, 48, 48], qtys: [1, 2, 3], coins: [500, 1000, 2000] },
+    { id: 'praca_drwal', name: 'Drwal', icon: '🪓', goals: [3, 5, 8], days: [[20,40], [25,50], [30,60]], items: [40, 40, 40], qtys: [1, 2, 3], coins: [1000, 2000, 4000] },
+    { id: 'praca_kurier', name: 'Ekstremalny Kurier', icon: '📦', goals: [3, 5, 8], days: [[30,50], [35,60], [40,70]], items: [42, 42, 42], qtys: [1, 2, 3], coins: [2000, 4000, 8000] },
     { id: 'praca_rosa', name: 'Zbiór Magicznej Rosy', icon: '💧', goals: [3, 5, 8], days: [[40,60], [45,70], [50,75]], items: [16, 17, 18], qtys: [2, 2, 2], coins: [4000, 8000, 15000] },
     { id: 'praca_ogrody', name: 'Boskie Ogrody', icon: '🌳', goals: [3, 5, 8], days: [[50,75], [60,75], [65,75]], items: [24, 24, 24], qtys: [1, 2, 3], coins: [10000, 20000, 40000] }
 ];
