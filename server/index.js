@@ -2442,8 +2442,9 @@ app.post('/api/training/start', authenticateToken, async (req, res) => {
 app.post('/api/training/stop', authenticateToken, async (req, res) => {
   const userId = req.user.id;
   try {
-    const { data: char, error: charErr } = await supabase.from('characters').select('*').eq('profile_id', userId).single();
-    if (charErr || !char) return res.status(404).json({ error: 'Postać nie znaleziona' });
+    // 1. ZMIANA: Pobieramy pełne statystyki (żeby mieć dostęp do bonusów ze sprzętu)
+    const fullStats = await getFullCharacterStats(userId);
+    const char = fullStats.character;
 
     if (!char.active_training_id || !char.training_end_time) return res.status(400).json({ error: 'Brak aktywnego treningu' });
 
@@ -2460,23 +2461,95 @@ app.post('/api/training/stop', authenticateToken, async (req, res) => {
       const effectivePower = Math.max(1000, parseInt(char.total_power_level || '0'));
       const trainingHours = parseFloat(hoursStr);
 
-      // --- TRACKER ZADAŃ SPECJALNYCH (Czas w minutach DC) ---
-      await updateTaskProgress(userId, 'training', 'any', Math.floor(trainingHours * 60));
+      // --- KROK A: OBLICZAMY KARĘ ZA POTĘGĘ ---
+      let reqStat = 1n;
+      if (mentor.reqMission) {
+          const { data: mission } = await supabase.from('missions').select('req_stats').eq('id', mentor.reqMission).single();
+          if (mission && mission.req_stats) {
+              reqStat = BigInt(mission.req_stats.strength || mission.req_stats.speed || mission.req_stats.endurance || 1);
+          }
+      }
+
+      const pStr = BigInt(fullStats.baseStats.strength) + BigInt(fullStats.equipStats.strength || '0');
+      const pSpd = BigInt(fullStats.baseStats.speed) + BigInt(fullStats.equipStats.speed || '0');
+      const pEnd = BigInt(fullStats.baseStats.endurance) + BigInt(fullStats.equipStats.endurance || '0');
+      const pTech = BigInt(fullStats.baseStats.technique) + BigInt(fullStats.equipStats.technique || '0');
       
-      const statGain = BigInt(Math.floor((400 + Math.pow(effectivePower, 0.55)) * mentor.multiplier * trainingHours));
+      const weakestStat = minBigInt(pTech, minBigInt(pStr, minBigInt(pSpd, pEnd)));
+      const penaltyData = calculatePowerPenalty(weakestStat, reqStat);
+      const penaltyMultiplier = penaltyData.multiplier; // 100n, 75n, 50n, 10n
+
+      // --- KROK B: BAZOWY ZYSK (Ukarany) ---
+      let baseGainRaw = Math.floor((400 + Math.pow(effectivePower, 0.55)) * mentor.multiplier * trainingHours);
+      let baseGain = (BigInt(baseGainRaw) * penaltyMultiplier) / 100n;
+
+      // --- KROK C: ZYSKI Z PRZEDMIOTÓW TRENINGOWYCH (Pomnożone przez godziny i ukarane) ---
+      const applyTrainBonus = (statVal) => {
+          const val = BigInt(statVal || '0');
+          // Mnożymy statystyki przedmiotu przez całkowite godziny treningu
+          return (val * BigInt(Math.max(1, Math.floor(trainingHours))) * penaltyMultiplier) / 100n;
+      };
+
+      let trainGainStr = applyTrainBonus(fullStats.trainingStats.strength);
+      let trainGainSpd = applyTrainBonus(fullStats.trainingStats.speed);
+      let trainGainEnd = applyTrainBonus(fullStats.trainingStats.endurance);
+      let trainGainTech = applyTrainBonus(fullStats.trainingStats.technique);
+      let trainGainHp = applyTrainBonus(fullStats.trainingStats.bonus_hp);
+      let trainGainMp = applyTrainBonus(fullStats.trainingStats.bonus_mp);
+
+      // --- KROK D: TRACKER ZADAŃ SPECJALNYCH ---
+      // Zaliczenie spędzonych minut (Zadanie treningowe)
+      await updateTaskProgress(userId, 'training', 'any', Math.floor(trainingHours * 60));
+      if (mentorId === 'time_chamber') {
+          await updateTaskProgress(userId, 'training', 'time_chamber', Math.floor(trainingHours * 5)); // 5 min RL = 1h DC
+      } else {
+          await updateTaskProgress(userId, 'training', mentorId, Math.floor(trainingHours * 60));
+      }
+      
+      // Zaliczenie statystyk z przedmiotów treningowych
+      const totalTrainGains = trainGainStr + trainGainSpd + trainGainEnd + trainGainTech;
+      if (totalTrainGains > 0n) {
+          await updateTaskProgress(userId, 'training_stats', 'strength', Number(trainGainStr));
+          await updateTaskProgress(userId, 'training_stats', 'speed', Number(trainGainSpd));
+          await updateTaskProgress(userId, 'training_stats', 'endurance', Number(trainGainEnd));
+          await updateTaskProgress(userId, 'training_stats', 'technique', Number(trainGainTech));
+          await updateTaskProgress(userId, 'training_stats', 'all', Number(totalTrainGains));
+      }
+
+      // --- KROK E: FINALNE NALICZENIE STATYSTYK ---
+      let finalStr = BigInt(char.strength || '1') + trainGainStr;
+      let finalSpd = BigInt(char.speed || '1') + trainGainSpd;
+      let finalEnd = BigInt(char.endurance || '1') + trainGainEnd;
+      let finalTech = BigInt(char.technique || '1') + trainGainTech;
 
       if (targetStat === 'balanced') {
-        const perStat = statGain / 4n; 
-        updates.strength = (BigInt(char.strength || '1') + perStat).toString();
-        updates.speed = (BigInt(char.speed || '1') + perStat).toString();
-        updates.endurance = (BigInt(char.endurance || '1') + perStat).toString();
-        updates.technique = (BigInt(char.technique || '1') + perStat).toString(); 
+        const perStat = baseGain / 4n; 
+        finalStr += perStat; finalSpd += perStat; finalEnd += perStat; finalTech += perStat;
         rewardMsg = `Zyskano po +${perStat} do Siły, Szybk., Wytrz. i Techniki!`;
       } else {
         const safeStat = ['strength', 'speed', 'endurance', 'technique'].includes(targetStat) ? targetStat : 'strength';
-        updates[safeStat] = (BigInt(char[safeStat] || '1') + statGain).toString();
+        if (safeStat === 'strength') finalStr += baseGain;
+        if (safeStat === 'speed') finalSpd += baseGain;
+        if (safeStat === 'endurance') finalEnd += baseGain;
+        if (safeStat === 'technique') finalTech += baseGain;
+        
         let namePL = safeStat === 'strength' ? 'Siły' : (safeStat === 'speed' ? 'Szybkości' : (safeStat === 'endurance' ? 'Wytrzymałości' : 'Techniki'));
-        rewardMsg = `Twoja cecha (${namePL}) wzrosła o +${statGain}!`;
+        rewardMsg = `Twoja cecha (${namePL}) wzrosła o +${baseGain}!`;
+      }
+
+      updates.strength = finalStr.toString();
+      updates.speed = finalSpd.toString();
+      updates.endurance = finalEnd.toString();
+      updates.technique = finalTech.toString();
+      
+      if (trainGainHp > 0n) updates.bonus_hp = (BigInt(char.bonus_hp || '0') + trainGainHp).toString();
+      if (trainGainMp > 0n) updates.bonus_mp = (BigInt(char.bonus_mp || '0') + trainGainMp).toString();
+
+      if (totalTrainGains > 0n) {
+          rewardMsg += ` (Dodatkowo: +${totalTrainGains} zysku z zał. sprzętu!)`;
+      }
+      if (penaltyMultiplier < 100n) {
+          rewardMsg += ` ⚠️ Zyski obniżone o ${100n - penaltyMultiplier}% (Kara za potęgę)`;
       }
     }
 
@@ -2484,7 +2557,10 @@ app.post('/api/training/stop', authenticateToken, async (req, res) => {
     if (updateErr) throw updateErr;
     
     res.json({ success: true, message: rewardMsg, action });
-  } catch (err) { res.status(500).json({ error: 'Błąd stopu' }); }
+  } catch (err) { 
+      console.error('[Training Stop Error]', err);
+      res.status(500).json({ error: 'Błąd stopu' }); 
+  }
 });
 
 // ==========================================
