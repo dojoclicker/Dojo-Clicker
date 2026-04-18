@@ -3097,47 +3097,64 @@ function selectMentor(mentor, cardElement) {
     const infoText = document.querySelector('.training-info-text');
     if (infoText) infoText.style.display = 'none';
     
+    // 1. Obliczamy aktualną karę
     const mentorMission = (GameState.allMissions || []).find(m => m.id === mentor.reqMission);
     const reqStat = mentorMission && mentorMission.req_stats ? BigInt(mentorMission.req_stats.strength || mentorMission.req_stats.speed || mentorMission.req_stats.endurance || 1) : 1n;
     const weakest = getPlayerWeakestStat();
     const penaltyPct = getPenaltyPercentage(weakest, reqStat);
     currentSelectedMentor.penaltyPct = penaltyPct; 
 
-    let warningHtml = '';
-    if (penaltyPct > 0) {
-        warningHtml = `<div style="color: #ef4444; font-weight: bold; font-size: 0.85rem; margin-top: 10px; padding: 5px; border: 1px dashed #ef4444; border-radius: 4px; background: rgba(239,68,68,0.1);">⚠️ Uwaga! Jesteś za silny!<br>Zyski obniżone o ${penaltyPct}%</div>`;
+    // 2. Podmieniamy teksty na bezpiecznych IDkach
+    document.getElementById('selected-mentor-info').style.display = 'block';
+    document.getElementById('training-controls').style.display = 'block';
+    document.getElementById('setup-mentor-name').textContent = mentor.name;
+    document.getElementById('setup-mentor-cost').textContent = mentor.cost;
+    
+    const multiplierSpan = document.getElementById('setup-mentor-multiplier');
+    if (multiplierSpan) multiplierSpan.textContent = `x${mentor.multiplier}`;
+    
+    // 3. Tworzymy oddzielny kontener na błędy, by nie psuć struktury DOM!
+    let warningContainer = document.getElementById('setup-mentor-warning');
+    if (!warningContainer) {
+        warningContainer = document.createElement('div');
+        warningContainer.id = 'setup-mentor-warning';
+        document.getElementById('selected-mentor-info').appendChild(warningContainer);
     }
 
-    setupMentorInfo.style.display = 'block';
-    trainingControls.style.display = 'block';
-    setupMentorName.textContent = mentor.name;
-    setupMentorCost.textContent = mentor.cost;
-    setupMentorMultiplier.parentElement.innerHTML = `Mnożnik zysku: <span id="setup-mentor-multiplier" style="color: var(--success); font-weight: bold;">x${mentor.multiplier}</span>${warningHtml}`;
-    
-    // ZMIANA: Zawsze od 1 do 12 godzin treningu! Niezależnie od mentora.
-    hoursSlider.min = 1; 
-    hoursSlider.max = 12; 
-    hoursSlider.step = 1; 
-    hoursSlider.value = 1;
+    if (penaltyPct > 0) {
+        warningContainer.innerHTML = `<div style="color: #ef4444; font-weight: bold; font-size: 0.85rem; margin-top: 10px; padding: 5px; border: 1px dashed #ef4444; border-radius: 4px; background: rgba(239,68,68,0.1);">⚠️ Uwaga! Jesteś za silny!<br>Zyski obniżone o ${penaltyPct}%</div>`;
+    } else {
+        warningContainer.innerHTML = '';
+    }
+
+    // 4. Zawsze uniwersalny suwak (1-12 godzin)
+    const hoursSlider = document.getElementById('training-hours-slider');
+    if (hoursSlider) {
+        hoursSlider.min = 1; 
+        hoursSlider.max = 12; 
+        hoursSlider.step = 1; 
+        hoursSlider.value = 1;
+    }
     
     updateTotalCost();
 }
 
 function updateTotalCost() {
     if (!currentSelectedMentor) return;
+    const hoursSlider = document.getElementById('training-hours-slider');
     const val = parseInt(hoursSlider.value);
     
-    // ZMIANA: Czas to po prostu wartość z suwaka (w godzinach)
     const effectiveHours = val; 
 
-    hoursDisplay.textContent = val;
-    const textNode = hoursDisplay.nextSibling;
+    document.getElementById('training-hours-display').textContent = val;
+    const textNode = document.getElementById('training-hours-display').nextSibling;
     if (textNode) {
-        textNode.textContent = ' godzin(y)'; // Zawsze piszemy "godziny"
+        textNode.textContent = ' godzin(y)'; 
     }
 
-    totalCostDisplay.textContent = Math.ceil(currentSelectedMentor.cost * effectiveHours);
+    document.getElementById('training-total-cost').textContent = Math.ceil(currentSelectedMentor.cost * effectiveHours);
 
+    // BAZA
     const powerEl = document.getElementById('power-level');
     let effectivePower = 1000;
     if (powerEl) {
@@ -3146,7 +3163,6 @@ function updateTotalCost() {
         if (match) effectivePower = Math.max(1000, parseInt(match[0]));
     }
 
-    // BAZA
     let baseGain = Math.floor((400 + Math.pow(effectivePower, 0.55)) * currentSelectedMentor.multiplier * effectiveHours);
     if (currentSelectedMentor.penaltyPct > 0) {
         baseGain = Math.floor(baseGain * ((100 - currentSelectedMentor.penaltyPct) / 100));
@@ -3168,7 +3184,8 @@ function updateTotalCost() {
         });
     }
 
-    const targetStat = document.getElementById('training-stat-select') ? document.getElementById('training-stat-select').value : 'balanced';
+    const targetStatSelect = document.getElementById('training-stat-select');
+    const targetStat = targetStatSelect ? targetStatSelect.value : 'balanced';
     const multHours = BigInt(Math.max(1, Math.floor(effectiveHours)));
     const penMult = BigInt(100 - (currentSelectedMentor.penaltyPct || 0));
 
