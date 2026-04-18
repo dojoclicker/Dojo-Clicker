@@ -3005,6 +3005,9 @@ async function fetchTrainingStatus() {
         trainingMentors = data.mentors || [];
         dailyTimeChamberUsed = data.dailyTimeChamberUsed;
         
+        // ZMIANA: Zapisujemy stan, by nie resetowało UI co 30 sek
+        localStorage.setItem('is_training_active', newTrainingState);
+        
         if (mentorsGrid.children.length === 0 || isCurrentlyTraining !== newTrainingState) {
             renderMentors();
         }
@@ -3074,6 +3077,9 @@ function selectMentor(mentor, cardElement) {
     cardElement.classList.add('selected');
     currentSelectedMentor = mentor;
 
+    const infoText = document.querySelector('.training-info-text');
+    if (infoText) infoText.style.display = 'none';
+
     const mentorMission = (GameState.allMissions || []).find(m => m.id === mentor.reqMission);
     const reqStat = mentorMission && mentorMission.req_stats ? BigInt(mentorMission.req_stats.strength || mentorMission.req_stats.speed || mentorMission.req_stats.endurance || 1) : 1n;
     const weakest = getPlayerWeakestStat();
@@ -3106,15 +3112,20 @@ function updateTotalCost() {
     if (!currentSelectedMentor) return;
     const val = parseInt(hoursSlider.value);
     const isTimeChamber = currentSelectedMentor.id === 'time_chamber';
+    
     const effectiveHours = isTimeChamber ? (val / 5) : val;
 
     hoursDisplay.textContent = val;
+    
     const textNode = hoursDisplay.nextSibling;
-    if (textNode) { textNode.textContent = isTimeChamber ? ' minut (rzeczywistych)' : ' godzin(y)'; }
+    if (textNode) {
+        textNode.textContent = isTimeChamber ? ' minut (Czasu gry DC)' : ' godzin(y)';
+    }
 
     totalCostDisplay.textContent = Math.ceil(currentSelectedMentor.cost * effectiveHours);
 
-    const powerEl = document.getElementById('total-power-level') || document.getElementById('power-level');
+    // BAZA MOCY
+    const powerEl = document.getElementById('power-level');
     let effectivePower = 1000;
     if (powerEl) {
         const rawText = powerEl.innerText.replace(/\s/g, '');
@@ -3123,16 +3134,49 @@ function updateTotalCost() {
     }
 
     let baseGain = Math.floor((400 + Math.pow(effectivePower, 0.55)) * currentSelectedMentor.multiplier * effectiveHours);
-    
-    // Obniżenie przewidywanego zysku o karę za potęgę w UI
     if (currentSelectedMentor.penaltyPct > 0) {
         baseGain = Math.floor(baseGain * ((100 - currentSelectedMentor.penaltyPct) / 100));
     }
 
-    let gainText = (targetStat === 'balanced') ? `po +${Math.floor(baseGain / 4)} (Siła, Szybk., Wytrz., Tech.)` : `+${baseGain} pkt`;
+    // BONUS ZE SPRZĘTU TRENINGOWEGO (ZLICZANY W LOCIE)
+    let tStr=0n, tSpd=0n, tEnd=0n, tTech=0n;
+    if (GameState.inventoryData) {
+        GameState.inventoryData.forEach(item => {
+            if (item.equipped_slot && item.equipped_slot !== 'bank' && item.item_templates?.bonuses?.type === 'training') {
+                let b = item.item_templates.bonuses;
+                if (b.strength) tStr += BigInt(b.strength);
+                if (b.speed) tSpd += BigInt(b.speed);
+                if (b.endurance) tEnd += BigInt(b.endurance);
+                if (b.technique) tTech += BigInt(b.technique);
+            }
+        });
+    }
 
-    if (document.getElementById('training-projected-gain')) {
-        document.getElementById('training-projected-gain').textContent = gainText;
+    const targetStat = document.getElementById('training-stat-select') ? document.getElementById('training-stat-select').value : 'balanced';
+    const multHours = BigInt(Math.max(1, Math.floor(effectiveHours)));
+    const penMult = BigInt(100 - (currentSelectedMentor.penaltyPct || 0));
+
+    if (targetStat === 'balanced') {
+        let basePerStat = Math.floor(baseGain / 4);
+        let gainStr = (tStr * multHours * penMult) / 100n;
+        let gainSpd = (tSpd * multHours * penMult) / 100n;
+        let gainEnd = (tEnd * multHours * penMult) / 100n;
+        let gainTech = (tTech * multHours * penMult) / 100n;
+        
+        let gainText = `Baza: po +${basePerStat} (Siła, Szybk., Wytrz., Tech.)`;
+        if (gainStr > 0n || gainSpd > 0n || gainEnd > 0n || gainTech > 0n) {
+            gainText += `<br><span style="color: #a3e635; font-size: 0.85rem;">+ Sprzęt: Siła +${gainStr}, Szybk. +${gainSpd}, Wytrz. +${gainEnd}, Tech. +${gainTech}</span>`;
+        }
+        document.getElementById('training-projected-gain').innerHTML = gainText;
+    } else {
+        let gainText = `Baza: +${baseGain} pkt`;
+        let activeBonus = targetStat === 'strength' ? tStr : (targetStat === 'speed' ? tSpd : (targetStat === 'endurance' ? tEnd : tTech));
+        let finalItemBonus = (activeBonus * multHours * penMult) / 100n;
+        
+        if (finalItemBonus > 0n) {
+            gainText += `<br><span style="color: #a3e635; font-size: 0.85rem;">+ Sprzęt: +${finalItemBonus} pkt</span>`;
+        }
+        document.getElementById('training-projected-gain').innerHTML = gainText;
     }
 }
 
@@ -3189,6 +3233,9 @@ function showSetupState() {
     currentSelectedMentor = null;
     setupMentorInfo.style.display = 'none';
     trainingControls.style.display = 'none';
+    // ZMIANA: Pokazujemy napis, gdy nie ma mentora
+    const infoText = document.querySelector('.training-info-text');
+    if (infoText) infoText.style.display = 'block';
 }
 
 function showActiveTrainingState(mentor, endTimeStr) {
@@ -3327,15 +3374,29 @@ function selectWork(workObj, cardElement) {
         <div style="margin-bottom: 15px; font-size: 1.2rem; background: rgba(0,0,0,0.4); padding: 10px; border-radius: 8px; border: 1px dashed var(--goku-panel-border);">
             Złap: <span style="font-size: 1.8rem; vertical-align: middle;">${workObj.goodEmoji}</span> &nbsp;|&nbsp; Unikaj: <span style="font-size: 1.8rem; vertical-align: middle;">${workObj.badEmoji}</span>
         </div>
+        
         <div style="margin-bottom: 15px; padding: 10px; background: rgba(0,0,0,0.3); border-radius: 4px; border: 1px dashed #fbbf24;">
-            <p style="font-weight: bold; margin-bottom: 5px; color: #fbbf24;">✨ Zdarzenia Specjalne:</p>
-            <p style="font-size: 0.95rem;">Złap <b>💸</b> (+3x Zysk) | Unikaj <b>🦹‍♂️</b> (-3x Zysk lub Utrata HP!)</p>
-            <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 3px;"><i>(Te obiekty spadają znacznie szybciej!)</i></p>
+            <p style="font-weight: bold; margin-bottom: 5px; color: #fbbf24;">✨ Zasady Pracy:</p>
+            <ul style="font-size: 0.85rem; text-align: left; padding-left: 20px; color: #e2e8f0; margin-bottom: 0;">
+                <li>Sprzęt treningowy daje ogromne bonusy za każdy <b>złapany</b> obiekt ✅</li>
+                <li>Za każdy <b>błąd</b> ❌ (kowadło) tracisz punkty ze swojego bonusu treningowego!</li>
+                <li>Złap <b>💸</b> (+3x Zysk) | Unikaj <b>🦹‍♂️</b> (-3x Zysk lub Utrata HP!)</li>
+            </ul>
         </div>
+
+        <div style="margin-bottom: 15px; padding: 10px; background: rgba(239,68,68,0.15); border-radius: 4px; border: 1px dashed #ef4444;">
+            <p style="font-weight: bold; margin-bottom: 5px; color: #ef4444;">⚠️ KRYTYCZNE ZWOLNIENIE</p>
+            <p style="font-size: 0.85rem; color: #fca5a5; margin-bottom: 0;">Zrobienie <b>3 błędów</b> skutkuje natychmiastowym wyrzuceniem! Tracisz HP, MP i Staminę oraz otrzymujesz <b>trwałe rany</b> (utrata bazowych statystyk, sprzęt tego nie chroni)!</p>
+        </div>
+
         ${penaltyHtml}
-        <p style="margin-bottom: 5px;">❤️ Koszt: <b style="color: var(--error);">${workObj.costHpPct}% HP</b></p>
-        <p style="margin-bottom: 5px;">🟢 Koszt: <b style="color: var(--success);">${workObj.costStamina} Stamina</b></p>
-        <p style="margin-bottom: 15px;">💰 Zarobek: <b style="color: var(--warning);">${workObj.reward} Monet / Złapany obiekt</b></p>
+
+        <div style="display: flex; justify-content: space-around; margin-bottom: 15px;">
+            <div style="text-align: center;"><p style="margin-bottom: 2px;">❤️ Koszt:</p><b style="color: var(--error);">${workObj.costHpPct}% HP</b></div>
+            <div style="text-align: center;"><p style="margin-bottom: 2px;">🟢 Koszt:</p><b style="color: var(--success);">${workObj.costStamina} Sta</b></div>
+            <div style="text-align: center;"><p style="margin-bottom: 2px;">💰 Baza:</p><b style="color: var(--warning);">${workObj.reward} / szt</b></div>
+        </div>
+
         <div style="margin-top:10px; padding: 10px; background: rgba(0,0,0,0.2); border-radius: 4px;">
             <p style="font-weight: bold; margin-bottom: 5px;">Wymagania pracy:</p>
             <p style="font-size: 0.95rem;">${reqHtml}</p>

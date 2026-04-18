@@ -2413,13 +2413,14 @@ app.post('/api/training/start', authenticateToken, async (req, res) => {
 
     const validStat = ['strength', 'speed', 'endurance', 'technique', 'balanced'].includes(targetStat) ? targetStat : 'balanced';
     
+    // ZMIANA: Proste i bezbłędne przeliczanie czasu
     let realDurationMinutes;
     if (mentorId === 'time_chamber') {
-        // Sala Czasu ma swój unikalny wzór: X min RL = odpowiednik godzin
-        realDurationMinutes = parseFloat(hours) * 5; 
+        // Przekazane "hours" w przypadku Sali Czasu to "efektywne godziny" (np. 1 jednostka = 5 min DC = 1 godzina zwykłego treningu).
+        // 1 efektywna godzina Sali Czasu = 100 sekund czasu rzeczywistego (1.666 minuty)
+        realDurationMinutes = (parseFloat(hours) * 100) / 60; 
     } else {
         // Standardowy trening: 1 godzina w grze (DC) to 20 minut w rzeczywistości (RL)
-        // Dlatego dzielimy wybrane godziny gry przez 3
         realDurationMinutes = (parseFloat(hours) / 3) * 60; 
     }
 
