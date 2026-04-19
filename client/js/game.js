@@ -104,7 +104,7 @@ const API_BASE_URL = window.location.hostname === 'localhost' || window.location
 const SUPABASE_URL = 'https://mtilsthiwqoquwpecyln.supabase.co'; 
 const SUPABASE_ANON_KEY = 'sb_publishable_36PlexFXBSJOQyDG3WDItA_jq1s6zm6'; 
 const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-// --- SYSTEM KOLEJKOWANIA AKCJI (Gwarantuje płynność bez lagów) ---
+// --- SYSTEM KOLEJKOWANIA AKCJI ---
 const ActionQueue = {
     queue: [],
     isProcessing: false,
@@ -121,6 +121,29 @@ const ActionQueue = {
         this.isProcessing = false;
     }
 };
+
+// NOWY HELPER: Aktualizuje ilość "w locie" bez psucia kliknięć!
+function updateLocalItemQuantity(inventoryId, changeAmt) {
+    const itemIndex = GameState.inventoryData.findIndex(i => i.id === inventoryId);
+    if (itemIndex === -1) return null;
+    const item = GameState.inventoryData[itemIndex];
+    
+    let newQty = Number(item.quantity) + changeAmt;
+    if (newQty <= 0) {
+        GameState.inventoryData.splice(itemIndex, 1);
+        document.querySelectorAll(`[data-inventory-id="${inventoryId}"]`).forEach(el => {
+            el.style.display = 'none'; // Ukrywamy, zamiast usuwać (chroni przed lagami przeglądarki)
+            el.style.pointerEvents = 'none';
+        });
+        return { item, newQty: 0 };
+    } else {
+        item.quantity = newQty.toString();
+        document.querySelectorAll(`[data-inventory-id="${inventoryId}"] .item-quantity`).forEach(el => {
+            el.textContent = newQty;
+        });
+        return { item, newQty };
+    }
+}
 
 function checkAuthentication() {
     const sessionToken = localStorage.getItem('session_token');
@@ -1437,12 +1460,10 @@ function createItemCard(item) {
             tooltip.dataset.currentCard = '';
         }
         
-        if (GameState.isInventoryActionLocked) return;
-
         const activeTab = localStorage.getItem('active_game_tab');
         if (activeTab === 'bank') {
             const targetPanel = item.equipped_slot === 'bank' ? 'backpack' : 'bank';
-            if (typeof transferBankItem === 'function') transferBankItem(item.id, targetPanel, '1'); 
+            if (typeof transferBankItem === 'function') transferBankItem(item.id, targetPanel, 1); 
         } else if (activeTab === 'shop') {
             sellItem(item.id, 1); 
         } else {
@@ -1672,7 +1693,6 @@ function buyItem(item) {
     
     if (playerCoins < Number(item.price) || alreadyBought >= maxDaily) return;
 
-    // OPTYMIZACJA: Natychmiastowa zmiana w UI (bez czekania na serwer!)
     playerDailyBuys[item.id] = alreadyBought + 1;
     GameState.playerCurrentCoins -= Number(item.price);
     
@@ -1681,20 +1701,52 @@ function buyItem(item) {
     const bankCoinsEl = document.getElementById('bank-coins-display');
     if (bankCoinsEl) bankCoinsEl.textContent = `${GameState.playerCurrentCoins} 💰`;
 
-    // Akcja leci w tło
     ActionQueue.add(async () => {
         const res = await apiCall('/api/shop/buy', 'POST', { template_id: item.id });
-        if (res && res.success) {
-            await fetchInventory();
-            if (localStorage.getItem('active_game_tab') === 'shop') renderShopBackpack();
-        } else {
-            // Cofnięcie zmian w przypadku błędu serwera
+        if (!res || !res.success) {
             playerDailyBuys[item.id] -= 1;
             GameState.playerCurrentCoins += Number(item.price);
             renderShopItems();
             document.querySelectorAll('.coins').forEach(el => el.textContent = `💰 Monety: ${GameState.playerCurrentCoins}`);
             if (bankCoinsEl) bankCoinsEl.textContent = `${GameState.playerCurrentCoins} 💰`;
             showWarningMessage(res?.error || 'Błąd zakupu');
+        }
+        // Pobieramy dane z serwera tylko, gdy przestałeś szybko klikać
+        if (ActionQueue.queue.length === 0) {
+            await fetchInventory();
+            if (localStorage.getItem('active_game_tab') === 'shop') renderShopBackpack();
+        }
+    });
+}
+
+function sellItem(inventoryId, amount = 1) {
+    const itemIndex = GameState.inventoryData.findIndex(i => i.id === inventoryId);
+    if (itemIndex === -1) return;
+    const item = GameState.inventoryData[itemIndex];
+    
+    const sellQty = amount === 'all' ? Number(item.quantity) : Number(amount);
+    const price = Number(item.item_templates?.buy_price_coins || 0) / 2;
+    const totalProfit = price * sellQty;
+
+    // Natychmiastowa aktualizacja lokalna!
+    const updateRes = updateLocalItemQuantity(inventoryId, -sellQty);
+    if (!updateRes) return;
+
+    GameState.playerCurrentCoins += totalProfit;
+    document.querySelectorAll('.coins').forEach(el => el.textContent = `💰 Monety: ${GameState.playerCurrentCoins}`);
+    const bankCoinsEl = document.getElementById('bank-coins-display');
+    if (bankCoinsEl) bankCoinsEl.textContent = `${GameState.playerCurrentCoins} 💰`;
+
+    ActionQueue.add(async () => {
+        const res = await apiCall('/api/shop/sell', 'POST', { inventory_id: inventoryId, amount: sellQty.toString() });
+        if (!res || !res.success) {
+            showWarningMessage(res?.error || 'Błąd sprzedaży');
+            await fetchInventory();
+            await fetchCharacterData(true);
+        }
+        if (ActionQueue.queue.length === 0) {
+            await fetchInventory();
+            if (localStorage.getItem('active_game_tab') === 'shop') renderShopBackpack();
         }
     });
 }
@@ -2184,16 +2236,9 @@ function consumeItem(inventoryId) {
     const tooltip = document.getElementById('global-tooltip');
     if (tooltip) { tooltip.style.opacity = '0'; tooltip.style.visibility = 'hidden'; tooltip.dataset.currentCard = ''; }
     
-    const itemIndex = GameState.inventoryData.findIndex(i => i.id === inventoryId);
-    if (itemIndex === -1) return;
-    
-    // OPTYMIZACJA: Natychmiastowe zniknięcie przedmiotu z siatki!
-    if (Number(GameState.inventoryData[itemIndex].quantity) > 1) {
-        GameState.inventoryData[itemIndex].quantity = (Number(GameState.inventoryData[itemIndex].quantity) - 1).toString();
-    } else {
-        GameState.inventoryData.splice(itemIndex, 1);
-    }
-    renderInventory(GameState.inventoryData);
+    // Natychmiastowa aktualizacja lokalna!
+    const updateRes = updateLocalItemQuantity(inventoryId, -1);
+    if (!updateRes) return;
 
     ActionQueue.add(async () => {
         const res = await apiCall('/api/inventory/consume', 'POST', { inventory_id: inventoryId });
@@ -2203,71 +2248,78 @@ function consumeItem(inventoryId) {
                 GameState.playerCurrentCoins = Number(res.data.character_updates.coins || GameState.playerCurrentCoins);
                 updateUIWithCharacterData(GameState.playerCurrentStats);
             }
-            showSuccessMessage(res.data.message);
         } else {
-            // Wycofanie błędu (pobiera na nowo z serwera)
-            await fetchInventory();
             showWarningMessage(res?.error || 'Błąd użycia przedmiotu');
+            await fetchInventory();
+            renderInventory(GameState.inventoryData);
         }
+        if (ActionQueue.queue.length === 0) await fetchInventory();
     });
 }
 
 function transferBankItem(inventoryId, targetPanel, amount, targetIndex = null) {
-    const card = document.querySelector(`[data-inventory-id="${inventoryId}"]`);
-    if(card) card.style.opacity = '0.3'; // Natychmiastowy feedback wizualny
+    const itemIndex = GameState.inventoryData.findIndex(i => i.id === inventoryId);
+    if (itemIndex === -1) return;
+    const item = GameState.inventoryData[itemIndex];
+    const transQty = amount === 'all' ? Number(item.quantity) : Number(amount);
+
+    // Natychmiastowa aktualizacja lokalna!
+    updateLocalItemQuantity(inventoryId, -transQty);
 
     ActionQueue.add(async () => {
         const res = await apiCall('/api/bank/transfer_item', 'POST', {
             inventory_id: inventoryId, target_panel: targetPanel, amount: amount, target_index: targetIndex
         });
+        if (!res || !res.success) showWarningMessage(res?.error || 'Błąd transferu');
         
-        if (res && res.success) {
+        if (ActionQueue.queue.length === 0) {
             await fetchInventory();
             if (localStorage.getItem('active_game_tab') === 'bank') renderBank();
-        } else {
-            if(card) card.style.opacity = '1';
-            showWarningMessage(res?.error || 'Błąd transferu');
         }
     });
 }
 
 function performItemSwap(inventoryId, slotTarget, backpackIndexTarget = null, targetItemId = null) {
-    const card1 = document.querySelector(`[data-inventory-id="${inventoryId}"]`);
-    const card2 = targetItemId ? document.querySelector(`[data-inventory-id="${targetItemId}"]`) : null;
+    const item1 = GameState.inventoryData.find(i => i.id === inventoryId);
+    const item2 = targetItemId ? GameState.inventoryData.find(i => i.id === targetItemId) : null;
     
-    if (card1) card1.style.opacity = '0.3';
-    if (card2) card2.style.opacity = '0.3';
+    // Optymistyczna zamiana lokalna!
+    if (item1 && item2) {
+        const tempSlot = item1.equipped_slot;
+        const tempIndex = item1.backpack_index;
+        item1.equipped_slot = item2.equipped_slot;
+        item1.backpack_index = item2.backpack_index;
+        item2.equipped_slot = tempSlot;
+        item2.backpack_index = tempIndex;
+    } else if (item1) {
+        item1.equipped_slot = slotTarget === 'backpack' ? null : slotTarget;
+        item1.backpack_index = backpackIndexTarget ? parseInt(backpackIndexTarget) : null;
+    }
+
+    // Od razu odświeżamy UI lokalnie – zabezpiecza to przed podwójnym najechaniem myszką na to samo miejsce
+    renderInventory(GameState.inventoryData);
+    const activeTab = localStorage.getItem('active_game_tab');
+    if (activeTab === 'bank' && typeof renderBank === 'function') renderBank();
+    if (activeTab === 'shop' && typeof renderShopBackpack === 'function') renderShopBackpack();
 
     ActionQueue.add(async () => {
         try {
             const response = await fetch(`${API_BASE_URL}/api/inventory/swap`, {
                 method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${localStorage.getItem('session_token')}`,
-                    'Content-Type': 'application/json'
-                },
+                headers: { 'Authorization': `Bearer ${localStorage.getItem('session_token')}`, 'Content-Type': 'application/json' },
                 body: JSON.stringify({ item_id_1: inventoryId, slot_target: slotTarget, backpack_index_target: backpackIndexTarget ? parseInt(backpackIndexTarget) : null, item_id_2: targetItemId })
             });
             const data = await response.json();
             
             if (data.success) {
-                await fetchInventory();
-                const activeTab = localStorage.getItem('active_game_tab');
-                if (activeTab === 'bank' && typeof renderBank === 'function') renderBank();
-                if (activeTab === 'shop' && typeof renderShopBackpack === 'function') renderShopBackpack();
-                
-                // Jeśli ubrano/zdjęto sprzęt, odśwież statystyki postaci
                 if (slotTarget !== 'backpack' && slotTarget !== 'bank') await fetchCharacterData(true);
             } else {
-                if (card1) card1.style.opacity = '1';
-                if (card2) card2.style.opacity = '1';
                 showWarningMessage(data.error || 'Błąd podczas zamiany przedmiotów');
             }
         } catch (error) {
-            if (card1) card1.style.opacity = '1';
-            if (card2) card2.style.opacity = '1';
             showWarningMessage('Wystąpił błąd podczas zamiany przedmiotów');
         }
+        if (ActionQueue.queue.length === 0) await fetchInventory();
     });
 }
 
