@@ -104,6 +104,23 @@ const API_BASE_URL = window.location.hostname === 'localhost' || window.location
 const SUPABASE_URL = 'https://mtilsthiwqoquwpecyln.supabase.co'; 
 const SUPABASE_ANON_KEY = 'sb_publishable_36PlexFXBSJOQyDG3WDItA_jq1s6zm6'; 
 const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+// --- SYSTEM KOLEJKOWANIA AKCJI (Gwarantuje płynność bez lagów) ---
+const ActionQueue = {
+    queue: [],
+    isProcessing: false,
+    async add(actionFn) {
+        this.queue.push(actionFn);
+        if (!this.isProcessing) this.process();
+    },
+    async process() {
+        this.isProcessing = true;
+        while (this.queue.length > 0) {
+            const action = this.queue.shift();
+            try { await action(); } catch (e) { console.error(e); }
+        }
+        this.isProcessing = false;
+    }
+};
 
 function checkAuthentication() {
     const sessionToken = localStorage.getItem('session_token');
@@ -114,12 +131,7 @@ function checkAuthentication() {
     return sessionToken;
 }
 
-async function apiCall(endpoint, method = 'GET', body = null, useActionLock = false) {
-    if (useActionLock) {
-        if (GameState.isInventoryActionLocked) return null;
-        GameState.isInventoryActionLocked = true;
-    }
-    
+async function apiCall(endpoint, method = 'GET', body = null) {
     try {
         const options = {
             method,
@@ -143,18 +155,12 @@ async function apiCall(endpoint, method = 'GET', body = null, useActionLock = fa
         }
 
         const data = await response.json();
-        
-        if (data.success === false) {
-                return { success: false, error: data.error || data.message || 'Błąd akcji', data };
-        }
-        
+        if (data.success === false) return { success: false, error: data.error || data.message || 'Błąd akcji', data };
         return { success: true, data };
         
     } catch (error) {
         console.error(`[API] Błąd połączenia z ${endpoint}:`, error);
         return { success: false, error: 'Wystąpił problem z połączeniem sieciowym.' };
-    } finally {
-        if (useActionLock) GameState.isInventoryActionLocked = false;
     }
 }
 
@@ -1659,32 +1665,57 @@ function createShopItemCard(item) {
     return card;
 }
 
-async function buyItem(item) {
-    const res = await apiCall('/api/shop/buy', 'POST', { template_id: item.id }, true);
-    if (!res) return;
+function buyItem(item) {
+    const playerCoins = GameState.playerCurrentCoins || 0;
+    const maxDaily = 11 - (item.shop_level || 1);
+    const alreadyBought = playerDailyBuys[item.id] || 0;
+    
+    if (playerCoins < Number(item.price) || alreadyBought >= maxDaily) return;
 
-    if (res.success) {
-        showSuccessMessage(`Kupiono ${item.name}!`);
-        // ODPALAMY RÓWNOLEGLE, ABY USUNĄĆ LAGI
-        await Promise.all([fetchInventory(), fetchCharacterData()]);
-        // fetchShopItems nie jest potrzebne po każdym kliknięciu, sklep działa na lokalnych danych
-        renderShopItems();
-    } else {
-        showWarningMessage(res.error || 'Błąd podczas kupna');
-    }
+    // OPTYMIZACJA: Natychmiastowa zmiana w UI (bez czekania na serwer!)
+    playerDailyBuys[item.id] = alreadyBought + 1;
+    GameState.playerCurrentCoins -= Number(item.price);
+    
+    renderShopItems(); 
+    document.querySelectorAll('.coins').forEach(el => el.textContent = `💰 Monety: ${GameState.playerCurrentCoins}`);
+    const bankCoinsEl = document.getElementById('bank-coins-display');
+    if (bankCoinsEl) bankCoinsEl.textContent = `${GameState.playerCurrentCoins} 💰`;
+
+    // Akcja leci w tło
+    ActionQueue.add(async () => {
+        const res = await apiCall('/api/shop/buy', 'POST', { template_id: item.id });
+        if (res && res.success) {
+            await fetchInventory();
+            if (localStorage.getItem('active_game_tab') === 'shop') renderShopBackpack();
+        } else {
+            // Cofnięcie zmian w przypadku błędu serwera
+            playerDailyBuys[item.id] -= 1;
+            GameState.playerCurrentCoins += Number(item.price);
+            renderShopItems();
+            document.querySelectorAll('.coins').forEach(el => el.textContent = `💰 Monety: ${GameState.playerCurrentCoins}`);
+            if (bankCoinsEl) bankCoinsEl.textContent = `${GameState.playerCurrentCoins} 💰`;
+            showWarningMessage(res?.error || 'Błąd zakupu');
+        }
+    });
 }
 
-async function sellItem(inventoryId, amount = 'all') {
-    const res = await apiCall('/api/shop/sell', 'POST', { inventory_id: inventoryId, amount: amount }, true);
-    if (!res) return;
+function sellItem(inventoryId, amount = 'all') {
+    // Wizualna informacja o kliknięciu
+    const card = document.querySelector(`[data-inventory-id="${inventoryId}"]`);
+    if (card) card.style.opacity = '0.3';
 
-    if (res.success) {
-        showSuccessMessage(`Sprzedano przedmiot za ${res.data.item.total_sell_price} monet!`);
-        await Promise.all([fetchInventory(), fetchCharacterData()]);
-        renderShopBackpack();
-    } else {
-        showWarningMessage(res.error || 'Błąd podczas sprzedaży');
-    }
+    ActionQueue.add(async () => {
+        const res = await apiCall('/api/shop/sell', 'POST', { inventory_id: inventoryId, amount: amount });
+        if (res && res.success) {
+            GameState.playerCurrentCoins += Number(res.data.item.total_sell_price);
+            document.querySelectorAll('.coins').forEach(el => el.textContent = `💰 Monety: ${GameState.playerCurrentCoins}`);
+            await fetchInventory();
+            if (localStorage.getItem('active_game_tab') === 'shop') renderShopBackpack();
+        } else {
+            if (card) card.style.opacity = '1';
+            showWarningMessage(res?.error || 'Błąd sprzedaży');
+        }
+    });
 }
 
 // ==========================================
@@ -1871,19 +1902,23 @@ async function upgradeBank(upgradeType) {
     }
 }
 
-async function transferBankItem(inventoryId, targetPanel, amount, targetIndex = null) {
-    const res = await apiCall('/api/bank/transfer_item', 'POST', {
-        inventory_id: inventoryId, target_panel: targetPanel, amount: amount, target_index: targetIndex
-    }, true);
-    if (!res) return;
+function transferBankItem(inventoryId, targetPanel, amount, targetIndex = null) {
+    const card = document.querySelector(`[data-inventory-id="${inventoryId}"]`);
+    if(card) card.style.opacity = '0.3'; // Natychmiastowy feedback wizualny
 
-    if (res.success) {
-        showSuccessMessage(res.data.message);
-        await fetchInventory(); 
-        renderBank();
-    } else {
-        showWarningMessage(res.error || 'Błąd podczas transferu przedmiotu');
-    }
+    ActionQueue.add(async () => {
+        const res = await apiCall('/api/bank/transfer_item', 'POST', {
+            inventory_id: inventoryId, target_panel: targetPanel, amount: amount, target_index: targetIndex
+        });
+        
+        if (res && res.success) {
+            await fetchInventory();
+            if (localStorage.getItem('active_game_tab') === 'bank') renderBank();
+        } else {
+            if(card) card.style.opacity = '1';
+            showWarningMessage(res?.error || 'Błąd transferu');
+        }
+    });
 }
 
 async function splitBankItem(inventoryId, amount) {
@@ -2145,96 +2180,95 @@ function createItemTooltip(template) {
     return tooltipHTML;
 }
 
-async function consumeItem(inventoryId) {
+function consumeItem(inventoryId) {
     const tooltip = document.getElementById('global-tooltip');
     if (tooltip) { tooltip.style.opacity = '0'; tooltip.style.visibility = 'hidden'; tooltip.dataset.currentCard = ''; }
     
-    const res = await apiCall('/api/inventory/consume', 'POST', { inventory_id: inventoryId }, true);
-    if (!res) return;
-
-    if (res.success) {
-        await Promise.all([fetchInventory(), fetchCharacterData()]);
-        showSuccessMessage(res.data.message);
+    const itemIndex = GameState.inventoryData.findIndex(i => i.id === inventoryId);
+    if (itemIndex === -1) return;
+    
+    // OPTYMIZACJA: Natychmiastowe zniknięcie przedmiotu z siatki!
+    if (Number(GameState.inventoryData[itemIndex].quantity) > 1) {
+        GameState.inventoryData[itemIndex].quantity = (Number(GameState.inventoryData[itemIndex].quantity) - 1).toString();
     } else {
-        if (res.data && res.data.status === 'warning') {
-            showWarningMessage(res.data.message);
-        } else {
-            showWarningMessage(res.error || 'Błąd podczas używania przedmiotu');
-        }
+        GameState.inventoryData.splice(itemIndex, 1);
     }
+    renderInventory(GameState.inventoryData);
+
+    ActionQueue.add(async () => {
+        const res = await apiCall('/api/inventory/consume', 'POST', { inventory_id: inventoryId });
+        if (res && res.success) {
+            if (res.data.character_updates) {
+                Object.assign(GameState.playerCurrentStats, res.data.character_updates);
+                GameState.playerCurrentCoins = Number(res.data.character_updates.coins || GameState.playerCurrentCoins);
+                updateUIWithCharacterData(GameState.playerCurrentStats);
+            }
+            showSuccessMessage(res.data.message);
+        } else {
+            // Wycofanie błędu (pobiera na nowo z serwera)
+            await fetchInventory();
+            showWarningMessage(res?.error || 'Błąd użycia przedmiotu');
+        }
+    });
 }
 
-async function performItemSwap(inventoryId, slotTarget, backpackIndexTarget = null, targetItemId = null) {
-    if (GameState.isInventoryActionLocked) return;
-    GameState.isInventoryActionLocked = true;
-    
-    try {
-        const response = await fetch(`${API_BASE_URL}/api/inventory/swap`, {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${localStorage.getItem('session_token')}`,
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                item_id_1: inventoryId,
-                slot_target: slotTarget,
-                backpack_index_target: backpackIndexTarget ? parseInt(backpackIndexTarget) : null,
-                item_id_2: targetItemId
-            })
+function transferBankItem(inventoryId, targetPanel, amount, targetIndex = null) {
+    const card = document.querySelector(`[data-inventory-id="${inventoryId}"]`);
+    if(card) card.style.opacity = '0.3'; // Natychmiastowy feedback wizualny
+
+    ActionQueue.add(async () => {
+        const res = await apiCall('/api/bank/transfer_item', 'POST', {
+            inventory_id: inventoryId, target_panel: targetPanel, amount: amount, target_index: targetIndex
         });
-
-        const data = await response.json();
         
-        if (data.success) {
-            const item1 = GameState.inventoryData.find(i => i.id === inventoryId);
-            const item2 = targetItemId ? GameState.inventoryData.find(i => i.id === targetItemId) : null;
+        if (res && res.success) {
+            await fetchInventory();
+            if (localStorage.getItem('active_game_tab') === 'bank') renderBank();
+        } else {
+            if(card) card.style.opacity = '1';
+            showWarningMessage(res?.error || 'Błąd transferu');
+        }
+    });
+}
+
+function performItemSwap(inventoryId, slotTarget, backpackIndexTarget = null, targetItemId = null) {
+    const card1 = document.querySelector(`[data-inventory-id="${inventoryId}"]`);
+    const card2 = targetItemId ? document.querySelector(`[data-inventory-id="${targetItemId}"]`) : null;
+    
+    if (card1) card1.style.opacity = '0.3';
+    if (card2) card2.style.opacity = '0.3';
+
+    ActionQueue.add(async () => {
+        try {
+            const response = await fetch(`${API_BASE_URL}/api/inventory/swap`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${localStorage.getItem('session_token')}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ item_id_1: inventoryId, slot_target: slotTarget, backpack_index_target: backpackIndexTarget ? parseInt(backpackIndexTarget) : null, item_id_2: targetItemId })
+            });
+            const data = await response.json();
             
-            const isEquipAction = (slotTarget !== 'backpack' && slotTarget !== 'bank') || 
-                                    (item1 && item1.equipped_slot !== null && item1.equipped_slot !== 'bank');
-
-            if (data.message.includes('połączone')) {
+            if (data.success) {
                 await fetchInventory();
-                showSuccessMessage(data.message);
-            } else {
-                const dbSlotTarget = slotTarget === 'backpack' ? null : slotTarget;
-                const parsedIndexTarget = backpackIndexTarget ? parseInt(backpackIndexTarget) : null;
-
-                if (item1 && item2) {
-                    const tempSlot = item1.equipped_slot;
-                    const tempIndex = item1.backpack_index;
-                    
-                    item1.equipped_slot = item2.equipped_slot;
-                    item1.backpack_index = item2.backpack_index;
-                    
-                    item2.equipped_slot = tempSlot;
-                    item2.backpack_index = tempIndex;
-                } else if (item1) {
-                    item1.equipped_slot = dbSlotTarget;
-                    item1.backpack_index = parsedIndexTarget;
-                }
-
-                renderInventory(GameState.inventoryData);
-                
                 const activeTab = localStorage.getItem('active_game_tab');
                 if (activeTab === 'bank' && typeof renderBank === 'function') renderBank();
                 if (activeTab === 'shop' && typeof renderShopBackpack === 'function') renderShopBackpack();
                 
-                if (isEquipAction) showSuccessMessage(data.message);
+                // Jeśli ubrano/zdjęto sprzęt, odśwież statystyki postaci
+                if (slotTarget !== 'backpack' && slotTarget !== 'bank') await fetchCharacterData(true);
+            } else {
+                if (card1) card1.style.opacity = '1';
+                if (card2) card2.style.opacity = '1';
+                showWarningMessage(data.error || 'Błąd podczas zamiany przedmiotów');
             }
-
-            if (isEquipAction) {
-                await fetchCharacterData(true); 
-            }
-        } else {
-            showWarningMessage(data.error || 'Błąd podczas zamiany przedmiotów');
+        } catch (error) {
+            if (card1) card1.style.opacity = '1';
+            if (card2) card2.style.opacity = '1';
+            showWarningMessage('Wystąpił błąd podczas zamiany przedmiotów');
         }
-        
-    } catch (error) {
-        console.error('[Swap] Błąd komunikacji z backendem:', error);
-        showWarningMessage('Wystąpił błąd podczas zamiany przedmiotów');
-    } finally {
-        GameState.isInventoryActionLocked = false;
-    }
+    });
 }
 
 function initializeDragAndDrop() {
