@@ -25,13 +25,12 @@ const GameState = {
     playerBankCoinLimitLevel: 1,
     playerBankSlotsUnlocked: 5,
 
-    dailyGlobalTasks: [],    // NOWE: Przechowujemy zadania poza statsami
-    dailyTasksProgress: {},  // NOWE: Przechowujemy progress osobno
+    dailyGlobalTasks: [],
+    dailyTasksProgress: {},
     
     playerCompletedMissions: [],
     playerAttemptedOneTry: [],
     chatChannel: null
-    
 };
 
 // --- 3. TIMERY I INTERWAŁY ---
@@ -104,6 +103,7 @@ const API_BASE_URL = window.location.hostname === 'localhost' || window.location
 const SUPABASE_URL = 'https://mtilsthiwqoquwpecyln.supabase.co'; 
 const SUPABASE_ANON_KEY = 'sb_publishable_36PlexFXBSJOQyDG3WDItA_jq1s6zm6'; 
 const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
 // --- SYSTEM KOLEJKOWANIA AKCJI (Gwarantuje płynność bez lagów) ---
 const ActionQueue = {
     queue: [],
@@ -122,32 +122,6 @@ const ActionQueue = {
     }
 };
 
-// NOWY HELPER: Aktualizuje ilość "w locie" bez przeładowywania siatki!
-function updateLocalItemQuantity(inventoryId, changeAmt) {
-    const itemIndex = GameState.inventoryData.findIndex(i => i.id === inventoryId);
-    if (itemIndex === -1) return false;
-    
-    const item = GameState.inventoryData[itemIndex];
-    let currentQty = Number(item.quantity || 1);
-    let newQty = currentQty + changeAmt;
-    
-    if (newQty <= 0) {
-        GameState.inventoryData.splice(itemIndex, 1); // Usuwamy z pamięci
-        // Błyskawicznie ukrywamy element w HTML (chroni to przed przerwaniem double-clicka)
-        document.querySelectorAll(`[data-inventory-id="${inventoryId}"]`).forEach(el => {
-            el.style.display = 'none';
-            el.style.pointerEvents = 'none';
-        });
-    } else {
-        item.quantity = newQty.toString();
-        // Podmieniamy samą cyferkę (nie niszczymy elementu HTML)
-        document.querySelectorAll(`[data-inventory-id="${inventoryId}"] .item-quantity`).forEach(el => {
-            el.textContent = newQty;
-        });
-    }
-    return true;
-}
-
 // --- BLOKADA TOOLTIPÓW PRZY SZYBKIM KLIKANIU ---
 window.isTooltipLocked = false;
 window.lockTooltipsTemporarily = function() {
@@ -163,7 +137,7 @@ window.lockTooltipsTemporarily = function() {
     setTimeout(() => { window.isTooltipLocked = false; }, 1000);
 };
 
-// ZModyfikuj też updateLocalItemQuantity, aby ukrywał element łagodniej
+// HELPER: Aktualizuje ilość "w locie" bez przeładowywania siatki!
 function updateLocalItemQuantity(inventoryId, changeAmt) {
     const itemIndex = GameState.inventoryData.findIndex(i => i.id === inventoryId);
     if (itemIndex === -1) return false;
@@ -462,6 +436,7 @@ function renderSpecialTasks() {
         });
     });
 }
+
 async function claimSpecialTask(taskId) {
     const res = await apiCall('/api/tasks/claim', 'POST', { task_id: taskId }, true);
     if (!res) return;
@@ -1483,29 +1458,17 @@ function createItemCard(item) {
         }
     });
 
-    card.addEventListener('dblclick', function(e) {
-        e.preventDefault();
-        e.stopPropagation();
-        
-        window.lockTooltipsTemporarily(); // NOWE: Zablokuj tooltipy!
-        
-        const activeTab = localStorage.getItem('active_game_tab');
-        if (activeTab === 'bank') {
-            const targetPanel = item.equipped_slot === 'bank' ? 'backpack' : 'bank';
-            if (typeof transferBankItem === 'function') transferBankItem(item.id, targetPanel, 1); 
-        } else if (activeTab === 'shop') {
-            sellItem(item.id, 1); 
-        } else {
-            consumeItem(item.id); 
-        }
-    });
+    // --- NOWY, ULTRASZYBKI SYSTEM KLIKNIĘĆ ---
+    let lastClickTime = 0;
 
     card.addEventListener('click', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+
+        if (GameState.isInventoryActionLocked) return;
+
+        // 1. Dzielenie przedmiotu (SHIFT + Klik)
         if (e.shiftKey && (item.item_templates?.category === 'consumable' || item.item_templates?.category === 'special_consumable') && parseInt(item.quantity) > 1) {
-            e.preventDefault();
-            e.stopPropagation();
-            if (GameState.isInventoryActionLocked) return;
-            
             const splitAmount = prompt(`Ile sztuk chcesz wydzielić? (Max: ${parseInt(item.quantity) - 1})`, "1");
             if (splitAmount && !isNaN(splitAmount) && parseInt(splitAmount) > 0 && parseInt(splitAmount) < parseInt(item.quantity)) {
                 const activeTab = localStorage.getItem('active_game_tab');
@@ -1515,6 +1478,32 @@ function createItemCard(item) {
                     splitItem(item.id, splitAmount);
                 }
             }
+            return;
+        }
+
+        // 2. Symulacja błyskawicznego podwójnego kliknięcia (bez blokad przeglądarki!)
+        const currentTime = new Date().getTime();
+        const timeSinceLastClick = currentTime - lastClickTime;
+
+        if (timeSinceLastClick < 400) {
+            // WYKRYTO DWUKLIK!
+            window.lockTooltipsTemporarily(); 
+            const activeTab = localStorage.getItem('active_game_tab');
+            
+            if (activeTab === 'bank') {
+                const targetPanel = item.equipped_slot === 'bank' ? 'backpack' : 'bank';
+                if (typeof transferBankItem === 'function') transferBankItem(item.id, targetPanel, 1); 
+            } else if (activeTab === 'shop') {
+                sellItem(item.id, 1); 
+            } else {
+                consumeItem(item.id); 
+            }
+            
+            // Resetujemy czas, by kolejne kliknięcie było znów traktowane jako pierwsze
+            lastClickTime = 0; 
+        } else {
+            // Pierwsze kliknięcie - rejestrujemy czas
+            lastClickTime = currentTime;
         }
     });
 
@@ -1775,10 +1764,13 @@ function sellItem(inventoryId, amount = 1) {
     const price = Number(item.item_templates?.buy_price_coins || 0) / 2;
     const totalProfit = price * sellQty;
 
+    // Natychmiastowa aktualizacja cyferki na obrazku (bez przeładowywania siatki!)
     if (!updateLocalItemQuantity(inventoryId, -sellQty)) return;
 
     GameState.playerCurrentCoins += totalProfit;
     document.querySelectorAll('.coins').forEach(el => el.textContent = `💰 Monety: ${GameState.playerCurrentCoins}`);
+    const bankCoinsEl = document.getElementById('bank-coins-display');
+    if (bankCoinsEl) bankCoinsEl.textContent = `${GameState.playerCurrentCoins} 💰`;
 
     ActionQueue.add(async () => {
         const res = await apiCall('/api/shop/sell', 'POST', { inventory_id: inventoryId, amount: sellQty.toString() });
@@ -1788,25 +1780,6 @@ function sellItem(inventoryId, amount = 1) {
         }
         if (ActionQueue.queue.length === 0) {
             await fetchInventory(true); // <--- Ciche synchronizowanie
-        }
-    });
-}
-
-function sellItem(inventoryId, amount = 'all') {
-    // Wizualna informacja o kliknięciu
-    const card = document.querySelector(`[data-inventory-id="${inventoryId}"]`);
-    if (card) card.style.opacity = '0.3';
-
-    ActionQueue.add(async () => {
-        const res = await apiCall('/api/shop/sell', 'POST', { inventory_id: inventoryId, amount: amount });
-        if (res && res.success) {
-            GameState.playerCurrentCoins += Number(res.data.item.total_sell_price);
-            document.querySelectorAll('.coins').forEach(el => el.textContent = `💰 Monety: ${GameState.playerCurrentCoins}`);
-            await fetchInventory();
-            if (localStorage.getItem('active_game_tab') === 'shop') renderShopBackpack();
-        } else {
-            if (card) card.style.opacity = '1';
-            showWarningMessage(res?.error || 'Błąd sprzedaży');
         }
     });
 }
@@ -2008,9 +1981,8 @@ function transferBankItem(inventoryId, targetPanel, amount, targetIndex = null) 
         const res = await apiCall('/api/bank/transfer_item', 'POST', {
             inventory_id: inventoryId, target_panel: targetPanel, amount: amount, target_index: targetIndex
         });
-        if (!res || !res.success) {
-            showWarningMessage(res?.error || 'Błąd transferu');
-        }
+        if (!res || !res.success) showWarningMessage(res?.error || 'Błąd transferu');
+        
         if (ActionQueue.queue.length === 0) {
             await fetchInventory(true); 
             // Odświeżamy bank wizualnie po skończeniu klikania, aby pokazać przedmiot na nowym miejscu
@@ -2301,6 +2273,7 @@ function consumeItem(inventoryId) {
 }
 
 function transferBankItem(inventoryId, targetPanel, amount, targetIndex = null) {
+    window.lockTooltipsTemporarily();
     const itemIndex = GameState.inventoryData.findIndex(i => i.id === inventoryId);
     if (itemIndex === -1) return;
     const item = GameState.inventoryData[itemIndex];
@@ -2315,7 +2288,8 @@ function transferBankItem(inventoryId, targetPanel, amount, targetIndex = null) 
         if (!res || !res.success) showWarningMessage(res?.error || 'Błąd transferu');
         
         if (ActionQueue.queue.length === 0) {
-            await fetchInventory();
+            await fetchInventory(true); 
+            // Odświeżamy bank wizualnie po skończeniu klikania, aby pokazać przedmiot na nowym miejscu
             if (localStorage.getItem('active_game_tab') === 'bank') renderBank();
         }
     });
@@ -2372,7 +2346,7 @@ function performItemSwap(inventoryId, slotTarget, backpackIndexTarget = null, ta
         }
         
         if (ActionQueue.queue.length === 0) {
-            await fetchInventory();
+            await fetchInventory(true);
             GameState.isInventoryActionLocked = false; 
         }
     });
