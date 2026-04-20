@@ -104,7 +104,7 @@ const API_BASE_URL = window.location.hostname === 'localhost' || window.location
 const SUPABASE_URL = 'https://mtilsthiwqoquwpecyln.supabase.co'; 
 const SUPABASE_ANON_KEY = 'sb_publishable_36PlexFXBSJOQyDG3WDItA_jq1s6zm6'; 
 const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-// --- SYSTEM KOLEJKOWANIA AKCJI ---
+// --- SYSTEM KOLEJKOWANIA AKCJI (Gwarantuje płynność bez lagów) ---
 const ActionQueue = {
     queue: [],
     isProcessing: false,
@@ -122,27 +122,30 @@ const ActionQueue = {
     }
 };
 
-// NOWY HELPER: Aktualizuje ilość "w locie" bez psucia kliknięć!
+// NOWY HELPER: Aktualizuje ilość "w locie" bez przeładowywania siatki!
 function updateLocalItemQuantity(inventoryId, changeAmt) {
     const itemIndex = GameState.inventoryData.findIndex(i => i.id === inventoryId);
-    if (itemIndex === -1) return null;
-    const item = GameState.inventoryData[itemIndex];
+    if (itemIndex === -1) return false;
     
-    let newQty = Number(item.quantity) + changeAmt;
+    const item = GameState.inventoryData[itemIndex];
+    let currentQty = Number(item.quantity || 1);
+    let newQty = currentQty + changeAmt;
+    
     if (newQty <= 0) {
-        GameState.inventoryData.splice(itemIndex, 1);
+        GameState.inventoryData.splice(itemIndex, 1); // Usuwamy z pamięci
+        // Błyskawicznie ukrywamy element w HTML (chroni to przed przerwaniem double-clicka)
         document.querySelectorAll(`[data-inventory-id="${inventoryId}"]`).forEach(el => {
-            el.style.display = 'none'; // Ukrywamy, zamiast usuwać (chroni przed lagami przeglądarki)
+            el.style.display = 'none';
             el.style.pointerEvents = 'none';
         });
-        return { item, newQty: 0 };
     } else {
         item.quantity = newQty.toString();
+        // Podmieniamy samą cyferkę (nie niszczymy elementu HTML)
         document.querySelectorAll(`[data-inventory-id="${inventoryId}"] .item-quantity`).forEach(el => {
             el.textContent = newQty;
         });
-        return { item, newQty };
     }
+    return true;
 }
 
 function checkAuthentication() {
@@ -1728,10 +1731,10 @@ function sellItem(inventoryId, amount = 1) {
     const price = Number(item.item_templates?.buy_price_coins || 0) / 2;
     const totalProfit = price * sellQty;
 
-    // Natychmiastowa aktualizacja lokalna!
-    const updateRes = updateLocalItemQuantity(inventoryId, -sellQty);
-    if (!updateRes) return;
+    // Natychmiastowa aktualizacja lokalna (bez przeładowywania siatki!)
+    if (!updateLocalItemQuantity(inventoryId, -sellQty)) return;
 
+    // Aktualizujemy natychmiast monety na ekranie
     GameState.playerCurrentCoins += totalProfit;
     document.querySelectorAll('.coins').forEach(el => el.textContent = `💰 Monety: ${GameState.playerCurrentCoins}`);
     const bankCoinsEl = document.getElementById('bank-coins-display');
@@ -1741,9 +1744,9 @@ function sellItem(inventoryId, amount = 1) {
         const res = await apiCall('/api/shop/sell', 'POST', { inventory_id: inventoryId, amount: sellQty.toString() });
         if (!res || !res.success) {
             showWarningMessage(res?.error || 'Błąd sprzedaży');
-            await fetchInventory();
-            await fetchCharacterData(true);
         }
+        
+        // Dopiero gdy gracz przestanie szaleńczo klikać, pobieramy dane z serwera dla bezpieczeństwa
         if (ActionQueue.queue.length === 0) {
             await fetchInventory();
             if (localStorage.getItem('active_game_tab') === 'shop') renderShopBackpack();
@@ -2236,24 +2239,28 @@ function consumeItem(inventoryId) {
     const tooltip = document.getElementById('global-tooltip');
     if (tooltip) { tooltip.style.opacity = '0'; tooltip.style.visibility = 'hidden'; tooltip.dataset.currentCard = ''; }
     
-    // Natychmiastowa aktualizacja lokalna!
-    const updateRes = updateLocalItemQuantity(inventoryId, -1);
-    if (!updateRes) return;
+    // Natychmiastowe zjedzenie lokalnie (cyferka w dół)
+    if (!updateLocalItemQuantity(inventoryId, -1)) return;
 
     ActionQueue.add(async () => {
         const res = await apiCall('/api/inventory/consume', 'POST', { inventory_id: inventoryId });
-        if (res && res.success) {
-            if (res.data.character_updates) {
-                Object.assign(GameState.playerCurrentStats, res.data.character_updates);
-                GameState.playerCurrentCoins = Number(res.data.character_updates.coins || GameState.playerCurrentCoins);
+        if (res && res.success && res.data.character_updates) {
+            Object.assign(GameState.playerCurrentStats, res.data.character_updates);
+            GameState.playerCurrentCoins = Number(res.data.character_updates.coins || GameState.playerCurrentCoins);
+            
+            // Aktualizujemy HP/MP na ekranie dopiero, jak puszczą lagi z serwera
+            if (ActionQueue.queue.length === 0) {
                 updateUIWithCharacterData(GameState.playerCurrentStats);
             }
-        } else {
+        } else if (!res || !res.success) {
             showWarningMessage(res?.error || 'Błąd użycia przedmiotu');
-            await fetchInventory();
-            renderInventory(GameState.inventoryData);
         }
-        if (ActionQueue.queue.length === 0) await fetchInventory();
+
+        if (ActionQueue.queue.length === 0) {
+            await fetchInventory();
+            const activeTab = localStorage.getItem('active_game_tab');
+            if (activeTab === 'equipment') renderInventory(GameState.inventoryData);
+        }
     });
 }
 
@@ -2263,8 +2270,8 @@ function transferBankItem(inventoryId, targetPanel, amount, targetIndex = null) 
     const item = GameState.inventoryData[itemIndex];
     const transQty = amount === 'all' ? Number(item.quantity) : Number(amount);
 
-    // Natychmiastowa aktualizacja lokalna!
-    updateLocalItemQuantity(inventoryId, -transQty);
+    // Błyskawiczne zniknięcie / zmniejszenie stacka
+    if (!updateLocalItemQuantity(inventoryId, -transQty)) return;
 
     ActionQueue.add(async () => {
         const res = await apiCall('/api/bank/transfer_item', 'POST', {
@@ -2280,10 +2287,12 @@ function transferBankItem(inventoryId, targetPanel, amount, targetIndex = null) 
 }
 
 function performItemSwap(inventoryId, slotTarget, backpackIndexTarget = null, targetItemId = null) {
+    // KRYTYCZNE ZABEZPIECZENIE: Zamykamy możliwość "ciągnięcia" innych przedmiotów na czas tej operacji
+    GameState.isInventoryActionLocked = true; 
+
+    // Optymistyczna zamiana lokalna!
     const item1 = GameState.inventoryData.find(i => i.id === inventoryId);
     const item2 = targetItemId ? GameState.inventoryData.find(i => i.id === targetItemId) : null;
-    
-    // Optymistyczna zamiana lokalna!
     if (item1 && item2) {
         const tempSlot = item1.equipped_slot;
         const tempIndex = item1.backpack_index;
@@ -2296,7 +2305,6 @@ function performItemSwap(inventoryId, slotTarget, backpackIndexTarget = null, ta
         item1.backpack_index = backpackIndexTarget ? parseInt(backpackIndexTarget) : null;
     }
 
-    // Od razu odświeżamy UI lokalnie – zabezpiecza to przed podwójnym najechaniem myszką na to samo miejsce
     renderInventory(GameState.inventoryData);
     const activeTab = localStorage.getItem('active_game_tab');
     if (activeTab === 'bank' && typeof renderBank === 'function') renderBank();
@@ -2311,15 +2319,20 @@ function performItemSwap(inventoryId, slotTarget, backpackIndexTarget = null, ta
             });
             const data = await response.json();
             
-            if (data.success) {
-                if (slotTarget !== 'backpack' && slotTarget !== 'bank') await fetchCharacterData(true);
-            } else {
+            if (data.success && slotTarget !== 'backpack' && slotTarget !== 'bank') {
+                await fetchCharacterData(true);
+            } else if (!data.success) {
                 showWarningMessage(data.error || 'Błąd podczas zamiany przedmiotów');
             }
         } catch (error) {
             showWarningMessage('Wystąpił błąd podczas zamiany przedmiotów');
         }
-        if (ActionQueue.queue.length === 0) await fetchInventory();
+        
+        if (ActionQueue.queue.length === 0) {
+            await fetchInventory();
+            // ZDEJMUJEMY BLOKADĘ! Gracz znów może przenosić myszką
+            GameState.isInventoryActionLocked = false; 
+        }
     });
 }
 
