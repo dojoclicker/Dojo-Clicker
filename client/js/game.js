@@ -2324,7 +2324,7 @@ function consumeItem(inventoryId) {
 
 function performItemSwap(inventoryId, slotTarget, backpackIndexTarget = null, targetItemId = null) {
     const item1 = GameState.inventoryData.find(i => i.id === inventoryId);
-    
+
     // BEZPIECZNIK 1: Wyszukiwanie ostatecznego celu
     let realTargetItem = null;
     if (targetItemId) {
@@ -2341,12 +2341,29 @@ function performItemSwap(inventoryId, slotTarget, backpackIndexTarget = null, ta
 
     // OPTYMISTYCZNA ZAMIANA W PAMIĘCI
     if (item1 && realTargetItem) {
-        const tempSlot = item1.equipped_slot;
-        const tempIndex = item1.backpack_index;
-        item1.equipped_slot = realTargetItem.equipped_slot;
-        item1.backpack_index = realTargetItem.backpack_index;
-        realTargetItem.equipped_slot = tempSlot;
-        realTargetItem.backpack_index = tempIndex;
+        // 🔴 NOWE: Obsługa lokalnego łączenia przedmiotów (Stackowania)
+        const isStackable = item1.item_templates?.category === 'consumable' || item1.item_templates?.category === 'special_consumable';
+        const isSameItem = item1.item_template_id === realTargetItem.item_template_id;
+
+        if (isStackable && isSameItem && item1.id !== realTargetItem.id) {
+            const totalQty = Number(item1.quantity) + Number(realTargetItem.quantity);
+            if (totalQty <= 99) {
+                realTargetItem.quantity = totalQty.toString();
+                // Usuwamy lokalnie przenoszony przedmiot, bo połączył się z celem
+                GameState.inventoryData = GameState.inventoryData.filter(i => i.id !== item1.id);
+            } else {
+                realTargetItem.quantity = '99';
+                item1.quantity = (totalQty - 99).toString();
+            }
+        } else {
+            // Standardowa zamiana (Swap)
+            const tempSlot = item1.equipped_slot;
+            const tempIndex = item1.backpack_index;
+            item1.equipped_slot = realTargetItem.equipped_slot;
+            item1.backpack_index = realTargetItem.backpack_index;
+            realTargetItem.equipped_slot = tempSlot;
+            realTargetItem.backpack_index = tempIndex;
+        }
     } else if (item1) {
         item1.equipped_slot = slotTarget === 'backpack' ? null : slotTarget;
         item1.backpack_index = backpackIndexTarget ? parseInt(backpackIndexTarget) : null;
@@ -2382,9 +2399,14 @@ function performItemSwap(inventoryId, slotTarget, backpackIndexTarget = null, ta
         }
         
         // KRYTYCZNE ZABEZPIECZENIE PŁYNNOŚCI:
-        // Pobieramy dane z serwera DOPÓKI Twoja kolejka akcji na 100% się nie opróżni (nie przestaniesz przeciągać!)
         if (ActionQueue.queue.length === 0) {
             await fetchInventory(true);
+            
+            // 🔴 NOWE: Twarde odświeżenie interfejsu po cichej synchronizacji bazy
+            renderInventory(GameState.inventoryData);
+            const activeTabLocal = localStorage.getItem('active_game_tab');
+            if (activeTabLocal === 'bank' && typeof renderBank === 'function') renderBank();
+            if (activeTabLocal === 'shop' && typeof renderShopBackpack === 'function') renderShopBackpack();
         }
     });
 }
