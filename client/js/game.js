@@ -6,6 +6,8 @@
 // --- 1. & 2. STAN GRACZA I SYSTEMU (GameState) ---
 const GameState = {
     isInventoryActionLocked: false,
+    isDragging: false,
+    needsRender: false,
     isPlayerHospitalized: false,
     isPlayerTraining: false,
     isWorkMinigameActive: false,
@@ -1312,6 +1314,8 @@ function getDefaultSlotText(slotId) {
 }
 
 function renderInventory(items) {
+    if (GameState.isDragging) { GameState.needsRender = true; return; } // 🛡️ TARCZA
+    
     const equipmentSlots = document.querySelectorAll('[data-slot]');
     const inventoryGrid = document.querySelector('.inventory-panel .inventory-grid');
     
@@ -1443,6 +1447,8 @@ function createItemCard(item) {
             e.preventDefault();
             return;
         }
+        GameState.isDragging = true;
+        
         e.dataTransfer.setData('inventory_id', item.id);
         e.dataTransfer.setData('template_id', item.item_template_id);
         e.dataTransfer.setData('item_name', item.item_templates?.name);
@@ -1504,6 +1510,18 @@ function createItemCard(item) {
     });
 
     card.addEventListener('dragend', function() {
+        GameState.isDragging = false; // 🔴 ZDEJMUJEMY BLOKADĘ
+        
+        // 🔴 Jeśli w trakcie przeciągania kod próbował przerysować ekwipunek, robimy to teraz bezpiecznie!
+        if (GameState.needsRender) {
+            GameState.needsRender = false;
+            if (GameState.inventoryData) renderInventory(GameState.inventoryData);
+            
+            const activeTab = localStorage.getItem('active_game_tab');
+            if (activeTab === 'bank' && typeof renderBank === 'function') renderBank();
+            if (activeTab === 'shop' && typeof renderShopBackpack === 'function') renderShopBackpack();
+        }
+
         const tooltip = document.getElementById('global-tooltip');
         if (tooltip) {
             tooltip.style.opacity = '0';
@@ -1617,6 +1635,8 @@ function renderShopItems() {
 }
 
 function renderShopBackpack() {
+    if (GameState.isDragging) { GameState.needsRender = true; return; } // 🛡️ TARCZA
+    
     const grid = document.getElementById('shop-backpack-grid');
     if (!grid) return;
     const backpackItems = (GameState.inventoryData || []).filter(item => item.equipped_slot === null);
@@ -1855,7 +1875,9 @@ function getBankLimit(level) {
 }
 
 function renderBankSlots() {
-    const bankGrid = document.getElementById('bank-items-grid');
+    if (GameState.isDragging) { GameState.needsRender = true; return; } // 🛡️ TARCZA
+    
+    const bankGrid = document.getElementById('bank-items-grid')
     if (!bankGrid) return;
 
     bankGrid.innerHTML = '';
@@ -1910,6 +1932,8 @@ function renderBankSlots() {
 }
 
 function renderBankBackpack() {
+    if (GameState.isDragging) { GameState.needsRender = true; return; } // 🛡️ TARCZA
+    
     const grid = document.getElementById('bank-backpack-grid');
     if (!grid) return;
     
