@@ -1458,8 +1458,9 @@ function createItemCard(item) {
         }
     });
 
-    // --- NOWY, ULTRASZYBKI SYSTEM KLIKNIĘĆ ---
-    let lastClickTime = 0;
+    // --- NOWY, NIEZAWODNY SYSTEM KLIKNIĘĆ (Zastępuje natywny dblclick) ---
+    let clickTimeout = null;
+    let clickCount = 0;
 
     card.addEventListener('click', function(e) {
         e.preventDefault();
@@ -1472,21 +1473,22 @@ function createItemCard(item) {
             const splitAmount = prompt(`Ile sztuk chcesz wydzielić? (Max: ${parseInt(item.quantity) - 1})`, "1");
             if (splitAmount && !isNaN(splitAmount) && parseInt(splitAmount) > 0 && parseInt(splitAmount) < parseInt(item.quantity)) {
                 const activeTab = localStorage.getItem('active_game_tab');
-                if (activeTab === 'bank') {
-                    if (typeof splitBankItem === 'function') splitBankItem(item.id, splitAmount);
-                } else {
-                    splitItem(item.id, splitAmount);
-                }
+                if (activeTab === 'bank' && typeof splitBankItem === 'function') splitBankItem(item.id, splitAmount);
+                else splitItem(item.id, splitAmount);
             }
             return;
         }
 
-        // 2. Symulacja błyskawicznego podwójnego kliknięcia (bez blokad przeglądarki!)
-        const currentTime = new Date().getTime();
-        const timeSinceLastClick = currentTime - lastClickTime;
-
-        if (timeSinceLastClick < 400) {
-            // WYKRYTO DWUKLIK!
+        // 2. Symulacja błyskawicznego podwójnego kliknięcia
+        clickCount++;
+        if (clickCount === 1) {
+            clickTimeout = setTimeout(() => {
+                clickCount = 0; // Reset po 300ms, anuluje dwuklik
+            }, 300);
+        } else if (clickCount === 2) {
+            clearTimeout(clickTimeout);
+            clickCount = 0;
+            
             window.lockTooltipsTemporarily(); 
             const activeTab = localStorage.getItem('active_game_tab');
             
@@ -1498,12 +1500,6 @@ function createItemCard(item) {
             } else {
                 consumeItem(item.id); 
             }
-            
-            // Resetujemy czas, by kolejne kliknięcie było znów traktowane jako pierwsze
-            lastClickTime = 0; 
-        } else {
-            // Pierwsze kliknięcie - rejestrujemy czas
-            lastClickTime = currentTime;
         }
     });
 
@@ -1714,7 +1710,7 @@ function buyItem(item) {
     playerDailyBuys[item.id] = alreadyBought + 1;
     GameState.playerCurrentCoins -= Number(item.price);
     
-    // AKTUALIZACJA BEZ NISZCZENIA PRZYCISKÓW
+    // AKTUALIZACJA BEZ NISZCZENIA PRZYCISKÓW SKLEPU
     document.querySelectorAll('.coins').forEach(el => el.textContent = `💰 Monety: ${GameState.playerCurrentCoins}`);
     const bankCoinsEl = document.getElementById('bank-coins-display');
     if (bankCoinsEl) bankCoinsEl.textContent = `${GameState.playerCurrentCoins} 💰`;
@@ -1743,12 +1739,34 @@ function buyItem(item) {
         }
     });
 
+    // NATYCHMIASTOWA POJAWIENIE SIĘ PRZEDMIOTU W PLECACZKU (Lokalnie)
+    const isStackable = item.category === 'consumable' || item.category === 'special_consumable';
+    const backpackItems = GameState.inventoryData.filter(i => i.equipped_slot === null);
+    let existingItem = backpackItems.find(i => i.item_template_id === item.id);
+
+    if (existingItem && isStackable && Number(existingItem.quantity) < 99) {
+        existingItem.quantity = (Number(existingItem.quantity) + 1).toString();
+    } else {
+        const occupied = backpackItems.map(i => i.backpack_index);
+        let freeIdx = 1; while (occupied.includes(freeIdx)) freeIdx++;
+        GameState.inventoryData.push({
+            id: 'temp-' + Date.now() + Math.random(), // Tymczasowe ID
+            item_template_id: item.id,
+            quantity: '1',
+            equipped_slot: null,
+            backpack_index: freeIdx,
+            item_templates: item
+        });
+    }
+    if (localStorage.getItem('active_game_tab') === 'shop') renderShopBackpack();
+
+    // Wysłanie zapytania w tło
     ActionQueue.add(async () => {
         const res = await apiCall('/api/shop/buy', 'POST', { template_id: item.id });
         if (!res || !res.success) showWarningMessage(res?.error || 'Błąd zakupu');
         
         if (ActionQueue.queue.length === 0) {
-            await fetchInventory();
+            await fetchInventory(true); // Ciche pobranie dla synchronizacji ID
             if (localStorage.getItem('active_game_tab') === 'shop') renderShopBackpack();
         }
     });
@@ -1975,7 +1993,40 @@ function transferBankItem(inventoryId, targetPanel, amount, targetIndex = null) 
     const item = GameState.inventoryData[itemIndex];
     const transQty = amount === 'all' ? Number(item.quantity) : Number(amount);
 
+    // 1. Natychmiast ukrywamy/odejmujemy ze źródła
     if (!updateLocalItemQuantity(inventoryId, -transQty)) return;
+
+    // 2. Natychmiast dodajemy/pokazujemy w celu
+    const targetItems = GameState.inventoryData.filter(i => i.equipped_slot === (targetPanel === 'bank' ? 'bank' : null));
+    const isStackable = item.item_templates.category === 'consumable' || item.item_templates.category === 'special_consumable';
+    
+    let added = false;
+    if (isStackable) {
+        let targetStack = targetItems.find(i => i.item_template_id === item.item_template_id && Number(i.quantity) + transQty <= 99);
+        if (targetStack) {
+            targetStack.quantity = (Number(targetStack.quantity) + transQty).toString();
+            added = true;
+        }
+    }
+    if (!added) {
+        const occupied = targetItems.map(i => i.backpack_index);
+        let freeIdx = targetIndex ? parseInt(targetIndex) : 1;
+        while (occupied.includes(freeIdx) && !targetIndex) freeIdx++;
+        
+        GameState.inventoryData.push({
+            ...item,
+            id: 'temp-' + Date.now() + Math.random(), // Tymczasowe ID do czasu odpowiedzi serwera
+            quantity: transQty.toString(),
+            equipped_slot: targetPanel === 'bank' ? 'bank' : null,
+            backpack_index: freeIdx
+        });
+    }
+
+    // Odświeżamy ekrany banku w locie
+    if (localStorage.getItem('active_game_tab') === 'bank') {
+        renderBankSlots();
+        renderBankBackpack();
+    }
 
     ActionQueue.add(async () => {
         const res = await apiCall('/api/bank/transfer_item', 'POST', {
@@ -1984,8 +2035,7 @@ function transferBankItem(inventoryId, targetPanel, amount, targetIndex = null) 
         if (!res || !res.success) showWarningMessage(res?.error || 'Błąd transferu');
         
         if (ActionQueue.queue.length === 0) {
-            await fetchInventory(true); 
-            // Odświeżamy bank wizualnie po skończeniu klikania, aby pokazać przedmiot na nowym miejscu
+            await fetchInventory(true); // Cicha synchronizacja po zakończeniu "strzelania z myszki"
             if (localStorage.getItem('active_game_tab') === 'bank') renderBank();
         }
     });
@@ -2272,33 +2322,10 @@ function consumeItem(inventoryId) {
     });
 }
 
-function transferBankItem(inventoryId, targetPanel, amount, targetIndex = null) {
-    window.lockTooltipsTemporarily();
-    const itemIndex = GameState.inventoryData.findIndex(i => i.id === inventoryId);
-    if (itemIndex === -1) return;
-    const item = GameState.inventoryData[itemIndex];
-    const transQty = amount === 'all' ? Number(item.quantity) : Number(amount);
-
-    if (!updateLocalItemQuantity(inventoryId, -transQty)) return;
-
-    ActionQueue.add(async () => {
-        const res = await apiCall('/api/bank/transfer_item', 'POST', {
-            inventory_id: inventoryId, target_panel: targetPanel, amount: amount, target_index: targetIndex
-        });
-        if (!res || !res.success) showWarningMessage(res?.error || 'Błąd transferu');
-        
-        if (ActionQueue.queue.length === 0) {
-            await fetchInventory(true); 
-            // Odświeżamy bank wizualnie po skończeniu klikania, aby pokazać przedmiot na nowym miejscu
-            if (localStorage.getItem('active_game_tab') === 'bank') renderBank();
-        }
-    });
-}
-
 function performItemSwap(inventoryId, slotTarget, backpackIndexTarget = null, targetItemId = null) {
     const item1 = GameState.inventoryData.find(i => i.id === inventoryId);
     
-    // BEZPIECZNIK 1: Bezwzględne wyszukiwanie zajętego slota
+    // BEZPIECZNIK 1: Wyszukiwanie ostatecznego celu
     let realTargetItem = null;
     if (targetItemId) {
         realTargetItem = GameState.inventoryData.find(i => i.id === targetItemId);
@@ -2306,11 +2333,13 @@ function performItemSwap(inventoryId, slotTarget, backpackIndexTarget = null, ta
         realTargetItem = GameState.inventoryData.find(i => i.equipped_slot === null && i.backpack_index === parseInt(backpackIndexTarget) && i.id !== inventoryId);
     } else if (slotTarget !== 'backpack' && slotTarget !== 'bank') {
         realTargetItem = GameState.inventoryData.find(i => i.equipped_slot === slotTarget && i.id !== inventoryId);
+    } else if (slotTarget === 'bank' && backpackIndexTarget) {
+        realTargetItem = GameState.inventoryData.find(i => i.equipped_slot === 'bank' && i.backpack_index === parseInt(backpackIndexTarget) && i.id !== inventoryId);
     }
 
-    // BEZPIECZNIK 2: Gwarancja, że serwer dostanie ID drugiego przedmiotu do zamiany!
     const finalTargetItemId = realTargetItem ? realTargetItem.id : null;
 
+    // OPTYMISTYCZNA ZAMIANA W PAMIĘCI
     if (item1 && realTargetItem) {
         const tempSlot = item1.equipped_slot;
         const tempIndex = item1.backpack_index;
@@ -2323,6 +2352,7 @@ function performItemSwap(inventoryId, slotTarget, backpackIndexTarget = null, ta
         item1.backpack_index = backpackIndexTarget ? parseInt(backpackIndexTarget) : null;
     }
 
+    // BŁYSKAWICZNE ODŚWIEŻENIE LOKALNE
     renderInventory(GameState.inventoryData);
     const activeTab = localStorage.getItem('active_game_tab');
     if (activeTab === 'bank' && typeof renderBank === 'function') renderBank();
@@ -2337,7 +2367,7 @@ function performItemSwap(inventoryId, slotTarget, backpackIndexTarget = null, ta
                     item_id_1: inventoryId, 
                     slot_target: slotTarget, 
                     backpack_index_target: backpackIndexTarget ? parseInt(backpackIndexTarget) : null, 
-                    item_id_2: finalTargetItemId // ZMIANA: Wysyłamy zawsze poprawne ID celu!
+                    item_id_2: finalTargetItemId 
                 })
             });
             const data = await response.json();
@@ -2351,6 +2381,8 @@ function performItemSwap(inventoryId, slotTarget, backpackIndexTarget = null, ta
             showWarningMessage('Wystąpił błąd podczas zamiany przedmiotów');
         }
         
+        // KRYTYCZNE ZABEZPIECZENIE PŁYNNOŚCI:
+        // Pobieramy dane z serwera DOPÓKI Twoja kolejka akcji na 100% się nie opróżni (nie przestaniesz przeciągać!)
         if (ActionQueue.queue.length === 0) {
             await fetchInventory(true);
         }
