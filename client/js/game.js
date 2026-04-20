@@ -1699,22 +1699,39 @@ function buyItem(item) {
     playerDailyBuys[item.id] = alreadyBought + 1;
     GameState.playerCurrentCoins -= Number(item.price);
     
-    renderShopItems(); 
+    // AKTUALIZACJA BEZ NISZCZENIA PRZYCISKÓW
     document.querySelectorAll('.coins').forEach(el => el.textContent = `💰 Monety: ${GameState.playerCurrentCoins}`);
     const bankCoinsEl = document.getElementById('bank-coins-display');
     if (bankCoinsEl) bankCoinsEl.textContent = `${GameState.playerCurrentCoins} 💰`;
 
+    const remaining = Math.max(0, maxDaily - playerDailyBuys[item.id]);
+    document.querySelectorAll('.shop-item-card').forEach(card => {
+        const templateData = card.getAttribute('data-item-template');
+        if (templateData) {
+            const tItem = JSON.parse(decodeURIComponent(templateData));
+            const buyBtn = card.querySelector('.shop-buy-btn');
+            
+            if (tItem.id === item.id) {
+                const limitText = card.querySelector('div[style*="font-size: 0.75rem"]');
+                if (limitText) {
+                    limitText.textContent = `Dziś: ${remaining} / ${maxDaily} szt.`;
+                    limitText.style.color = remaining > 0 ? 'var(--success)' : 'var(--error)';
+                }
+                if (GameState.playerCurrentCoins < Number(item.price) || remaining <= 0) {
+                    buyBtn.disabled = true;
+                    buyBtn.textContent = remaining <= 0 ? 'Limit dobowy' : 'Brak monet';
+                }
+            } else if (GameState.playerCurrentCoins < Number(tItem.price) && !buyBtn.disabled) {
+                 buyBtn.disabled = true;
+                 buyBtn.textContent = 'Brak monet';
+            }
+        }
+    });
+
     ActionQueue.add(async () => {
         const res = await apiCall('/api/shop/buy', 'POST', { template_id: item.id });
-        if (!res || !res.success) {
-            playerDailyBuys[item.id] -= 1;
-            GameState.playerCurrentCoins += Number(item.price);
-            renderShopItems();
-            document.querySelectorAll('.coins').forEach(el => el.textContent = `💰 Monety: ${GameState.playerCurrentCoins}`);
-            if (bankCoinsEl) bankCoinsEl.textContent = `${GameState.playerCurrentCoins} 💰`;
-            showWarningMessage(res?.error || 'Błąd zakupu');
-        }
-        // Pobieramy dane z serwera tylko, gdy przestałeś szybko klikać
+        if (!res || !res.success) showWarningMessage(res?.error || 'Błąd zakupu');
+        
         if (ActionQueue.queue.length === 0) {
             await fetchInventory();
             if (localStorage.getItem('active_game_tab') === 'shop') renderShopBackpack();
@@ -1731,10 +1748,9 @@ function sellItem(inventoryId, amount = 1) {
     const price = Number(item.item_templates?.buy_price_coins || 0) / 2;
     const totalProfit = price * sellQty;
 
-    // Natychmiastowa aktualizacja lokalna (bez przeładowywania siatki!)
+    // Natychmiastowa aktualizacja cyferki na obrazku (bez przeładowywania siatki!)
     if (!updateLocalItemQuantity(inventoryId, -sellQty)) return;
 
-    // Aktualizujemy natychmiast monety na ekranie
     GameState.playerCurrentCoins += totalProfit;
     document.querySelectorAll('.coins').forEach(el => el.textContent = `💰 Monety: ${GameState.playerCurrentCoins}`);
     const bankCoinsEl = document.getElementById('bank-coins-display');
@@ -1746,7 +1762,6 @@ function sellItem(inventoryId, amount = 1) {
             showWarningMessage(res?.error || 'Błąd sprzedaży');
         }
         
-        // Dopiero gdy gracz przestanie szaleńczo klikać, pobieramy dane z serwera dla bezpieczeństwa
         if (ActionQueue.queue.length === 0) {
             await fetchInventory();
             if (localStorage.getItem('active_game_tab') === 'shop') renderShopBackpack();
@@ -2239,27 +2254,30 @@ function consumeItem(inventoryId) {
     const tooltip = document.getElementById('global-tooltip');
     if (tooltip) { tooltip.style.opacity = '0'; tooltip.style.visibility = 'hidden'; tooltip.dataset.currentCard = ''; }
     
-    // Natychmiastowe zjedzenie lokalnie (cyferka w dół)
     if (!updateLocalItemQuantity(inventoryId, -1)) return;
 
     ActionQueue.add(async () => {
         const res = await apiCall('/api/inventory/consume', 'POST', { inventory_id: inventoryId });
         if (res && res.success && res.data.character_updates) {
-            Object.assign(GameState.playerCurrentStats, res.data.character_updates);
+            // Aktualizujemy tylko paski zdrowia na interfejsie bez mrugania plecakiem
+            GameState.playerCurrentStats.current_hp = res.data.character_updates.hp;
+            GameState.playerCurrentStats.current_mp = res.data.character_updates.mp;
+            GameState.playerCurrentStats.current_stamina = res.data.character_updates.stamina;
             GameState.playerCurrentCoins = Number(res.data.character_updates.coins || GameState.playerCurrentCoins);
             
-            // Aktualizujemy HP/MP na ekranie dopiero, jak puszczą lagi z serwera
-            if (ActionQueue.queue.length === 0) {
-                updateUIWithCharacterData(GameState.playerCurrentStats);
-            }
+            const data = GameState.playerCurrentStats;
+            const hpBonus = data.equip_stats?.bonus_hp || '0';
+            const mpBonus = data.equip_stats?.bonus_mp || '0';
+            updateResourceBar('hp', data.current_hp, data.max_hp, hpBonus, data.equip_stats?.breakdown?.bonus_hp || []);
+            updateResourceBar('mp', data.current_mp, data.max_mp, mpBonus, data.equip_stats?.breakdown?.bonus_mp || []);
+            updateResourceBar('stamina', data.current_stamina, data.max_stamina, '0', []);
         } else if (!res || !res.success) {
             showWarningMessage(res?.error || 'Błąd użycia przedmiotu');
         }
 
         if (ActionQueue.queue.length === 0) {
             await fetchInventory();
-            const activeTab = localStorage.getItem('active_game_tab');
-            if (activeTab === 'equipment') renderInventory(GameState.inventoryData);
+            if (localStorage.getItem('active_game_tab') === 'equipment') renderInventory(GameState.inventoryData);
         }
     });
 }
@@ -2270,7 +2288,6 @@ function transferBankItem(inventoryId, targetPanel, amount, targetIndex = null) 
     const item = GameState.inventoryData[itemIndex];
     const transQty = amount === 'all' ? Number(item.quantity) : Number(amount);
 
-    // Błyskawiczne zniknięcie / zmniejszenie stacka
     if (!updateLocalItemQuantity(inventoryId, -transQty)) return;
 
     ActionQueue.add(async () => {
@@ -2287,19 +2304,27 @@ function transferBankItem(inventoryId, targetPanel, amount, targetIndex = null) 
 }
 
 function performItemSwap(inventoryId, slotTarget, backpackIndexTarget = null, targetItemId = null) {
-    // KRYTYCZNE ZABEZPIECZENIE: Zamykamy możliwość "ciągnięcia" innych przedmiotów na czas tej operacji
     GameState.isInventoryActionLocked = true; 
 
-    // Optymistyczna zamiana lokalna!
     const item1 = GameState.inventoryData.find(i => i.id === inventoryId);
-    const item2 = targetItemId ? GameState.inventoryData.find(i => i.id === targetItemId) : null;
-    if (item1 && item2) {
+    
+    // BEZPIECZNIK: Bezwzględne wyszukiwanie zajętego slota
+    let realTargetItem = null;
+    if (targetItemId) {
+        realTargetItem = GameState.inventoryData.find(i => i.id === targetItemId);
+    } else if (slotTarget === 'backpack' && backpackIndexTarget) {
+        realTargetItem = GameState.inventoryData.find(i => i.equipped_slot === null && i.backpack_index === parseInt(backpackIndexTarget) && i.id !== inventoryId);
+    } else if (slotTarget !== 'backpack' && slotTarget !== 'bank') {
+        realTargetItem = GameState.inventoryData.find(i => i.equipped_slot === slotTarget && i.id !== inventoryId);
+    }
+
+    if (item1 && realTargetItem) {
         const tempSlot = item1.equipped_slot;
         const tempIndex = item1.backpack_index;
-        item1.equipped_slot = item2.equipped_slot;
-        item1.backpack_index = item2.backpack_index;
-        item2.equipped_slot = tempSlot;
-        item2.backpack_index = tempIndex;
+        item1.equipped_slot = realTargetItem.equipped_slot;
+        item1.backpack_index = realTargetItem.backpack_index;
+        realTargetItem.equipped_slot = tempSlot;
+        realTargetItem.backpack_index = tempIndex;
     } else if (item1) {
         item1.equipped_slot = slotTarget === 'backpack' ? null : slotTarget;
         item1.backpack_index = backpackIndexTarget ? parseInt(backpackIndexTarget) : null;
@@ -2330,7 +2355,6 @@ function performItemSwap(inventoryId, slotTarget, backpackIndexTarget = null, ta
         
         if (ActionQueue.queue.length === 0) {
             await fetchInventory();
-            // ZDEJMUJEMY BLOKADĘ! Gracz znów może przenosić myszką
             GameState.isInventoryActionLocked = false; 
         }
     });
