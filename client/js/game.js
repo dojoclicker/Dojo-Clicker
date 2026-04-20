@@ -2349,23 +2349,22 @@ function consumeItem(inventoryId) {
 function performItemSwap(inventoryId, slotTarget, backpackIndexTarget = null, targetItemId = null) {
     const item1 = GameState.inventoryData.find(i => i.id === inventoryId);
 
-    // BEZPIECZNIK 1: Wyszukiwanie ostatecznego celu
+    // BEZPIECZNIK 1: Wyszukiwanie ostatecznego celu z rygorystycznym sprawdzeniem typów!
     let realTargetItem = null;
     if (targetItemId) {
         realTargetItem = GameState.inventoryData.find(i => i.id === targetItemId);
-    } else if (slotTarget === 'backpack' && backpackIndexTarget) {
-        realTargetItem = GameState.inventoryData.find(i => i.equipped_slot === null && i.backpack_index === parseInt(backpackIndexTarget) && i.id !== inventoryId);
+    } else if (slotTarget === 'backpack' && backpackIndexTarget !== null) {
+        realTargetItem = GameState.inventoryData.find(i => i.equipped_slot === null && parseInt(i.backpack_index) === parseInt(backpackIndexTarget) && i.id !== inventoryId);
     } else if (slotTarget !== 'backpack' && slotTarget !== 'bank') {
         realTargetItem = GameState.inventoryData.find(i => i.equipped_slot === slotTarget && i.id !== inventoryId);
-    } else if (slotTarget === 'bank' && backpackIndexTarget) {
-        realTargetItem = GameState.inventoryData.find(i => i.equipped_slot === 'bank' && i.backpack_index === parseInt(backpackIndexTarget) && i.id !== inventoryId);
+    } else if (slotTarget === 'bank' && backpackIndexTarget !== null) {
+        realTargetItem = GameState.inventoryData.find(i => i.equipped_slot === 'bank' && parseInt(i.backpack_index) === parseInt(backpackIndexTarget) && i.id !== inventoryId);
     }
 
     const finalTargetItemId = realTargetItem ? realTargetItem.id : null;
 
     // OPTYMISTYCZNA ZAMIANA W PAMIĘCI
     if (item1 && realTargetItem) {
-        // 🔴 NOWE: Obsługa lokalnego łączenia przedmiotów (Stackowania)
         const isStackable = item1.item_templates?.category === 'consumable' || item1.item_templates?.category === 'special_consumable';
         const isSameItem = item1.item_template_id === realTargetItem.item_template_id;
 
@@ -2373,28 +2372,26 @@ function performItemSwap(inventoryId, slotTarget, backpackIndexTarget = null, ta
             const totalQty = Number(item1.quantity) + Number(realTargetItem.quantity);
             if (totalQty <= 99) {
                 realTargetItem.quantity = totalQty.toString();
-                // Usuwamy lokalnie przenoszony przedmiot, bo połączył się z celem
                 GameState.inventoryData = GameState.inventoryData.filter(i => i.id !== item1.id);
             } else {
                 realTargetItem.quantity = '99';
                 item1.quantity = (totalQty - 99).toString();
             }
         } else {
-            // Standardowa zamiana (Swap)
             const tempSlot = item1.equipped_slot;
             const tempIndex = item1.backpack_index;
             item1.equipped_slot = realTargetItem.equipped_slot;
-            item1.backpack_index = realTargetItem.backpack_index;
+            item1.backpack_index = parseInt(realTargetItem.backpack_index);
             realTargetItem.equipped_slot = tempSlot;
-            realTargetItem.backpack_index = tempIndex;
+            realTargetItem.backpack_index = parseInt(tempIndex);
         }
     } else if (item1) {
         item1.equipped_slot = slotTarget === 'backpack' ? null : slotTarget;
-        item1.backpack_index = backpackIndexTarget ? parseInt(backpackIndexTarget) : null;
+        item1.backpack_index = backpackIndexTarget !== null ? parseInt(backpackIndexTarget) : null;
     }
 
-    // BŁYSKAWICZNE ODŚWIEŻENIE LOKALNE
-    renderInventory(GameState.inventoryData);
+    // Błyskawiczne odświeżenie zażąda renderowania, ale Tarcza powstrzyma destrukcję dopóki nie puścisz myszki!
+    if (GameState.inventoryData) renderInventory(GameState.inventoryData);
     const activeTab = localStorage.getItem('active_game_tab');
     if (activeTab === 'bank' && typeof renderBank === 'function') renderBank();
     if (activeTab === 'shop' && typeof renderShopBackpack === 'function') renderShopBackpack();
@@ -2422,11 +2419,9 @@ function performItemSwap(inventoryId, slotTarget, backpackIndexTarget = null, ta
             showWarningMessage('Wystąpił błąd podczas zamiany przedmiotów');
         }
         
-        // KRYTYCZNE ZABEZPIECZENIE PŁYNNOŚCI:
         if (ActionQueue.queue.length === 0) {
             await fetchInventory(true);
-            
-            // 🔴 NOWE: Twarde odświeżenie interfejsu po cichej synchronizacji bazy
+            // Re-render końcowy po upewnieniu się, że baza przetrawiła operację
             renderInventory(GameState.inventoryData);
             const activeTabLocal = localStorage.getItem('active_game_tab');
             if (activeTabLocal === 'bank' && typeof renderBank === 'function') renderBank();

@@ -1025,19 +1025,20 @@ app.post('/api/inventory/swap', authenticateToken, async (req, res) => {
       }
     }
 
+    // 🔴 NOWE: Pancerne wyszukiwanie przedmiotu docelowego (Ignoruje zduplikowane wiersze bazy)
     let wasOccupied = false;
     let targetItem = null;
     
     if (slot_target === 'backpack' && backpack_index_target !== null && backpack_index_target !== undefined) {
-      const { data: existingBackpackItem } = await supabase
+      const { data: existingItems } = await supabase
         .from('inventory').select('*, item_templates(*)').eq('character_id', character.id).is('equipped_slot', null)
-        .eq('backpack_index', backpack_index_target).neq('id', item_id_1).maybeSingle();
-      if (existingBackpackItem) { targetItem = existingBackpackItem; wasOccupied = true; }
+        .eq('backpack_index', backpack_index_target).neq('id', item_id_1).limit(1); // Zamiast .maybeSingle()!
+      if (existingItems && existingItems.length > 0) { targetItem = existingItems[0]; wasOccupied = true; }
     } else if (slot_target !== 'backpack' && slot_target !== 'bank') {
-      const { data: existingItem } = await supabase
-        .from('inventory').select('id').eq('character_id', character.id).eq('equipped_slot', slot_target)
-        .neq('id', item_id_1).maybeSingle();
-      if (existingItem) wasOccupied = true;
+      const { data: existingItems } = await supabase
+        .from('inventory').select('*, item_templates(*)').eq('character_id', character.id).eq('equipped_slot', slot_target)
+        .neq('id', item_id_1).limit(1); // Zamiast .maybeSingle()!
+      if (existingItems && existingItems.length > 0) { targetItem = existingItems[0]; wasOccupied = true; }
     }
 
     if (targetItem && draggedItem.equipped_slot !== null && slot_target === 'backpack') {
