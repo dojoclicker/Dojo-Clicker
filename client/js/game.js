@@ -2296,11 +2296,9 @@ function transferBankItem(inventoryId, targetPanel, amount, targetIndex = null) 
 }
 
 function performItemSwap(inventoryId, slotTarget, backpackIndexTarget = null, targetItemId = null) {
-    // GameState.isInventoryActionLocked = true; 
-
     const item1 = GameState.inventoryData.find(i => i.id === inventoryId);
     
-    // BEZPIECZNIK: Bezwzględne wyszukiwanie zajętego slota
+    // BEZPIECZNIK 1: Bezwzględne wyszukiwanie zajętego slota
     let realTargetItem = null;
     if (targetItemId) {
         realTargetItem = GameState.inventoryData.find(i => i.id === targetItemId);
@@ -2309,6 +2307,9 @@ function performItemSwap(inventoryId, slotTarget, backpackIndexTarget = null, ta
     } else if (slotTarget !== 'backpack' && slotTarget !== 'bank') {
         realTargetItem = GameState.inventoryData.find(i => i.equipped_slot === slotTarget && i.id !== inventoryId);
     }
+
+    // BEZPIECZNIK 2: Gwarancja, że serwer dostanie ID drugiego przedmiotu do zamiany!
+    const finalTargetItemId = realTargetItem ? realTargetItem.id : null;
 
     if (item1 && realTargetItem) {
         const tempSlot = item1.equipped_slot;
@@ -2332,7 +2333,12 @@ function performItemSwap(inventoryId, slotTarget, backpackIndexTarget = null, ta
             const response = await fetch(`${API_BASE_URL}/api/inventory/swap`, {
                 method: 'POST',
                 headers: { 'Authorization': `Bearer ${localStorage.getItem('session_token')}`, 'Content-Type': 'application/json' },
-                body: JSON.stringify({ item_id_1: inventoryId, slot_target: slotTarget, backpack_index_target: backpackIndexTarget ? parseInt(backpackIndexTarget) : null, item_id_2: targetItemId })
+                body: JSON.stringify({ 
+                    item_id_1: inventoryId, 
+                    slot_target: slotTarget, 
+                    backpack_index_target: backpackIndexTarget ? parseInt(backpackIndexTarget) : null, 
+                    item_id_2: finalTargetItemId // ZMIANA: Wysyłamy zawsze poprawne ID celu!
+                })
             });
             const data = await response.json();
             
@@ -2347,7 +2353,6 @@ function performItemSwap(inventoryId, slotTarget, backpackIndexTarget = null, ta
         
         if (ActionQueue.queue.length === 0) {
             await fetchInventory(true);
-            // GameState.isInventoryActionLocked = false; 
         }
     });
 }

@@ -1067,12 +1067,15 @@ app.post('/api/inventory/swap', authenticateToken, async (req, res) => {
       }
     }
 
+    // NOWE: Niszczymy błędy nadpisywania slotów prosto na serwerze!
+    const secureTargetItemId = item_id_2 || (targetItem ? targetItem.id : null);
+
     const { error: swapError } = await supabase.rpc('swap_items', {
         p_character_id: character.id, 
         p_item_id_1: item_id_1, 
         p_slot_target: slot_target,
         p_backpack_index_target: backpack_index_target || null, 
-        p_item_id_2: item_id_2 || null
+        p_item_id_2: secureTargetItemId // <-- TERAZ SERWER NIGDY SIĘ NIE POMYLI
     });
 
     if (swapError) return res.status(500).json({ error: 'Błąd podczas zamiany przedmiotów' });
