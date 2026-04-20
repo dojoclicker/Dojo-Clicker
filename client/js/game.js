@@ -2346,10 +2346,12 @@ function consumeItem(inventoryId) {
     });
 }
 
-function performItemSwap(inventoryId, slotTarget, backpackIndexTarget = null, targetItemId = null) {
-    const item1 = GameState.inventoryData.find(i => i.id === inventoryId);
+async function performItemSwap(inventoryId, slotTarget, backpackIndexTarget = null, targetItemId = null) {
+    // 1. TARCZA: Natychmiast blokujemy interfejs, aby gracz nie mógł przeciągnąć niczego innego
+    GameState.isInventoryActionLocked = true;
+    document.body.style.cursor = 'wait'; // Zmieniamy kursor myszy na kółko ładowania
 
-    // BEZPIECZNIK 1: Wyszukiwanie ostatecznego celu z rygorystycznym sprawdzeniem typów!
+    // 2. Szukamy ostatecznego celu (do wysłania na serwer)
     let realTargetItem = null;
     if (targetItemId) {
         realTargetItem = GameState.inventoryData.find(i => i.id === targetItemId);
@@ -2363,71 +2365,46 @@ function performItemSwap(inventoryId, slotTarget, backpackIndexTarget = null, ta
 
     const finalTargetItemId = realTargetItem ? realTargetItem.id : null;
 
-    // OPTYMISTYCZNA ZAMIANA W PAMIĘCI
-    if (item1 && realTargetItem) {
-        const isStackable = item1.item_templates?.category === 'consumable' || item1.item_templates?.category === 'special_consumable';
-        const isSameItem = item1.item_template_id === realTargetItem.item_template_id;
-
-        if (isStackable && isSameItem && item1.id !== realTargetItem.id) {
-            const totalQty = Number(item1.quantity) + Number(realTargetItem.quantity);
-            if (totalQty <= 99) {
-                realTargetItem.quantity = totalQty.toString();
-                GameState.inventoryData = GameState.inventoryData.filter(i => i.id !== item1.id);
-            } else {
-                realTargetItem.quantity = '99';
-                item1.quantity = (totalQty - 99).toString();
+    try {
+        // 3. CZEKAMY NA SERWER (Brak optymistycznego rysowania!)
+        const response = await fetch(`${API_BASE_URL}/api/inventory/swap`, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${localStorage.getItem('session_token')}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+                item_id_1: inventoryId, 
+                slot_target: slotTarget, 
+                backpack_index_target: backpackIndexTarget ? parseInt(backpackIndexTarget) : null, 
+                item_id_2: finalTargetItemId 
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            // 4. Jeśli serwer powiedział "OK", pobieramy świeże, prawdziwe dane z bazy
+            await fetchInventory(true); // Pobieramy w tle (silently)
+            
+            // Jeśli założono/ściągnięto sprzęt, aktualizujemy statystyki
+            if (slotTarget !== 'backpack' && slotTarget !== 'bank') {
+                await fetchCharacterData(true);
             }
         } else {
-            const tempSlot = item1.equipped_slot;
-            const tempIndex = item1.backpack_index;
-            item1.equipped_slot = realTargetItem.equipped_slot;
-            item1.backpack_index = parseInt(realTargetItem.backpack_index);
-            realTargetItem.equipped_slot = tempSlot;
-            realTargetItem.backpack_index = parseInt(tempIndex);
+            showWarningMessage(data.error || 'Błąd podczas zamiany przedmiotów');
         }
-    } else if (item1) {
-        item1.equipped_slot = slotTarget === 'backpack' ? null : slotTarget;
-        item1.backpack_index = backpackIndexTarget !== null ? parseInt(backpackIndexTarget) : null;
-    }
+    } catch (error) {
+        showWarningMessage('Wystąpił błąd połączenia z serwerem');
+    } finally {
+        // 5. NA KONIEC ZAWSZE: Zdejmujemy blokadę i rysujemy to, co mamy w pamięci
+        // (Jeśli był błąd, przedmiot "odskoczy" na swoje stare miejsce - zero duchów!)
+        GameState.isInventoryActionLocked = false;
+        document.body.style.cursor = 'default';
 
-    // Błyskawiczne odświeżenie zażąda renderowania, ale Tarcza powstrzyma destrukcję dopóki nie puścisz myszki!
-    if (GameState.inventoryData) renderInventory(GameState.inventoryData);
-    const activeTab = localStorage.getItem('active_game_tab');
-    if (activeTab === 'bank' && typeof renderBank === 'function') renderBank();
-    if (activeTab === 'shop' && typeof renderShopBackpack === 'function') renderShopBackpack();
-
-    ActionQueue.add(async () => {
-        try {
-            const response = await fetch(`${API_BASE_URL}/api/inventory/swap`, {
-                method: 'POST',
-                headers: { 'Authorization': `Bearer ${localStorage.getItem('session_token')}`, 'Content-Type': 'application/json' },
-                body: JSON.stringify({ 
-                    item_id_1: inventoryId, 
-                    slot_target: slotTarget, 
-                    backpack_index_target: backpackIndexTarget ? parseInt(backpackIndexTarget) : null, 
-                    item_id_2: finalTargetItemId 
-                })
-            });
-            const data = await response.json();
-            
-            if (data.success && slotTarget !== 'backpack' && slotTarget !== 'bank') {
-                await fetchCharacterData(true);
-            } else if (!data.success) {
-                showWarningMessage(data.error || 'Błąd podczas zamiany przedmiotów');
-            }
-        } catch (error) {
-            showWarningMessage('Wystąpił błąd podczas zamiany przedmiotów');
-        }
+        renderInventory(GameState.inventoryData);
         
-        if (ActionQueue.queue.length === 0) {
-            await fetchInventory(true);
-            // Re-render końcowy po upewnieniu się, że baza przetrawiła operację
-            renderInventory(GameState.inventoryData);
-            const activeTabLocal = localStorage.getItem('active_game_tab');
-            if (activeTabLocal === 'bank' && typeof renderBank === 'function') renderBank();
-            if (activeTabLocal === 'shop' && typeof renderShopBackpack === 'function') renderShopBackpack();
-        }
-    });
+        const activeTabLocal = localStorage.getItem('active_game_tab');
+        if (activeTabLocal === 'bank' && typeof renderBank === 'function') renderBank();
+        if (activeTabLocal === 'shop' && typeof renderShopBackpack === 'function') renderShopBackpack();
+    }
 }
 
 function initializeDragAndDrop() {
