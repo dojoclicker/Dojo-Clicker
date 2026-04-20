@@ -148,6 +148,46 @@ function updateLocalItemQuantity(inventoryId, changeAmt) {
     return true;
 }
 
+// --- BLOKADA TOOLTIPÓW PRZY SZYBKIM KLIKANIU ---
+window.isTooltipLocked = false;
+window.lockTooltipsTemporarily = function() {
+    window.isTooltipLocked = true;
+    if (GameState.tooltipTimeout) clearTimeout(GameState.tooltipTimeout);
+    const tooltip = document.getElementById('global-tooltip');
+    if (tooltip) {
+        tooltip.style.opacity = '0';
+        tooltip.style.visibility = 'hidden';
+        tooltip.dataset.currentCard = '';
+    }
+    // Blokujemy tooltipy na równą sekundę od ostatniego kliknięcia
+    setTimeout(() => { window.isTooltipLocked = false; }, 1000);
+};
+
+// ZModyfikuj też updateLocalItemQuantity, aby ukrywał element łagodniej
+function updateLocalItemQuantity(inventoryId, changeAmt) {
+    const itemIndex = GameState.inventoryData.findIndex(i => i.id === inventoryId);
+    if (itemIndex === -1) return false;
+    
+    const item = GameState.inventoryData[itemIndex];
+    let currentQty = Number(item.quantity || 1);
+    let newQty = currentQty + changeAmt;
+    
+    if (newQty <= 0) {
+        GameState.inventoryData.splice(itemIndex, 1);
+        document.querySelectorAll(`[data-inventory-id="${inventoryId}"]`).forEach(el => {
+            // Zamiast kasować element, chowamy go i przepuszczamy kliknięcia (chroni przed lagiem!)
+            el.style.opacity = '0';
+            el.style.pointerEvents = 'none';
+        });
+    } else {
+        item.quantity = newQty.toString();
+        document.querySelectorAll(`[data-inventory-id="${inventoryId}"] .item-quantity`).forEach(el => {
+            el.textContent = newQty;
+        });
+    }
+    return true;
+}
+
 function checkAuthentication() {
     const sessionToken = localStorage.getItem('session_token');
     if (!sessionToken) {
@@ -1230,35 +1270,27 @@ function activateTab(tabName) {
 // ==========================================
 // 🎒 5. EKWIPUNEK I DRAG & DROP
 // ==========================================
-
-async function fetchInventory() {
+async function fetchInventory(silent = false) {
     const sessionToken = localStorage.getItem('session_token');
-    
     try {
         const response = await fetch(`${API_BASE_URL}/api/inventory`, {
             method: 'GET',
-            headers: {
-                'Authorization': `Bearer ${sessionToken}`,
-                'Content-Type': 'application/json'
-            }
+            headers: { 'Authorization': `Bearer ${sessionToken}`, 'Content-Type': 'application/json' }
         });
 
-        if (!response.ok) {
-            if (response.status === 401 || response.status === 403) {
-                localStorage.removeItem('session_token');
-                window.location.href = 'index.html';
-                return;
-            }
-            throw new Error(`Błąd HTTP: ${response.status}`);
-        }
+        if (!response.ok) throw new Error(`Błąd HTTP: ${response.status}`);
 
         const inventory = await response.json();
         GameState.inventoryData = inventory;
-        renderInventory(inventory);
         
+        // ZMIANA: Jeśli funkcja jest cicha, nie rysujemy na nowo, więc nie niszczymy elementu HTML!
+        if (!silent) {
+            renderInventory(inventory);
+            if (typeof renderShopBackpack === 'function' && localStorage.getItem('active_game_tab') === 'shop') renderShopBackpack();
+            if (typeof renderBankBackpack === 'function' && localStorage.getItem('active_game_tab') === 'bank') renderBankBackpack();
+        }
     } catch (error) {
         console.error('[Inventory] Błąd pobierania ekwipunku:', error);
-        showErrorMessage('Nie udało się pobrać ekwipunku. Spróbuj odświeżyć stronę.');
     }
 }
 
@@ -1455,13 +1487,7 @@ function createItemCard(item) {
         e.preventDefault();
         e.stopPropagation();
         
-        if (GameState.tooltipTimeout) clearTimeout(GameState.tooltipTimeout); 
-        const tooltip = document.getElementById('global-tooltip');
-        if (tooltip) {
-            tooltip.style.opacity = '0';
-            tooltip.style.visibility = 'hidden';
-            tooltip.dataset.currentCard = '';
-        }
+        window.lockTooltipsTemporarily(); // NOWE: Zablokuj tooltipy!
         
         const activeTab = localStorage.getItem('active_game_tab');
         if (activeTab === 'bank') {
@@ -1740,6 +1766,7 @@ function buyItem(item) {
 }
 
 function sellItem(inventoryId, amount = 1) {
+    window.lockTooltipsTemporarily();
     const itemIndex = GameState.inventoryData.findIndex(i => i.id === inventoryId);
     if (itemIndex === -1) return;
     const item = GameState.inventoryData[itemIndex];
@@ -1748,23 +1775,19 @@ function sellItem(inventoryId, amount = 1) {
     const price = Number(item.item_templates?.buy_price_coins || 0) / 2;
     const totalProfit = price * sellQty;
 
-    // Natychmiastowa aktualizacja cyferki na obrazku (bez przeładowywania siatki!)
     if (!updateLocalItemQuantity(inventoryId, -sellQty)) return;
 
     GameState.playerCurrentCoins += totalProfit;
     document.querySelectorAll('.coins').forEach(el => el.textContent = `💰 Monety: ${GameState.playerCurrentCoins}`);
-    const bankCoinsEl = document.getElementById('bank-coins-display');
-    if (bankCoinsEl) bankCoinsEl.textContent = `${GameState.playerCurrentCoins} 💰`;
 
     ActionQueue.add(async () => {
         const res = await apiCall('/api/shop/sell', 'POST', { inventory_id: inventoryId, amount: sellQty.toString() });
         if (!res || !res.success) {
             showWarningMessage(res?.error || 'Błąd sprzedaży');
+            await fetchCharacterData(true); 
         }
-        
         if (ActionQueue.queue.length === 0) {
-            await fetchInventory();
-            if (localStorage.getItem('active_game_tab') === 'shop') renderShopBackpack();
+            await fetchInventory(true); // <--- Ciche synchronizowanie
         }
     });
 }
@@ -1973,20 +1996,25 @@ async function upgradeBank(upgradeType) {
 }
 
 function transferBankItem(inventoryId, targetPanel, amount, targetIndex = null) {
-    const card = document.querySelector(`[data-inventory-id="${inventoryId}"]`);
-    if(card) card.style.opacity = '0.3'; // Natychmiastowy feedback wizualny
+    window.lockTooltipsTemporarily();
+    const itemIndex = GameState.inventoryData.findIndex(i => i.id === inventoryId);
+    if (itemIndex === -1) return;
+    const item = GameState.inventoryData[itemIndex];
+    const transQty = amount === 'all' ? Number(item.quantity) : Number(amount);
+
+    if (!updateLocalItemQuantity(inventoryId, -transQty)) return;
 
     ActionQueue.add(async () => {
         const res = await apiCall('/api/bank/transfer_item', 'POST', {
             inventory_id: inventoryId, target_panel: targetPanel, amount: amount, target_index: targetIndex
         });
-        
-        if (res && res.success) {
-            await fetchInventory();
-            if (localStorage.getItem('active_game_tab') === 'bank') renderBank();
-        } else {
-            if(card) card.style.opacity = '1';
+        if (!res || !res.success) {
             showWarningMessage(res?.error || 'Błąd transferu');
+        }
+        if (ActionQueue.queue.length === 0) {
+            await fetchInventory(true); 
+            // Odświeżamy bank wizualnie po skończeniu klikania, aby pokazać przedmiot na nowym miejscu
+            if (localStorage.getItem('active_game_tab') === 'bank') renderBank();
         }
     });
 }
@@ -2251,33 +2279,23 @@ function createItemTooltip(template) {
 }
 
 function consumeItem(inventoryId) {
-    const tooltip = document.getElementById('global-tooltip');
-    if (tooltip) { tooltip.style.opacity = '0'; tooltip.style.visibility = 'hidden'; tooltip.dataset.currentCard = ''; }
-    
+    window.lockTooltipsTemporarily();
     if (!updateLocalItemQuantity(inventoryId, -1)) return;
 
     ActionQueue.add(async () => {
         const res = await apiCall('/api/inventory/consume', 'POST', { inventory_id: inventoryId });
-        if (res && res.success && res.data.character_updates) {
-            // Aktualizujemy tylko paski zdrowia na interfejsie bez mrugania plecakiem
-            GameState.playerCurrentStats.current_hp = res.data.character_updates.hp;
-            GameState.playerCurrentStats.current_mp = res.data.character_updates.mp;
-            GameState.playerCurrentStats.current_stamina = res.data.character_updates.stamina;
-            GameState.playerCurrentCoins = Number(res.data.character_updates.coins || GameState.playerCurrentCoins);
-            
-            const data = GameState.playerCurrentStats;
-            const hpBonus = data.equip_stats?.bonus_hp || '0';
-            const mpBonus = data.equip_stats?.bonus_mp || '0';
-            updateResourceBar('hp', data.current_hp, data.max_hp, hpBonus, data.equip_stats?.breakdown?.bonus_hp || []);
-            updateResourceBar('mp', data.current_mp, data.max_mp, mpBonus, data.equip_stats?.breakdown?.bonus_mp || []);
-            updateResourceBar('stamina', data.current_stamina, data.max_stamina, '0', []);
-        } else if (!res || !res.success) {
+        if (res && res.success) {
+            if (res.data.character_updates) {
+                Object.assign(GameState.playerCurrentStats, res.data.character_updates);
+                GameState.playerCurrentCoins = Number(res.data.character_updates.coins || GameState.playerCurrentCoins);
+            }
+            await fetchCharacterData(true); // <--- ZMIANA: Natychmiast i gładko odświeża CAŁY lewy panel!
+        } else {
             showWarningMessage(res?.error || 'Błąd użycia przedmiotu');
         }
-
+        
         if (ActionQueue.queue.length === 0) {
-            await fetchInventory();
-            if (localStorage.getItem('active_game_tab') === 'equipment') renderInventory(GameState.inventoryData);
+            await fetchInventory(true); // <--- Ciche synchronizowanie bazy, bez psucia myszki!
         }
     });
 }
@@ -2981,6 +2999,7 @@ document.addEventListener('DOMContentLoaded', function() {
             if (card || simpleTooltip) {
                 clearTimeout(GameState.tooltipTimeout); 
                 GameState.tooltipTimeout = setTimeout(() => {
+                    if (window.isTooltipLocked) return;
                     if (GameState.isInventoryActionLocked) return;
                     if (card && !document.body.contains(card)) return;
                     if (simpleTooltip && !document.body.contains(simpleTooltip)) return;
@@ -3030,7 +3049,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         globalTooltip.style.visibility = 'visible';
                         globalTooltip.dataset.currentCard = text;
                     }
-                }, 400);
+                }, 800);
             }
         });
 
