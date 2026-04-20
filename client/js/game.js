@@ -2296,7 +2296,7 @@ function transferBankItem(inventoryId, targetPanel, amount, targetIndex = null) 
 }
 
 function performItemSwap(inventoryId, slotTarget, backpackIndexTarget = null, targetItemId = null) {
-    GameState.isInventoryActionLocked = true; 
+    // GameState.isInventoryActionLocked = true; 
 
     const item1 = GameState.inventoryData.find(i => i.id === inventoryId);
     
@@ -2347,7 +2347,7 @@ function performItemSwap(inventoryId, slotTarget, backpackIndexTarget = null, ta
         
         if (ActionQueue.queue.length === 0) {
             await fetchInventory(true);
-            GameState.isInventoryActionLocked = false; 
+            // GameState.isInventoryActionLocked = false; 
         }
     });
 }
